@@ -2,7 +2,7 @@
 
 Four cooperating AI agents run an invoice through the **procure-to-pay** loop — intake → 2/3-way matching → approval routing → reconciliation — and the dashboard **streams the agent execution trace live** as it happens. When a price/quantity mismatch is caught, the run is conditionally routed to approval and **pauses for a real human decision** (Approve / Reject) before anything posts. Built with [Mastra](https://mastra.ai).
 
-### ▶︎ [Try the live demo →](https://ledgerloop.vercel.app/)
+### ▶︎ [Try the live demo →](https://ledgerloop-eta.vercel.app/)
 
 > A deliberately small, finished, deployable demo. The point isn't feature breadth — it's that the production parts (typed agent boundaries, runtime validation, conditional orchestration, graceful failure, live streaming) are all here and working, which is what separates a multi-agent *system* from a prompt in a loop.
 
@@ -230,7 +230,7 @@ The `/api/run` route runs on the Node runtime (it reads from Postgres and calls 
 
 I build production-grade AI features fast — freelance / contract, fintech & AI. If this is the kind of thing you'd want shipped, let's talk.
 
-- **Live demo** — <https://ledgerloop.vercel.app/>
+- **Live demo** — <https://ledgerloop-eta.vercel.app/>
 - **GitHub** — [@DylanMerigaud](https://github.com/DylanMerigaud)
 - **LinkedIn** — [in/dylanmerigaud](https://www.linkedin.com/in/dylanmerigaud/)
 - **Email** — [dylanmerigaud.pro@gmail.com](mailto:dylanmerigaud.pro@gmail.com)
