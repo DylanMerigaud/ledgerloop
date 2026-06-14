@@ -5,6 +5,7 @@ import { TraceEvent } from "@/lib/trace";
 import { NdjsonBuffer } from "@/lib/ndjson";
 import { type StreamDone } from "@/lib/api-types";
 import type { Outcome } from "@/lib/display";
+import { deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
 
 /**
  * Client hook that runs the pipeline for an invoice and exposes the live trace.
@@ -32,31 +33,6 @@ const IDLE: PipelineRunState = {
   durationMs: null,
   error: null,
 };
-
-/** True if the trace paused at reconciliation awaiting a human decision. */
-function isAwaitingApproval(trace: TraceEvent[]): boolean {
-  return trace.some((e) => {
-    const data = e.data as Record<string, unknown> | undefined;
-    return data?.["outcome"] === "awaiting";
-  });
-}
-
-/** Derive the coarse per-invoice outcome from the trace so far. */
-function deriveOutcome(trace: TraceEvent[], finished: boolean): Outcome {
-  // Walk the recognized stage outputs for the strongest signal.
-  let outcome: Outcome = finished ? "reconciled" : "running";
-  for (const e of trace) {
-    const data = e.data as Record<string, unknown> | undefined;
-    if (!data) continue;
-    if (data["verdict"] === "duplicate" || data["tier"] === "blocked" || data["posted"] === false) {
-      return "blocked";
-    }
-    if (data["tier"] === "manager" || data["tier"] === "director") {
-      outcome = "needs-approval";
-    }
-  }
-  return outcome;
-}
 
 export function usePipelineRun() {
   const [state, setState] = useState<PipelineRunState>(IDLE);
@@ -91,12 +67,22 @@ export function usePipelineRun() {
     }
     setState((s) => ({ ...s, status: "running", outcome: "running", error: null }));
 
-    // UPSERT step nodes by stepId so each stage is a single node that transitions
-    // running → done (and, across phases, awaiting → posted). Other events append.
+    const resuming = decision !== undefined;
     const push = (e: TraceEvent) => {
       const events = eventsRef.current;
       const stepIndex = stepIndexRef.current;
-      if (e.kind === "step" && e.stepId) {
+
+      // On a phase-2 RESUME the workflow re-runs end-to-end, so it re-emits the
+      // whole front of the pipeline. We've already shown those nodes — surface
+      // ONLY the reconciliation stage (the part that actually advances) and drop
+      // the replayed run markers / earlier stages, so there's no second
+      // "Pipeline started" or duplicated upstream steps.
+      if (resuming && e.stage !== "reconciliation") return;
+
+      // UPSERT anything with a stepId (steps AND tool nodes carry stable ids) so a
+      // stage is a single node that transitions running → done, and across phases
+      // awaiting → posted — instead of stacking duplicates. Run markers append.
+      if (e.stepId) {
         const existing = stepIndex.get(e.stepId);
         if (existing !== undefined) {
           events[existing] = e;
@@ -163,8 +149,23 @@ export function usePipelineRun() {
       // If the run paused for a human decision, surface that as `awaiting` (not
       // `done`) so the UI shows Approve / Reject instead of "Run again".
       const awaiting = !decision && isAwaitingApproval(eventsRef.current);
+
+      // The workflow runs to completion even when reconciliation is HELD, so it
+      // emits a "Pipeline complete" run marker — misleading while paused. Drop the
+      // run markers so the trace ends on the awaiting step, matching the "Paused —
+      // needs a decision" banner. Rebuild the stepId→index map afterwards so the
+      // upserts on the eventual resume still target the right nodes.
+      if (awaiting) {
+        eventsRef.current = eventsRef.current.filter((e) => e.kind !== "run");
+        stepIndexRef.current = new Map();
+        eventsRef.current.forEach((e, i) => {
+          if (e.stepId) stepIndexRef.current.set(e.stepId, i);
+        });
+      }
+
       setState((s) => ({
         ...s,
+        trace: [...eventsRef.current],
         status: awaiting ? "awaiting" : "done",
         durationMs,
         outcome: awaiting ? "needs-approval" : deriveOutcome(eventsRef.current, true),

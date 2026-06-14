@@ -77,10 +77,22 @@ function ApprovalDetail({ decision }: { decision: ApprovalDecision }) {
 }
 
 function ReconDetail({ recon }: { recon: ReconResult }) {
+  // Awaiting is a pause (amber), not a failure; posted is success; rejected/
+  // blocked are red. Drive the badge off the precise outcome.
+  const tone =
+    recon.outcome === "posted" ? "ok" : recon.outcome === "awaiting" ? "warn" : "danger";
+  const label =
+    recon.outcome === "posted"
+      ? "Posted"
+      : recon.outcome === "awaiting"
+        ? "Awaiting approval"
+        : recon.outcome === "rejected"
+          ? "Rejected"
+          : "Blocked";
   return (
     <div className="space-y-1">
-      <Row label="Posted">
-        <Badge tone={recon.posted ? "ok" : "danger"}>{recon.posted ? "Yes" : "No"}</Badge>
+      <Row label="Status">
+        <Badge tone={tone}>{label}</Badge>
       </Row>
       {recon.erpRef && (
         <Row label="ERP ref">
