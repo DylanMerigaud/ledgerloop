@@ -61,10 +61,10 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   }
 
   return (
-    // A fixed, sensible viewport-relative height (not full-bleed stretch) so the
-    // two panes sit side by side, each scrolling internally, and the page footer
-    // stays reachable. On mobile they stack at natural height.
-    <div className="grid grid-cols-1 gap-4 lg:h-[min(620px,calc(100vh-220px))] lg:grid-cols-[minmax(300px,380px)_1fr]">
+    // Desktop: fill the parent's flex-1 slot (the page is viewport-tall), so the
+    // two panes sit side by side and scroll INTERNALLY — no competing page
+    // scroll. Mobile: stack at natural height.
+    <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,380px)_1fr]">
       {/* LEFT — queue */}
       <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:max-h-none">
         <CardHeader className="flex items-center justify-between">

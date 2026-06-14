@@ -29,15 +29,20 @@ export default async function Page() {
   }
 
   return (
-    <main className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8">
+    // On desktop the page is exactly viewport-tall (flex column) so there is ONE
+    // scroll context — inside the queue/trace panels — not a competing page
+    // scroll. On mobile it falls back to natural height + normal page scroll.
+    <main className="mx-auto flex max-w-[1200px] flex-col px-4 py-6 sm:px-6 sm:py-8 lg:h-screen">
       <Header />
-      {dbError ? (
-        <SetupNotice detail={dbError} />
-      ) : queue.length === 0 ? (
-        <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
-      ) : (
-        <Dashboard queue={queue} />
-      )}
+      <div className="min-h-0 flex-1">
+        {dbError ? (
+          <SetupNotice detail={dbError} />
+        ) : queue.length === 0 ? (
+          <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
+        ) : (
+          <Dashboard queue={queue} />
+        )}
+      </div>
       <Footer />
     </main>
   );
