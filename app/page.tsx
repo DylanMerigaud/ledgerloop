@@ -32,7 +32,7 @@ export default async function Page() {
     // On desktop the page is exactly viewport-tall (flex column) so there is ONE
     // scroll context — inside the queue/trace panels — not a competing page
     // scroll. On mobile it falls back to natural height + normal page scroll.
-    <main className="mx-auto flex max-w-[1200px] flex-col px-4 py-6 sm:px-6 sm:py-8 lg:h-screen">
+    <main className="mx-auto flex max-w-[1200px] flex-col px-4 pb-3 pt-6 sm:px-6 sm:pt-8 lg:h-screen lg:pb-4">
       <Header />
       <div className="min-h-0 flex-1">
         {dbError ? (
