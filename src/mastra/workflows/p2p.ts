@@ -36,12 +36,16 @@ import { runAgentStep } from "./run-agent-step";
  * flaky model never breaks the pipeline — it just loses some prose.
  */
 
-/* The state the workflow is seeded with — produced by the DB read layer. */
+/* The state the workflow is seeded with — produced by the DB read layer. The
+   optional `humanApproval` is the reviewer's decision for invoices that need a
+   human gate: "pending" (run pauses at reconciliation), "approve", or "reject".
+   Clean and duplicate invoices ignore it. */
 const RunInput = z.object({
   invoice: Invoice,
   purchaseOrder: PurchaseOrder.nullable(),
   goodsReceipt: GoodsReceipt.nullable(),
   priorInvoiceNumbers: z.array(z.string()),
+  humanApproval: z.enum(["pending", "approve", "reject"]).default("pending"),
 });
 
 /* A narration field every stage adds for the trace. */
@@ -88,9 +92,12 @@ const intakeStep = createStep({
    The authoritative verdict comes from runMatch(); the agent narrates it. The
    verdict drives the branch below. We carry the documents we still need
    (vendor) forward alongside the MatchResult. */
-const MatchStepOut = MatchResult.merge(Narrated).merge(
-  z.object({ vendor: z.string() }),
-);
+const HumanApproval = z.object({
+  humanApproval: z.enum(["pending", "approve", "reject"]),
+});
+const MatchStepOut = MatchResult.merge(Narrated)
+  .merge(z.object({ vendor: z.string() }))
+  .merge(HumanApproval);
 const matchingStep = createStep({
   id: "matching",
   inputSchema: RunInput.merge(Narrated),
@@ -118,7 +125,12 @@ const matchingStep = createStep({
         "An invoice is ready for matching. Call the run-match tool to compute the verdict, then describe the outcome in one concise sentence (name the discrepancy and line if there's an exception; say it's a duplicate if blocked).",
     });
 
-    return { ...match, vendor: inputData.invoice.vendor, narration };
+    return {
+      ...match,
+      vendor: inputData.invoice.vendor,
+      humanApproval: inputData.humanApproval,
+      narration,
+    };
   },
 });
 
@@ -140,6 +152,7 @@ const BranchOut = z.object({
   decision: ApprovalDecision,
   match: MatchResult,
   vendor: z.string(),
+  humanApproval: z.enum(["pending", "approve", "reject"]),
 });
 
 /* Exception/duplicate path: the Approval agent routes + narrates. */
@@ -148,7 +161,7 @@ const approvalStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData, mastra, writer }) => {
-    const { vendor, narration: _prior, ...match } = inputData;
+    const { vendor, humanApproval, narration: _prior, ...match } = inputData;
     // The Approval agent calls route-approval (a real tool-call); the tool reads
     // the MatchResult from requestContext and applies the pure policy. The tier
     // is computed deterministically here and is authoritative; the agent narrates.
@@ -164,7 +177,7 @@ const approvalStep = createStep({
       prompt:
         "An invoice failed straight-through matching. Call the route-approval tool to determine the approver tier, then state who must approve it (or that it's blocked as a duplicate) in one concise sentence.",
     });
-    return { decision, match, vendor, narration };
+    return { decision, match, vendor, humanApproval, narration };
   },
 });
 
@@ -176,12 +189,13 @@ const autoApproveStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData }) => {
-    const { vendor, narration: _prior, ...match } = inputData;
+    const { vendor, humanApproval, narration: _prior, ...match } = inputData;
     const decision = routeApproval(match);
     return {
       decision,
       match,
       vendor,
+      humanApproval,
       narration: "Auto-approved — clean match, no human approval required (straight-through).",
     };
   },
@@ -194,21 +208,28 @@ const reconciliationStep = createStep({
   inputSchema: BranchOut,
   outputSchema: ReconResult.merge(Narrated),
   execute: async ({ inputData, mastra, writer }) => {
-    const { decision, match, vendor } = inputData;
+    const { decision, match, vendor, humanApproval } = inputData;
     // Compute the deterministic reconciliation once — it's the guaranteed
     // fallback (the fake ERP adapter is side-effect-free, so this is safe to run
-    // regardless of whether the agent also fires the tool).
-    const recon = await reconcile(decision, match, vendor);
+    // regardless of whether the agent also fires the tool). `humanApproval`
+    // decides whether an exception is posted, held (awaiting), or rejected.
+    const recon = await reconcile(decision, match, vendor, humanApproval);
+    // When the invoice is HELD for a human, don't ask the agent to narrate a
+    // "posted" story — surface the deterministic "awaiting approval" note and
+    // skip the LLM call entirely (it would only burn tokens to restate the pause).
+    if (recon.outcome === "awaiting") {
+      return { ...recon, narration: recon.note };
+    }
     const { narration } = await runAgentStep({
       mastra,
       writer,
       agentId: "reconciliation",
       toolName: "post-to-erp",
-      context: { [CTX.reconInput]: { decision, match, vendor } },
+      context: { [CTX.reconInput]: { decision, match, vendor, humanApproval } },
       result: recon,
       fallbackNarration: (r) => r.note,
       prompt:
-        "An invoice has cleared matching and approval. Call the post-to-erp tool to record the accounting outcome, then state the result (the ERP reference and amount, or that it was held un-posted) in one concise sentence.",
+        "An invoice has cleared matching and approval. Call the post-to-erp tool to record the accounting outcome, then state the result (the ERP reference and amount, whether it was rejected, or that it was held un-posted) in one concise sentence.",
     });
     return { ...recon, narration };
   },

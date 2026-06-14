@@ -69,29 +69,77 @@ const fakeErp: ErpAdapter = {
 };
 
 /**
- * Reconcile an approved/clean invoice by posting it through the ERP adapter.
- * Pure orchestration over the adapter — the Reconciliation agent calls this via
- * a tool. A blocked/duplicate invoice is never posted; it returns un-posted so
- * the trace shows the pipeline correctly refusing to pay.
+ * A reviewer's decision on an invoice that needs human approval.
+ *   "pending" — no decision yet (the run should pause and wait for a human)
+ *   "approve" — a reviewer cleared it for payment
+ *   "reject"  — a reviewer declined it
+ */
+export type HumanApproval = "pending" | "approve" | "reject";
+
+/**
+ * Reconcile an invoice by posting it through the ERP adapter — or refusing to.
+ * Pure orchestration over the adapter; the Reconciliation agent calls this via a
+ * tool. The outcome depends on the approval decision AND, for invoices that need
+ * a human, the reviewer's `humanApproval`:
+ *
+ *   - blocked (duplicate)            → never posted, outcome "blocked"
+ *   - auto (clean, straight-through) → posted
+ *   - manager/director + "pending"  → HELD, outcome "awaiting" (run pauses here)
+ *   - manager/director + "approve"  → posted
+ *   - manager/director + "reject"   → not posted, outcome "rejected"
  */
 export async function reconcile(
   decision: ApprovalDecision,
   match: MatchResult,
   vendor: string,
+  humanApproval: HumanApproval = "pending",
   adapter: ErpAdapter = fakeErp,
 ): Promise<ReconResult> {
+  const base = {
+    invoiceNumber: decision.invoiceNumber,
+    currency: match.currency,
+    amount: match.invoiceTotal,
+  };
+
+  // Duplicate — a control failure, never paid. No human in the loop.
   if (decision.tier === "blocked") {
     return {
-      invoiceNumber: decision.invoiceNumber,
+      ...base,
+      outcome: "blocked",
       posted: false,
       erpRef: null,
       glEntries: [],
-      currency: match.currency,
-      amount: match.invoiceTotal,
       note: "Not posted — invoice is blocked (duplicate). Held for AP review.",
     };
   }
 
+  const needsHuman = decision.tier === "manager" || decision.tier === "director";
+
+  // Held for a human decision — the pipeline pauses here until a reviewer acts.
+  if (needsHuman && humanApproval === "pending") {
+    return {
+      ...base,
+      outcome: "awaiting",
+      posted: false,
+      erpRef: null,
+      glEntries: [],
+      note: `Awaiting ${decision.tier} approval before posting — paused for a reviewer decision.`,
+    };
+  }
+
+  // A reviewer declined it.
+  if (needsHuman && humanApproval === "reject") {
+    return {
+      ...base,
+      outcome: "rejected",
+      posted: false,
+      erpRef: null,
+      glEntries: [],
+      note: "Rejected by reviewer — not posted. Returned to the vendor for correction.",
+    };
+  }
+
+  // Cleared for payment: auto (clean) or human-approved exception.
   const { erpRef, glEntries } = await adapter.postVendorBill({
     invoiceNumber: decision.invoiceNumber,
     poNumber: match.poNumber,
@@ -103,15 +151,14 @@ export async function reconcile(
   const how =
     decision.tier === "auto"
       ? "auto-approved (straight-through)"
-      : `approved at ${decision.tier} tier`;
+      : `approved by reviewer at ${decision.tier} tier`;
 
   return {
-    invoiceNumber: decision.invoiceNumber,
+    ...base,
+    outcome: "posted",
     posted: true,
     erpRef,
     glEntries,
-    currency: match.currency,
-    amount: match.invoiceTotal,
     note: `Posted to ${adapter.name} as ${erpRef} — ${how}.`,
   };
 }

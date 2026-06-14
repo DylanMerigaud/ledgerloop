@@ -218,9 +218,19 @@ export const GlEntry = z
   .strict();
 export type GlEntry = z.infer<typeof GlEntry>;
 
+/**
+ * How the reconciliation step resolved:
+ *   posted    — booked to the ERP (clean auto, or human-approved)
+ *   awaiting  — held pending a human approval decision (the run paused here)
+ *   rejected  — a reviewer declined it; not posted
+ *   blocked   — a duplicate; never posted
+ */
+const ReconOutcome = z.enum(["posted", "awaiting", "rejected", "blocked"]);
+
 export const ReconResult = z
   .object({
     invoiceNumber: z.string(),
+    outcome: ReconOutcome,
     posted: z.boolean(),
     /** Reference returned by the (fake) ERP adapter, e.g. "NETSUITE-BILL-1042". */
     erpRef: z.string().nullable(),

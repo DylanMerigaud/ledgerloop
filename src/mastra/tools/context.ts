@@ -31,6 +31,7 @@ export interface ToolContext {
     decision: ApprovalDecision;
     match: MatchResult;
     vendor: string;
+    humanApproval: "pending" | "approve" | "reject";
   };
 }
 

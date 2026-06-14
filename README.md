@@ -1,6 +1,6 @@
 # ledgerloop
 
-Four cooperating AI agents run an invoice through the **procure-to-pay** loop — intake → 2/3-way matching → approval routing → reconciliation — and the dashboard **streams the agent execution trace live** as it happens, including the moment a price/quantity mismatch is caught and the run is conditionally routed to human approval. Built with [Mastra](https://mastra.ai).
+Four cooperating AI agents run an invoice through the **procure-to-pay** loop — intake → 2/3-way matching → approval routing → reconciliation — and the dashboard **streams the agent execution trace live** as it happens. When a price/quantity mismatch is caught, the run is conditionally routed to approval and **pauses for a real human decision** (Approve / Reject) before anything posts. Built with [Mastra](https://mastra.ai).
 
 ### ▶︎ [Try the live demo →](https://ledgerloop.vercel.app/)
 
@@ -14,23 +14,34 @@ Four cooperating AI agents run an invoice through the **procure-to-pay** loop �
 
 The demo simulates the **accounts-payable pipeline** an AP team runs on every vendor invoice:
 
-```
-        ┌──────────┐     ┌───────────┐     ┌────────────┐     ┌─────────────────┐
-  PDF → │  Intake  │ →   │  Matching │ →   │  Approval  │ →   │ Reconciliation  │ → ERP
-        │  agent   │     │   agent   │     │   agent    │     │     agent       │
-        └──────────┘     └─────┬─────┘     └────────────┘     └─────────────────┘
-                               │                  ▲
-                               │   clean match    │  price / qty / duplicate
-                               └──────────────────┴── exception → route to a human
-                                  straight-through
+```mermaid
+flowchart LR
+    I([Invoice]) --> A1[Intake agent]
+    A1 --> A2[Matching agent]
+    A2 -- "run-match tool" --> V{Verdict?}
+
+    V -- "clean" --> AUTO[Auto-approve<br/>straight-through]
+    V -- "exception<br/>price / qty / off-PO" --> A3[Approval agent<br/>tier: manager / director]
+    V -- "duplicate" --> BLK[Blocked<br/>never posted]
+
+    A3 --> H{{Human decision<br/>Approve / Reject}}
+    H -- "approve" --> A4
+    H -- "reject" --> REJ[Rejected<br/>not posted]
+    AUTO --> A4[Reconciliation agent]
+    A4 -- "post-to-erp tool" --> ERP([ERP: vendor bill + GL])
+
+    classDef gate fill:#FEF3C7,stroke:#B45309,color:#0A0A0A;
+    classDef stop fill:#FEE2E2,stroke:#B91C1C,color:#0A0A0A;
+    class H gate;
+    class BLK,REJ stop;
 ```
 
-1. **Intake** confirms and structures the invoice (the PDF-parsing role — the same job as the sibling [ai-invoice-parser](https://github.com/DylanMerigaud) repo).
+1. **Intake** validates and structures the incoming invoice (vendor, line items, totals). *Parsing a PDF into this shape is the job of the sibling [ai-invoice-parser](https://github.com/DylanMerigaud) repo — this demo starts from the structured record and focuses on the orchestration.*
 2. **Matching** runs a **2-way** (invoice ↔ PO) or **3-way** (invoice ↔ PO ↔ goods receipt) match and returns a verdict: `clean`, `exception`, or `duplicate`.
-3. **Conditional routing** — *this is the demo*. A clean match goes **straight through** to reconciliation. An exception (a price variance, a quantity overbill, an off-PO line) is **routed to the Approval agent**, which tiers it to manager or director by the money and variance at stake. A duplicate is **blocked** so it's never paid twice.
-4. **Reconciliation** posts the vendor bill + its double-entry GL distribution to the ERP (a fake adapter — see below) and returns the reference.
+3. **Conditional routing — *this is the demo*.** A clean match goes **straight through** to reconciliation. An exception (a price variance, a quantity overbill, an off-PO line) is **routed to the Approval agent**, which tiers it to manager or director by the money and variance at stake — then the run **pauses for a human** to Approve or Reject before anything posts. A duplicate is **blocked** so it's never paid twice (no human needed — it's a control failure, not a judgment call).
+4. **Reconciliation** posts the vendor bill + its double-entry GL distribution to the ERP (a fake adapter — see below) and returns the reference. It only runs once an invoice is cleared — auto (clean) or human-approved.
 
-The split-view dashboard shows the **invoice queue** on the left (color-coded by outcome) and, on the right, the **live agent execution trace** for the selected invoice — each agent step, each tool call, the red "caught a mismatch" step, and the branch to approval — streamed in as the agents run.
+The split-view dashboard shows the **invoice queue** on the left (color-coded by outcome) and, on the right, the **live agent execution trace** for the selected invoice — each agent step, each tool call, the red "caught a mismatch" step, the branch to approval, and the **pause where you click Approve / Reject** — streamed in as the agents run.
 
 ### The seeded scenario
 
@@ -38,9 +49,9 @@ The database is seeded with ~10 realistic invoices, **including three deliberate
 
 | Invoice | Scenario | What the agents do |
 | --- | --- | --- |
-| `INV-2042` | **Price mismatch** — steel bar invoiced ~9% over the PO price | Matching flags `price_variance` → routed to **approval** |
-| `INV-2048` | **Quantity mismatch** — invoiced 100 units, only 80 received | The **3-way** receipt check flags it → **director** approval |
-| `INV-2041` (re-send) | **Duplicate** — the same invoice number arrives twice | Matching returns `duplicate` → **blocked**, not posted |
+| `INV-2042` | **Price mismatch** — steel bar invoiced ~9% over the PO price | Matching flags `price_variance` → **manager** approval → **pauses for your decision** |
+| `INV-2048` | **Quantity mismatch** — invoiced 100 units, only 80 received | The **3-way** receipt check flags it → **director** approval → **pauses for your decision** |
+| `INV-2041` (re-send) | **Duplicate** — the same invoice number arrives twice | Matching returns `duplicate` → **blocked**, not posted (no human needed) |
 | 6 × clean | Clean 2-way / 3-way matches | Auto-approved → **straight-through** to reconciliation |
 
 ---
@@ -82,7 +93,13 @@ The matching/approval/reconciliation **decisions** are **pure, unit-tested funct
 
 The deliberate twist that keeps this **reliable enough to demo live**: the step also computes that same pure function directly and treats *that* as the authoritative result for routing ([`workflows/run-agent-step.ts`](src/mastra/workflows/run-agent-step.ts)). So the agent genuinely invokes its tool and writes the prose, but the verdict that drives the `.branch(...)` never depends on parsing a model response. If the model is slow, declines to call the tool, or the call fails entirely (no key, rate limit), the deterministic result and a fallback narration still stand — a flaky model degrades the prose, it never changes the routing or breaks the pipeline. Agents narrate and invoke; rules decide.
 
-### 4. Zod as the single source of truth
+### 4. A real human-in-the-loop — without persisting state
+
+When matching finds an **exception**, the workflow runs intake → matching → approval and then **pauses at reconciliation** in an `awaiting` state — it does *not* post. The dashboard shows **Approve / Reject**, and reconciliation only executes after a human clicks (verified live: the ERP post genuinely doesn't happen until approval).
+
+The interesting constraint: the demo is **stateless** (it never writes to the database, so every visitor sees pristine data — see below), yet a human pause normally implies persisting the suspended run somewhere to resume it later. ledgerloop resolves this with a **two-phase request** rather than a stored snapshot ([`api/run/route.ts`](app/api/run/route.ts)): phase 1 (`{ id }`) streams up to the pause; the Approve/Reject click fires phase 2 (`{ id, decision }`), which re-runs the cheap **deterministic** prefix (matching/approval are pure functions over the seeded bundle) and continues into reconciliation. The reviewer's decision flows through the workflow as a `humanApproval` input that gates the ERP post. Mastra also offers native `suspend`/`resume`, but that requires durable storage to span two serverless requests — recomputing a pure prefix is the stateless-friendly choice here, and a deliberate trade-off worth calling out.
+
+### 5. Zod as the single source of truth
 
 Every pipeline shape is defined once in Zod ([`lib/schema.ts`](lib/schema.ts)) and:
 
@@ -92,7 +109,7 @@ Every pipeline shape is defined once in Zod ([`lib/schema.ts`](lib/schema.ts)) a
 
 The model, the validator, the database, and the screen can't drift — they're one definition. (This is the signature pattern carried over from the sibling repo, transposed from one extraction step to a four-stage pipeline.)
 
-### 5. Native streaming, relayed and adapted
+### 6. Native streaming, relayed and adapted
 
 Mastra emits a native event stream for a workflow run. The [run route](app/api/run/route.ts) calls `run.stream()` and relays `result.fullStream` (a `ReadableStream` of typed chunks) to the browser as newline-delimited JSON. A small **adapter** ([`lib/trace.ts`](lib/trace.ts)) maps each raw Mastra chunk to a stable, UI-facing `TraceEvent` — so the dashboard depends on *our* vocabulary, not Mastra's internal chunk format, and an unrecognized chunk is dropped rather than crashing the stream. The client reads it with `fetch` + `response.body.getReader()`.
 

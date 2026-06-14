@@ -53,6 +53,12 @@ export function TraceTimeline({
 
       {state.status === "running" && <PendingNode />}
 
+      {state.status === "awaiting" && (
+        <div className="ml-8 mt-1 rounded-lg bg-warn-soft/60 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn-line">
+          Paused — this invoice needs a human decision. Approve or reject it above to continue.
+        </div>
+      )}
+
       {state.status === "done" && state.durationMs != null && (
         <div className="pl-8 pt-2">
           <span className="text-[11px] text-muted tnum">
@@ -132,6 +138,7 @@ function verdictChip(event: TraceEvent): string {
   if (d) {
     if (typeof d["verdict"] === "string") return humanize(d["verdict"]);
     if (typeof d["tier"] === "string") return humanize(d["tier"]);
+    if (typeof d["outcome"] === "string") return humanize(d["outcome"]); // posted/awaiting/rejected/blocked
     if ("posted" in d) return d["posted"] ? "Posted" : "Not posted";
   }
   if (event.status === "running") return "Running";

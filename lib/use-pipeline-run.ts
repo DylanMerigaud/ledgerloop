@@ -18,7 +18,7 @@ import type { Outcome } from "@/lib/display";
  */
 
 export interface PipelineRunState {
-  status: "idle" | "running" | "done" | "error";
+  status: "idle" | "running" | "awaiting" | "done" | "error";
   trace: TraceEvent[];
   outcome: Outcome;
   durationMs: number | null;
@@ -32,6 +32,14 @@ const IDLE: PipelineRunState = {
   durationMs: null,
   error: null,
 };
+
+/** True if the trace paused at reconciliation awaiting a human decision. */
+function isAwaitingApproval(trace: TraceEvent[]): boolean {
+  return trace.some((e) => {
+    const data = e.data as Record<string, unknown> | undefined;
+    return data?.["outcome"] === "awaiting";
+  });
+}
 
 /** Derive the coarse per-invoice outcome from the trace so far. */
 function deriveOutcome(trace: TraceEvent[], finished: boolean): Outcome {
@@ -53,32 +61,45 @@ function deriveOutcome(trace: TraceEvent[], finished: boolean): Outcome {
 export function usePipelineRun() {
   const [state, setState] = useState<PipelineRunState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
+  // The trace + step index persist ACROSS phases so a phase-2 approve/reject
+  // continues the existing timeline (re-streamed intake/matching/approval nodes
+  // upsert in place by stepId; reconciliation transitions awaiting → posted).
+  const eventsRef = useRef<TraceEvent[]>([]);
+  const stepIndexRef = useRef<Map<string, number>>(new Map());
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    eventsRef.current = [];
+    stepIndexRef.current = new Map();
     setState(IDLE);
   }, []);
 
-  const run = useCallback(async (id: string) => {
-    // Cancel any in-flight run first.
+  /**
+   * Stream one run/resume. `decision` undefined = phase 1 (may pause for a
+   * human); "approve"/"reject" = phase 2 resume onto the existing trace.
+   */
+  const stream = useCallback(async (id: string, decision?: "approve" | "reject") => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setState({ ...IDLE, status: "running", outcome: "running" });
+    // Phase 1 starts a fresh trace; phase 2 keeps the existing one.
+    if (!decision) {
+      eventsRef.current = [];
+      stepIndexRef.current = new Map();
+    }
+    setState((s) => ({ ...s, status: "running", outcome: "running", error: null }));
 
-    // Step events arrive twice — once on `start` (running) and once on `result`
-    // (done). We UPSERT step nodes by their stepId so each stage is a single
-    // timeline node that transitions running → done, instead of two stacked
-    // nodes. Run markers, tool calls, and findings are always appended.
-    const events: TraceEvent[] = [];
-    const stepIndex = new Map<string, number>();
+    // UPSERT step nodes by stepId so each stage is a single node that transitions
+    // running → done (and, across phases, awaiting → posted). Other events append.
     const push = (e: TraceEvent) => {
+      const events = eventsRef.current;
+      const stepIndex = stepIndexRef.current;
       if (e.kind === "step" && e.stepId) {
         const existing = stepIndex.get(e.stepId);
         if (existing !== undefined) {
-          events[existing] = e; // replace running node with its result in place
+          events[existing] = e;
         } else {
           stepIndex.set(e.stepId, events.length);
           events.push(e);
@@ -97,7 +118,7 @@ export function usePipelineRun() {
       const res = await fetch("/api/run", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify(decision ? { id, decision } : { id }),
         signal: controller.signal,
       });
 
@@ -128,7 +149,7 @@ export function usePipelineRun() {
           try {
             parsed = JSON.parse(raw);
           } catch {
-            continue; // skip an unparseable line rather than failing the run
+            continue;
           }
           if (parsed && typeof parsed === "object" && "done" in parsed) {
             durationMs = (parsed as StreamDone).durationMs;
@@ -139,14 +160,17 @@ export function usePipelineRun() {
         }
       }
 
+      // If the run paused for a human decision, surface that as `awaiting` (not
+      // `done`) so the UI shows Approve / Reject instead of "Run again".
+      const awaiting = !decision && isAwaitingApproval(eventsRef.current);
       setState((s) => ({
         ...s,
-        status: "done",
+        status: awaiting ? "awaiting" : "done",
         durationMs,
-        outcome: deriveOutcome(events, true),
+        outcome: awaiting ? "needs-approval" : deriveOutcome(eventsRef.current, true),
       }));
     } catch (err) {
-      if (controller.signal.aborted) return; // superseded by a newer run / reset
+      if (controller.signal.aborted) return;
       setState((s) => ({
         ...s,
         status: "error",
@@ -156,5 +180,11 @@ export function usePipelineRun() {
     }
   }, []);
 
-  return { state, run, reset };
+  const run = useCallback((id: string) => stream(id), [stream]);
+  const decide = useCallback(
+    (id: string, decision: "approve" | "reject") => stream(id, decision),
+    [stream],
+  );
+
+  return { state, run, decide, reset };
 }

@@ -21,7 +21,7 @@ import type { QueueItem } from "@/db/client";
 
 export function Dashboard({ queue }: { queue: QueueItem[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(queue[0]?.id ?? null);
-  const { state, run, reset } = usePipelineRun();
+  const { state, run, decide, reset } = usePipelineRun();
 
   const selected = queue.find((q) => q.id === selectedId) ?? null;
 
@@ -39,7 +39,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
           <CardTitle>Invoice queue</CardTitle>
           <span className="text-[11px] text-muted tnum">{queue.length} invoices</span>
         </CardHeader>
-        <ul className="divide-y divide-line">
+        <ul className="max-h-[calc(100vh-16rem)] divide-y divide-line overflow-y-auto">
           {queue.map((item) => {
             const isSelected = item.id === selectedId;
             // The pill reflects the live run only for the selected row; others
@@ -73,11 +73,15 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
                         {item.invoiceNumber}
                         {item.poNumber ? ` · ${item.poNumber}` : ""}
                       </span>
-                      {item.scenario && !isSelected && (
-                        <span className="shrink-0 text-[10px] text-muted/80">{item.scenario}</span>
-                      )}
-                      {isSelected && state.status !== "idle" && (
+                      {/* Once a run is active for the selected row, show its live
+                          outcome badge; otherwise always show the seeded scenario
+                          hint (so selecting a row never blanks the label). */}
+                      {isSelected && state.status !== "idle" ? (
                         <Badge tone={outcomeTone(outcome)}>{outcomeLabel(outcome)}</Badge>
+                      ) : (
+                        item.scenario && (
+                          <span className="shrink-0 text-[10px] text-muted/80">{item.scenario}</span>
+                        )
                       )}
                     </span>
                   </span>
@@ -99,18 +103,38 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               </p>
             )}
           </div>
-          <button
-            type="button"
-            disabled={!selected || state.status === "running"}
-            onClick={() => selected && run(selected.id)}
-            className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {state.status === "running"
-              ? "Running…"
-              : state.status === "done" || state.status === "error"
-                ? "Run again"
-                : "Run pipeline"}
-          </button>
+          {state.status === "awaiting" && selected ? (
+            // The run paused for a human decision — show the approval gate.
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => decide(selected.id, "reject")}
+                className="rounded-lg px-3 py-2 text-[13px] font-medium text-danger ring-1 ring-inset ring-danger-line transition-colors hover:bg-danger-soft"
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => decide(selected.id, "approve")}
+                className="rounded-lg bg-ok px-3.5 py-2 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-90"
+              >
+                Approve
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={!selected || state.status === "running"}
+              onClick={() => selected && run(selected.id)}
+              className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {state.status === "running"
+                ? "Running…"
+                : state.status === "done" || state.status === "error"
+                  ? "Run again"
+                  : "Run pipeline"}
+            </button>
+          )}
         </CardHeader>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <TraceTimeline state={state} invoiceLabel={selected?.invoiceNumber ?? null} />

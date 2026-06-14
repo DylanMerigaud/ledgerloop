@@ -65,7 +65,7 @@ function stageForTool(toolName: string): TraceStage {
   return "pipeline";
 }
 
-export const TraceStatus = z.enum(["running", "ok", "warn", "error", "skipped"]);
+export const TraceStatus = z.enum(["running", "ok", "warn", "error", "skipped", "waiting"]);
 export type TraceStatus = z.infer<typeof TraceStatus>;
 
 /**
@@ -281,7 +281,10 @@ function stepStatusFromOutput(out: Record<string, unknown> | undefined): TraceSt
   if (out["tier"] === "blocked") return "error";
   if (out["tier"] === "manager" || out["tier"] === "director") return "warn";
   if (out["tier"] === "auto") return "ok";
-  // ReconResult
+  // ReconResult (by outcome — more precise than the bare `posted` flag)
+  if (out["outcome"] === "awaiting") return "waiting";
+  if (out["outcome"] === "rejected" || out["outcome"] === "blocked") return "error";
+  if (out["outcome"] === "posted") return "ok";
   if (out["posted"] === false) return "error";
   return "ok";
 }

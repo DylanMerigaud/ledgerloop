@@ -74,6 +74,8 @@ export function statusTone(status: TraceStatus): BadgeTone {
       return "danger";
     case "running":
       return "accent";
+    case "waiting":
+      return "warn";
     case "skipped":
       return "neutral";
   }
@@ -90,6 +92,8 @@ export function statusDot(status: TraceStatus): string {
       return "#B91C1C";
     case "running":
       return "#4F46E5";
+    case "waiting":
+      return "#B45309";
     case "skipped":
       return "#D1D5DB";
   }

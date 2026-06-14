@@ -38,15 +38,23 @@ function line(obj: unknown): Uint8Array {
 export async function POST(request: Request): Promise<Response> {
   // 1. Parse + validate the request body.
   let id: string;
+  let decision: "approve" | "reject" | undefined;
   try {
     const body: unknown = await request.json();
-    id = RunRequest.parse(body).id;
+    const parsed = RunRequest.parse(body);
+    id = parsed.id;
+    decision = parsed.decision;
   } catch {
     return Response.json(
-      { error: "Body must be { id: string } naming a seeded invoice." },
+      { error: "Body must be { id: string, decision?: \"approve\" | \"reject\" }." },
       { status: 400 },
     );
   }
+  // The reviewer's decision maps to the workflow's humanApproval input. No
+  // decision → "pending" (an exception pauses for a human). "approve"/"reject"
+  // are phase-2 resumes. Recomputing the cheap deterministic prefix instead of
+  // restoring a persisted snapshot is what keeps the human-in-the-loop stateless.
+  const humanApproval = decision ?? "pending";
 
   // 2. Load the seeded document bundle (READ ONLY). Done before opening the
   //    stream so a missing invoice / missing DB config is a clean HTTP error
@@ -88,6 +96,7 @@ export async function POST(request: Request): Promise<Response> {
             purchaseOrder: bundle.purchaseOrder,
             goodsReceipt: bundle.goodsReceipt,
             priorInvoiceNumbers: bundle.priorInvoiceNumbers,
+            humanApproval,
           },
         });
 

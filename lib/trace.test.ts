@@ -77,6 +77,18 @@ test("un-posted ReconResult → error status", () => {
   assert.equal(e.status, "error");
 });
 
+test("reconciliation outcomes map to the right status", () => {
+  const status = (outcome: string) =>
+    toTraceEvent({
+      type: "workflow-step-result",
+      payload: { id: "reconciliation", output: { outcome, posted: outcome === "posted" } },
+    })?.status;
+  assert.equal(status("awaiting"), "waiting"); // the human-gate pause
+  assert.equal(status("posted"), "ok");
+  assert.equal(status("rejected"), "error");
+  assert.equal(status("blocked"), "error");
+});
+
 test("narration in output becomes the detail line", () => {
   const e = toTraceEvent({
     type: "workflow-step-result",

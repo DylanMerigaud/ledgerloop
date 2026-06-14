@@ -26,7 +26,7 @@ function ledgerFor(bundle: SeedBundle): string[] {
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
 }
 
-async function routeOf(bundle: SeedBundle) {
+async function routeOf(bundle: SeedBundle, humanApproval: "pending" | "approve" | "reject" = "pending") {
   const match = runMatch({
     invoice: bundle.invoice,
     purchaseOrder: bundle.purchaseOrder ?? null,
@@ -34,7 +34,7 @@ async function routeOf(bundle: SeedBundle) {
     priorInvoiceNumbers: ledgerFor(bundle),
   });
   const decision = routeApproval(match);
-  const recon = await reconcile(decision, match, bundle.invoice.vendor);
+  const recon = await reconcile(decision, match, bundle.invoice.vendor, humanApproval);
   return { match, decision, recon };
 }
 
@@ -51,21 +51,17 @@ async function main() {
   let failures = 0;
 
   for (const b of SEED_BUNDLES) {
-    const { match, decision, recon } = await routeOf(b);
+    const { match, decision, recon } = await routeOf(b); // pending: shows the pause
     const route =
       decision.tier === "auto"
-        ? "straight-through → reconciled"
+        ? `straight-through → posted (${recon.erpRef})`
         : decision.tier === "blocked"
           ? "BLOCKED (not posted)"
-          : `→ ${decision.tier} approval → reconciled`;
-    rows.push(
-      `  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}${
-        recon.posted ? ` (${recon.erpRef})` : ""
-      }`,
-    );
+          : `→ ${decision.tier} approval → ⏸ awaiting human decision`;
+    rows.push(`  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`);
   }
 
-  console.log("Invoice          Verdict    Routing");
+  console.log("Invoice          Verdict    Routing (humanApproval = pending)");
   console.log(rows.join("\n"));
   console.log();
 
@@ -86,6 +82,32 @@ async function main() {
     if (match.verdict !== want) {
       console.error(`✖ ${id}: expected ${want}, got ${match.verdict}`);
       failures++;
+    }
+  }
+
+  // Assert the human-in-the-loop gate actually gates: a price-mismatch exception
+  // must PAUSE when pending, POST only after approval, and stay un-posted on reject.
+  const priceMismatch = SEED_BUNDLES.find((b) => b.id === "INV-2042");
+  if (priceMismatch) {
+    const pending = (await routeOf(priceMismatch, "pending")).recon;
+    const approved = (await routeOf(priceMismatch, "approve")).recon;
+    const rejected = (await routeOf(priceMismatch, "reject")).recon;
+    if (pending.outcome !== "awaiting" || pending.posted) {
+      console.error(`✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`);
+      failures++;
+    }
+    if (approved.outcome !== "posted" || !approved.posted) {
+      console.error(`✖ INV-2042 approve: expected posted, got ${approved.outcome}`);
+      failures++;
+    }
+    if (rejected.outcome !== "rejected" || rejected.posted) {
+      console.error(`✖ INV-2042 reject: expected rejected/un-posted, got ${rejected.outcome}`);
+      failures++;
+    }
+    if (!failures) {
+      console.log(
+        "✓ Human-in-the-loop gate: INV-2042 pauses (awaiting) → posts on approve → stays un-posted on reject.",
+      );
     }
   }
 

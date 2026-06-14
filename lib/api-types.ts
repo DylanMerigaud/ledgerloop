@@ -6,9 +6,18 @@ import { z } from "zod";
  * same discipline as the sibling ai-invoice-parser repo).
  */
 
-/** POST body: which seeded invoice ROW (by its stable id) to run the pipeline on. */
+/**
+ * POST body: which seeded invoice ROW (by its stable id) to run, plus an optional
+ * reviewer `decision`.
+ *   - omitted        → phase 1: run the pipeline; an exception PAUSES at approval.
+ *   - "approve"      → phase 2: the reviewer cleared it; reconciliation posts.
+ *   - "reject"       → phase 2: the reviewer declined it; not posted.
+ * The two-phase shape is how the human-in-the-loop stays stateless — see the
+ * run route. Clean and duplicate invoices ignore `decision`.
+ */
 export const RunRequest = z.object({
   id: z.string().min(1, "an invoice id is required"),
+  decision: z.enum(["approve", "reject"]).optional(),
 });
 export type RunRequest = z.infer<typeof RunRequest>;
 

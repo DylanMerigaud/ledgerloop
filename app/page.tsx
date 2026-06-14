@@ -1,4 +1,5 @@
 import { Dashboard } from "@/components/dashboard";
+import { SocialLinks } from "@/components/social-links";
 import { listInvoiceQueue, type QueueItem } from "@/db/client";
 import { PIPELINE_MODEL } from "@/src/mastra/model";
 
@@ -109,16 +110,10 @@ function Footer() {
         <span className="font-mono text-ink">{PIPELINE_MODEL}</span> · Next.js · Supabase ·
         Drizzle. Runs are stateless — nothing is written back.
       </p>
-      <p>
-        <a
-          className="text-accent hover:underline"
-          href="https://github.com/DylanMerigaud"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Dylan Mérigaud
-        </a>
-      </p>
+      <div className="flex items-center gap-2">
+        <span className="text-ink">Dylan Mérigaud</span>
+        <SocialLinks />
+      </div>
     </footer>
   );
 }
