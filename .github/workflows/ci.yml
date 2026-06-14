@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: typecheck · knip · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Dead-code check (knip)
+        run: pnpm knip
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # The agents call the Anthropic API (costs tokens, needs a secret), so the
+      # live pipeline is intentionally NOT run in CI. `pnpm sanity --dry-run`
+      # exercises the deterministic orchestration logic offline — running every
+      # seeded invoice through the real match → route → reconcile functions and
+      # asserting the edge cases route correctly — with zero API calls.
+      - name: Pipeline sanity (dry-run, no API calls)
+        run: pnpm sanity --dry-run
