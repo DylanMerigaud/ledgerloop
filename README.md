@@ -122,6 +122,7 @@ src/mastra/
   tools/context.ts          the typed requestContext keys the steps inject
   workflows/p2p.ts          the chain + .branch() conditional routing
   workflows/run-agent-step  invoke agent → fire tool + narrate; rules stay authoritative
+  testing/                  mock model + offline integration tests for the agent wiring
 lib/
   schema.ts           Zod single source of truth → types + JSON schema
   matching.ts         pure 2/3-way matcher + variance      (unit-tested)
@@ -153,7 +154,7 @@ No ESLint, no Prettier — three cheap, zero-babysit gates instead, all run in [
 
 - `pnpm typecheck` → `tsc --noEmit` under **strict** mode plus `noUncheckedIndexedAccess` / `noUnusedLocals` / `noUnusedParameters` (catches type errors **and** dead code within a file).
 - `pnpm knip` → catches dead code **across** the project (unused exports, files, dependencies).
-- `pnpm test` → **Node's built-in test runner** via `tsx` — no extra test deps. The tests cover the **pure logic the agents actually use**: the matcher, the approval policy, the trace adapter, the stream framing, the schema accept/reject, and an assertion that **every seeded edge case routes to its intended verdict** — so the demo can't silently break.
+- `pnpm test` → **Node's built-in test runner** via `tsx` — no extra test deps. The tests cover the **pure logic the agents actually use** (the matcher, the approval policy, the trace adapter, the stream framing, the schema accept/reject), an assertion that **every seeded edge case routes to its intended verdict**, and an **offline integration test that runs the real workflow against a mock model** — proving the agent→tool wiring (requestContext reaches the tool, the agent invokes it, the tool call reaches the trace) with no API key, so CI guards it for free.
 - `pnpm build` → the Next.js production build.
 
 `pnpm sanity --dry-run` runs the whole deterministic pipeline (match → route → reconcile) over every seeded invoice with **no API calls** — that's what CI runs instead of the live agents (which cost tokens and need a secret). Dependencies are pinned to exact versions for reproducible installs. Package manager is **pnpm** (pinned via `packageManager`).

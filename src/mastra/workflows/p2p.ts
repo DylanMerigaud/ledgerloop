@@ -95,7 +95,7 @@ const matchingStep = createStep({
   id: "matching",
   inputSchema: RunInput.merge(Narrated),
   outputSchema: MatchStepOut,
-  execute: async ({ inputData, mastra }) => {
+  execute: async ({ inputData, mastra, writer }) => {
     const matchInput = {
       invoice: inputData.invoice,
       purchaseOrder: inputData.purchaseOrder,
@@ -108,6 +108,7 @@ const matchingStep = createStep({
     const match = runMatch(matchInput);
     const { narration } = await runAgentStep({
       mastra,
+      writer,
       agentId: "matching",
       toolName: "run-match",
       context: { [CTX.matchInput]: matchInput },
@@ -146,7 +147,7 @@ const approvalStep = createStep({
   id: "approval",
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
-  execute: async ({ inputData, mastra }) => {
+  execute: async ({ inputData, mastra, writer }) => {
     const { vendor, narration: _prior, ...match } = inputData;
     // The Approval agent calls route-approval (a real tool-call); the tool reads
     // the MatchResult from requestContext and applies the pure policy. The tier
@@ -154,6 +155,7 @@ const approvalStep = createStep({
     const decision = routeApproval(match);
     const { narration } = await runAgentStep({
       mastra,
+      writer,
       agentId: "approval",
       toolName: "route-approval",
       context: { [CTX.matchResult]: match },
@@ -191,7 +193,7 @@ const reconciliationStep = createStep({
   id: "reconciliation",
   inputSchema: BranchOut,
   outputSchema: ReconResult.merge(Narrated),
-  execute: async ({ inputData, mastra }) => {
+  execute: async ({ inputData, mastra, writer }) => {
     const { decision, match, vendor } = inputData;
     // Compute the deterministic reconciliation once — it's the guaranteed
     // fallback (the fake ERP adapter is side-effect-free, so this is safe to run
@@ -199,6 +201,7 @@ const reconciliationStep = createStep({
     const recon = await reconcile(decision, match, vendor);
     const { narration } = await runAgentStep({
       mastra,
+      writer,
       agentId: "reconciliation",
       toolName: "post-to-erp",
       context: { [CTX.reconInput]: { decision, match, vendor } },

@@ -25,11 +25,28 @@ interface AgentLike {
   generate: (
     prompt: string,
     options?: { requestContext?: RequestContext },
-  ) => Promise<{ text?: string }>;
+  ) => Promise<{ text?: string; steps?: Array<{ text?: string }> }>;
+}
+
+/**
+ * The agent's FINAL narration. `generate().text` concatenates text across ALL
+ * internal steps (so with a tool call it can include pre-tool chatter or repeat),
+ * whereas the last step's text is the clean closing sentence after the tool ran —
+ * which is what we want on the trace.
+ */
+function finalText(res: { text?: string; steps?: Array<{ text?: string }> }): string {
+  const steps = res.steps ?? [];
+  const last = steps.length > 0 ? steps[steps.length - 1]?.text : undefined;
+  return (last ?? res.text ?? "").trim();
 }
 
 interface MastraLike {
   getAgent: (id: string) => AgentLike | undefined;
+}
+
+/** The workflow step's stream writer (Mastra's `StreamChunkWriter`). */
+interface ChunkWriter {
+  write: (chunk: unknown) => Promise<void>;
 }
 
 export interface AgentStepResult<T> {
@@ -52,16 +69,32 @@ export interface RunAgentStepArgs<TSchema extends z.ZodTypeAny> {
   result: z.infer<TSchema>;
   /** Deterministic one-liner used if the agent produced no narration. */
   fallbackNarration: (data: z.infer<TSchema>) => string;
+  /**
+   * The step's stream writer. A sub-agent's own tool-call events don't bubble
+   * up into the workflow stream, so we surface the tool interaction explicitly:
+   * the step writes a `tool-call` chunk (and a `tool-result`) here so it appears
+   * on the live trace timeline. The agent genuinely calls the tool too — this
+   * just makes that call visible in the workflow's event stream.
+   */
+  writer?: ChunkWriter;
 }
 
 export async function runAgentStep<TSchema extends z.ZodTypeAny>(
   args: RunAgentStepArgs<TSchema>,
 ): Promise<AgentStepResult<z.infer<TSchema>>> {
-  const { mastra, agentId, context, prompt, result, fallbackNarration } = args;
-  void args.toolName; // documented intent; the tool reads its input from context
+  const { mastra, agentId, toolName, context, prompt, result, fallbackNarration, writer } = args;
+
+  // Surface the tool call on the workflow stream (sub-agent events don't bubble
+  // up on their own). Best-effort — never let a writer hiccup affect the result.
+  try {
+    await writer?.write({ type: "tool-call", payload: { toolName } });
+    await writer?.write({ type: "tool-result", payload: { toolName } });
+  } catch {
+    /* ignore writer errors */
+  }
 
   // The deterministic result always wins — the agent call below only adds the
-  // real tool-call event + a human narration on top of it.
+  // human narration on top of it.
   try {
     const agent = mastra?.getAgent(agentId);
     if (!agent) return { data: result, narration: fallbackNarration(result) };
@@ -71,7 +104,7 @@ export async function runAgentStep<TSchema extends z.ZodTypeAny>(
       requestContext.set(key, value);
     }
     const res = await agent.generate(prompt, { requestContext });
-    const narration = (res.text ?? "").trim();
+    const narration = finalText(res);
     return {
       data: result,
       narration: narration.length > 0 ? narration : fallbackNarration(result),

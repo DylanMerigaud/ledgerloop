@@ -167,10 +167,32 @@ export function toTraceEvent(
           label: stageLabel(stage),
         };
 
+      case "workflow-step-output": {
+        // Custom chunks a step writes (via its stream writer) arrive wrapped:
+        // payload.output = { type, payload }. Our steps write a `tool-call` chunk
+        // when their agent invokes its tool, so unwrap it and surface a tool node.
+        // (A sub-agent's own tool events don't bubble up, so this is how the tool
+        // call becomes visible on the trace.) We show the call, not the result, so
+        // there's one "→ tool" line per invocation.
+        const inner = asRecord(payload?.["output"]);
+        if (inner?.["type"] !== "tool-call") return null;
+        const innerPayload = asRecord(inner["payload"]);
+        const toolName =
+          typeof innerPayload?.["toolName"] === "string"
+            ? (innerPayload["toolName"] as string)
+            : "tool";
+        return {
+          kind: "tool",
+          stage: stageForTool(toolName),
+          status: "running",
+          stepId: `tool:${toolName}`,
+          label: `→ ${toolName}`,
+        };
+      }
+
       case "tool-call": {
-        // Tool-call chunks carry a tool name, not a workflow step id, so map the
-        // stage from the tool name and key the node by the tool name (it renders
-        // as a transient "→ run-match" line under its agent).
+        // Native tool-call chunks (should the runtime surface them directly) carry
+        // a tool name, not a workflow step id — map the stage from the tool name.
         const name =
           typeof payload?.["toolName"] === "string"
             ? (payload["toolName"] as string)
