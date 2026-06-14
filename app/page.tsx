@@ -29,17 +29,15 @@ export default async function Page() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-[1200px] flex-col px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8">
       <Header />
-      <div className="min-h-0 flex-1">
-        {dbError ? (
-          <SetupNotice detail={dbError} />
-        ) : queue.length === 0 ? (
-          <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
-        ) : (
-          <Dashboard queue={queue} />
-        )}
-      </div>
+      {dbError ? (
+        <SetupNotice detail={dbError} />
+      ) : queue.length === 0 ? (
+        <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
+      ) : (
+        <Dashboard queue={queue} />
+      )}
       <Footer />
     </main>
   );
@@ -54,10 +52,9 @@ function Header() {
             ledgerloop
           </h1>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">
-            A multi-agent <span className="text-ink">procure-to-pay</span> pipeline. Four
-            cooperating agents run each invoice through intake → 2/3-way matching → approval
-            routing → reconciliation. Pick an invoice and run it to watch the agents — and the
-            conditional routing on a caught mismatch — stream live.
+            A chain of AI agents runs each invoice through{" "}
+            <span className="text-ink">procure-to-pay</span> — with the live execution
+            trace and a real human approval gate on caught mismatches.
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-muted">

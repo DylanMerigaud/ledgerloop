@@ -29,11 +29,11 @@ export function TraceTimeline({
   if (state.status === "idle") {
     return (
       <Empty
-        title="The agent trace will stream here"
+        title="Run the pipeline"
         body={
           invoiceLabel
-            ? `Run the pipeline on ${invoiceLabel} to watch four agents match, route, and reconcile it, live. For the interesting path, pick a flagged invoice (a price or quantity mismatch) and watch the run branch to approval and pause for your call.`
-            : "Select an invoice from the queue to begin. Flagged ones (price or quantity mismatch) branch to approval and pause for your decision — the path worth watching."
+            ? `Watch four agents match, route, and reconcile ${invoiceLabel} — live. Pick a flagged invoice (price or quantity mismatch) to see the run branch to approval and pause for your decision.`
+            : "Select an invoice to begin. Flagged ones — a price or quantity mismatch — branch to approval and pause for your decision."
         }
         action={
           canRun ? (
@@ -41,7 +41,7 @@ export function TraceTimeline({
               type="button"
               data-testid="run-btn"
               onClick={onRun}
-              className="mt-5 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-fg shadow-sm transition-opacity hover:opacity-90"
+              className="mt-4 rounded-lg bg-accent px-5 py-2.5 text-[13px] font-semibold text-accent-fg shadow-sm transition-opacity hover:opacity-90"
             >
               Run pipeline
             </button>
@@ -191,11 +191,11 @@ function Empty({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-8 text-center">
-      <p className={`text-sm font-medium ${tone === "danger" ? "text-danger" : "text-ink"}`}>
+    <div className="flex h-full min-h-[240px] flex-col items-center justify-center px-8 text-center">
+      <p className={`text-[15px] font-semibold ${tone === "danger" ? "text-danger" : "text-ink"}`}>
         {title}
       </p>
-      <p className="mt-1 max-w-sm text-[13px] leading-relaxed text-muted">{body}</p>
+      <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">{body}</p>
       {action}
     </div>
   );
