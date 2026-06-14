@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@mastra/core": "1.42.0",
+    "@upstash/ratelimit": "2.0.8",
+    "@upstash/redis": "1.38.0",
     "clsx": "2.1.1",
     "drizzle-orm": "0.45.2",
     "geist": "1.7.2",

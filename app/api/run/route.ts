@@ -2,6 +2,7 @@ import { mastra } from "@/src/mastra";
 import { loadRunBundle } from "@/db/client";
 import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
 import { ndjsonLine } from "@/lib/ndjson";
+import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
 import { RunRequest, STREAM_CONTENT_TYPE, type StreamDone } from "@/lib/api-types";
 
 /**
@@ -36,6 +37,23 @@ function line(obj: unknown): Uint8Array {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // 0. Rate-limit by IP first — before any work or model calls. The demo is
+  //    public and each run spends Anthropic tokens, so this caps abuse. Fails
+  //    open if Redis isn't configured (see lib/ratelimit.ts).
+  const ip = clientIpFrom(request.headers);
+  const verdict = await checkRateLimit(ip);
+  if (!verdict.ok) {
+    return Response.json(
+      {
+        error: `You've hit the demo limit (8 runs / 10 min). Try again in about ${Math.max(
+          1,
+          Math.ceil(verdict.retryAfterSeconds / 60),
+        )} minute(s).`,
+      },
+      { status: 429, headers: { "retry-after": String(verdict.retryAfterSeconds) } },
+    );
+  }
+
   // 1. Parse + validate the request body.
   let id: string;
   let decision: "approve" | "reject" | undefined;
