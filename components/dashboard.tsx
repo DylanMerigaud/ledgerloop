@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TraceTimeline } from "@/components/trace-timeline";
@@ -23,6 +23,35 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(queue[0]?.id ?? null);
   const { state, run, decide, reset } = usePipelineRun();
 
+  // Queue scroll affordance: macOS hides overlay scrollbars, so we show an
+  // explicit "N more" pill + fade until the list is scrolled to the bottom.
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const [scroll, setScroll] = useState({ hiddenBelow: 0, atBottom: true });
+
+  function measureScroll() {
+    const el = listRef.current;
+    if (!el) return;
+    const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    setScroll({
+      hiddenBelow: Math.max(0, el.scrollHeight - el.clientHeight - el.scrollTop),
+      atBottom: remaining < 8,
+    });
+  }
+
+  // Measure on mount and when the queue changes (rows have a fixed height, so we
+  // can turn the hidden pixels into an approximate row count for the pill).
+  useEffect(() => {
+    measureScroll();
+    const el = listRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measureScroll);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const ROW_PX = 63; // approx height of one queue row
+  const moreCount = scroll.atBottom ? 0 : Math.max(1, Math.round(scroll.hiddenBelow / ROW_PX));
+
   const selected = queue.find((q) => q.id === selectedId) ?? null;
 
   function select(id: string) {
@@ -42,11 +71,15 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
           <CardTitle>Invoice queue</CardTitle>
           <span className="text-[11px] text-muted tnum">{queue.length} invoices</span>
         </CardHeader>
-        {/* relative wrapper so the bottom fade can overlay the scroll area —
-            on macOS the overlay scrollbar is hidden, so the fade is the cue that
-            the list continues below. */}
+        {/* relative wrapper so the fade + "N more" pill can overlay the scroll
+            area — on macOS the overlay scrollbar is hidden, so these are the cue
+            that the list continues below. Both hide once scrolled to the end. */}
         <div className="relative min-h-0 flex-1">
-          <ul className="scrollbar-slim h-full divide-y divide-line overflow-y-auto">
+          <ul
+            ref={listRef}
+            onScroll={measureScroll}
+            className="scrollbar-slim h-full divide-y divide-line overflow-y-auto"
+          >
           {queue.map((item) => {
             const isSelected = item.id === selectedId;
             // The pill reflects the live run only for the selected row; others
@@ -98,11 +131,26 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
             );
           })}
           </ul>
-          {/* "more below" fade — purely visual, never blocks row clicks. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-surface to-transparent"
-          />
+          {/* "N more" scroll affordance: a fade + a pill that scrolls the list
+              when clicked. Hidden once the list is at the bottom. */}
+          {moreCount > 0 && (
+            <>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface via-surface/80 to-transparent"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  listRef.current?.scrollBy({ top: listRef.current.clientHeight * 0.8, behavior: "smooth" })
+                }
+                className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
+              >
+                {moreCount} more
+                <span aria-hidden>↓</span>
+              </button>
+            </>
+          )}
         </div>
       </Card>
 
