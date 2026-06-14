@@ -84,7 +84,11 @@ function TraceNode({
   const showStageChip = event.stage !== "pipeline" && event.kind !== "tool";
 
   return (
-    <div className="relative animate-trace-in pl-8">
+    <div
+      className="relative animate-trace-in pl-8"
+      data-testid={`trace-${event.kind}-${event.stage}`}
+      data-status={event.status}
+    >
       {/* connector line */}
       {!isLast && (
         <span

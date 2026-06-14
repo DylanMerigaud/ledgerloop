@@ -49,6 +49,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               <li key={item.id}>
                 <button
                   type="button"
+                  data-testid={`queue-row-${item.id}`}
                   onClick={() => select(item.id)}
                   className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
                     isSelected ? "bg-accent-soft/60" : "hover:bg-canvas"
@@ -105,9 +106,10 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
           </div>
           {state.status === "awaiting" && selected ? (
             // The run paused for a human decision — show the approval gate.
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2" data-testid="approval-gate">
               <button
                 type="button"
+                data-testid="reject-btn"
                 onClick={() => decide(selected.id, "reject")}
                 className="rounded-lg px-3 py-2 text-[13px] font-medium text-danger ring-1 ring-inset ring-danger-line transition-colors hover:bg-danger-soft"
               >
@@ -115,6 +117,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               </button>
               <button
                 type="button"
+                data-testid="approve-btn"
                 onClick={() => decide(selected.id, "approve")}
                 className="rounded-lg bg-ok px-3.5 py-2 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-90"
               >
@@ -124,6 +127,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
           ) : (
             <button
               type="button"
+              data-testid="run-btn"
               disabled={!selected || state.status === "running"}
               onClick={() => selected && run(selected.id)}
               className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"

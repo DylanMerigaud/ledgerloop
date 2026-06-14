@@ -176,6 +176,8 @@ No ESLint, no Prettier — three cheap, zero-babysit gates instead, all run in [
 
 `pnpm sanity --dry-run` runs the whole deterministic pipeline (match → route → reconcile) over every seeded invoice with **no API calls** — that's what CI runs instead of the live agents (which cost tokens and need a secret). Dependencies are pinned to exact versions for reproducible installs. Package manager is **pnpm** (pinned via `packageManager`).
 
+`pnpm e2e` is a **Playwright** end-to-end test ([`e2e/`](e2e)) that drives the real app in a browser against the real backend — it clicks through the human-in-the-loop flow (run a price-mismatch → the trace pauses → **Approve** posts it / **Reject** holds it) and asserts the streamed trace, the pause, and the resume render correctly with no duplicated steps. Because it needs `ANTHROPIC_API_KEY` + `DATABASE_URL` (and spends a few tokens), it's **local-only — not in CI** — run it before a deploy. Everything else above runs in CI on every push/PR.
+
 ---
 
 ## Getting started
