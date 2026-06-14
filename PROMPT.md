@@ -77,6 +77,40 @@ orchestration, not CSS. Clean, minimal, professional dashboard.
 - README must tell a cloner to set keys in Vercel env vars + locally, never in the repo.
 - Note in README to set a spend cap on the API key since the demo is public.
 
+## Engineering conventions — INHERIT THESE from my existing invoice-parser repo
+I already ship a sibling demo (ai-invoice-parser) with a deliberate, opinionated toolchain.
+ledgerloop must match it so the two public repos show one consistent engineering discipline
+(a CTO who opens both should see the same standards). These are decided — apply them:
+
+- **Package manager: pnpm**, pinned via the `packageManager` field (e.g. "pnpm@10.x"). Not npm/yarn.
+- **NO ESLint, NO Prettier.** This is intentional, not laziness. Replace them with three cheap,
+  zero-babysit gates wired as scripts:
+  - `pnpm typecheck` -> `tsc --noEmit` under strict mode (catches type errors + dead code within a file)
+  - `pnpm knip` -> knip, catches dead code ACROSS the project (unused exports, files, dependencies)
+  - `pnpm test` -> Node's built-in test runner via tsx (`tsx --test "**/*.test.ts"`), NO extra test deps
+- **tsconfig strict++**: `"strict": true` PLUS `"noUncheckedIndexedAccess": true`,
+  `"noUnusedLocals": true`, `"noUnusedParameters": true`. Target ES2022, `moduleResolution: "bundler"`,
+  `"@/*"` path alias to root. (Copy the invoice-parser tsconfig shape.)
+- **Pin dependency versions exactly** (no `^`/`~` ranges) — reproducible installs, like the sibling repo.
+- **Zod as the single source of truth** (this is the repo's signature pattern, transpose it to the
+  agent state): define the pipeline/agent I-O schemas in Zod, derive the JSON schema handed to the
+  model from them, validate every model/tool output against them at runtime, and let the INFERRED
+  TypeScript type flow into the DB layer and the UI. The model and the validator must not be able to
+  drift. Validate at every boundary; fail gracefully (never crash the stream on a bad model output —
+  surface the error as a trace step instead).
+- **CI via GitHub Actions** (`.github/workflows/ci.yml`): on push + PR to main, run
+  `pnpm install --frozen-lockfile` then typecheck -> knip -> test -> build, on Node 22 with pnpm cache.
+  Mirror the invoice-parser workflow. Do NOT run anything that calls the LLM API in CI (no secret, costs
+  tokens) — if there's an eval/sanity script that hits the API, give it a `--dry-run` offline mode and
+  run only that in CI.
+- **README with status badges** (CI, Next.js 15, TypeScript-strict, the model, "database: Supabase")
+  and the same honest framing as the sibling: "a deliberately small, finished, deployable demo — the
+  point isn't feature breadth, it's that the production parts (typed boundaries, validation, graceful
+  failure, streaming orchestration) are all here and working."
+- **Few, focused unit tests** with the Node runner on the PURE logic only (the matching/anomaly rules,
+  the schema accept/reject, formatters) — the same functions the agents use, so the tests measure the
+  real pipeline, not a reimplementation. No need to test the UI or mock the LLM heavily.
+
 ## Deliverables
 1. Working Next.js app, deployable to Vercel (front + API routes) with Supabase Postgres.
 2. The 4-agent Mastra pipeline with real conditional routing and the agent_runs trace.
@@ -84,8 +118,11 @@ orchestration, not CSS. Clean, minimal, professional dashboard.
 4. The split-view streaming dashboard described above.
 5. A SELLING README: what it is, the architecture (a diagram of the agent flow), the
    Mastra patterns used (so it reads as a competent showcase), local setup, deploy steps,
-   and the env-var/secrets section. Tone: confident, technical, concise.
+   and the env-var/secrets section. Status badges at the top. Tone: confident, technical, concise.
 6. A .env.example.
+7. The toolchain from "Engineering conventions" above: pnpm + strict tsconfig + knip +
+   Node-runner tests + a GitHub Actions CI workflow. All four scripts (typecheck/knip/test/build)
+   must pass clean before you consider the repo done.
 
 ## How to work
 - Start by proposing a concrete file/folder structure and the agent/tool breakdown, then
@@ -93,9 +130,13 @@ orchestration, not CSS. Clean, minimal, professional dashboard.
   learning the framework through this repo).
 - Ask me for the Supabase connection string and API keys when you reach the point of
   needing them; until then, scaffold so it runs with env vars.
-- Don't over-engineer. No auth, no multi-tenancy, no real ERP, no payment, no tests beyond
-  a sanity check. Ship the demo.
+- Don't over-engineer. No auth, no multi-tenancy, no real ERP, no payment. Keep tests to the
+  few pure-logic ones described above. Ship the demo.
+- If my invoice-parser repo is available locally (likely at ~/code/invoice-parser-demo), read
+  its tsconfig.json, package.json scripts, and .github/workflows/ci.yml and MIRROR their shape
+  so the two repos are consistent. Don't copy app code (different domain) — copy the toolchain
+  conventions only.
 
 First step: confirm the plan + propose the repo structure and the 4-agent design (agents,
-their tools, the state passed between them, and where the conditional routing lives). Then
-start scaffolding.
+their tools, the state passed between them, and where the conditional routing lives), and the
+toolchain setup (pnpm + tsconfig + knip + Node-runner tests + CI). Then start scaffolding.
