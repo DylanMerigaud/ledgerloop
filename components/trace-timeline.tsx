@@ -18,18 +18,34 @@ import type { PipelineRunState } from "@/lib/use-pipeline-run";
 export function TraceTimeline({
   state,
   invoiceLabel,
+  canRun,
+  onRun,
 }: {
   state: PipelineRunState;
   invoiceLabel: string | null;
+  canRun: boolean;
+  onRun: () => void;
 }) {
   if (state.status === "idle") {
     return (
       <Empty
-        title="Run the pipeline"
+        title="The agent trace will stream here"
         body={
           invoiceLabel
-            ? `Press “Run pipeline” to execute the four agents on ${invoiceLabel} and watch the trace stream here.`
-            : "Select an invoice from the queue, then run the pipeline to watch the agents work."
+            ? `Run the pipeline on ${invoiceLabel} to watch four agents match, route, and reconcile it, live. For the interesting path, pick a flagged invoice (a price or quantity mismatch) and watch the run branch to approval and pause for your call.`
+            : "Select an invoice from the queue to begin. Flagged ones (price or quantity mismatch) branch to approval and pause for your decision — the path worth watching."
+        }
+        action={
+          canRun ? (
+            <button
+              type="button"
+              data-testid="run-btn"
+              onClick={onRun}
+              className="mt-5 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-fg shadow-sm transition-opacity hover:opacity-90"
+            >
+              Run pipeline
+            </button>
+          ) : null
         }
       />
     );
@@ -167,17 +183,20 @@ function Empty({
   title,
   body,
   tone = "neutral",
+  action = null,
 }: {
   title: string;
   body: string;
   tone?: "neutral" | "danger";
+  action?: React.ReactNode;
 }) {
   return (
     <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-8 text-center">
       <p className={`text-sm font-medium ${tone === "danger" ? "text-danger" : "text-ink"}`}>
         {title}
       </p>
-      <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-muted">{body}</p>
+      <p className="mt-1 max-w-sm text-[13px] leading-relaxed text-muted">{body}</p>
+      {action}
     </div>
   );
 }

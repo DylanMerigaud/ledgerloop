@@ -32,14 +32,14 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(320px,420px)_1fr]">
+    <div className="grid h-full grid-cols-1 gap-4 lg:min-h-[520px] lg:grid-cols-[minmax(320px,420px)_1fr]">
       {/* LEFT — queue */}
-      <Card className="overflow-hidden">
+      <Card className="flex max-h-[80vh] flex-col overflow-hidden lg:max-h-none">
         <CardHeader className="flex items-center justify-between">
           <CardTitle>Invoice queue</CardTitle>
           <span className="text-[11px] text-muted tnum">{queue.length} invoices</span>
         </CardHeader>
-        <ul className="max-h-[calc(100vh-16rem)] divide-y divide-line overflow-y-auto">
+        <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
           {queue.map((item) => {
             const isSelected = item.id === selectedId;
             // The pill reflects the live run only for the selected row; others
@@ -125,23 +125,28 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              data-testid="run-btn"
-              disabled={!selected || state.status === "running"}
-              onClick={() => selected && run(selected.id)}
-              className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {state.status === "running"
-                ? "Running…"
-                : state.status === "done" || state.status === "error"
-                  ? "Run again"
-                  : "Run pipeline"}
-            </button>
+            // Idle uses the big centered CTA in the empty state below, so the
+            // header button only appears once a run is active or finished.
+            state.status !== "idle" && (
+              <button
+                type="button"
+                data-testid="run-btn"
+                disabled={!selected || state.status === "running"}
+                onClick={() => selected && run(selected.id)}
+                className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {state.status === "running" ? "Running…" : "Run again"}
+              </button>
+            )
           )}
         </CardHeader>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <TraceTimeline state={state} invoiceLabel={selected?.invoiceNumber ?? null} />
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <TraceTimeline
+            state={state}
+            invoiceLabel={selected?.invoiceNumber ?? null}
+            canRun={!!selected}
+            onRun={() => selected && run(selected.id)}
+          />
         </div>
       </Card>
     </div>
