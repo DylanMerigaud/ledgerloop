@@ -42,7 +42,11 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
           <CardTitle>Invoice queue</CardTitle>
           <span className="text-[11px] text-muted tnum">{queue.length} invoices</span>
         </CardHeader>
-        <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
+        {/* relative wrapper so the bottom fade can overlay the scroll area —
+            on macOS the overlay scrollbar is hidden, so the fade is the cue that
+            the list continues below. */}
+        <div className="relative min-h-0 flex-1">
+          <ul className="scrollbar-slim h-full divide-y divide-line overflow-y-auto">
           {queue.map((item) => {
             const isSelected = item.id === selectedId;
             // The pill reflects the live run only for the selected row; others
@@ -93,7 +97,13 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               </li>
             );
           })}
-        </ul>
+          </ul>
+          {/* "more below" fade — purely visual, never blocks row clicks. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-surface to-transparent"
+          />
+        </div>
       </Card>
 
       {/* RIGHT — trace */}
