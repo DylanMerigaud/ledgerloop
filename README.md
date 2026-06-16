@@ -36,7 +36,7 @@ flowchart LR
     class BLK,REJ stop;
 ```
 
-1. **Intake** validates and structures the incoming invoice (vendor, line items, totals). *Parsing a PDF into this shape is the job of the sibling [ai-invoice-parser](https://github.com/DylanMerigaud) repo — this demo starts from the structured record and focuses on the orchestration.*
+1. **Intake** validates and structures the incoming invoice (vendor, line items, totals). *Parsing a PDF into this shape is the job of the sibling [ai-invoice-parser](https://github.com/DylanMerigaud/ai-invoice-parser) repo — this demo starts from the structured record and focuses on the orchestration.*
 2. **Matching** runs a **2-way** (invoice ↔ PO) or **3-way** (invoice ↔ PO ↔ goods receipt) match and returns a verdict: `clean`, `exception`, or `duplicate`.
 3. **Conditional routing — *this is the demo*.** A clean match goes **straight through** to reconciliation. An exception (a price variance, a quantity overbill, an off-PO line) is **routed to the Approval agent**, which tiers it to manager or director by the money and variance at stake — then the run **pauses for a human** to Approve or Reject before anything posts. A duplicate is **blocked** so it's never paid twice (no human needed — it's a control failure, not a judgment call).
 4. **Reconciliation** posts the vendor bill + its double-entry GL distribution to the ERP (a fake adapter — see below) and returns the reference. It only runs once an invoice is cleared — auto (clean) or human-approved.
