@@ -19,7 +19,12 @@ export function mockToolCallingModel(opts: {
   narration: string;
   modelId?: string;
 }): LanguageModel {
-  const { toolName, toolArgs = {}, narration, modelId = "mock/tool-caller" } = opts;
+  const {
+    toolName,
+    toolArgs = {},
+    narration,
+    modelId = "mock/tool-caller",
+  } = opts;
   const input = JSON.stringify(toolArgs);
   const usage = { inputTokens: 1, outputTokens: 1, totalTokens: 2 };
 

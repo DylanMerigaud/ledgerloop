@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test \"**/*.test.ts\"",
     "knip": "knip",
+    "format": "prettier --write \"**/*.{ts,tsx,css,mjs}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,css,mjs}\"",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx db/seed.ts",
@@ -41,6 +43,7 @@
     "drizzle-kit": "0.31.10",
     "knip": "6.16.1",
     "postcss": "8.5.15",
+    "prettier": "3.8.4",
     "tailwindcss": "3.4.17",
     "tsx": "4.22.4",
     "typescript": "5.9.3"

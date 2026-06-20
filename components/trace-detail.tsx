@@ -14,9 +14,12 @@ export function TraceDetail({ data }: { data: unknown }) {
   if (!data || typeof data !== "object") return null;
   const d = data as Record<string, unknown>;
 
-  if ("verdict" in d && "exceptions" in d) return <MatchDetail match={d as unknown as MatchResult} />;
-  if ("tier" in d && "autoApproved" in d) return <ApprovalDetail decision={d as unknown as ApprovalDecision} />;
-  if ("posted" in d && "glEntries" in d) return <ReconDetail recon={d as unknown as ReconResult} />;
+  if ("verdict" in d && "exceptions" in d)
+    return <MatchDetail match={d as unknown as MatchResult} />;
+  if ("tier" in d && "autoApproved" in d)
+    return <ApprovalDetail decision={d as unknown as ApprovalDecision} />;
+  if ("posted" in d && "glEntries" in d)
+    return <ReconDetail recon={d as unknown as ReconResult} />;
   return null;
 }
 
@@ -24,7 +27,8 @@ function MatchDetail({ match }: { match: MatchResult }) {
   if (match.exceptions.length === 0) {
     return (
       <Row label="Match">
-        {match.matchType === "three_way" ? "3-way" : "2-way"} · all lines reconcile
+        {match.matchType === "three_way" ? "3-way" : "2-way"} · all lines
+        reconcile
       </Row>
     );
   }
@@ -36,10 +40,14 @@ function MatchDetail({ match }: { match: MatchResult }) {
           className="rounded-lg bg-danger-soft/40 px-2.5 py-1.5 ring-1 ring-inset ring-danger-line/50"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[11px] font-medium text-ink">{e.sku}</span>
+            <span className="font-mono text-[11px] font-medium text-ink">
+              {e.sku}
+            </span>
             <Badge tone="danger">{humanize(e.code)}</Badge>
           </div>
-          <p className="mt-0.5 text-[12px] leading-snug text-ink/80">{e.message}</p>
+          <p className="mt-0.5 text-[12px] leading-snug text-ink/80">
+            {e.message}
+          </p>
           {e.variancePct > 0 && (
             <p className="mt-0.5 text-[11px] text-muted tnum">
               variance {formatPct(e.variancePct)}
@@ -58,13 +66,23 @@ function ApprovalDetail({ decision }: { decision: ApprovalDecision }) {
   return (
     <div className="space-y-1">
       <Row label="Tier">
-        <Badge tone={decision.tier === "blocked" ? "danger" : decision.autoApproved ? "ok" : "warn"}>
+        <Badge
+          tone={
+            decision.tier === "blocked"
+              ? "danger"
+              : decision.autoApproved
+                ? "ok"
+                : "warn"
+          }
+        >
           {humanize(decision.tier)}
         </Badge>
       </Row>
       {decision.exceptionAmount > 0 && (
         <Row label="At stake">
-          <span className="tnum">{formatMoney(decision.exceptionAmount, decision.currency)}</span>
+          <span className="tnum">
+            {formatMoney(decision.exceptionAmount, decision.currency)}
+          </span>
         </Row>
       )}
       {decision.maxVariancePct > 0 && (
@@ -80,7 +98,11 @@ function ReconDetail({ recon }: { recon: ReconResult }) {
   // Awaiting is a pause (amber), not a failure; posted is success; rejected/
   // blocked are red. Drive the badge off the precise outcome.
   const tone =
-    recon.outcome === "posted" ? "ok" : recon.outcome === "awaiting" ? "warn" : "danger";
+    recon.outcome === "posted"
+      ? "ok"
+      : recon.outcome === "awaiting"
+        ? "warn"
+        : "danger";
   const label =
     recon.outcome === "posted"
       ? "Posted"
@@ -122,7 +144,13 @@ function ReconDetail({ recon }: { recon: ReconResult }) {
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 text-[12px]">
       <span className="text-muted">{label}</span>

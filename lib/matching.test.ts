@@ -18,8 +18,20 @@ function invoice(over: Partial<Invoice> = {}): Invoice {
     issueDate: "2026-05-01",
     currency: "USD",
     lineItems: [
-      { sku: "BOLT-M8", description: "M8 bolts", qty: 100, unitPrice: 2, amount: 200 },
-      { sku: "NUT-M8", description: "M8 nuts", qty: 100, unitPrice: 1, amount: 100 },
+      {
+        sku: "BOLT-M8",
+        description: "M8 bolts",
+        qty: 100,
+        unitPrice: 2,
+        amount: 200,
+      },
+      {
+        sku: "NUT-M8",
+        description: "M8 nuts",
+        qty: 100,
+        unitPrice: 1,
+        amount: 100,
+      },
     ],
     subtotal: 300,
     tax: null,
@@ -34,8 +46,20 @@ function po(over: Partial<PurchaseOrder> = {}): PurchaseOrder {
     vendor: "Acme Steel",
     currency: "USD",
     lineItems: [
-      { sku: "BOLT-M8", description: "M8 bolts", qty: 100, unitPrice: 2, amount: 200 },
-      { sku: "NUT-M8", description: "M8 nuts", qty: 100, unitPrice: 1, amount: 100 },
+      {
+        sku: "BOLT-M8",
+        description: "M8 bolts",
+        qty: 100,
+        unitPrice: 2,
+        amount: 200,
+      },
+      {
+        sku: "NUT-M8",
+        description: "M8 nuts",
+        qty: 100,
+        unitPrice: 1,
+        amount: 100,
+      },
     ],
     total: 300,
     ...over,
@@ -160,7 +184,11 @@ test("invoice line absent from PO → no_po_line exception", () => {
   inv.subtotal = 350;
   inv.total = 350;
   const gr = receipt();
-  gr.lineItems.push({ sku: "WASHER-M8", description: "washers", receivedQty: 50 });
+  gr.lineItems.push({
+    sku: "WASHER-M8",
+    description: "washers",
+    receivedQty: 50,
+  });
   const r = run({ invoice: inv, goodsReceipt: gr });
   const codes = r.exceptions.map((e) => e.code);
   assert.ok(codes.includes("no_po_line"));

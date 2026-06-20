@@ -6,7 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { TraceTimeline } from "@/components/trace-timeline";
 import { usePipelineRun } from "@/lib/use-pipeline-run";
 import { formatMoney } from "@/lib/format";
-import { outcomeDot, outcomeLabel, outcomeTone, type Outcome } from "@/lib/display";
+import {
+  outcomeDot,
+  outcomeLabel,
+  outcomeTone,
+  type Outcome,
+} from "@/lib/display";
 import type { QueueItem } from "@/db/client";
 
 /**
@@ -20,7 +25,9 @@ import type { QueueItem } from "@/db/client";
  */
 
 export function Dashboard({ queue }: { queue: QueueItem[] }) {
-  const [selectedId, setSelectedId] = useState<string | null>(queue[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    queue[0]?.id ?? null,
+  );
   const { state, run, decide, reset } = usePipelineRun();
 
   // Queue scroll affordance: macOS hides overlay scrollbars, so we show an
@@ -33,7 +40,10 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
     setScroll({
-      hiddenBelow: Math.max(0, el.scrollHeight - el.clientHeight - el.scrollTop),
+      hiddenBelow: Math.max(
+        0,
+        el.scrollHeight - el.clientHeight - el.scrollTop,
+      ),
       atBottom: remaining < 8,
     });
   }
@@ -50,7 +60,9 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   }, []);
 
   const ROW_PX = 63; // approx height of one queue row
-  const moreCount = scroll.atBottom ? 0 : Math.max(1, Math.round(scroll.hiddenBelow / ROW_PX));
+  const moreCount = scroll.atBottom
+    ? 0
+    : Math.max(1, Math.round(scroll.hiddenBelow / ROW_PX));
 
   const selected = queue.find((q) => q.id === selectedId) ?? null;
 
@@ -69,7 +81,9 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
       <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:max-h-none">
         <CardHeader className="flex items-center justify-between">
           <CardTitle>Invoice queue</CardTitle>
-          <span className="text-[11px] text-muted tnum">{queue.length} invoices</span>
+          <span className="text-[11px] text-muted tnum">
+            {queue.length} invoices
+          </span>
         </CardHeader>
         {/* relative wrapper so the fade + "N more" pill can overlay the scroll
             area — on macOS the overlay scrollbar is hidden, so these are the cue
@@ -80,56 +94,60 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
             onScroll={measureScroll}
             className="scrollbar-slim h-full divide-y divide-line overflow-y-auto"
           >
-          {queue.map((item) => {
-            const isSelected = item.id === selectedId;
-            // The pill reflects the live run only for the selected row; others
-            // show their seeded scenario hint as a neutral label.
-            const outcome: Outcome = isSelected ? state.outcome : "pending";
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  data-testid={`queue-row-${item.id}`}
-                  onClick={() => select(item.id)}
-                  className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                    isSelected ? "bg-accent-soft/60" : "hover:bg-canvas"
-                  }`}
-                >
-                  <span
-                    aria-hidden
-                    className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: outcomeDot(outcome) }}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[13px] font-medium text-ink">
-                        {item.vendor}
+            {queue.map((item) => {
+              const isSelected = item.id === selectedId;
+              // The pill reflects the live run only for the selected row; others
+              // show their seeded scenario hint as a neutral label.
+              const outcome: Outcome = isSelected ? state.outcome : "pending";
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    data-testid={`queue-row-${item.id}`}
+                    onClick={() => select(item.id)}
+                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                      isSelected ? "bg-accent-soft/60" : "hover:bg-canvas"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: outcomeDot(outcome) }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="truncate text-[13px] font-medium text-ink">
+                          {item.vendor}
+                        </span>
+                        <span className="shrink-0 text-[12px] tabular-nums text-ink">
+                          {formatMoney(item.total, item.currency)}
+                        </span>
                       </span>
-                      <span className="shrink-0 text-[12px] tabular-nums text-ink">
-                        {formatMoney(item.total, item.currency)}
-                      </span>
-                    </span>
-                    <span className="mt-0.5 flex items-center justify-between gap-2">
-                      <span className="truncate font-mono text-[11px] text-muted">
-                        {item.invoiceNumber}
-                        {item.poNumber ? ` · ${item.poNumber}` : ""}
-                      </span>
-                      {/* Once a run is active for the selected row, show its live
+                      <span className="mt-0.5 flex items-center justify-between gap-2">
+                        <span className="truncate font-mono text-[11px] text-muted">
+                          {item.invoiceNumber}
+                          {item.poNumber ? ` · ${item.poNumber}` : ""}
+                        </span>
+                        {/* Once a run is active for the selected row, show its live
                           outcome badge; otherwise always show the seeded scenario
                           hint (so selecting a row never blanks the label). */}
-                      {isSelected && state.status !== "idle" ? (
-                        <Badge tone={outcomeTone(outcome)}>{outcomeLabel(outcome)}</Badge>
-                      ) : (
-                        item.scenario && (
-                          <span className="shrink-0 text-[10px] text-muted/80">{item.scenario}</span>
-                        )
-                      )}
+                        {isSelected && state.status !== "idle" ? (
+                          <Badge tone={outcomeTone(outcome)}>
+                            {outcomeLabel(outcome)}
+                          </Badge>
+                        ) : (
+                          item.scenario && (
+                            <span className="shrink-0 text-[10px] text-muted/80">
+                              {item.scenario}
+                            </span>
+                          )
+                        )}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
           {/* "N more" scroll affordance: a fade + a pill that scrolls the list
               when clicked. Hidden once the list is at the bottom. */}
@@ -142,7 +160,10 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               <button
                 type="button"
                 onClick={() =>
-                  listRef.current?.scrollBy({ top: listRef.current.clientHeight * 0.8, behavior: "smooth" })
+                  listRef.current?.scrollBy({
+                    top: listRef.current.clientHeight * 0.8,
+                    behavior: "smooth",
+                  })
                 }
                 className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
               >
@@ -161,13 +182,17 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
             <CardTitle>Agent execution trace</CardTitle>
             {selected && (
               <p className="mt-0.5 truncate text-[12px] text-muted">
-                {selected.vendor} · <span className="font-mono">{selected.invoiceNumber}</span>
+                {selected.vendor} ·{" "}
+                <span className="font-mono">{selected.invoiceNumber}</span>
               </p>
             )}
           </div>
           {state.status === "awaiting" && selected ? (
             // The run paused for a human decision — show the approval gate.
-            <div className="flex shrink-0 items-center gap-2" data-testid="approval-gate">
+            <div
+              className="flex shrink-0 items-center gap-2"
+              data-testid="approval-gate"
+            >
               <button
                 type="button"
                 data-testid="reject-btn"

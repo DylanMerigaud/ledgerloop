@@ -8,7 +8,9 @@ export function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("rounded-xl bg-surface shadow-card ring-line", className)}>
+    <div
+      className={cn("rounded-xl bg-surface shadow-card ring-line", className)}
+    >
       {children}
     </div>
   );
@@ -22,7 +24,9 @@ export function CardHeader({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("border-b border-line px-4 py-3", className)}>{children}</div>
+    <div className={cn("border-b border-line px-4 py-3", className)}>
+      {children}
+    </div>
   );
 }
 

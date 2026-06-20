@@ -55,131 +55,144 @@ export function usePipelineRun() {
    * Stream one run/resume. `decision` undefined = phase 1 (may pause for a
    * human); "approve"/"reject" = phase 2 resume onto the existing trace.
    */
-  const stream = useCallback(async (id: string, decision?: "approve" | "reject") => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  const stream = useCallback(
+    async (id: string, decision?: "approve" | "reject") => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    // Phase 1 starts a fresh trace; phase 2 keeps the existing one.
-    if (!decision) {
-      eventsRef.current = [];
-      stepIndexRef.current = new Map();
-    }
-    setState((s) => ({ ...s, status: "running", outcome: "running", error: null }));
-
-    const resuming = decision !== undefined;
-    const push = (e: TraceEvent) => {
-      const events = eventsRef.current;
-      const stepIndex = stepIndexRef.current;
-
-      // On a phase-2 RESUME the workflow re-runs end-to-end, so it re-emits the
-      // whole front of the pipeline. We've already shown those nodes — surface
-      // ONLY the reconciliation stage (the part that actually advances) and drop
-      // the replayed run markers / earlier stages, so there's no second
-      // "Pipeline started" or duplicated upstream steps.
-      if (resuming && e.stage !== "reconciliation") return;
-
-      // UPSERT anything with a stepId (steps AND tool nodes carry stable ids) so a
-      // stage is a single node that transitions running → done, and across phases
-      // awaiting → posted — instead of stacking duplicates. Run markers append.
-      if (e.stepId) {
-        const existing = stepIndex.get(e.stepId);
-        if (existing !== undefined) {
-          events[existing] = e;
-        } else {
-          stepIndex.set(e.stepId, events.length);
-          events.push(e);
-        }
-      } else {
-        events.push(e);
+      // Phase 1 starts a fresh trace; phase 2 keeps the existing one.
+      if (!decision) {
+        eventsRef.current = [];
+        stepIndexRef.current = new Map();
       }
       setState((s) => ({
         ...s,
-        trace: [...events],
-        outcome: deriveOutcome(events, false),
+        status: "running",
+        outcome: "running",
+        error: null,
       }));
-    };
 
-    try {
-      const res = await fetch("/api/run", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(decision ? { id, decision } : { id }),
-        signal: controller.signal,
-      });
+      const resuming = decision !== undefined;
+      const push = (e: TraceEvent) => {
+        const events = eventsRef.current;
+        const stepIndex = stepIndexRef.current;
 
-      if (!res.ok || !res.body) {
-        const msg = await res
-          .json()
-          .then((j: { error?: string }) => j.error)
-          .catch(() => null);
+        // On a phase-2 RESUME the workflow re-runs end-to-end, so it re-emits the
+        // whole front of the pipeline. We've already shown those nodes — surface
+        // ONLY the reconciliation stage (the part that actually advances) and drop
+        // the replayed run markers / earlier stages, so there's no second
+        // "Pipeline started" or duplicated upstream steps.
+        if (resuming && e.stage !== "reconciliation") return;
+
+        // UPSERT anything with a stepId (steps AND tool nodes carry stable ids) so a
+        // stage is a single node that transitions running → done, and across phases
+        // awaiting → posted — instead of stacking duplicates. Run markers append.
+        if (e.stepId) {
+          const existing = stepIndex.get(e.stepId);
+          if (existing !== undefined) {
+            events[existing] = e;
+          } else {
+            stepIndex.set(e.stepId, events.length);
+            events.push(e);
+          }
+        } else {
+          events.push(e);
+        }
+        setState((s) => ({
+          ...s,
+          trace: [...events],
+          outcome: deriveOutcome(events, false),
+        }));
+      };
+
+      try {
+        const res = await fetch("/api/run", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(decision ? { id, decision } : { id }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok || !res.body) {
+          const msg = await res
+            .json()
+            .then((j: { error?: string }) => j.error)
+            .catch(() => null);
+          setState((s) => ({
+            ...s,
+            status: "error",
+            outcome: "pending",
+            error: msg ?? `Run failed (HTTP ${res.status}).`,
+          }));
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        const lines = new NdjsonBuffer();
+        let durationMs: number | null = null;
+
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          for (const raw of lines.push(
+            decoder.decode(value, { stream: true }),
+          )) {
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(raw);
+            } catch {
+              continue;
+            }
+            if (parsed && typeof parsed === "object" && "done" in parsed) {
+              durationMs = (parsed as StreamDone).durationMs;
+              continue;
+            }
+            const result = TraceEvent.safeParse(parsed);
+            if (result.success) push(result.data);
+          }
+        }
+
+        // If the run paused for a human decision, surface that as `awaiting` (not
+        // `done`) so the UI shows Approve / Reject instead of "Run again".
+        const awaiting = !decision && isAwaitingApproval(eventsRef.current);
+
+        // The workflow runs to completion even when reconciliation is HELD, so it
+        // emits a "Pipeline complete" run marker — misleading while paused. Drop the
+        // run markers so the trace ends on the awaiting step, matching the "Paused —
+        // needs a decision" banner. Rebuild the stepId→index map afterwards so the
+        // upserts on the eventual resume still target the right nodes.
+        if (awaiting) {
+          eventsRef.current = eventsRef.current.filter((e) => e.kind !== "run");
+          stepIndexRef.current = new Map();
+          eventsRef.current.forEach((e, i) => {
+            if (e.stepId) stepIndexRef.current.set(e.stepId, i);
+          });
+        }
+
+        setState((s) => ({
+          ...s,
+          trace: [...eventsRef.current],
+          status: awaiting ? "awaiting" : "done",
+          durationMs,
+          outcome: awaiting
+            ? "needs-approval"
+            : deriveOutcome(eventsRef.current, true),
+        }));
+      } catch (err) {
+        if (controller.signal.aborted) return;
         setState((s) => ({
           ...s,
           status: "error",
           outcome: "pending",
-          error: msg ?? `Run failed (HTTP ${res.status}).`,
+          error:
+            err instanceof Error ? err.message : "Network error during run.",
         }));
-        return;
       }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      const lines = new NdjsonBuffer();
-      let durationMs: number | null = null;
-
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        for (const raw of lines.push(decoder.decode(value, { stream: true }))) {
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(raw);
-          } catch {
-            continue;
-          }
-          if (parsed && typeof parsed === "object" && "done" in parsed) {
-            durationMs = (parsed as StreamDone).durationMs;
-            continue;
-          }
-          const result = TraceEvent.safeParse(parsed);
-          if (result.success) push(result.data);
-        }
-      }
-
-      // If the run paused for a human decision, surface that as `awaiting` (not
-      // `done`) so the UI shows Approve / Reject instead of "Run again".
-      const awaiting = !decision && isAwaitingApproval(eventsRef.current);
-
-      // The workflow runs to completion even when reconciliation is HELD, so it
-      // emits a "Pipeline complete" run marker — misleading while paused. Drop the
-      // run markers so the trace ends on the awaiting step, matching the "Paused —
-      // needs a decision" banner. Rebuild the stepId→index map afterwards so the
-      // upserts on the eventual resume still target the right nodes.
-      if (awaiting) {
-        eventsRef.current = eventsRef.current.filter((e) => e.kind !== "run");
-        stepIndexRef.current = new Map();
-        eventsRef.current.forEach((e, i) => {
-          if (e.stepId) stepIndexRef.current.set(e.stepId, i);
-        });
-      }
-
-      setState((s) => ({
-        ...s,
-        trace: [...eventsRef.current],
-        status: awaiting ? "awaiting" : "done",
-        durationMs,
-        outcome: awaiting ? "needs-approval" : deriveOutcome(eventsRef.current, true),
-      }));
-    } catch (err) {
-      if (controller.signal.aborted) return;
-      setState((s) => ({
-        ...s,
-        status: "error",
-        outcome: "pending",
-        error: err instanceof Error ? err.message : "Network error during run.",
-      }));
-    }
-  }, []);
+    },
+    [],
+  );
 
   const run = useCallback((id: string) => stream(id), [stream]);
   const decide = useCallback(

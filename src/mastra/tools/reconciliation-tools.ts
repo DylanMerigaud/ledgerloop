@@ -21,8 +21,15 @@ export const postToErpTool = createTool({
       | ToolContext["reconInput"]
       | undefined;
     if (!input) {
-      throw new Error("post-to-erp: no reconciliation input in request context");
+      throw new Error(
+        "post-to-erp: no reconciliation input in request context",
+      );
     }
-    return reconcile(input.decision, input.match, input.vendor, input.humanApproval);
+    return reconcile(
+      input.decision,
+      input.match,
+      input.vendor,
+      input.humanApproval,
+    );
   },
 });

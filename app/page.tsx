@@ -58,8 +58,8 @@ function Header() {
           </h1>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">
             A chain of AI agents runs each invoice through{" "}
-            <span className="text-ink">procure-to-pay</span> — with the live execution
-            trace and a real human approval gate on caught mismatches.
+            <span className="text-ink">procure-to-pay</span> — with the live
+            execution trace and a real human approval gate on caught mismatches.
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-muted">
@@ -88,7 +88,11 @@ function FlowChip({ n, label }: { n: number; label: string }) {
 }
 
 function Arrow() {
-  return <span aria-hidden className="text-line">→</span>;
+  return (
+    <span aria-hidden className="text-line">
+      →
+    </span>
+  );
 }
 
 function SetupNotice({ detail }: { detail: string }) {
@@ -97,10 +101,19 @@ function SetupNotice({ detail }: { detail: string }) {
       <p className="font-medium">Almost there — the demo needs its database.</p>
       <p className="mt-1 text-ink/80">{detail}</p>
       <p className="mt-2 text-ink/70">
-        Set <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">DATABASE_URL</code>{" "}
-        (and <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">ANTHROPIC_API_KEY</code>) in your
-        environment, then run <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">pnpm db:push && pnpm db:seed</code>. See
-        the README for the full setup.
+        Set{" "}
+        <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">
+          DATABASE_URL
+        </code>{" "}
+        (and{" "}
+        <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">
+          ANTHROPIC_API_KEY
+        </code>
+        ) in your environment, then run{" "}
+        <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">
+          pnpm db:push && pnpm db:seed
+        </code>
+        . See the README for the full setup.
       </p>
     </div>
   );
@@ -111,8 +124,8 @@ function Footer() {
     <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] text-muted">
       <p>
         Built with <span className="text-ink">Mastra</span> · agents on{" "}
-        <span className="font-mono text-ink">{PIPELINE_MODEL}</span> · Next.js · Supabase ·
-        Drizzle. Runs are stateless — nothing is written back.
+        <span className="font-mono text-ink">{PIPELINE_MODEL}</span> · Next.js ·
+        Supabase · Drizzle. Runs are stateless — nothing is written back.
       </p>
       <div className="flex items-center gap-2">
         <span className="text-ink">Dylan Mérigaud</span>

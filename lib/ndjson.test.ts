@@ -27,18 +27,22 @@ test("reassembles a line split across many chunks", () => {
 
 test("a chunk carrying multiple lines plus a partial", () => {
   const buf = new NdjsonBuffer();
-  const lines = buf.push('one\ntwo\nthr');
+  const lines = buf.push("one\ntwo\nthr");
   assert.deepEqual(lines, ["one", "two"]);
   assert.deepEqual(buf.push("ee\n"), ["three"]);
 });
 
 test("blank lines are skipped", () => {
   const buf = new NdjsonBuffer();
-  assert.deepEqual(buf.push("\n\n{\"x\":1}\n\n"), ['{"x":1}']);
+  assert.deepEqual(buf.push('\n\n{"x":1}\n\n'), ['{"x":1}']);
 });
 
 test("round-trips a sequence of values through serialize → parse", () => {
-  const values = [{ seq: 0, kind: "run" }, { seq: 1, kind: "step" }, { done: true }];
+  const values = [
+    { seq: 0, kind: "run" },
+    { seq: 1, kind: "step" },
+    { done: true },
+  ];
   const wire = values.map(ndjsonLine).join("");
   const buf = new NdjsonBuffer();
   const parsed = buf.push(wire).map((l) => JSON.parse(l));

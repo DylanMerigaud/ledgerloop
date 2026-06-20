@@ -38,7 +38,11 @@ function decision(tier: ApprovalDecision["tier"]): ApprovalDecision {
 }
 
 test("clean/auto invoice posts immediately (no human needed)", async () => {
-  const r = await reconcile(decision("auto"), match({ verdict: "clean" }), "Acme");
+  const r = await reconcile(
+    decision("auto"),
+    match({ verdict: "clean" }),
+    "Acme",
+  );
   assert.equal(r.outcome, "posted");
   assert.equal(r.posted, true);
   assert.match(r.erpRef ?? "", /NETSUITE-BILL-/);
@@ -47,7 +51,12 @@ test("clean/auto invoice posts immediately (no human needed)", async () => {
 
 test("duplicate is blocked, never posted, regardless of decision", async () => {
   for (const ha of ["pending", "approve", "reject"] as const) {
-    const r = await reconcile(decision("blocked"), match({ verdict: "duplicate" }), "Acme", ha);
+    const r = await reconcile(
+      decision("blocked"),
+      match({ verdict: "duplicate" }),
+      "Acme",
+      ha,
+    );
     assert.equal(r.outcome, "blocked");
     assert.equal(r.posted, false);
     assert.equal(r.erpRef, null);
@@ -78,7 +87,12 @@ test("exception with reject → not posted, outcome rejected", async () => {
 });
 
 test("GL entries balance (debit total == credit total) when posted", async () => {
-  const r = await reconcile(decision("auto"), match({ verdict: "clean" }), "Acme", "approve");
+  const r = await reconcile(
+    decision("auto"),
+    match({ verdict: "clean" }),
+    "Acme",
+    "approve",
+  );
   const debit = r.glEntries.reduce((s, g) => s + g.debit, 0);
   const credit = r.glEntries.reduce((s, g) => s + g.credit, 0);
   assert.equal(debit, credit);

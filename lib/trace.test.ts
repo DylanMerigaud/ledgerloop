@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toTraceEvent, stageForStep, pipelineErrorEvent, TraceEvent } from "./trace";
+import {
+  toTraceEvent,
+  stageForStep,
+  pipelineErrorEvent,
+  TraceEvent,
+} from "./trace";
 
 /**
  * Tests for the Mastra-chunk → TraceEvent adapter. The two properties that
@@ -26,7 +31,10 @@ test("workflow-start → running run event", () => {
 });
 
 test("step-start → running step event on the right stage", () => {
-  const e = toTraceEvent({ type: "workflow-step-start", payload: { id: "matching" } });
+  const e = toTraceEvent({
+    type: "workflow-step-start",
+    payload: { id: "matching" },
+  });
   assert.ok(e);
   assert.equal(e.stage, "matching");
   assert.equal(e.status, "running");
@@ -81,7 +89,10 @@ test("reconciliation outcomes map to the right status", () => {
   const status = (outcome: string) =>
     toTraceEvent({
       type: "workflow-step-result",
-      payload: { id: "reconciliation", output: { outcome, posted: outcome === "posted" } },
+      payload: {
+        id: "reconciliation",
+        output: { outcome, posted: outcome === "posted" },
+      },
     })?.status;
   assert.equal(status("awaiting"), "waiting"); // the human-gate pause
   assert.equal(status("posted"), "ok");
@@ -92,14 +103,20 @@ test("reconciliation outcomes map to the right status", () => {
 test("narration in output becomes the detail line", () => {
   const e = toTraceEvent({
     type: "workflow-step-result",
-    payload: { id: "matching", output: { verdict: "clean", narration: "All lines reconcile." } },
+    payload: {
+      id: "matching",
+      output: { verdict: "clean", narration: "All lines reconcile." },
+    },
   });
   assert.ok(e);
   assert.equal(e.detail, "All lines reconcile.");
 });
 
 test("unknown chunk types are dropped (null), not surfaced", () => {
-  assert.equal(toTraceEvent({ type: "workflow-step-progress", payload: {} }), null);
+  assert.equal(
+    toTraceEvent({ type: "workflow-step-progress", payload: {} }),
+    null,
+  );
   assert.equal(toTraceEvent({ type: "reasoning", payload: {} }), null);
 });
 
@@ -133,15 +150,24 @@ test("the auto-approval step maps to the Approval stage", () => {
 test("tool-call events render at the right stage (mapped by tool name, not dropped)", () => {
   // Tool-call chunks carry a tool name but no workflow step id — they must NOT be
   // dropped, and should land under their agent's stage.
-  const m = toTraceEvent({ type: "tool-call", payload: { toolName: "run-match" } });
+  const m = toTraceEvent({
+    type: "tool-call",
+    payload: { toolName: "run-match" },
+  });
   assert.ok(m, "tool-call must not be dropped");
   assert.equal(m.kind, "tool");
   assert.equal(m.stage, "matching");
   assert.match(m.label, /run-match/);
 
-  const a = toTraceEvent({ type: "tool-call", payload: { toolName: "route-approval" } });
+  const a = toTraceEvent({
+    type: "tool-call",
+    payload: { toolName: "route-approval" },
+  });
   assert.equal(a?.stage, "approval");
-  const r = toTraceEvent({ type: "tool-call", payload: { toolName: "post-to-erp" } });
+  const r = toTraceEvent({
+    type: "tool-call",
+    payload: { toolName: "post-to-erp" },
+  });
   assert.equal(r?.stage, "reconciliation");
 });
 
@@ -149,20 +175,29 @@ test("the internal .map() step is dropped, not surfaced", () => {
   // Mastra inserts a `mapping_<uuid>` normalisation step between the branch and
   // reconciliation — it's plumbing and must not appear on the timeline.
   assert.equal(
-    toTraceEvent({ type: "workflow-step-start", payload: { id: "mapping_abc-123" } }),
+    toTraceEvent({
+      type: "workflow-step-start",
+      payload: { id: "mapping_abc-123" },
+    }),
     null,
   );
   assert.equal(
     toTraceEvent({
       type: "workflow-step-result",
-      payload: { id: "mapping_abc-123", output: { decision: {}, match: {}, vendor: "x" } },
+      payload: {
+        id: "mapping_abc-123",
+        output: { decision: {}, match: {}, vendor: "x" },
+      },
     }),
     null,
   );
 });
 
 test("step events carry their stepId (so the UI can collapse start+result)", () => {
-  const start = toTraceEvent({ type: "workflow-step-start", payload: { id: "matching" } });
+  const start = toTraceEvent({
+    type: "workflow-step-start",
+    payload: { id: "matching" },
+  });
   const result = toTraceEvent({
     type: "workflow-step-result",
     payload: { id: "matching", output: { verdict: "clean" } },
@@ -187,7 +222,11 @@ test("approval step output is unwrapped: nested decision drives status + data", 
     payload: {
       id: "approval",
       output: {
-        decision: { tier: "manager", autoApproved: false, reason: "Routed to manager." },
+        decision: {
+          tier: "manager",
+          autoApproved: false,
+          reason: "Routed to manager.",
+        },
         match: { verdict: "exception" },
         vendor: "Severn Steelworks",
         narration: "Needs manager sign-off.",
@@ -206,7 +245,14 @@ test("blocked approval (nested) → error status", () => {
     type: "workflow-step-result",
     payload: {
       id: "approval",
-      output: { decision: { tier: "blocked", autoApproved: false, reason: "Duplicate." }, vendor: "x" },
+      output: {
+        decision: {
+          tier: "blocked",
+          autoApproved: false,
+          reason: "Duplicate.",
+        },
+        vendor: "x",
+      },
     },
   });
   assert.equal(e?.status, "error");

@@ -26,7 +26,10 @@ function ledgerFor(bundle: SeedBundle): string[] {
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
 }
 
-async function routeOf(bundle: SeedBundle, humanApproval: "pending" | "approve" | "reject" = "pending") {
+async function routeOf(
+  bundle: SeedBundle,
+  humanApproval: "pending" | "approve" | "reject" = "pending",
+) {
   const match = runMatch({
     invoice: bundle.invoice,
     purchaseOrder: bundle.purchaseOrder ?? null,
@@ -34,16 +37,25 @@ async function routeOf(bundle: SeedBundle, humanApproval: "pending" | "approve" 
     priorInvoiceNumbers: ledgerFor(bundle),
   });
   const decision = routeApproval(match);
-  const recon = await reconcile(decision, match, bundle.invoice.vendor, humanApproval);
+  const recon = await reconcile(
+    decision,
+    match,
+    bundle.invoice.vendor,
+    humanApproval,
+  );
   return { match, decision, recon };
 }
 
 async function main() {
   console.log(`ledgerloop pipeline sanity — model: ${PIPELINE_MODEL}`);
-  console.log(DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n");
+  console.log(
+    DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n",
+  );
 
   if (!DRY_RUN && !process.env.ANTHROPIC_API_KEY) {
-    console.error("✖ Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.");
+    console.error(
+      "✖ Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.",
+    );
     process.exit(1);
   }
 
@@ -58,7 +70,9 @@ async function main() {
         : decision.tier === "blocked"
           ? "BLOCKED (not posted)"
           : `→ ${decision.tier} approval → ⏸ awaiting human decision`;
-    rows.push(`  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`);
+    rows.push(
+      `  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`,
+    );
   }
 
   console.log("Invoice          Verdict    Routing (humanApproval = pending)");
@@ -93,15 +107,21 @@ async function main() {
     const approved = (await routeOf(priceMismatch, "approve")).recon;
     const rejected = (await routeOf(priceMismatch, "reject")).recon;
     if (pending.outcome !== "awaiting" || pending.posted) {
-      console.error(`✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`);
+      console.error(
+        `✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`,
+      );
       failures++;
     }
     if (approved.outcome !== "posted" || !approved.posted) {
-      console.error(`✖ INV-2042 approve: expected posted, got ${approved.outcome}`);
+      console.error(
+        `✖ INV-2042 approve: expected posted, got ${approved.outcome}`,
+      );
       failures++;
     }
     if (rejected.outcome !== "rejected" || rejected.posted) {
-      console.error(`✖ INV-2042 reject: expected rejected/un-posted, got ${rejected.outcome}`);
+      console.error(
+        `✖ INV-2042 reject: expected rejected/un-posted, got ${rejected.outcome}`,
+      );
       failures++;
     }
     if (!failures) {

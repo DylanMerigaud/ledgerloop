@@ -64,21 +64,28 @@ export function TraceTimeline({
   return (
     <div className="space-y-0">
       {state.trace.map((e, i) => (
-        <TraceNode key={e.seq} event={e} isLast={i === state.trace.length - 1} live={state.status === "running"} />
+        <TraceNode
+          key={e.seq}
+          event={e}
+          isLast={i === state.trace.length - 1}
+          live={state.status === "running"}
+        />
       ))}
 
       {state.status === "running" && <PendingNode />}
 
       {state.status === "awaiting" && (
         <div className="ml-8 mt-1 rounded-lg bg-warn-soft/60 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn-line">
-          Paused — this invoice needs a human decision. Approve or reject it above to continue.
+          Paused — this invoice needs a human decision. Approve or reject it
+          above to continue.
         </div>
       )}
 
       {state.status === "done" && state.durationMs != null && (
         <div className="pl-8 pt-2">
           <span className="text-[11px] text-muted tnum">
-            Completed in {formatDuration(state.durationMs)} · {state.trace.length} events
+            Completed in {formatDuration(state.durationMs)} ·{" "}
+            {state.trace.length} events
           </span>
         </div>
       )}
@@ -139,7 +146,9 @@ function TraceNode({
         </div>
 
         {event.detail && (
-          <p className="mt-0.5 text-[12px] leading-snug text-ink/70">{event.detail}</p>
+          <p className="mt-0.5 text-[12px] leading-snug text-ink/70">
+            {event.detail}
+          </p>
         )}
 
         {event.data != null && (
@@ -192,10 +201,14 @@ function Empty({
 }) {
   return (
     <div className="flex h-full min-h-[240px] flex-col items-center justify-center px-8 text-center">
-      <p className={`text-[15px] font-semibold ${tone === "danger" ? "text-danger" : "text-ink"}`}>
+      <p
+        className={`text-[15px] font-semibold ${tone === "danger" ? "text-danger" : "text-ink"}`}
+      >
         {title}
       </p>
-      <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">{body}</p>
+      <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">
+        {body}
+      </p>
       {action}
     </div>
   );

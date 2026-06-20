@@ -1,0 +1,8 @@
+# Generated / vendored
+node_modules
+.next
+drizzle
+pnpm-lock.yaml
+
+# Markdown is hand-formatted (tables, the Mermaid diagram) — leave it alone.
+*.md

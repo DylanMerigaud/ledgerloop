@@ -41,18 +41,36 @@ test("every seeded document validates against the Zod schema", () => {
   for (const b of SEED_BUNDLES) {
     assert.doesNotThrow(() => Invoice.parse(b.invoice), `${b.id} invoice`);
     if (b.purchaseOrder) {
-      assert.doesNotThrow(() => PurchaseOrder.parse(b.purchaseOrder), `${b.id} PO`);
+      assert.doesNotThrow(
+        () => PurchaseOrder.parse(b.purchaseOrder),
+        `${b.id} PO`,
+      );
     }
     if (b.goodsReceipt) {
-      assert.doesNotThrow(() => GoodsReceipt.parse(b.goodsReceipt), `${b.id} GR`);
+      assert.doesNotThrow(
+        () => GoodsReceipt.parse(b.goodsReceipt),
+        `${b.id} GR`,
+      );
     }
   }
 });
 
 test("the three headline edge cases produce their intended verdicts", () => {
-  assert.equal(matchOf(byId("INV-2042")).verdict, "exception", "price mismatch");
-  assert.equal(matchOf(byId("INV-2048")).verdict, "exception", "quantity mismatch");
-  assert.equal(matchOf(byId("INV-2041-RESEND")).verdict, "duplicate", "duplicate");
+  assert.equal(
+    matchOf(byId("INV-2042")).verdict,
+    "exception",
+    "price mismatch",
+  );
+  assert.equal(
+    matchOf(byId("INV-2048")).verdict,
+    "exception",
+    "quantity mismatch",
+  );
+  assert.equal(
+    matchOf(byId("INV-2041-RESEND")).verdict,
+    "duplicate",
+    "duplicate",
+  );
 });
 
 test("price mismatch is a price_variance on the steel-bar line", () => {
@@ -65,8 +83,14 @@ test("price mismatch is a price_variance on the steel-bar line", () => {
 test("quantity mismatch is caught by the 3-way receipt check, not the PO check", () => {
   const m = matchOf(byId("INV-2048"));
   const codes = m.exceptions.map((e) => e.code);
-  assert.ok(codes.includes("qty_variance_receipt"), "receipt overbill must fire");
-  assert.ok(!codes.includes("qty_variance_po"), "PO qty agrees (ordered = invoiced)");
+  assert.ok(
+    codes.includes("qty_variance_receipt"),
+    "receipt overbill must fire",
+  );
+  assert.ok(
+    !codes.includes("qty_variance_po"),
+    "PO qty agrees (ordered = invoiced)",
+  );
   assert.equal(m.matchType, "three_way");
 });
 
@@ -76,7 +100,13 @@ test("the original of the duplicate pair is itself clean", () => {
 });
 
 test("clean bundles route to auto-approval (straight-through)", () => {
-  for (const id of ["INV-2040", "INV-2044", "INV-2047", "INV-2049", "INV-2043"]) {
+  for (const id of [
+    "INV-2040",
+    "INV-2044",
+    "INV-2047",
+    "INV-2049",
+    "INV-2043",
+  ]) {
     const decision = routeApproval(matchOf(byId(id)));
     assert.equal(decision.tier, "auto", `${id} should be auto-approved`);
   }
@@ -100,7 +130,10 @@ test("the queue is a healthy mix: majority clean, with each edge case present", 
   const clean = verdicts.filter((v) => v === "clean").length;
   const exception = verdicts.filter((v) => v === "exception").length;
   const duplicate = verdicts.filter((v) => v === "duplicate").length;
-  assert.ok(clean >= 5, "most invoices should be clean so the exceptions stand out");
+  assert.ok(
+    clean >= 5,
+    "most invoices should be clean so the exceptions stand out",
+  );
   assert.ok(exception >= 3, "several exceptions to demo the routing");
   assert.equal(duplicate, 1, "exactly one duplicate");
 });

@@ -12,7 +12,16 @@ import type { TraceEvent } from "./trace";
 
 // Minimal trace-event builder carrying a stage `data` payload.
 function ev(data: Record<string, unknown>): TraceEvent {
-  return { seq: 0, kind: "step", stage: "pipeline", status: "ok", stepId: "x", label: "", data, atMs: 0 };
+  return {
+    seq: 0,
+    kind: "step",
+    stage: "pipeline",
+    status: "ok",
+    stepId: "x",
+    label: "",
+    data,
+    atMs: 0,
+  };
 }
 
 const matching = (verdict: string) => ev({ verdict });
@@ -25,24 +34,40 @@ test("clean → reconciled (posted)", () => {
 });
 
 test("exception awaiting → needs-approval (NOT blocked, despite posted:false)", () => {
-  const trace = [matching("exception"), approval("manager"), recon("awaiting", false)];
+  const trace = [
+    matching("exception"),
+    approval("manager"),
+    recon("awaiting", false),
+  ];
   assert.equal(deriveOutcome(trace, true), "needs-approval");
   assert.equal(isAwaitingApproval(trace), true);
 });
 
 test("exception approved → reconciled", () => {
-  const trace = [matching("exception"), approval("director"), recon("posted", true)];
+  const trace = [
+    matching("exception"),
+    approval("director"),
+    recon("posted", true),
+  ];
   assert.equal(deriveOutcome(trace, true), "reconciled");
   assert.equal(isAwaitingApproval(trace), false);
 });
 
 test("exception rejected → blocked (red)", () => {
-  const trace = [matching("exception"), approval("manager"), recon("rejected", false)];
+  const trace = [
+    matching("exception"),
+    approval("manager"),
+    recon("rejected", false),
+  ];
   assert.equal(deriveOutcome(trace, true), "blocked");
 });
 
 test("duplicate → blocked", () => {
-  const trace = [matching("duplicate"), approval("blocked"), recon("blocked", false)];
+  const trace = [
+    matching("duplicate"),
+    approval("blocked"),
+    recon("blocked", false),
+  ];
   assert.equal(deriveOutcome(trace, true), "blocked");
 });
 

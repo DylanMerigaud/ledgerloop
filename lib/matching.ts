@@ -73,9 +73,16 @@ export interface MatchInput {
  *   - "clean"     → straight-through to Reconciliation
  */
 export function runMatch(input: MatchInput): MatchResult {
-  const { invoice, purchaseOrder, goodsReceipt, priorInvoiceNumbers = [] } = input;
+  const {
+    invoice,
+    purchaseOrder,
+    goodsReceipt,
+    priorInvoiceNumbers = [],
+  } = input;
   const currency = invoice.currency;
-  const matchType: MatchResult["matchType"] = goodsReceipt ? "three_way" : "two_way";
+  const matchType: MatchResult["matchType"] = goodsReceipt
+    ? "three_way"
+    : "two_way";
 
   // 1. Duplicate detection short-circuits everything else: a duplicate invoice
   //    is a control failure, not a pricing question. Block before we reason
@@ -118,7 +125,9 @@ export function runMatch(input: MatchInput): MatchResult {
     // 2. Internal arithmetic: does the line's own amount equal qty × unitPrice?
     //    Catches transcription/parser errors before we even compare to the PO.
     const computed = round2(line.qty * line.unitPrice);
-    if (Math.abs(computed - round2(line.amount)) > MATCH_TOLERANCE.lineAmountAbs) {
+    if (
+      Math.abs(computed - round2(line.amount)) > MATCH_TOLERANCE.lineAmountAbs
+    ) {
       exceptions.push({
         sku: line.sku,
         code: "unit_price_x_qty",
@@ -191,7 +200,10 @@ export function runMatch(input: MatchInput): MatchResult {
     }
   }
 
-  const maxVariancePct = exceptions.reduce((m, e) => Math.max(m, e.variancePct), 0);
+  const maxVariancePct = exceptions.reduce(
+    (m, e) => Math.max(m, e.variancePct),
+    0,
+  );
   // Money at stake = sum of the absolute line-amount deltas on exception lines.
   const exceptionAmount = round2(
     exceptions.reduce((sum, e) => sum + exceptionLineAmount(invoice, e), 0),

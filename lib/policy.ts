@@ -27,7 +27,10 @@ const APPROVAL_POLICY = {
 } as const;
 
 /** Decide the approver tier from the money + variance at stake. */
-function tierFor(exceptionAmount: number, maxVariancePct: number): ApproverTier {
+function tierFor(
+  exceptionAmount: number,
+  maxVariancePct: number,
+): ApproverTier {
   if (
     exceptionAmount >= APPROVAL_POLICY.director.amount ||
     maxVariancePct >= APPROVAL_POLICY.director.variancePct
@@ -93,8 +96,10 @@ export function routeApproval(match: MatchResult): ApprovalDecision {
   // exception → tiered human approval
   const tier = tierFor(match.exceptionAmount, match.maxVariancePct);
   const drivers: string[] = [];
-  if (match.exceptionAmount > 0) drivers.push(`${money(match.exceptionAmount, match.currency)} at stake`);
-  if (match.maxVariancePct > 0) drivers.push(`${pct(match.maxVariancePct)} max variance`);
+  if (match.exceptionAmount > 0)
+    drivers.push(`${money(match.exceptionAmount, match.currency)} at stake`);
+  if (match.maxVariancePct > 0)
+    drivers.push(`${pct(match.maxVariancePct)} max variance`);
   const driverText = drivers.length ? drivers.join(", ") : "policy exception";
 
   return {

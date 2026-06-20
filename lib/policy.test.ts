@@ -32,7 +32,9 @@ test("clean match → auto-approved, no human", () => {
 });
 
 test("duplicate → blocked, never auto-approved", () => {
-  const d = routeApproval(match({ verdict: "duplicate", exceptionAmount: 500 }));
+  const d = routeApproval(
+    match({ verdict: "duplicate", exceptionAmount: 500 }),
+  );
   assert.equal(d.tier, "blocked");
   assert.equal(d.autoApproved, false);
 });
@@ -68,14 +70,22 @@ test("variance ≥ 10% → director tier regardless of amount", () => {
 
 test("exposure ≥ $10k → director tier regardless of variance", () => {
   const d = routeApproval(
-    match({ verdict: "exception", maxVariancePct: 0.02, exceptionAmount: 15_000 }),
+    match({
+      verdict: "exception",
+      maxVariancePct: 0.02,
+      exceptionAmount: 15_000,
+    }),
   );
   assert.equal(d.tier, "director");
 });
 
 test("exposure ≥ $1k (under $10k) → manager tier", () => {
   const d = routeApproval(
-    match({ verdict: "exception", maxVariancePct: 0.02, exceptionAmount: 5_000 }),
+    match({
+      verdict: "exception",
+      maxVariancePct: 0.02,
+      exceptionAmount: 5_000,
+    }),
   );
   assert.equal(d.tier, "manager");
 });

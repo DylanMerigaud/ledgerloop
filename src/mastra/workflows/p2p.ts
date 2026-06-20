@@ -53,7 +53,13 @@ const Narrated = z.object({ narration: z.string() });
 
 /** Safely get a one-line narration from an agent; never throws. */
 async function narrate(
-  mastra: { getAgent: (id: string) => { generate: (p: string) => Promise<{ text?: string }> } } | undefined,
+  mastra:
+    | {
+        getAgent: (id: string) => {
+          generate: (p: string) => Promise<{ text?: string }>;
+        };
+      }
+    | undefined,
   agentId: string,
   prompt: string,
   fallback: string,
@@ -196,7 +202,8 @@ const autoApproveStep = createStep({
       match,
       vendor,
       humanApproval,
-      narration: "Auto-approved — clean match, no human approval required (straight-through).",
+      narration:
+        "Auto-approved — clean match, no human approval required (straight-through).",
     };
   },
 });
@@ -254,7 +261,10 @@ export const p2pWorkflow = createWorkflow({
   // Normalise the branch output (keyed by the executed step's id) back to one
   // BranchOut so reconciliation has a single, uniform input.
   .map(async ({ inputData }) => {
-    const branch = inputData as Record<string, z.infer<typeof BranchOut> | undefined>;
+    const branch = inputData as Record<
+      string,
+      z.infer<typeof BranchOut> | undefined
+    >;
     const picked = branch["approval"] ?? branch["approval-auto"];
     if (!picked) {
       throw new Error("No approval branch produced an output");

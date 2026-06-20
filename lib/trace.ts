@@ -65,7 +65,14 @@ function stageForTool(toolName: string): TraceStage {
   return "pipeline";
 }
 
-export const TraceStatus = z.enum(["running", "ok", "warn", "error", "skipped", "waiting"]);
+export const TraceStatus = z.enum([
+  "running",
+  "ok",
+  "warn",
+  "error",
+  "skipped",
+  "waiting",
+]);
 export type TraceStatus = z.infer<typeof TraceStatus>;
 
 /**
@@ -112,7 +119,9 @@ interface RawChunk {
 }
 
 function asRecord(v: unknown): Record<string, unknown> | undefined {
-  return typeof v === "object" && v !== null ? (v as Record<string, unknown>) : undefined;
+  return typeof v === "object" && v !== null
+    ? (v as Record<string, unknown>)
+    : undefined;
 }
 
 /** Friendly stage label for a step id, e.g. "matching" → "Matching agent". */
@@ -143,7 +152,8 @@ export function toTraceEvent(
     const c = chunk as RawChunk;
     const type = typeof c?.type === "string" ? c.type : "";
     const payload = asRecord(c?.payload);
-    const stepId = typeof payload?.["id"] === "string" ? (payload["id"] as string) : "";
+    const stepId =
+      typeof payload?.["id"] === "string" ? (payload["id"] as string) : "";
     const stage = stageForStep(stepId);
 
     switch (type) {
@@ -215,7 +225,9 @@ export function toTraceEvent(
         // `domain` is the object the UI should colour + render; `narration` is the
         // agent's prose. Unwrapping here keeps the UI decoupled from step shapes.
         const narration =
-          typeof rawOut?.["narration"] === "string" ? (rawOut["narration"] as string) : undefined;
+          typeof rawOut?.["narration"] === "string"
+            ? (rawOut["narration"] as string)
+            : undefined;
         const domain = unwrapStageData(rawOut);
         return {
           kind: "step",
@@ -271,7 +283,9 @@ function unwrapStageData(
 }
 
 /** Derive a traffic-light status from a stage's domain object, if recognizable. */
-function stepStatusFromOutput(out: Record<string, unknown> | undefined): TraceStatus {
+function stepStatusFromOutput(
+  out: Record<string, unknown> | undefined,
+): TraceStatus {
   if (!out) return "ok";
   // MatchResult
   if (out["verdict"] === "duplicate") return "error";
@@ -283,14 +297,17 @@ function stepStatusFromOutput(out: Record<string, unknown> | undefined): TraceSt
   if (out["tier"] === "auto") return "ok";
   // ReconResult (by outcome — more precise than the bare `posted` flag)
   if (out["outcome"] === "awaiting") return "waiting";
-  if (out["outcome"] === "rejected" || out["outcome"] === "blocked") return "error";
+  if (out["outcome"] === "rejected" || out["outcome"] === "blocked")
+    return "error";
   if (out["outcome"] === "posted") return "ok";
   if (out["posted"] === false) return "error";
   return "ok";
 }
 
 /** Fallback one-line summary when a stage produced no narration. */
-function stepDetailFromOutput(out: Record<string, unknown> | undefined): string | undefined {
+function stepDetailFromOutput(
+  out: Record<string, unknown> | undefined,
+): string | undefined {
   if (!out) return undefined;
   if (typeof out["reason"] === "string") return out["reason"] as string;
   if (typeof out["note"] === "string") return out["note"] as string;

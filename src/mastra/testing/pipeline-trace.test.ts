@@ -43,11 +43,24 @@ function mastraWithMockAgents() {
       intake: new Agent({
         id: "intake",
         name: "Intake agent",
-        model: mockToolCallingModel({ toolName: "noop", narration: "Received." }),
+        model: mockToolCallingModel({
+          toolName: "noop",
+          narration: "Received.",
+        }),
         instructions: "Summarise the invoice in one sentence.",
       }),
-      matching: mockAgent("matching", "Matching agent", { runMatchTool }, "run-match"),
-      approval: mockAgent("approval", "Approval agent", { routeApprovalTool }, "route-approval"),
+      matching: mockAgent(
+        "matching",
+        "Matching agent",
+        { runMatchTool },
+        "run-match",
+      ),
+      approval: mockAgent(
+        "approval",
+        "Approval agent",
+        { routeApprovalTool },
+        "route-approval",
+      ),
       reconciliation: mockAgent(
         "reconciliation",
         "Reconciliation agent",
@@ -59,9 +72,14 @@ function mastraWithMockAgents() {
   });
 }
 
-async function runTrace(mastra: ReturnType<typeof mastraWithMockAgents>, b: SeedBundle) {
+async function runTrace(
+  mastra: ReturnType<typeof mastraWithMockAgents>,
+  b: SeedBundle,
+) {
   const idx = SEED_BUNDLES.indexOf(b);
-  const priorInvoiceNumbers = SEED_BUNDLES.slice(0, idx).map((x) => x.invoice.invoiceNumber);
+  const priorInvoiceNumbers = SEED_BUNDLES.slice(0, idx).map(
+    (x) => x.invoice.invoiceNumber,
+  );
   const run = await mastra.getWorkflow("p2p").createRun();
   const out = run.stream({
     inputData: {
@@ -119,19 +137,33 @@ test("the price-mismatch invoice fires real tool calls that reach the trace", as
   // invoke their tools; Mastra delivers them wrapped in `workflow-step-output`.
   const toolOutputs = raw.filter((c) => {
     const v = c as { type?: string; payload?: { output?: { type?: string } } };
-    return v.type === "workflow-step-output" && v.payload?.output?.type === "tool-call";
+    return (
+      v.type === "workflow-step-output" &&
+      v.payload?.output?.type === "tool-call"
+    );
   });
-  assert.ok(toolOutputs.length > 0, "expected tool-call chunks in the workflow stream");
+  assert.ok(
+    toolOutputs.length > 0,
+    "expected tool-call chunks in the workflow stream",
+  );
 
   // And our adapter turns them into "tool" trace nodes on the right stages.
   const events = timelineFrom(raw);
   const toolNodes = events.filter((e) => e.kind === "tool");
   const toolStages = new Set(toolNodes.map((e) => e.stage));
-  assert.ok(toolNodes.length > 0, "adapter should surface tool-call events as tool nodes");
-  assert.ok(toolStages.has("matching"), "the run-match tool call should appear under matching");
+  assert.ok(
+    toolNodes.length > 0,
+    "adapter should surface tool-call events as tool nodes",
+  );
+  assert.ok(
+    toolStages.has("matching"),
+    "the run-match tool call should appear under matching",
+  );
 
   // The deterministic routing still holds: matching warns, no straight-through.
-  const matching = events.find((e) => e.kind === "step" && e.stage === "matching");
+  const matching = events.find(
+    (e) => e.kind === "step" && e.stage === "matching",
+  );
   assert.equal(matching?.status, "warn", "price mismatch → matching amber");
 });
 
@@ -143,10 +175,21 @@ test("a clean invoice fires tool calls and stays green end to end", async () => 
   const raw = await runTrace(mastra, clean);
   const events = timelineFrom(raw);
 
-  const recon = events.find((e) => e.kind === "step" && e.stage === "reconciliation");
+  const recon = events.find(
+    (e) => e.kind === "step" && e.stage === "reconciliation",
+  );
   assert.equal(recon?.status, "ok", "clean invoice → reconciled green");
   // No duplicate stage nodes and no leaked pipeline-step node.
-  const stageNodes = events.filter((e) => e.kind === "step").map((e) => e.stage);
-  assert.equal(stageNodes.length, new Set(stageNodes).size, "no doubled stage nodes");
-  assert.ok(!stageNodes.includes("pipeline"), "no internal step leaked into the trace");
+  const stageNodes = events
+    .filter((e) => e.kind === "step")
+    .map((e) => e.stage);
+  assert.equal(
+    stageNodes.length,
+    new Set(stageNodes).size,
+    "no doubled stage nodes",
+  );
+  assert.ok(
+    !stageNodes.includes("pipeline"),
+    "no internal step leaked into the trace",
+  );
 });

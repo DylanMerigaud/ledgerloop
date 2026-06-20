@@ -1,4 +1,9 @@
-import type { ApprovalDecision, MatchResult, ReconResult, GlEntry } from "./schema";
+import type {
+  ApprovalDecision,
+  MatchResult,
+  ReconResult,
+  GlEntry,
+} from "./schema";
 
 /**
  * Fake ERP adapter.
@@ -110,7 +115,8 @@ export async function reconcile(
     };
   }
 
-  const needsHuman = decision.tier === "manager" || decision.tier === "director";
+  const needsHuman =
+    decision.tier === "manager" || decision.tier === "director";
 
   // Held for a human decision — the pipeline pauses here until a reviewer acts.
   if (needsHuman && humanApproval === "pending") {

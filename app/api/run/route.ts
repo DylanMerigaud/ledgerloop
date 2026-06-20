@@ -3,7 +3,11 @@ import { loadRunBundle } from "@/db/client";
 import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
 import { ndjsonLine } from "@/lib/ndjson";
 import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
-import { RunRequest, STREAM_CONTENT_TYPE, type StreamDone } from "@/lib/api-types";
+import {
+  RunRequest,
+  STREAM_CONTENT_TYPE,
+  type StreamDone,
+} from "@/lib/api-types";
 
 /**
  * POST /api/run — execute the procure-to-pay pipeline for one seeded invoice and
@@ -50,7 +54,10 @@ export async function POST(request: Request): Promise<Response> {
           Math.ceil(verdict.retryAfterSeconds / 60),
         )} minute(s).`,
       },
-      { status: 429, headers: { "retry-after": String(verdict.retryAfterSeconds) } },
+      {
+        status: 429,
+        headers: { "retry-after": String(verdict.retryAfterSeconds) },
+      },
     );
   }
 
@@ -64,7 +71,9 @@ export async function POST(request: Request): Promise<Response> {
     decision = parsed.decision;
   } catch {
     return Response.json(
-      { error: "Body must be { id: string, decision?: \"approve\" | \"reject\" }." },
+      {
+        error: 'Body must be { id: string, decision?: "approve" | "reject" }.',
+      },
       { status: 400 },
     );
   }
@@ -88,7 +97,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: message }, { status: 500 });
   }
   if (!bundle) {
-    return Response.json({ error: `No seeded invoice with id "${id}".` }, { status: 404 });
+    return Response.json(
+      { error: `No seeded invoice with id "${id}".` },
+      { status: 404 },
+    );
   }
 
   // 3. Stream the workflow run.
@@ -134,7 +146,10 @@ export async function POST(request: Request): Promise<Response> {
           err instanceof Error ? err.message : "Unexpected pipeline error.";
         emit(pipelineErrorEvent(message));
       } finally {
-        const done: StreamDone = { done: true, durationMs: Date.now() - startedAt };
+        const done: StreamDone = {
+          done: true,
+          durationMs: Date.now() - startedAt,
+        };
         controller.enqueue(line(done));
         controller.close();
       }

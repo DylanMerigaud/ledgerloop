@@ -34,7 +34,10 @@ interface AgentLike {
  * whereas the last step's text is the clean closing sentence after the tool ran —
  * which is what we want on the trace.
  */
-function finalText(res: { text?: string; steps?: Array<{ text?: string }> }): string {
+function finalText(res: {
+  text?: string;
+  steps?: Array<{ text?: string }>;
+}): string {
   const steps = res.steps ?? [];
   const last = steps.length > 0 ? steps[steps.length - 1]?.text : undefined;
   return (last ?? res.text ?? "").trim();
@@ -82,7 +85,16 @@ export interface RunAgentStepArgs<TSchema extends z.ZodTypeAny> {
 export async function runAgentStep<TSchema extends z.ZodTypeAny>(
   args: RunAgentStepArgs<TSchema>,
 ): Promise<AgentStepResult<z.infer<TSchema>>> {
-  const { mastra, agentId, toolName, context, prompt, result, fallbackNarration, writer } = args;
+  const {
+    mastra,
+    agentId,
+    toolName,
+    context,
+    prompt,
+    result,
+    fallbackNarration,
+    writer,
+  } = args;
 
   // Surface the tool call on the workflow stream (sub-agent events don't bubble
   // up on their own). Best-effort — never let a writer hiccup affect the result.

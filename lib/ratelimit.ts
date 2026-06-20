@@ -68,7 +68,10 @@ export async function checkRateLimit(ip: string): Promise<RateVerdict> {
     if (success) {
       return { ok: true, remaining };
     }
-    const retryAfterSeconds = Math.max(0, Math.ceil((reset - Date.now()) / 1000));
+    const retryAfterSeconds = Math.max(
+      0,
+      Math.ceil((reset - Date.now()) / 1000),
+    );
     return { ok: false, limit, reset, retryAfterSeconds };
   } catch (err) {
     // If Redis itself errors, don't take the whole endpoint down — fail open but

@@ -32,11 +32,13 @@ export function deriveOutcome(trace: TraceEvent[], finished: boolean): Outcome {
 
     // Reconciliation outcome — the definitive resolution.
     if (data["outcome"] === "awaiting") return "needs-approval"; // paused for a human
-    if (data["outcome"] === "rejected" || data["outcome"] === "blocked") return "blocked";
+    if (data["outcome"] === "rejected" || data["outcome"] === "blocked")
+      return "blocked";
     if (data["outcome"] === "posted") return "reconciled";
 
     // Earlier hints (before reconciliation arrives).
-    if (data["verdict"] === "duplicate" || data["tier"] === "blocked") return "blocked";
+    if (data["verdict"] === "duplicate" || data["tier"] === "blocked")
+      return "blocked";
     if (data["tier"] === "manager" || data["tier"] === "director") {
       outcome = "needs-approval";
     }

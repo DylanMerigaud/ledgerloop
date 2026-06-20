@@ -34,18 +34,26 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText("Invoice queue")).toBeVisible();
 });
 
-test("clean invoice runs straight through — no approval gate", async ({ page }) => {
+test("clean invoice runs straight through — no approval gate", async ({
+  page,
+}) => {
   await selectAndRun(page, "INV-2040");
 
   // Reconciliation resolves to ok (posted), and the approval gate never appears.
-  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "ok", {
-    timeout: RUN_TIMEOUT,
-  });
+  await expect(step(page, "reconciliation")).toHaveAttribute(
+    "data-status",
+    "ok",
+    {
+      timeout: RUN_TIMEOUT,
+    },
+  );
   await expect(page.getByTestId("approval-gate")).toHaveCount(0);
   await expect(page.getByText("Pipeline complete")).toBeVisible();
 });
 
-test("price-mismatch pauses for approval, then APPROVE posts it", async ({ page }) => {
+test("price-mismatch pauses for approval, then APPROVE posts it", async ({
+  page,
+}) => {
   await selectAndRun(page, "INV-2042");
 
   // 1. Matching catches the variance (amber).
@@ -54,9 +62,13 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({ page 
   });
 
   // 2. The run PAUSES: reconciliation is "waiting", the gate + banner appear.
-  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "waiting", {
-    timeout: RUN_TIMEOUT,
-  });
+  await expect(step(page, "reconciliation")).toHaveAttribute(
+    "data-status",
+    "waiting",
+    {
+      timeout: RUN_TIMEOUT,
+    },
+  );
   await expect(page.getByTestId("approval-gate")).toBeVisible();
   await expect(page.getByText(/Paused/)).toBeVisible();
   // It has NOT posted yet — no ERP reference on the trace.
@@ -64,9 +76,13 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({ page 
 
   // 3. Approve → reconciliation transitions to posted, gate disappears.
   await page.getByTestId("approve-btn").click();
-  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "ok", {
-    timeout: RUN_TIMEOUT,
-  });
+  await expect(step(page, "reconciliation")).toHaveAttribute(
+    "data-status",
+    "ok",
+    {
+      timeout: RUN_TIMEOUT,
+    },
+  );
   // The ERP ref shows up (both in the narration and the detail row) — assert at
   // least one match rather than a single visible node.
   await expect(page.getByText(/NETSUITE-BILL-/).first()).toBeVisible();
@@ -88,13 +104,19 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({ page 
 test("price-mismatch REJECT leaves it un-posted", async ({ page }) => {
   await selectAndRun(page, "INV-2042");
 
-  await expect(page.getByTestId("approval-gate")).toBeVisible({ timeout: RUN_TIMEOUT });
+  await expect(page.getByTestId("approval-gate")).toBeVisible({
+    timeout: RUN_TIMEOUT,
+  });
   await page.getByTestId("reject-btn").click();
 
   // Reconciliation ends in error (rejected), and nothing was posted.
-  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "error", {
-    timeout: RUN_TIMEOUT,
-  });
+  await expect(step(page, "reconciliation")).toHaveAttribute(
+    "data-status",
+    "error",
+    {
+      timeout: RUN_TIMEOUT,
+    },
+  );
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
   await expect(page.getByText(/[Rr]eject/).first()).toBeVisible();
 });

@@ -31,7 +31,12 @@ export interface SeedBundle {
 }
 
 /* Helper to keep line construction terse + arithmetically correct by default. */
-function line(sku: string, description: string, qty: number, unitPrice: number) {
+function line(
+  sku: string,
+  description: string,
+  qty: number,
+  unitPrice: number,
+) {
   return { sku, description, qty, unitPrice, amount: round2(qty * unitPrice) };
 }
 function round2(n: number): number {
@@ -85,7 +90,10 @@ const clean: SeedBundle = {
    INV-2041 is sent, then the vendor re-sends the identical invoice. Both rows
    carry invoiceNumber "INV-2041" (distinct primary keys). The matcher blocks
    the duplicate to prevent a double payment. */
-const dupLines = [line("SVR-RACK-42U", "42U server rack", 2, 1450), line("PDU-30A", "30A rack PDU", 4, 320)];
+const dupLines = [
+  line("SVR-RACK-42U", "42U server rack", 2, 1450),
+  line("PDU-30A", "30A rack PDU", 4, 320),
+];
 const dupInvoiceBase: Invoice = {
   invoiceNumber: "INV-2041",
   poNumber: "PO-7741",
@@ -112,7 +120,11 @@ const dupOriginal: SeedBundle = {
     grNumber: "GR-5541",
     poNumber: "PO-7741",
     receivedDate: "2026-05-07",
-    lineItems: dupLines.map((l) => ({ sku: l.sku, description: l.description, receivedQty: l.qty })),
+    lineItems: dupLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
   },
 };
 const dupResend: SeedBundle = {
@@ -125,7 +137,10 @@ const dupResend: SeedBundle = {
 /* ── 3. PRICE MISMATCH ──────────────────────────────────────────────────────
    Steel bar invoiced at 9% over the agreed PO unit price. Routed to approval
    (9% < 10% director threshold but a 5k+ line → director on amount). */
-const poSteelLines = [line("STL-BAR-20", 'Cold-rolled steel bar 20mm (per m)', 800, 7.5), line("STL-SHEET-2", "Steel sheet 2mm (per m²)", 120, 18)];
+const poSteelLines = [
+  line("STL-BAR-20", "Cold-rolled steel bar 20mm (per m)", 800, 7.5),
+  line("STL-SHEET-2", "Steel sheet 2mm (per m²)", 120, 18),
+];
 const invSteelLines = [
   { ...line("STL-BAR-20", "Cold-rolled steel bar 20mm (per m)", 800, 8.18) }, // 7.5 → 8.18 ≈ +9.07%
   line("STL-SHEET-2", "Steel sheet 2mm (per m²)", 120, 18),
@@ -155,14 +170,21 @@ const priceMismatch: SeedBundle = {
     grNumber: "GR-5542",
     poNumber: "PO-7742",
     receivedDate: "2026-05-10",
-    lineItems: poSteelLines.map((l) => ({ sku: l.sku, description: l.description, receivedQty: l.qty })),
+    lineItems: poSteelLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
   },
 };
 
 /* ── 4. Clean 2-way match — SERVICES (no goods receipt) ──────────────────────
    A consulting invoice: matched to a PO but there's nothing to "receive", so
    it's a 2-way match. Clean → straight-through. */
-const svcLines = [line("CONSULT-SR", "Senior consultant (day)", 8, 1200), line("CONSULT-PM", "Project manager (day)", 4, 950)];
+const svcLines = [
+  line("CONSULT-SR", "Senior consultant (day)", 8, 1200),
+  line("CONSULT-PM", "Project manager (day)", 4, 950),
+];
 const cleanServices: SeedBundle = {
   id: "INV-2043",
   scenario: "Clean 2-way (services)",
@@ -188,7 +210,11 @@ const cleanServices: SeedBundle = {
 };
 
 /* ── 5. Another clean 3-way (volume, makes the queue feel real) ──────────────*/
-const pkgLines = [line("BOX-A4", "A4 shipping box (bundle/25)", 60, 8.4), line("TAPE-48", "Packing tape 48mm (pack/6)", 30, 11.2), line("WRAP-500", "Stretch wrap 500mm", 24, 14.5)];
+const pkgLines = [
+  line("BOX-A4", "A4 shipping box (bundle/25)", 60, 8.4),
+  line("TAPE-48", "Packing tape 48mm (pack/6)", 30, 11.2),
+  line("WRAP-500", "Stretch wrap 500mm", 24, 14.5),
+];
 const cleanPackaging: SeedBundle = {
   id: "INV-2044",
   scenario: "Clean 3-way match",
@@ -214,16 +240,29 @@ const cleanPackaging: SeedBundle = {
     grNumber: "GR-5544",
     poNumber: "PO-7744",
     receivedDate: "2026-05-12",
-    lineItems: pkgLines.map((l) => ({ sku: l.sku, description: l.description, receivedQty: l.qty })),
+    lineItems: pkgLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
   },
 };
 
 /* ── 6. ARITHMETIC ERROR ────────────────────────────────────────────────────
    A line whose amount doesn't equal qty × unitPrice (transcription slip).
    Small variance → manager tier. */
-const mathPoLines = [line("INK-CYAN", "Cyan ink cartridge", 10, 64), line("INK-MAG", "Magenta ink cartridge", 10, 64)];
+const mathPoLines = [
+  line("INK-CYAN", "Cyan ink cartridge", 10, 64),
+  line("INK-MAG", "Magenta ink cartridge", 10, 64),
+];
 const mathInvLines = [
-  { sku: "INK-CYAN", description: "Cyan ink cartridge", qty: 10, unitPrice: 64, amount: 680 }, // should be 640
+  {
+    sku: "INK-CYAN",
+    description: "Cyan ink cartridge",
+    qty: 10,
+    unitPrice: 64,
+    amount: 680,
+  }, // should be 640
   line("INK-MAG", "Magenta ink cartridge", 10, 64),
 ];
 const arithmetic: SeedBundle = {
@@ -251,7 +290,11 @@ const arithmetic: SeedBundle = {
     grNumber: "GR-5545",
     poNumber: "PO-7745",
     receivedDate: "2026-05-13",
-    lineItems: mathPoLines.map((l) => ({ sku: l.sku, description: l.description, receivedQty: l.qty })),
+    lineItems: mathPoLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
   },
 };
 
@@ -259,7 +302,10 @@ const arithmetic: SeedBundle = {
    Invoice contains a line that was never on the PO (scope creep / wrong item).
    Routed to approval. */
 const offpoPoLines = [line("LAPTOP-14", '14" business laptop', 5, 1280)];
-const offpoInvLines = [line("LAPTOP-14", '14" business laptop', 5, 1280), line("DOCK-USBC", "USB-C docking station", 5, 210)];
+const offpoInvLines = [
+  line("LAPTOP-14", '14" business laptop', 5, 1280),
+  line("DOCK-USBC", "USB-C docking station", 5, 210),
+];
 const offPo: SeedBundle = {
   id: "INV-2046",
   scenario: "Line not on PO",
@@ -285,12 +331,19 @@ const offPo: SeedBundle = {
     grNumber: "GR-5546",
     poNumber: "PO-7746",
     receivedDate: "2026-05-14",
-    lineItems: offpoInvLines.map((l) => ({ sku: l.sku, description: l.description, receivedQty: l.qty })),
+    lineItems: offpoInvLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
   },
 };
 
 /* ── 8. Clean 3-way (chemicals) ─────────────────────────────────────────────*/
-const chemLines = [line("SOLV-IPA-5L", "Isopropyl alcohol 99% (5L)", 30, 22), line("GLOVE-NITR", "Nitrile gloves (box/100)", 50, 9.5)];
+const chemLines = [
+  line("SOLV-IPA-5L", "Isopropyl alcohol 99% (5L)", 30, 22),
+  line("GLOVE-NITR", "Nitrile gloves (box/100)", 50, 9.5),
+];
 const cleanChem: SeedBundle = {
   id: "INV-2047",
   scenario: "Clean 3-way match",
@@ -316,7 +369,11 @@ const cleanChem: SeedBundle = {
     grNumber: "GR-5547",
     poNumber: "PO-7747",
     receivedDate: "2026-05-15",
-    lineItems: chemLines.map((l) => ({ sku: l.sku, description: l.description, receivedQty: l.qty })),
+    lineItems: chemLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
   },
 };
 
@@ -351,12 +408,17 @@ const qtyMismatch: SeedBundle = {
     grNumber: "GR-5548",
     poNumber: "PO-7748",
     receivedDate: "2026-05-16",
-    lineItems: [{ sku: "CAT6-305", description: "Cat6 cable 305m reel", receivedQty: 80 }], // only 80 of 100
+    lineItems: [
+      { sku: "CAT6-305", description: "Cat6 cable 305m reel", receivedQty: 80 },
+    ], // only 80 of 100
   },
 };
 
 /* ── 10. Clean 3-way (office) — rounds the queue to a healthy majority-clean ─*/
-const officeLines = [line("CHAIR-ERG", "Ergonomic task chair", 12, 240), line("DESK-STD", "Sit-stand desk", 12, 410)];
+const officeLines = [
+  line("CHAIR-ERG", "Ergonomic task chair", 12, 240),
+  line("DESK-STD", "Sit-stand desk", 12, 410),
+];
 const cleanOffice: SeedBundle = {
   id: "INV-2049",
   scenario: "Clean 3-way match",
@@ -382,7 +444,11 @@ const cleanOffice: SeedBundle = {
     grNumber: "GR-5549",
     poNumber: "PO-7749",
     receivedDate: "2026-05-17",
-    lineItems: officeLines.map((l) => ({ sku: l.sku, description: l.description, receivedQty: l.qty })),
+    lineItems: officeLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
   },
 };
 

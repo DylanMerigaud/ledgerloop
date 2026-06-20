@@ -50,7 +50,9 @@ export const invoices = pgTable("invoices", {
   total: numeric("total", { mode: "number" }).notNull(),
   /** Demo metadata: a short label for the queue (e.g. "Price mismatch"). Not business data. */
   scenario: text("scenario"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const purchaseOrders = pgTable("purchase_orders", {
@@ -60,7 +62,9 @@ export const purchaseOrders = pgTable("purchase_orders", {
   currency: text("currency").notNull(),
   lineItems: jsonb("line_items").$type<LineItem[]>().notNull(),
   total: numeric("total", { mode: "number" }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const goodsReceipts = pgTable("goods_receipts", {
@@ -69,7 +73,9 @@ export const goodsReceipts = pgTable("goods_receipts", {
   poNumber: text("po_number").notNull(),
   receivedDate: text("received_date").notNull(),
   lineItems: jsonb("line_items").$type<GoodsReceiptLine[]>().notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 /**
@@ -91,7 +97,9 @@ export const agentRuns = pgTable(
     trace: jsonb("trace").$type<TraceEvent[]>().notNull(),
     durationMs: integer("duration_ms").notNull(),
     model: text("model").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (t) => [index("agent_runs_invoice_idx").on(t.invoiceNumber)],
 );

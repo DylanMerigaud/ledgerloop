@@ -34,7 +34,10 @@ const IsoDate = z
   .string()
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be ISO-8601 (YYYY-MM-DD)")
-  .refine((s) => !Number.isNaN(Date.parse(s)), "date is not a valid calendar date");
+  .refine(
+    (s) => !Number.isNaN(Date.parse(s)),
+    "date is not a valid calendar date",
+  );
 
 /** A finite monetary / numeric amount. */
 const Amount = z
