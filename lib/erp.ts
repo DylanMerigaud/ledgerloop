@@ -5,13 +5,10 @@ import type { ApprovalDecision, MatchResult, ReconResult, GlEntry } from "./sche
  *
  * This is a STUB with a clear, real-looking interface — never a real ERP call.
  * In a production accounts-payable system the reconciliation step posts a vendor
- * bill (and its GL distribution) into the ERP; here we synthesize a deterministic
- * reference and double-entry posting so the demo's reconciliation trace is
- * concrete without any external dependency or side effect.
- *
- * (For the record: I shipped the real NetSuite integration at Pivot — the
- * SuiteTalk vendor-bill + PO-match sync. This stub deliberately stands in for
- * that so the public demo stays self-contained, free, and side-effect-free.)
+ * bill (and its GL distribution) into the ERP (NetSuite, etc.); here we
+ * synthesize a deterministic reference and double-entry posting so the demo's
+ * reconciliation trace is concrete without any external dependency or side
+ * effect. The public demo stays self-contained and side-effect-free.
  *
  * The interface is what matters: swap `fakeErp` for a `netSuiteAdapter`
  * implementing the same `ErpAdapter` and the reconciliation agent is unchanged.

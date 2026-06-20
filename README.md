@@ -161,7 +161,7 @@ db/
 
 ### The fake ERP adapter
 
-[`lib/erp.ts`](lib/erp.ts) is a **stub with a real interface** — never a live ERP call. The reconciliation agent posts through an `ErpAdapter`; swap the `fakeErp` implementation for a `NetSuiteAdapter` of the same interface and the agent is unchanged. (For the record: I shipped the real NetSuite integration — the SuiteTalk vendor-bill + PO-match sync — at Pivot. This stub stands in for it so the public demo stays self-contained and side-effect-free.)
+[`lib/erp.ts`](lib/erp.ts) is a **stub with a real interface** — never a live ERP call. The reconciliation agent posts through an `ErpAdapter`; swap the `fakeErp` implementation for a `NetSuiteAdapter` of the same interface and the agent is unchanged. The stub keeps the public demo self-contained and side-effect-free.
 
 ---
 
