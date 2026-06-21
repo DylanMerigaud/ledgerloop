@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { PDFPageProxy } from "pdfjs-dist";
 
 /**
- * Renders the real invoice PDF (the bytes the vision model actually reads) to a
- * canvas with pdf.js. This is the document shown in the extraction reveal and the
- * queue hover preview — an actual PDF, not an HTML mock.
+ * Renders the real invoice PDF (the same bytes the vision model reads) to a
+ * canvas with pdf.js — the document shown in the right pane's extraction reveal.
+ * An actual PDF, not an HTML mock.
  *
  * pdf.js is loaded dynamically (client-only) and its worker is resolved through
  * the bundler via `new URL(..., import.meta.url)`, so there's no CDN dependency.
@@ -29,37 +30,61 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
     setReady(false);
     setError(false);
 
+    // Keep the loaded page around so a container resize can re-render at the new
+    // width (sharp at any size) without re-fetching the PDF.
+    let page: PDFPageProxy | null = null;
+    let rendering: Promise<unknown> | null = null;
+
+    async function loadPage(buf: ArrayBuffer) {
+      const pdfjs = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/build/pdf.worker.min.mjs",
+        import.meta.url,
+      ).toString();
+      return pdfjs.getDocument({ data: buf }).promise;
+    }
+
+    async function renderAtCurrentWidth() {
+      if (!page || !canvas) return;
+      const cssWidth = canvas.parentElement?.clientWidth ?? 360;
+      if (cssWidth === 0) return;
+      const base = page.getViewport({ scale: 1 });
+      const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
+      const viewport = page.getViewport({
+        scale: (cssWidth / base.width) * dpr,
+      });
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("no 2d context");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    }
+
+    const ro = new ResizeObserver(() => {
+      // Serialise renders — pdf.js throws if a render starts while one is live.
+      rendering = (rendering ?? Promise.resolve())
+        .catch(() => {})
+        .then(renderAtCurrentWidth)
+        .catch(() => {});
+    });
+
     (async () => {
       try {
-        const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          "pdfjs-dist/build/pdf.worker.min.mjs",
-          import.meta.url,
-        ).toString();
-
         const buf = await fetch(src).then((r) => {
           if (!r.ok) throw new Error(`pdf fetch ${r.status}`);
           return r.arrayBuffer();
         });
         if (cancelled) return;
 
-        const pdf = await pdfjs.getDocument({ data: buf }).promise;
-        const page = await pdf.getPage(1);
+        const pdf = await loadPage(buf);
+        if (cancelled) return;
+        page = await pdf.getPage(1);
         if (cancelled) return;
 
-        const cssWidth = canvas.parentElement?.clientWidth ?? 360;
-        const base = page.getViewport({ scale: 1 });
-        const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
-        const scale = (cssWidth / base.width) * dpr;
-        const viewport = page.getViewport({ scale });
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("no 2d context");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        if (!cancelled) setReady(true);
+        await renderAtCurrentWidth();
+        if (cancelled) return;
+        setReady(true);
+        if (canvas.parentElement) ro.observe(canvas.parentElement);
       } catch {
         if (!cancelled) setError(true);
       }
@@ -67,6 +92,7 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
 
     return () => {
       cancelled = true;
+      ro.disconnect();
     };
   }, [src]);
 

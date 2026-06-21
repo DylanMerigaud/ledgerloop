@@ -67,7 +67,9 @@ export async function extractInvoice(
   try {
     message = await getClient().messages.create({
       model: EXTRACTION_MODEL,
-      max_tokens: 2048,
+      // Headroom for invoices with many line items — a truncated response would
+      // be invalid JSON (caught below, but better to not truncate in the first place).
+      max_tokens: 4096,
       system: SYSTEM_PROMPT,
       output_config: {
         format: { type: "json_schema", schema: INVOICE_JSON_SCHEMA },
