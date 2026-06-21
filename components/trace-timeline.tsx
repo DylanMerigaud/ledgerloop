@@ -61,13 +61,20 @@ export function TraceTimeline({
     );
   }
 
+  // Intake is rendered by the ExtractionReveal panel above the timeline, so drop
+  // its node here (it would duplicate what the reveal already shows).
+  const nodes = state.trace.filter((e) => e.stage !== "intake");
+
   return (
     <div className="space-y-0">
-      {state.trace.map((e, i) => (
+      {nodes.map((e, i) => (
         <TraceNode
-          key={e.seq}
+          // Key by stepId when present (stable + unique per stage, survives the
+          // phase-2 resume where the seq counter restarts and could collide);
+          // fall back to seq for run-level markers that carry no stepId.
+          key={e.stepId || `seq-${e.seq}`}
           event={e}
-          isLast={i === state.trace.length - 1}
+          isLast={i === nodes.length - 1}
           live={state.status === "running"}
         />
       ))}

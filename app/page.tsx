@@ -57,10 +57,10 @@ function Header() {
             ledgerloop
           </h1>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">
-            Deterministic <span className="text-ink">procure-to-pay</span> —
-            matching, approval, reconciliation in code — with an AI agent that
-            investigates flagged exceptions and a real human gate before
-            anything posts.
+            A <span className="text-ink">procure-to-pay</span> pipeline — AI
+            reads the invoice and investigates flagged exceptions, deterministic
+            code does the matching and money, a human approves before anything
+            posts.
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-muted">
@@ -68,7 +68,7 @@ function Header() {
           <Arrow />
           <FlowChip n={2} label="Matching" />
           <Arrow />
-          <FlowChip n={3} label="Investigate" agent />
+          <FlowChip n={3} label="Investigate" />
           <Arrow />
           <FlowChip n={4} label="Approval" />
           <Arrow />
@@ -79,33 +79,10 @@ function Header() {
   );
 }
 
-function FlowChip({
-  n,
-  label,
-  agent = false,
-}: {
-  n: number;
-  label: string;
-  agent?: boolean;
-}) {
-  // The one agentic step is tinted (accent ring + dot) so the contrast with the
-  // deterministic steps is visible at a glance.
+function FlowChip({ n, label }: { n: number; label: string }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 ring-inset ${
-        agent
-          ? "bg-accent-soft/60 font-medium text-accent ring-accent/30"
-          : "bg-surface ring-line"
-      }`}
-      title={
-        agent ? "AI agent — open-ended investigation" : "Deterministic step"
-      }
-    >
-      <span
-        className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold ${
-          agent ? "bg-accent text-accent-fg" : "bg-accent-soft text-accent"
-        }`}
-      >
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 ring-1 ring-inset ring-line">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent">
         {n}
       </span>
       {label}

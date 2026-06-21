@@ -280,19 +280,44 @@ export type ReconResult = z.infer<typeof ReconResult>;
  * Built from the SAME `Invoice` Zod object so a structured-output model and the
  * runtime validator can't drift — the single-source-of-truth discipline applied
  * to the model boundary. Emitted inline (no `$ref`/`definitions` wrapper) with
- * `$schema` stripped, the cleanest shape to hand a model.
+ * `$schema` stripped, the cleanest shape to hand a model. The intake extraction
+ * ([`lib/extract.ts`](./extract.ts)) hands this to the model, then
+ * `Invoice.safeParse`s the output.
  *
- * This is the seam for a document-extraction intake (text/PDF → `Invoice`): hand
- * this schema to the model, then `Invoice.safeParse` its output. The seeded demo
- * starts from already-structured records, so nothing calls it at runtime yet —
- * it's kept (and unit-tested) as the ready integration point.
+ * The Anthropic structured-output schema doesn't support numeric range keywords
+ * (`minimum`/`maximum`/…) or string `format`, but our Zod has `.nonnegative()`
+ * etc. So we STRIP those keywords for the model — they're advisory there anyway —
+ * while `Invoice.safeParse` still enforces every constraint at runtime. The model
+ * is shaped; the validator is the real gate.
  */
+const UNSUPPORTED_SCHEMA_KEYS = [
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "format",
+];
+
+function stripUnsupported(node: unknown): void {
+  if (Array.isArray(node)) {
+    for (const item of node) stripUnsupported(item);
+    return;
+  }
+  if (node && typeof node === "object") {
+    const obj = node as Record<string, unknown>;
+    for (const key of UNSUPPORTED_SCHEMA_KEYS) delete obj[key];
+    for (const value of Object.values(obj)) stripUnsupported(value);
+  }
+}
+
 function buildInvoiceJsonSchema(): Record<string, unknown> {
   const schema = zodToJsonSchema(Invoice, {
     $refStrategy: "none",
     target: "jsonSchema7",
   }) as Record<string, unknown>;
   delete schema["$schema"];
+  stripUnsupported(schema);
   return schema;
 }
 

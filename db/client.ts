@@ -157,6 +157,22 @@ export async function loadRunBundle(id: string): Promise<RunBundle | null> {
   return { invoice, purchaseOrder, goodsReceipt, priorInvoiceNumbers };
 }
 
+/**
+ * Load just one invoice by row id — a single, light query. Used by the PDF route,
+ * which only needs the invoice to render the document (no PO / receipt / ledger,
+ * so it skips the three extra reads `loadRunBundle` does). Returns `null` if the
+ * row doesn't exist.
+ */
+export async function loadInvoiceById(id: string): Promise<TInvoice | null> {
+  const [row] = await db()
+    .select()
+    .from(invoices)
+    .where(eq(invoices.id, id))
+    .limit(1);
+  if (!row) return null;
+  return Invoice.parse(toInvoiceShape(row));
+}
+
 /* Row → Zod-input shape mappers. `numeric({ mode: "number" })` already gives us
    numbers; these just drop DB-only columns (id, createdAt, scenario) the Zod
    document schemas don't include (they're `.strict()`). */

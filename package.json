@@ -21,6 +21,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.104.1",
     "@mastra/core": "1.42.0",
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.38.0",
@@ -28,6 +29,8 @@
     "drizzle-orm": "0.45.2",
     "geist": "1.7.2",
     "next": "15.5.19",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "4.10.38",
     "postgres": "3.4.9",
     "react": "19.2.7",
     "react-dom": "19.2.7",

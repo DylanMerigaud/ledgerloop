@@ -1,12 +1,12 @@
 # ledgerloop
 
-An invoice **procure-to-pay** pipeline: 2/3-way matching, approval routing, and reconciliation, with a live execution trace you watch as it runs.
+An invoice **procure-to-pay** pipeline: a vendor PDF comes in, gets extracted, matched, routed, and reconciled, with a live execution trace you watch as it runs.
 
-The money decisions are deterministic code. An AI agent is used for one thing — investigating a flagged exception, where the answer lives in messy records and there's a real judgment to make. It recommends; a human decides; nothing posts until they do. Built with [Mastra](https://mastra.ai).
+AI is used in the two places it earns its keep, and nowhere else. **Extraction** reads the messy vendor PDF into structured data (vision). **Investigation** judges a flagged exception against unstructured records, recommends, and a human decides. Everything in between — matching, approval tiering, reconciliation — is deterministic code, because a payment decision must be exact and repeatable, never a model's guess. Nothing posts until a human approves. Built with [Mastra](https://mastra.ai).
 
 ### ▶︎ [Try the live demo →](https://ledgerloop-eta.vercel.app/)
 
-[![CI](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml/badge.svg)](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml) ![Mastra](https://img.shields.io/badge/agent-Mastra-000000) ![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![model](https://img.shields.io/badge/Claude-Haiku_4.5-4F46E5) ![database](https://img.shields.io/badge/database-Supabase-3ECF8E)
+[![CI](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml/badge.svg)](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml) ![Mastra](https://img.shields.io/badge/agent-Mastra-000000) ![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![models](https://img.shields.io/badge/Claude-Sonnet_4.6_%2B_Haiku_4.5-4F46E5) ![database](https://img.shields.io/badge/database-Supabase-3ECF8E)
 
 ---
 
@@ -14,12 +14,13 @@ The money decisions are deterministic code. An AI agent is used for one thing �
 
 ```mermaid
 flowchart LR
-    I([Invoice]) --> M[Matching<br/>deterministic]
+    PDF([Vendor PDF]) --> X[Extraction AI<br/>vision → structured]
+    X --> M[Matching<br/>deterministic]
     M --> V{Verdict?}
 
     V -- "clean" --> AUTO[Auto-approve<br/>straight-through]
     V -- "duplicate" --> BLK[Blocked<br/>never posted]
-    V -- "exception" --> INV[Investigator AGENT<br/>reads messy records,<br/>recommends]
+    V -- "exception" --> INV[Investigator AI<br/>reads messy records,<br/>recommends]
 
     INV --> R[Approval routing<br/>deterministic tier]
     R --> H{{Human decision<br/>Approve / Reject}}
@@ -27,14 +28,15 @@ flowchart LR
     H -- "reject" --> REJ[Rejected<br/>not posted]
     AUTO --> POST[Reconciliation → ERP<br/>vendor bill + GL]
 
-    classDef agent fill:#EEF2FF,stroke:#4F46E5,color:#0A0A0A;
+    classDef ai fill:#EEF2FF,stroke:#4F46E5,color:#0A0A0A;
     classDef gate fill:#FEF3C7,stroke:#B45309,color:#0A0A0A;
     classDef stop fill:#FEE2E2,stroke:#B91C1C,color:#0A0A0A;
-    class INV agent;
+    class X,INV ai;
     class H gate;
     class BLK,REJ stop;
 ```
 
+- **Extraction (AI)** — the vendor's invoice PDF is read by a vision model into a schema-validated `Invoice`. You watch the document get scanned and the fields fill in. (The seeded pipeline then runs on the trusted record, so a model misread degrades the reveal, never the downstream verdicts — see below.)
 - **Matching** — a 2-way (invoice ↔ PO) or 3-way (invoice ↔ PO ↔ goods receipt) match, returning a verdict: `clean`, `exception`, or `duplicate`.
 - **Investigation** — runs only on an exception, and the one step that's an agent. A number ("9% over the PO") doesn't tell a reviewer whether it's a legitimate price increase or an overcharge; that lives in unstructured records, and which records matter depends on what you find. The agent **chooses** which tools to call, reads the records, and writes a recommendation. It decides nothing about the money.
 - **Approval routing** — tiers an exception (manager / director by the money and variance at stake) and **pauses for a human**; a duplicate is blocked so it's never paid twice; a clean match skips straight through.
@@ -57,9 +59,11 @@ The split-view dashboard shows the **invoice queue** (color-coded by outcome) an
 
 ## How it's built
 
-**Code decides the money; the agent investigates the ambiguity.** Whether an invoice is a 9%-over price variance, a duplicate, or which approval tier applies is arithmetic and policy, not a language problem — so it's pure, unit-tested functions ([`lib/matching.ts`](lib/matching.ts), [`lib/policy.ts`](lib/policy.ts), [`lib/erp.ts`](lib/erp.ts)): exact, auditable, identical on every run. The agent is reserved for the one step where the right sequence of actions isn't knowable in advance — judging a flagged exception against messy records — and even there it only *recommends*. The deterministic routing and the human gate own the outcome, so a wrong recommendation is caught by the reviewer, and a slow or unavailable model just means the run proceeds without the agent's note. Autonomy sits where a mistake is recoverable, not where it isn't.
+**AI at the edges, deterministic code in the core.** The two ends of the pipeline are language/perception problems — reading a messy PDF, judging a fuzzy exception — so they use a model. The middle (is this a 9%-over variance? a duplicate? which approval tier?) is arithmetic and policy, so it's pure, unit-tested functions ([`lib/matching.ts`](lib/matching.ts), [`lib/policy.ts`](lib/policy.ts), [`lib/erp.ts`](lib/erp.ts)): exact, auditable, identical on every run. An LLM never decides a payment amount.
 
-**The investigator agent.** [`src/mastra/agents/investigator.ts`](src/mastra/agents/investigator.ts) is a Mastra [`Agent`](https://mastra.ai) with three tools — `get-vendor-price-history`, `get-po-notes`, `get-receipt-notes` — returning deliberately unstructured, free-text records ([`lib/vendor-context.ts`](lib/vendor-context.ts)). It runs an open-ended loop: it picks which tools to call and in what order (a quantity problem pulls the receipt notes first; a price problem pulls the price history), reads them, and writes a recommendation (`likely_legitimate` / `likely_overcharge` / `unclear`). Each tool call and the recommendation appear live on the trace. Tools read the trusted vendor from `requestContext`, not model-generated args, so the agent can't pull the wrong vendor's file. Model id lives in one place ([`src/mastra/model.ts`](src/mastra/model.ts)), resolved by Mastra's router (`"anthropic/claude-haiku-4-5"`).
+**Extraction reads the document; the record decides.** The vendor's PDF is rendered ([`lib/invoice-pdf.ts`](lib/invoice-pdf.ts)) and read by a vision model into a schema-validated `Invoice` ([`lib/extract.ts`](lib/extract.ts), `Invoice.safeParse`). Here's the deliberate part: the extracted invoice is *shown* (the reveal proves the read happened), but the downstream pipeline runs on the **trusted seeded record**, not the model's output. So a misread degrades the reveal, never the verdicts — the demo's edge cases stay reliable. It also fails open: if the model is slow or down, the run notes it and proceeds on the record. In production you'd reconcile extraction against the PO and surface the diff; the seam is the same.
+
+**The investigator agent.** [`src/mastra/agents/investigator.ts`](src/mastra/agents/investigator.ts) is a Mastra [`Agent`](https://mastra.ai) with three tools — `get-vendor-price-history`, `get-po-notes`, `get-receipt-notes` — returning deliberately unstructured, free-text records ([`lib/vendor-context.ts`](lib/vendor-context.ts)). It runs an open-ended loop: it picks which tools to call and in what order (a quantity problem pulls the receipt notes first; a price problem pulls the price history), reads them, and writes a recommendation (`likely_legitimate` / `likely_overcharge` / `unclear`). It only *recommends* — the deterministic routing and the human gate own the outcome, so a wrong call is caught by the reviewer. Each tool call and the recommendation appear live on the trace. Tools read the trusted vendor from `requestContext`, not model-generated args, so the agent can't pull the wrong vendor's file. Model id lives in one place ([`src/mastra/model.ts`](src/mastra/model.ts)), resolved by Mastra's router (`"anthropic/claude-haiku-4-5"`).
 
 **A real human-in-the-loop, statelessly.** On an exception the run pauses before reconciliation (`awaiting`) and the ERP post does not happen until a human clicks Approve. The demo never writes to the database, yet a pause normally needs a persisted run to resume — so instead of a stored snapshot, the Approve/Reject click fires a second request that recomputes the cheap deterministic prefix and continues into reconciliation, gated by a `humanApproval` input ([`app/api/run/route.ts`](app/api/run/route.ts)). Mastra's native `suspend`/`resume` would need durable storage across two serverless requests; recomputing a pure prefix is the stateless-friendly choice.
 
@@ -83,9 +87,14 @@ src/mastra/
   testing/            mock model + offline integration tests
 lib/
   matching.ts · policy.ts · erp.ts   pure, unit-tested decision logic
+  extract.ts          vision extraction (invoice PDF → validated Invoice)
+  invoice-pdf.ts      render an Invoice to a PDF (so there's a real doc to read)
   vendor-context.ts   the messy free-text records the agent reasons over
   schema.ts           Zod source of truth → types + JSON schema
   trace.ts · ndjson.ts   stream adapter + framing
+app/api/
+  run/                streams the run (extraction → pipeline → trace)
+  pdf/[id]/           renders the invoice PDF on demand
 db/
   schema.ts · seed-data.ts · seed.ts · client.ts   Drizzle + read-only query layer
 ```
@@ -125,7 +134,7 @@ pnpm dev                          # http://localhost:3000
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | **yes** | The investigator agent (Claude Haiku via Mastra's router) |
+| `ANTHROPIC_API_KEY` | **yes** | Extraction (Claude Sonnet vision) + the investigator agent (Claude Haiku via Mastra's router) |
 | `DATABASE_URL` | **yes** | Supabase Postgres — use the **transaction pooler** string |
 | `DIRECT_DATABASE_URL` | optional | Direct (non-pooled) string for `db:push` / `db:seed` |
 
@@ -142,7 +151,7 @@ This is a stateless demo with a fake ERP; the decision logic (matching, routing,
 - swap the fake ERP adapter for a real one (same `ErpAdapter` interface),
 - add persistence and an audit trail (the `agent_runs` table is already shaped for it),
 - wire real approver identity to the human gate,
-- a document-extraction intake step (PDF/email → `Invoice`) ahead of matching,
+- make extraction authoritative — reconcile the extracted invoice against the PO and surface the diff for review, rather than running on the seeded record,
 - batch processing across the whole queue.
 
 ---

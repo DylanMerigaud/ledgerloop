@@ -4,8 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TraceTimeline } from "@/components/trace-timeline";
+import {
+  ExtractionReveal,
+  type ExtractionState,
+} from "@/components/extraction-reveal";
 import { usePipelineRun } from "@/lib/use-pipeline-run";
 import { formatMoney } from "@/lib/format";
+import type { Invoice } from "@/lib/schema";
+import type { TraceEvent } from "@/lib/trace";
 import {
   outcomeDot,
   outcomeLabel,
@@ -24,6 +30,34 @@ import type { QueueItem } from "@/db/client";
  * stateless), so every visitor starts from the same pristine queue.
  */
 
+/**
+ * Pull the intake (extraction) node out of the trace and shape it for the reveal.
+ * The intake step carries `{ document }` while reading and `{ extracted, matches }`
+ * once done; we render the document twin + scan from that. Returns null until an
+ * intake event exists (i.e. before a run starts, or on a resume).
+ */
+function readIntake(
+  trace: TraceEvent[],
+): { document: Invoice; state: ExtractionState } | null {
+  const intake = trace.find((e) => e.stage === "intake" && e.kind === "step");
+  if (!intake) return null;
+  const data = (intake.data ?? {}) as {
+    document?: Invoice;
+    extracted?: Invoice;
+    matches?: boolean;
+  };
+  const document = data.extracted ?? data.document;
+  if (!document) return null;
+  return {
+    document,
+    state: {
+      status: intake.status === "running" ? "running" : "done",
+      extracted: data.extracted ?? null,
+      matches: data.matches ?? false,
+    },
+  };
+}
+
 export function Dashboard({ queue }: { queue: QueueItem[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
@@ -34,6 +68,36 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   // explicit "N more" pill + fade until the list is scrolled to the bottom.
   const listRef = useRef<HTMLUListElement | null>(null);
   const [scroll, setScroll] = useState({ hiddenBelow: 0, atBottom: true });
+
+  // Right pane (trace) scroll: follow new content to the bottom by default, but
+  // STOP as soon as the user scrolls up to read — and resume if they scroll back
+  // to the bottom. (Same behaviour as a terminal/log view.)
+  const traceScrollRef = useRef<HTMLDivElement | null>(null);
+  const autoFollowRef = useRef(true);
+  const [traceMore, setTraceMore] = useState(false);
+
+  function measureTrace() {
+    const el = traceScrollRef.current;
+    if (!el) return;
+    const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    // User is "at the bottom" within a small slack → (re)enable auto-follow.
+    autoFollowRef.current = remaining < 8;
+    setTraceMore(remaining > 24);
+  }
+
+  useEffect(() => {
+    const el = traceScrollRef.current;
+    if (!el) return;
+    // A fresh run (trace just reset) re-arms auto-follow, even if the user had
+    // scrolled up during the previous run.
+    if (state.trace.length <= 1) autoFollowRef.current = true;
+    if (autoFollowRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
+    // Recompute the "more ↓" affordance after content changes.
+    const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    setTraceMore(remaining > 24);
+  }, [state.trace, state.status]);
 
   function measureScroll() {
     const el = listRef.current;
@@ -65,9 +129,21 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
     : Math.max(1, Math.round(scroll.hiddenBelow / ROW_PX));
 
   const selected = queue.find((q) => q.id === selectedId) ?? null;
+  // Lock the queue while a run is in flight — switching invoices mid-run would
+  // abort the stream and is confusing. (Awaiting a human decision still locks:
+  // resolve it with Approve/Reject first.)
+  const locked = state.status === "running" || state.status === "awaiting";
+
+  // Hovering a row previews its PDF on the right (idle only). Falls back to the
+  // selected row; ignored while locked so a hover can't replace a live run.
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const previewId = (!locked && hoveredId) || selectedId;
+  // The trace-pane title follows whatever document is shown (hover preview or the
+  // selected/running invoice) so the header never contradicts the PDF on screen.
+  const previewItem = queue.find((q) => q.id === previewId) ?? selected;
 
   function select(id: string) {
-    if (id === selectedId) return;
+    if (id === selectedId || locked) return;
     setSelectedId(id);
     reset();
   }
@@ -99,15 +175,24 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               // The pill reflects the live run only for the selected row; others
               // show their seeded scenario hint as a neutral label.
               const outcome: Outcome = isSelected ? state.outcome : "pending";
+              // While a run is in flight the queue is locked: the active row stays
+              // highlighted, the others dim and stop responding to clicks.
+              const dimmed = locked && !isSelected;
               return (
                 <li key={item.id}>
                   <button
                     type="button"
                     data-testid={`queue-row-${item.id}`}
                     onClick={() => select(item.id)}
+                    onMouseEnter={() => setHoveredId(item.id)}
+                    onMouseLeave={() =>
+                      setHoveredId((h) => (h === item.id ? null : h))
+                    }
+                    disabled={dimmed}
+                    aria-disabled={dimmed}
                     className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
                       isSelected ? "bg-accent-soft/60" : "hover:bg-canvas"
-                    }`}
+                    } ${dimmed ? "cursor-not-allowed opacity-40" : ""}`}
                   >
                     <span
                       aria-hidden
@@ -180,10 +265,10 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
         <CardHeader className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <CardTitle>Agent execution trace</CardTitle>
-            {selected && (
+            {previewItem && (
               <p className="mt-0.5 truncate text-[12px] text-muted">
-                {selected.vendor} ·{" "}
-                <span className="font-mono">{selected.invoiceNumber}</span>
+                {previewItem.vendor} ·{" "}
+                <span className="font-mono">{previewItem.invoiceNumber}</span>
               </p>
             )}
           </div>
@@ -211,28 +296,87 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               </button>
             </div>
           ) : (
-            // Idle uses the big centered CTA in the empty state below, so the
-            // header button only appears once a run is active or finished.
-            state.status !== "idle" && (
+            // Run lives in the header at all times a row is selected: "Run
+            // pipeline" before the first run, "Running…" while in flight, "Run
+            // again" after. (Approval is the only state that swaps it for the gate.)
+            selected && (
               <button
                 type="button"
                 data-testid="run-btn"
-                disabled={!selected || state.status === "running"}
-                onClick={() => selected && run(selected.id)}
+                disabled={state.status === "running"}
+                onClick={() => run(selected.id)}
                 className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {state.status === "running" ? "Running…" : "Run again"}
+                {state.status === "running"
+                  ? "Running…"
+                  : state.status === "idle"
+                    ? "Run pipeline"
+                    : "Run again"}
               </button>
             )
           )}
         </CardHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <TraceTimeline
-            state={state}
-            invoiceLabel={selected?.invoiceNumber ?? null}
-            canRun={!!selected}
-            onRun={() => selected && run(selected.id)}
-          />
+        {/* relative so the bottom fade + "more" affordance can overlay the scroll
+            area — the cue that the trace continues below (esp. on macOS where the
+            scrollbar is hidden). */}
+        <div className="relative min-h-0 flex-1">
+          <div
+            ref={traceScrollRef}
+            onScroll={measureTrace}
+            className="scrollbar-slim h-full overflow-y-auto px-5 py-4"
+          >
+            {/* The document + extraction panel is ALWAYS shown when a row is in
+                view (idle preview, or live during a run), so it never unmounts —
+                no flash between selecting and running. `intake` is null until the
+                run emits its first event; until then it's a static preview. */}
+            {previewId && (
+              <div className="mb-4">
+                <ExtractionReveal
+                  pdfSrc={`/api/pdf/${encodeURIComponent(previewId)}`}
+                  // Show the scanning state the instant Run is clicked — even
+                  // before the first stream event lands — so the UI feels
+                  // immediate. The real intake event takes over when it arrives.
+                  state={
+                    readIntake(state.trace)?.state ??
+                    (state.status === "running"
+                      ? { status: "running", extracted: null, matches: false }
+                      : null)
+                  }
+                  extractedInvoice={readIntake(state.trace)?.document ?? null}
+                />
+              </div>
+            )}
+            {state.status !== "idle" && (
+              <TraceTimeline
+                state={state}
+                invoiceLabel={selected?.invoiceNumber ?? null}
+                canRun={!!selected}
+                onRun={() => selected && run(selected.id)}
+              />
+            )}
+          </div>
+          {traceMore && (
+            <>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 rounded-b-xl bg-gradient-to-t from-surface via-surface/80 to-transparent"
+              />
+              <button
+                type="button"
+                aria-label="Scroll down"
+                onClick={() =>
+                  traceScrollRef.current?.scrollBy({
+                    top: traceScrollRef.current.clientHeight * 0.8,
+                    behavior: "smooth",
+                  })
+                }
+                className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
+              >
+                more
+                <span aria-hidden>↓</span>
+              </button>
+            </>
+          )}
         </div>
       </Card>
     </div>

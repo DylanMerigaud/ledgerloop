@@ -52,22 +52,10 @@ const RunInput = z.object({
 /* A narration field every stage adds for the trace. */
 const Narrated = z.object({ narration: z.string() });
 
-/* ── Step 1: Intake ─────────────────────────────────────────────────────────
-   Confirms the invoice and produces an intake summary line. Deterministic — it
-   passes the document bundle through unchanged for the matcher. */
-const intakeStep = createStep({
-  id: "intake",
-  inputSchema: RunInput,
-  outputSchema: RunInput.merge(Narrated),
-  execute: async ({ inputData }) => {
-    const { invoice } = inputData;
-    const narration = `Received ${invoice.invoiceNumber} from ${invoice.vendor}: ${invoice.lineItems.length} line(s), ${invoice.total} ${invoice.currency}.`;
-    return { ...inputData, narration };
-  },
-});
-
-/* ── Step 2: Matching ───────────────────────────────────────────────────────
-   The authoritative verdict comes from the pure matcher; its `verdict` drives the
+/* ── Step 1: Matching ───────────────────────────────────────────────────────
+   The first workflow step. (Intake — the document extraction — runs in the route
+   before the workflow and is surfaced on the trace there; see app/api/run.) The
+   authoritative verdict comes from the pure matcher; its `verdict` drives the
    branch below. We carry the vendor + the reviewer's decision forward. */
 const HumanApproval = z.object({
   humanApproval: z.enum(["pending", "approve", "reject"]),
@@ -77,7 +65,7 @@ const MatchStepOut = MatchResult.merge(Narrated)
   .merge(HumanApproval);
 const matchingStep = createStep({
   id: "matching",
-  inputSchema: RunInput.merge(Narrated),
+  inputSchema: RunInput,
   outputSchema: MatchStepOut,
   execute: async ({ inputData }) => {
     const match = runMatch({
@@ -264,7 +252,6 @@ export const p2pWorkflow = createWorkflow({
   inputSchema: RunInput,
   outputSchema: ReconResult.merge(Narrated),
 })
-  .then(intakeStep)
   .then(matchingStep)
   .branch([
     // Exception → investigate (agent) then route to Approval.

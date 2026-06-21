@@ -84,3 +84,26 @@ body {
 .animate-pulse-ring {
   animation: pulse-ring 1.4s ease-out infinite;
 }
+
+/* Extraction reveal: a scan band sweeps down the document while the model reads
+   it, so the intake step reads as "the AI is looking at the page". */
+@keyframes scan {
+  0% {
+    transform: translateY(-4rem);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(420px);
+    opacity: 0;
+  }
+}
+
+.animate-scan {
+  animation: scan 1.6s ease-in-out infinite;
+}

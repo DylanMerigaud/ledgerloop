@@ -3,6 +3,9 @@ import { loadRunBundle } from "@/db/client";
 import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
 import { ndjsonLine } from "@/lib/ndjson";
 import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
+import { renderInvoicePdfBase64 } from "@/lib/invoice-pdf";
+import { extractInvoice } from "@/lib/extract";
+import type { Invoice } from "@/lib/schema";
 import {
   RunRequest,
   STREAM_CONTENT_TYPE,
@@ -16,8 +19,9 @@ import {
  * Runtime: NODE, not Edge. The Postgres driver needs raw TCP sockets that the
  * Edge runtime doesn't provide. Vercel's Node functions support HTTP response
  * streaming AND a configurable maxDuration, which meets the real goal — a long-
- * enough, non-timing-out stream — while keeping the DB driver working. A run is a
- * few seconds (one short agent call, only on an exception), so 60s is ample.
+ * enough, non-timing-out stream — while keeping the DB driver working. A run is
+ * the intake extraction (one vision call, capped at 20s) plus the deterministic
+ * pipeline and, on an exception, one short agent call — comfortably inside 60s.
  *
  * STATELESS BY DESIGN: this reads the seeded invoice/PO/receipt, runs the steps,
  * streams the trace, and FORGETS. It never writes to the database — not the
@@ -37,6 +41,86 @@ export const maxDuration = 60;
 
 function line(obj: unknown): Uint8Array {
   return new TextEncoder().encode(ndjsonLine(obj));
+}
+
+/** Hard cap on the extraction call so a slow model never stalls the demo. */
+const EXTRACTION_TIMEOUT_MS = 20_000;
+
+/**
+ * Phase-0 intake extraction. Renders the seeded invoice to a PDF, has the model
+ * read it back, and emits intake trace events carrying the extracted invoice (for
+ * the reveal) — then leaves the pipeline to run on the trusted seed. Never throws:
+ * any failure becomes a "could not extract, proceeding on record" note.
+ */
+async function emitExtraction(
+  emit: (e: Omit<TraceEvent, "seq" | "atMs">) => void,
+  seed: Invoice,
+): Promise<void> {
+  emit({
+    kind: "step",
+    stage: "intake",
+    status: "running",
+    stepId: "intake",
+    label: "Intake — reading invoice PDF",
+    detail: "Extracting the document with the vision model…",
+    // Carry the document so the reveal can render + scan it immediately, before
+    // the model returns. (This is the on-screen twin of the PDF being read.)
+    data: { document: seed },
+  });
+
+  try {
+    const pdfBase64 = await renderInvoicePdfBase64(seed);
+    const result = await Promise.race([
+      extractInvoice(pdfBase64),
+      new Promise<{ ok: false; kind: "timeout" }>((resolve) =>
+        setTimeout(
+          () => resolve({ ok: false, kind: "timeout" }),
+          EXTRACTION_TIMEOUT_MS,
+        ),
+      ),
+    ]);
+
+    if (result.ok) {
+      // Did the model's read agree with the seeded record on the key fields the
+      // pipeline routes on? (It drives a "validated against PO record" note.)
+      const matches =
+        result.invoice.invoiceNumber === seed.invoiceNumber &&
+        (result.invoice.poNumber ?? null) === (seed.poNumber ?? null) &&
+        Math.abs(result.invoice.total - seed.total) < 0.01;
+      emit({
+        kind: "step",
+        stage: "intake",
+        status: "ok",
+        stepId: "intake",
+        label: "Intake — extracted",
+        detail: matches
+          ? "Extracted and reconciled with the PO record."
+          : "Extracted; key fields differ from the record (pipeline uses the record).",
+        data: { extracted: result.invoice, matches },
+      });
+      return;
+    }
+
+    // Extraction failed/timed out — proceed on the seed.
+    emit({
+      kind: "step",
+      stage: "intake",
+      status: "warn",
+      stepId: "intake",
+      label: "Intake — using record",
+      detail:
+        "Couldn't extract the document just now; proceeding on the seeded record.",
+    });
+  } catch {
+    emit({
+      kind: "step",
+      stage: "intake",
+      status: "warn",
+      stepId: "intake",
+      label: "Intake — using record",
+      detail: "Extraction unavailable; proceeding on the seeded record.",
+    });
+  }
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -117,6 +201,17 @@ export async function POST(request: Request): Promise<Response> {
         controller.enqueue(line(stamp(e)));
 
       try {
+        // Phase 0: INTAKE EXTRACTION. Only on the first request (not the
+        // Approve/Reject resume — re-extracting then would be wasted work). The
+        // agent reads the rendered invoice PDF and we surface what it extracted.
+        // The extracted invoice is shown to prove the read happened; the pipeline
+        // below runs on the TRUSTED seeded record, so a model misread degrades the
+        // reveal, never the deterministic verdicts. Fails open: if extraction
+        // errors or times out, we note it and proceed on the seed.
+        if (decision === undefined) {
+          await emitExtraction(emit, bundle.invoice);
+        }
+
         const workflow = mastra.getWorkflow("p2p");
         const run = await workflow.createRun();
         const result = run.stream({
