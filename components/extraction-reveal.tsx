@@ -49,6 +49,9 @@ export function ExtractionReveal({
 
   // Reveal fields one by one once extraction is done (sequential pop-in).
   const fields = extractedInvoice ? buildFields(extractedInvoice) : [];
+  // The rows to render — always the full label set, so the panel keeps its shape
+  // from preview through done; values fill in from `fields` as they arrive.
+  const rows = FIELD_LABELS;
   const [revealed, setRevealed] = useState(0);
   useEffect(() => {
     if (!done) {
@@ -64,22 +67,9 @@ export function ExtractionReveal({
     return () => clearInterval(t);
   }, [done, fields.length]);
 
-  // In preview, the document is centered and alone. During a run it shares the
-  // row with the extracted panel.
-  if (mode === "preview") {
-    return (
-      <div data-testid="extraction-reveal" data-status="preview">
-        <div className="mx-auto max-w-[440px] overflow-hidden rounded-lg bg-white shadow-card ring-1 ring-inset ring-line">
-          <PdfDocument src={pdfSrc} dim={false} />
-        </div>
-        <p className="mt-3 text-center text-[12px] text-muted">
-          The agent reads this document on{" "}
-          <span className="font-medium text-ink">Run</span>.
-        </p>
-      </div>
-    );
-  }
-
+  // ONE layout for every mode (preview / running / done) so the PDF column keeps
+  // the same width across the whole lifecycle — no resize/reflow when Run starts.
+  // In preview the right panel just foreshadows the fields the run will fill in.
   return (
     <div
       data-testid="extraction-reveal"
@@ -98,33 +88,47 @@ export function ExtractionReveal({
         <PdfDocument src={pdfSrc} dim={!done} />
       </div>
 
-      {/* Extracted structure */}
+      {/* Extracted structure. In preview we show the field LABELS (no values yet)
+          so the panel is the same shape it'll be once Run fills it in. */}
       <div className="rounded-lg bg-surface p-3 shadow-card ring-1 ring-inset ring-line">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
             Extracted
           </span>
-          {done && state?.matches != null && (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                state.matches
-                  ? "bg-ok-soft text-ok ring-1 ring-inset ring-ok-line"
-                  : "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
-              }`}
-            >
-              {state.matches
-                ? "reconciled with PO record"
-                : "differs from record"}
-            </span>
+          {mode === "preview" ? (
+            <span className="text-[10px] text-muted/80">on Run</span>
+          ) : (
+            done &&
+            state?.matches != null && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  state.matches
+                    ? "bg-ok-soft text-ok ring-1 ring-inset ring-ok-line"
+                    : "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
+                }`}
+              >
+                {state.matches
+                  ? "reconciled with PO record"
+                  : "differs from record"}
+              </span>
+            )
           )}
         </div>
         <dl className="space-y-1.5">
-          {fields.map((f, i) => (
+          {rows.map((label, i) => (
             <FieldRow
-              key={f.label}
-              label={f.label}
-              value={f.value}
-              state={!done ? "reading" : i < revealed ? "shown" : "pending"}
+              key={label}
+              label={label}
+              value={fields[i]?.value ?? ""}
+              state={
+                mode === "preview"
+                  ? "pending"
+                  : !done
+                    ? "reading"
+                    : i < revealed
+                      ? "shown"
+                      : "pending"
+              }
             />
           ))}
         </dl>
@@ -132,6 +136,16 @@ export function ExtractionReveal({
     </div>
   );
 }
+
+/** The field labels shown in the Extracted panel, in order (stable across modes). */
+const FIELD_LABELS = [
+  "Vendor",
+  "Invoice no.",
+  "PO number",
+  "Issue date",
+  "Line items",
+  "Total",
+];
 
 function FieldRow({
   label,
@@ -161,19 +175,14 @@ function FieldRow({
   );
 }
 
-interface Field {
-  label: string;
-  value: string;
-}
-
-function buildFields(inv: Invoice): Field[] {
-  const fields: Field[] = [
-    { label: "Vendor", value: inv.vendor },
-    { label: "Invoice no.", value: inv.invoiceNumber },
-    { label: "PO number", value: inv.poNumber ?? "—" },
-    { label: "Issue date", value: inv.issueDate },
-    { label: "Line items", value: String(inv.lineItems.length) },
-    { label: "Total", value: formatMoney(inv.total, inv.currency) },
+/** Field values aligned positionally with FIELD_LABELS. */
+function buildFields(inv: Invoice): { value: string }[] {
+  return [
+    { value: inv.vendor },
+    { value: inv.invoiceNumber },
+    { value: inv.poNumber ?? "—" },
+    { value: inv.issueDate },
+    { value: String(inv.lineItems.length) },
+    { value: formatMoney(inv.total, inv.currency) },
   ];
-  return fields;
 }
