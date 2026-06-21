@@ -58,6 +58,39 @@ function readIntake(
   };
 }
 
+/** Solid play triangle for the Run button. */
+function PlayIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 12 12" className="h-3 w-3 fill-current">
+      <path d="M3 1.8v8.4a.6.6 0 0 0 .92.5l6.4-4.2a.6.6 0 0 0 0-1L3.92 1.3A.6.6 0 0 0 3 1.8Z" />
+    </svg>
+  );
+}
+
+/** Small spinner shown while a run is in flight. */
+function Spinner() {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5 animate-spin">
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.3"
+        strokeWidth="2"
+      />
+      <path
+        d="M8 2a6 6 0 0 1 6 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function Dashboard({ queue }: { queue: QueueItem[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
@@ -313,13 +346,21 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
                 data-testid="run-btn"
                 disabled={state.status === "running"}
                 onClick={() => run(selected.id)}
-                className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  state.status === "idle" ? "animate-breath" : ""
+                }`}
               >
-                {state.status === "running"
-                  ? "Running…"
-                  : state.status === "idle"
-                    ? "Run pipeline"
-                    : "Run again"}
+                {state.status === "running" ? (
+                  <>
+                    <Spinner />
+                    Running…
+                  </>
+                ) : (
+                  <>
+                    <PlayIcon />
+                    {state.status === "idle" ? "Run pipeline" : "Run again"}
+                  </>
+                )}
               </button>
             )
           )}

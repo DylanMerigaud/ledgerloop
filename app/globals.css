@@ -107,3 +107,28 @@ body {
 .animate-scan {
   animation: scan 1.6s ease-in-out infinite;
 }
+
+/* Soft "breath" glow on the idle Run CTA — a slow pulsing halo that says the
+   button is the thing to click, without the jitter of a hard pulse. */
+@keyframes breath {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(79, 70, 229, 0);
+  }
+}
+
+.animate-breath {
+  animation: breath 2.4s ease-in-out infinite;
+}
+
+/* Respect users who prefer no motion. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-breath,
+  .animate-scan,
+  .animate-pulse-ring {
+    animation: none;
+  }
+}
