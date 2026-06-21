@@ -102,42 +102,28 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   const listRef = useRef<HTMLUListElement | null>(null);
   const [scroll, setScroll] = useState({ hiddenBelow: 0, atBottom: true });
 
-  // Right pane (trace) scroll: follow new content to the bottom by default, but
-  // STOP as soon as the user scrolls up to read — and resume if they scroll back
-  // to the bottom. (Same behaviour as a terminal/log view.)
+  // Right pane (trace) scroll. The trace reads top-down like a log and the key
+  // info (document, extraction, first steps) is at the top, so we DON'T auto-
+  // scroll — the user keeps their place and the "more ↓" affordance signals
+  // there's content below to scroll to at their own pace.
   const traceScrollRef = useRef<HTMLDivElement | null>(null);
-  const autoFollowRef = useRef(true);
   const [traceMore, setTraceMore] = useState(false);
 
   function measureTrace() {
     const el = traceScrollRef.current;
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
-    // User is "at the bottom" within a small slack → (re)enable auto-follow.
-    autoFollowRef.current = remaining < 8;
     setTraceMore(remaining > 24);
   }
 
   useEffect(() => {
     const el = traceScrollRef.current;
     if (!el) return;
-    // In the idle PDF preview there's no trace to follow — leave the scroll at the
-    // top (show the top of the document), and don't flag "more".
-    if (state.status === "idle") {
-      el.scrollTop = 0;
-      setTraceMore(false);
-      autoFollowRef.current = true; // re-arm for the next run
-      return;
-    }
-    // A fresh run (trace just reset) re-arms auto-follow, even if the user had
-    // scrolled up during the previous run.
-    if (state.trace.length <= 1) autoFollowRef.current = true;
-    if (autoFollowRef.current) {
-      el.scrollTop = el.scrollHeight;
-    }
-    // Recompute the "more ↓" affordance after content changes.
+    // A fresh run resets the scroll to the top (start of the trace); otherwise
+    // leave the user's position alone.
+    if (state.status === "idle" || state.trace.length <= 1) el.scrollTop = 0;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
-    setTraceMore(remaining > 24);
+    setTraceMore(state.status !== "idle" && remaining > 24);
   }, [state.trace, state.status]);
 
   function measureScroll() {
