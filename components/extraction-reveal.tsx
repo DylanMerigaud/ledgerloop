@@ -71,18 +71,33 @@ export function ExtractionReveal({
   // with the Extracted panel. (A small reflow at Run is fine; a preview that looks
   // like it's mid-extraction is not.)
   const running = mode === "running";
+
+  // Preview: the document alone, centered and a comfortable size (wider than the
+  // run split's column so it isn't lost in whitespace). Width-driven so it never
+  // overflows the pane; the card border/shadow stay visible around it.
+  if (mode === "preview") {
+    return (
+      <div
+        data-testid="extraction-reveal"
+        data-status="preview"
+        // `border` (not an inset ring) so the frame sits OUTSIDE the canvas and
+        // isn't painted over by it. No padding — the page meets the frame cleanly.
+        className="mx-auto w-full max-w-[680px] overflow-hidden rounded-lg border border-line bg-white shadow-card"
+      >
+        <PdfDocument src={pdfSrc} dim={false} />
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="extraction-reveal"
       data-status={mode}
-      className={
-        mode === "preview"
-          ? "mx-auto max-w-[440px]"
-          : "grid grid-cols-1 gap-3 sm:grid-cols-[1.1fr_1fr]"
-      }
+      className="grid grid-cols-1 gap-3 sm:grid-cols-[1.1fr_1fr]"
     >
-      {/* The real PDF the model reads */}
-      <div className="relative overflow-hidden rounded-lg bg-white shadow-card ring-1 ring-inset ring-line">
+      {/* The real PDF the model reads. `border` (not inset ring) so the canvas
+          doesn't paint over the frame. */}
+      <div className="relative overflow-hidden rounded-lg border border-line bg-white shadow-card">
         {/* scan sweep only while the model is actually reading */}
         {running && (
           <div
@@ -93,40 +108,37 @@ export function ExtractionReveal({
         <PdfDocument src={pdfSrc} dim={running} />
       </div>
 
-      {/* Extracted structure — only once a run is underway (absent in preview, so
-          the preview is just the document, not a mid-extraction-looking state). */}
-      {mode !== "preview" && (
-        <div className="rounded-lg bg-surface p-3 shadow-card ring-1 ring-inset ring-line">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
-              Extracted
+      {/* Extracted structure (the run share-the-row panel). */}
+      <div className="rounded-lg bg-surface p-3 shadow-card ring-1 ring-inset ring-line">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
+            Extracted
+          </span>
+          {done && state?.matches != null && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                state.matches
+                  ? "bg-ok-soft text-ok ring-1 ring-inset ring-ok-line"
+                  : "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
+              }`}
+            >
+              {state.matches
+                ? "reconciled with PO record"
+                : "differs from record"}
             </span>
-            {done && state?.matches != null && (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  state.matches
-                    ? "bg-ok-soft text-ok ring-1 ring-inset ring-ok-line"
-                    : "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
-                }`}
-              >
-                {state.matches
-                  ? "reconciled with PO record"
-                  : "differs from record"}
-              </span>
-            )}
-          </div>
-          <dl className="space-y-1.5">
-            {rows.map((label, i) => (
-              <FieldRow
-                key={label}
-                label={label}
-                value={fields[i]?.value ?? ""}
-                state={!done ? "reading" : i < revealed ? "shown" : "pending"}
-              />
-            ))}
-          </dl>
+          )}
         </div>
-      )}
+        <dl className="space-y-1.5">
+          {rows.map((label, i) => (
+            <FieldRow
+              key={label}
+              label={label}
+              value={fields[i]?.value ?? ""}
+              state={!done ? "reading" : i < revealed ? "shown" : "pending"}
+            />
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }

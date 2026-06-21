@@ -8,14 +8,15 @@ import type { PDFPageProxy } from "pdfjs-dist";
  * canvas with pdf.js — the document shown in the right pane's extraction reveal.
  * An actual PDF, not an HTML mock.
  *
- * pdf.js is loaded dynamically (client-only) and its worker is resolved through
- * the bundler via `new URL(..., import.meta.url)`, so there's no CDN dependency.
- * Until the page paints we show an A4-ratio skeleton (not a text spinner) so the
- * layout doesn't jump. Any failure falls back to a short message.
+ * The canvas fills its parent's width and keeps A4 ratio; size the document by
+ * constraining the parent's width. pdf.js is loaded dynamically (client-only) and
+ * its worker is resolved through the bundler via `new URL(..., import.meta.url)`,
+ * so there's no CDN dependency. Until the page paints we show an A4-ratio skeleton
+ * (not a text spinner) so the layout doesn't jump. Failure falls back to a note.
  */
 
-// A4 portrait aspect ratio (height / width) — used to size the skeleton so it
-// matches the rendered page and the layout never shifts.
+// A4 portrait aspect ratio (height / width) — sizes the skeleton to match the
+// rendered page so the layout never shifts.
 const A4_RATIO = 841.89 / 595.28;
 
 export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
@@ -110,7 +111,7 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
       )}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 block h-full w-full rounded ring-1 ring-inset ring-line transition-opacity duration-300 ${
+        className={`absolute inset-0 block h-full w-full transition-opacity duration-300 ${
           ready ? (dim ? "opacity-80" : "opacity-100") : "opacity-0"
         }`}
       />

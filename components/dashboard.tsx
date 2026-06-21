@@ -88,6 +88,14 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   useEffect(() => {
     const el = traceScrollRef.current;
     if (!el) return;
+    // In the idle PDF preview there's no trace to follow — leave the scroll at the
+    // top (show the top of the document), and don't flag "more".
+    if (state.status === "idle") {
+      el.scrollTop = 0;
+      setTraceMore(false);
+      autoFollowRef.current = true; // re-arm for the next run
+      return;
+    }
     // A fresh run (trace just reset) re-arms auto-follow, even if the user had
     // scrolled up during the previous run.
     if (state.trace.length <= 1) autoFollowRef.current = true;
@@ -355,7 +363,9 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
               />
             )}
           </div>
-          {traceMore && (
+          {/* "more ↓" is a trace affordance — only meaningful once a run is
+              underway, never on the static PDF preview. */}
+          {traceMore && state.status !== "idle" && (
             <>
               <div
                 aria-hidden
