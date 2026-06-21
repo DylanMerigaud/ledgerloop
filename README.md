@@ -8,6 +8,8 @@ AI is used in the two places it earns its keep, and nowhere else. **Extraction**
 
 [![CI](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml/badge.svg)](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml) ![Mastra](https://img.shields.io/badge/agent-Mastra-000000) ![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![models](https://img.shields.io/badge/Claude-Sonnet_4.6_%2B_Haiku_4.5-4F46E5) ![database](https://img.shields.io/badge/database-Supabase-3ECF8E)
 
+![Running a price-mismatch invoice end to end: the PDF is read and extracted, matching flags the variance, the agent investigates it and recommends, and a human approves before it posts to the ERP](docs/demo.gif)
+
 ---
 
 ## What it does
