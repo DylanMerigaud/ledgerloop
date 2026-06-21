@@ -67,39 +67,41 @@ export function ExtractionReveal({
     return () => clearInterval(t);
   }, [done, fields.length]);
 
-  // ONE layout for every mode (preview / running / done) so the PDF column keeps
-  // the same width across the whole lifecycle — no resize/reflow when Run starts.
-  // In preview the right panel just foreshadows the fields the run will fill in.
+  // Preview = the PDF on its own, full width. Once a run starts it shares the row
+  // with the Extracted panel. (A small reflow at Run is fine; a preview that looks
+  // like it's mid-extraction is not.)
+  const running = mode === "running";
   return (
     <div
       data-testid="extraction-reveal"
       data-status={mode}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-[1.1fr_1fr]"
+      className={
+        mode === "preview"
+          ? "mx-auto max-w-[440px]"
+          : "grid grid-cols-1 gap-3 sm:grid-cols-[1.1fr_1fr]"
+      }
     >
       {/* The real PDF the model reads */}
       <div className="relative overflow-hidden rounded-lg bg-white shadow-card ring-1 ring-inset ring-line">
-        {/* scan sweep while reading */}
-        {!done && (
+        {/* scan sweep only while the model is actually reading */}
+        {running && (
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 animate-scan bg-gradient-to-b from-accent/0 via-accent/25 to-accent/0"
           />
         )}
-        <PdfDocument src={pdfSrc} dim={!done} />
+        <PdfDocument src={pdfSrc} dim={running} />
       </div>
 
-      {/* Extracted structure. In preview we show the field LABELS (no values yet)
-          so the panel is the same shape it'll be once Run fills it in. */}
-      <div className="rounded-lg bg-surface p-3 shadow-card ring-1 ring-inset ring-line">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
-            Extracted
-          </span>
-          {mode === "preview" ? (
-            <span className="text-[10px] text-muted/80">on Run</span>
-          ) : (
-            done &&
-            state?.matches != null && (
+      {/* Extracted structure — only once a run is underway (absent in preview, so
+          the preview is just the document, not a mid-extraction-looking state). */}
+      {mode !== "preview" && (
+        <div className="rounded-lg bg-surface p-3 shadow-card ring-1 ring-inset ring-line">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
+              Extracted
+            </span>
+            {done && state?.matches != null && (
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   state.matches
@@ -111,28 +113,20 @@ export function ExtractionReveal({
                   ? "reconciled with PO record"
                   : "differs from record"}
               </span>
-            )
-          )}
+            )}
+          </div>
+          <dl className="space-y-1.5">
+            {rows.map((label, i) => (
+              <FieldRow
+                key={label}
+                label={label}
+                value={fields[i]?.value ?? ""}
+                state={!done ? "reading" : i < revealed ? "shown" : "pending"}
+              />
+            ))}
+          </dl>
         </div>
-        <dl className="space-y-1.5">
-          {rows.map((label, i) => (
-            <FieldRow
-              key={label}
-              label={label}
-              value={fields[i]?.value ?? ""}
-              state={
-                mode === "preview"
-                  ? "pending"
-                  : !done
-                    ? "reading"
-                    : i < revealed
-                      ? "shown"
-                      : "pending"
-              }
-            />
-          ))}
-        </dl>
-      </div>
+      )}
     </div>
   );
 }
