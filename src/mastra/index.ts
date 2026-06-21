@@ -1,15 +1,17 @@
 import { Mastra } from "@mastra/core";
-import { intakeAgent } from "./agents/intake";
-import { matchingAgent } from "./agents/matching";
-import { approvalAgent } from "./agents/approval";
-import { reconciliationAgent } from "./agents/reconciliation";
+import { investigatorAgent } from "./agents/investigator";
 import { p2pWorkflow } from "./workflows/p2p";
 
 /**
- * The central Mastra instance — the registry that wires the four agents and the
- * procure-to-pay workflow together. The workflow steps look agents up by id
- * (`mastra.getAgent("matching")`, …), so they must be registered here under the
- * same ids the steps use.
+ * The central Mastra instance — registers the procure-to-pay workflow and the one
+ * agent it uses.
+ *
+ * Most of the pipeline is deterministic code (matching, approval tiering,
+ * reconciliation are pure functions — payment outcomes must be exact, not a
+ * model's guess). The single agent is the EXCEPTION INVESTIGATOR: on the
+ * exception branch the workflow looks it up by id (`mastra.getAgent("investigator")`)
+ * to read messy vendor records and recommend how to read a flagged variance. It
+ * must be registered here under that id.
  *
  * Telemetry is left at its defaults; this is a stateless demo with no persistent
  * Mastra storage (the pipeline streams its trace to the browser and forgets —
@@ -17,10 +19,7 @@ import { p2pWorkflow } from "./workflows/p2p";
  */
 export const mastra = new Mastra({
   agents: {
-    intake: intakeAgent,
-    matching: matchingAgent,
-    approval: approvalAgent,
-    reconciliation: reconciliationAgent,
+    investigator: investigatorAgent,
   },
   workflows: {
     p2p: p2pWorkflow,

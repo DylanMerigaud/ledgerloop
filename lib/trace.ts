@@ -2,8 +2,8 @@ import { z } from "zod";
 
 /**
  * The trace model — the wire contract between the streaming route and the
- * timeline UI, and the on-screen embodiment of "this is real multi-agent
- * orchestration, not a prompt wrapper."
+ * timeline UI. It's how the pipeline shows its work: deterministic steps, the
+ * investigator agent's real tool calls, and the human gate, live as they happen.
  *
  * Mastra emits a rich, low-level `WorkflowStreamEvent` stream (workflow-start,
  * workflow-step-start, tool-call, workflow-step-result, workflow-finish, …). We
@@ -23,11 +23,12 @@ import { z } from "zod";
  * the rest of the repo uses also governs what crosses the network.
  */
 
-/** The four pipeline stages, plus a synthetic "pipeline" lane for run-level events. */
+/** The pipeline stages, plus a synthetic "pipeline" lane for run-level events. */
 export const TraceStage = z.enum([
   "pipeline",
   "intake",
   "matching",
+  "investigation",
   "approval",
   "reconciliation",
 ]);
@@ -37,7 +38,7 @@ export type TraceStage = z.infer<typeof TraceStage>;
 export function stageForStep(stepId: string): TraceStage {
   if (stepId.startsWith("intake")) return "intake";
   if (stepId.startsWith("matching")) return "matching";
-  // "approval" and "approval-auto" both belong to the Approval stage.
+  // "approval", "approval-auto", "approval-blocked" all belong to the Approval stage.
   if (stepId.startsWith("approval")) return "approval";
   if (stepId.startsWith("reconciliation") || stepId.startsWith("recon")) {
     return "reconciliation";
@@ -59,9 +60,8 @@ function isMappingStep(stepId: string): boolean {
 
 /** Map one of our tool names to its pipeline stage (tool-call chunks carry the name, not a step id). */
 function stageForTool(toolName: string): TraceStage {
-  if (toolName === "run-match") return "matching";
-  if (toolName === "route-approval") return "approval";
-  if (toolName === "post-to-erp") return "reconciliation";
+  // The investigator agent's tools — these are the real tool-calls in the demo.
+  if (toolName.startsWith("get-")) return "investigation";
   return "pipeline";
 }
 
@@ -96,7 +96,7 @@ export const TraceEvent = z
      * nodes.
      */
     stepId: z.string(),
-    /** Short title shown on the timeline node, e.g. "Matching agent". */
+    /** Short title shown on the timeline node, e.g. "Matching" or "Exception investigator". */
     label: z.string(),
     /** One-line human detail under the title. */
     detail: z.string().optional(),
@@ -124,17 +124,20 @@ function asRecord(v: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-/** Friendly stage label for a step id, e.g. "matching" → "Matching agent". */
+/** Friendly stage label for a step id. Deterministic stages say "step"; the one
+    agentic stage (investigation) says "agent". */
 function stageLabel(stage: TraceStage): string {
   switch (stage) {
     case "intake":
-      return "Intake agent";
+      return "Intake";
     case "matching":
-      return "Matching agent";
+      return "Matching";
+    case "investigation":
+      return "Exception investigator";
     case "approval":
-      return "Approval agent";
+      return "Approval routing";
     case "reconciliation":
-      return "Reconciliation agent";
+      return "Reconciliation";
     case "pipeline":
       return "Pipeline";
   }
@@ -164,7 +167,8 @@ export function toTraceEvent(
           status: "running",
           stepId: "",
           label: "Pipeline started",
-          detail: "Intake → Matching → Approval → Reconciliation",
+          detail:
+            "Intake → Matching → Investigation → Approval → Reconciliation",
         };
 
       case "workflow-step-start":
@@ -179,25 +183,46 @@ export function toTraceEvent(
 
       case "workflow-step-output": {
         // Custom chunks a step writes (via its stream writer) arrive wrapped:
-        // payload.output = { type, payload }. Our steps write a `tool-call` chunk
-        // when their agent invokes its tool, so unwrap it and surface a tool node.
-        // (A sub-agent's own tool events don't bubble up, so this is how the tool
-        // call becomes visible on the trace.) We show the call, not the result, so
-        // there's one "→ tool" line per invocation.
+        // payload.output = { type, payload }. The investigation step writes two
+        // kinds: a `tool-call` for each tool the agent chose, and one
+        // `investigation` carrying the agent's recommendation. (A sub-agent's own
+        // events don't bubble up, so this is how they reach the trace.)
         const inner = asRecord(payload?.["output"]);
-        if (inner?.["type"] !== "tool-call") return null;
-        const innerPayload = asRecord(inner["payload"]);
-        const toolName =
-          typeof innerPayload?.["toolName"] === "string"
-            ? (innerPayload["toolName"] as string)
-            : "tool";
-        return {
-          kind: "tool",
-          stage: stageForTool(toolName),
-          status: "running",
-          stepId: `tool:${toolName}`,
-          label: `→ ${toolName}`,
-        };
+        const innerType = inner?.["type"];
+        const innerPayload = asRecord(inner?.["payload"]);
+
+        if (innerType === "tool-call") {
+          const toolName =
+            typeof innerPayload?.["toolName"] === "string"
+              ? (innerPayload["toolName"] as string)
+              : "tool";
+          return {
+            kind: "tool",
+            stage: stageForTool(toolName),
+            status: "ok",
+            stepId: `tool:${toolName}`,
+            label: `→ ${toolName}`,
+          };
+        }
+
+        if (innerType === "investigation") {
+          const investigation = asRecord(innerPayload?.["investigation"]);
+          const rationale =
+            typeof investigation?.["rationale"] === "string"
+              ? (investigation["rationale"] as string)
+              : undefined;
+          return {
+            kind: "finding",
+            stage: "investigation",
+            status: investigationStatus(investigation),
+            stepId: "investigation",
+            label: "Exception investigator",
+            detail: rationale,
+            data: investigation,
+          };
+        }
+
+        return null;
       }
 
       case "tool-call": {
@@ -302,6 +327,16 @@ function stepStatusFromOutput(
   if (out["outcome"] === "posted") return "ok";
   if (out["posted"] === false) return "error";
   return "ok";
+}
+
+/** Traffic-light for the investigator's recommendation. */
+function investigationStatus(
+  inv: Record<string, unknown> | undefined,
+): TraceStatus {
+  const rec = inv?.["recommendation"];
+  if (rec === "likely_overcharge") return "error";
+  if (rec === "likely_legitimate") return "ok";
+  return "warn"; // unclear / unknown
 }
 
 /** Fallback one-line summary when a stage produced no narration. */

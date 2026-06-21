@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    name: format · typecheck · knip · test · build
+    name: format · typecheck · knip · test · build · eval
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,10 +38,16 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # The agents call the Anthropic API (costs tokens, needs a secret), so the
+      # The agent calls the Anthropic API (costs tokens, needs a secret), so the
       # live pipeline is intentionally NOT run in CI. `pnpm sanity --dry-run`
       # exercises the deterministic orchestration logic offline — running every
       # seeded invoice through the real match → route → reconcile functions and
       # asserting the edge cases route correctly — with zero API calls.
       - name: Pipeline sanity (dry-run, no API calls)
         run: pnpm sanity --dry-run
+
+      # The investigator eval scores the AGENT's recommendation against a labelled
+      # corpus. The live run needs a key; `--dry-run` validates the corpus +
+      # scoring offline (a perfect score is expected). Run the real eval locally.
+      - name: Investigator eval (dry-run, no API calls)
+        run: pnpm eval --dry-run

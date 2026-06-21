@@ -149,26 +149,21 @@ test("the auto-approval step maps to the Approval stage", () => {
 
 test("tool-call events render at the right stage (mapped by tool name, not dropped)", () => {
   // Tool-call chunks carry a tool name but no workflow step id — they must NOT be
-  // dropped, and should land under their agent's stage.
+  // dropped, and the investigator's tools land under the investigation stage.
   const m = toTraceEvent({
     type: "tool-call",
-    payload: { toolName: "run-match" },
+    payload: { toolName: "get-vendor-price-history" },
   });
   assert.ok(m, "tool-call must not be dropped");
   assert.equal(m.kind, "tool");
-  assert.equal(m.stage, "matching");
-  assert.match(m.label, /run-match/);
+  assert.equal(m.stage, "investigation");
+  assert.match(m.label, /get-vendor-price-history/);
 
   const a = toTraceEvent({
     type: "tool-call",
-    payload: { toolName: "route-approval" },
+    payload: { toolName: "get-po-notes" },
   });
-  assert.equal(a?.stage, "approval");
-  const r = toTraceEvent({
-    type: "tool-call",
-    payload: { toolName: "post-to-erp" },
-  });
-  assert.equal(r?.stage, "reconciliation");
+  assert.equal(a?.stage, "investigation");
 });
 
 test("the internal .map() step is dropped, not surfaced", () => {

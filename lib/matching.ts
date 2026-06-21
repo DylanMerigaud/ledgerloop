@@ -12,10 +12,11 @@ import type {
  * This is a PURE function (no I/O, no LLM): given an invoice, its purchase order,
  * and an optional goods receipt, it decides whether the three documents
  * reconcile and, if not, exactly which lines diverge and by how much. The
- * Matching agent calls this through a tool, and the unit tests call it directly —
- * so the tests measure the real pipeline, not a reimplementation. Keeping the
- * *decision* deterministic (the LLM only narrates the result) is what lets the
- * seeded edge cases fire reliably in a live demo.
+ * matching workflow step calls this directly, as do the unit tests — so the tests
+ * measure the real pipeline, not a reimplementation. The verdict is deterministic
+ * by design: a payment decision must be exact and repeatable, never a model's
+ * guess, which is also what lets the seeded edge cases fire reliably in a live
+ * demo. (The one LLM in the pipeline is the exception investigator, downstream.)
  *
  * "2-way"  = invoice ↔ PO            (price + quantity ordered)
  * "3-way"  = invoice ↔ PO ↔ receipt  (also: did we actually receive it?)

@@ -7,7 +7,8 @@ import type { MatchResult, ApprovalDecision, ApproverTier } from "./schema";
  * through (no human), but an exception has to climb an approval ladder whose
  * height depends on how much money and how large a variance are at stake. This
  * is the business-rule half of the workflow's conditional branching — the
- * Approval agent calls `routeApproval` through a tool and narrates the outcome.
+ * approval workflow step calls `routeApproval` directly. Deterministic: the tier
+ * is policy, not a judgment call for a model.
  *
  * Thresholds are deliberately simple and legible so the routing is explainable
  * on a sales call ("a 7% overcharge on a $30k line jumps straight to director").

@@ -17,6 +17,7 @@
     "db:push": "drizzle-kit push",
     "db:seed": "tsx db/seed.ts",
     "sanity": "tsx src/mastra/sanity.ts",
+    "eval": "tsx eval/run.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

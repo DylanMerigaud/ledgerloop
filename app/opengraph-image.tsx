@@ -9,7 +9,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
 export const alt =
-  "ledgerloop — a multi-agent procure-to-pay pipeline: intake, matching, approval, reconciliation";
+  "ledgerloop — an agentic procure-to-pay pipeline: deterministic matching, approval, and reconciliation with an AI agent that investigates flagged exceptions";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -19,7 +19,7 @@ const ACCENT = "#4F46E5";
 const LINE = "#E5E7EB";
 
 export default function OpengraphImage() {
-  const stages = ["Intake", "Matching", "Approval", "Reconciliation"];
+  const stages = ["Intake", "Matching", "Investigate", "Approval", "Reconcile"];
 
   return new ImageResponse(
     <div
@@ -68,14 +68,14 @@ export default function OpengraphImage() {
             maxWidth: 980,
           }}
         >
-          A multi-agent procure-to-pay pipeline
+          An agentic procure-to-pay pipeline
         </div>
         <div
           style={{ fontSize: 27, color: MUTED, lineHeight: 1.4, maxWidth: 940 }}
         >
-          Four cooperating AI agents match, route, and reconcile each invoice —
-          with the live execution trace streamed and a real human-in-the-loop on
-          caught mismatches.
+          Deterministic matching and reconciliation, with an AI agent that
+          investigates flagged exceptions — live execution trace streamed and a
+          real human-in-the-loop before anything posts.
         </div>
       </div>
 

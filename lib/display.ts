@@ -106,6 +106,8 @@ export function stageLabel(stage: TraceStage): string {
       return "Intake";
     case "matching":
       return "Matching";
+    case "investigation":
+      return "Investigation";
     case "approval":
       return "Approval";
     case "reconciliation":

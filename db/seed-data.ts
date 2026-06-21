@@ -4,8 +4,8 @@ import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
  * The seeded dataset — the demo scenario.
  *
  * ~10 invoices with their purchase orders and goods receipts, deliberately
- * including the edge cases the spec calls for, because the agents CATCHING these
- * is what sells the demo:
+ * including the edge cases the spec calls for, because the matcher CATCHING these
+ * (and the agent investigating them) is what sells the demo:
  *
  *   • price mismatch     — INV-2042 (steel bar invoiced 9% over the PO price)
  *   • quantity mismatch  — INV-2048 (invoiced more units than were received)

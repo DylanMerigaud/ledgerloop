@@ -3,11 +3,10 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 /**
  * The Zod schemas in this file are the SINGLE SOURCE OF TRUTH for the whole
- * pipeline. Following the same discipline as the sibling ai-invoice-parser repo,
- * but transposed from one extraction step to a four-stage agent pipeline:
+ * pipeline, the same discipline as the sibling ai-invoice-parser repo:
  *
- *   1. They constrain the LLM at generation time — the intake agent's parser
- *      tool hands `INVOICE_JSON_SCHEMA` to the model so it must emit this shape.
+ *   1. They can constrain a model at generation time — `INVOICE_JSON_SCHEMA`
+ *      (below) is derived from the `Invoice` object for a structured-output model.
  *   2. They validate every model/tool/DB boundary at runtime (`.safeParse`),
  *      so a bad value becomes a handled trace step, never a crash.
  *   3. Their inferred TypeScript types flow into the Drizzle layer, the Mastra
@@ -73,8 +72,8 @@ export type LineItem = z.infer<typeof LineItem>;
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The parsed invoice. This is also the shape the intake agent's parser tool must
- * produce from a PDF — `INVOICE_JSON_SCHEMA` below is derived from it.
+ * The parsed invoice. This is also the shape a document-extraction step would
+ * produce from a PDF/text — `INVOICE_JSON_SCHEMA` below is derived from it.
  */
 export const Invoice = z
   .object({
@@ -128,7 +127,7 @@ export const GoodsReceipt = z
 export type GoodsReceipt = z.infer<typeof GoodsReceipt>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 2 — matching result (output of the Matching agent)
+ *  Stage 2 — matching result (output of the deterministic matcher)
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Why a given line failed to reconcile (or, for `duplicate`, the whole invoice). */
@@ -182,7 +181,35 @@ export const MatchResult = z
 export type MatchResult = z.infer<typeof MatchResult>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 3 — approval decision (output of the Approval agent)
+ *  Stage 2.5 — exception investigation (the one open-ended AGENT step)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The investigator agent's recommendation, produced ONLY on the exception path.
+ * It's a recommendation for the human reviewer, never a decision: the agent reads
+ * messy vendor records (price history, PO notes, receipt notes) of its own
+ * choosing and forms a view on whether the flagged variance looks legitimate.
+ *
+ *   recommendation — what the agent suggests the reviewer do
+ *   rationale      — one or two sentences citing what it found
+ *   toolsUsed      — which records it pulled (shows the open-ended trajectory)
+ */
+export const Investigation = z
+  .object({
+    invoiceNumber: z.string(),
+    recommendation: z.enum([
+      "likely_legitimate",
+      "likely_overcharge",
+      "unclear",
+    ]),
+    rationale: z.string(),
+    toolsUsed: z.array(z.string()),
+  })
+  .strict();
+export type Investigation = z.infer<typeof Investigation>;
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ *  Stage 3 — approval decision (output of the deterministic policy)
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -208,7 +235,7 @@ export const ApprovalDecision = z
 export type ApprovalDecision = z.infer<typeof ApprovalDecision>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 4 — reconciliation result (output of the Reconciliation agent)
+ *  Stage 4 — reconciliation result (output of the deterministic ERP post)
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** A double-entry GL posting line. Debits and credits must net to zero. */
@@ -246,14 +273,19 @@ export const ReconResult = z
 export type ReconResult = z.infer<typeof ReconResult>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  JSON Schema for the intake agent's parser tool
+ *  JSON Schema derived from the Invoice Zod object
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * Built from the SAME `Invoice` Zod object so the model and the validator can't
- * drift. Emitted inline (no `$ref`/`definitions` wrapper) with `$schema`
- * stripped — the cleanest shape to hand a structured-output model. The intake
- * tool passes this to the agent; the response is then `Invoice.safeParse`d.
+ * Built from the SAME `Invoice` Zod object so a structured-output model and the
+ * runtime validator can't drift — the single-source-of-truth discipline applied
+ * to the model boundary. Emitted inline (no `$ref`/`definitions` wrapper) with
+ * `$schema` stripped, the cleanest shape to hand a model.
+ *
+ * This is the seam for a document-extraction intake (text/PDF → `Invoice`): hand
+ * this schema to the model, then `Invoice.safeParse` its output. The seeded demo
+ * starts from already-structured records, so nothing calls it at runtime yet —
+ * it's kept (and unit-tested) as the ready integration point.
  */
 function buildInvoiceJsonSchema(): Record<string, unknown> {
   const schema = zodToJsonSchema(Invoice, {

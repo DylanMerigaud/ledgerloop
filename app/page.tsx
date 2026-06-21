@@ -57,9 +57,10 @@ function Header() {
             ledgerloop
           </h1>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">
-            A chain of AI agents runs each invoice through{" "}
-            <span className="text-ink">procure-to-pay</span> — with the live
-            execution trace and a real human approval gate on caught mismatches.
+            Deterministic <span className="text-ink">procure-to-pay</span> —
+            matching, approval, reconciliation in code — with an AI agent that
+            investigates flagged exceptions and a real human gate before
+            anything posts.
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-muted">
@@ -67,19 +68,44 @@ function Header() {
           <Arrow />
           <FlowChip n={2} label="Matching" />
           <Arrow />
-          <FlowChip n={3} label="Approval" />
+          <FlowChip n={3} label="Investigate" agent />
           <Arrow />
-          <FlowChip n={4} label="Reconcile" />
+          <FlowChip n={4} label="Approval" />
+          <Arrow />
+          <FlowChip n={5} label="Reconcile" />
         </div>
       </div>
     </header>
   );
 }
 
-function FlowChip({ n, label }: { n: number; label: string }) {
+function FlowChip({
+  n,
+  label,
+  agent = false,
+}: {
+  n: number;
+  label: string;
+  agent?: boolean;
+}) {
+  // The one agentic step is tinted (accent ring + dot) so the contrast with the
+  // deterministic steps is visible at a glance.
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 ring-1 ring-inset ring-line">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent">
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 ring-inset ${
+        agent
+          ? "bg-accent-soft/60 font-medium text-accent ring-accent/30"
+          : "bg-surface ring-line"
+      }`}
+      title={
+        agent ? "AI agent — open-ended investigation" : "Deterministic step"
+      }
+    >
+      <span
+        className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold ${
+          agent ? "bg-accent text-accent-fg" : "bg-accent-soft text-accent"
+        }`}
+      >
         {n}
       </span>
       {label}
@@ -123,9 +149,10 @@ function Footer() {
   return (
     <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] text-muted">
       <p>
-        Built with <span className="text-ink">Mastra</span> · agents on{" "}
-        <span className="font-mono text-ink">{PIPELINE_MODEL}</span> · Next.js ·
-        Supabase · Drizzle. Runs are stateless — nothing is written back.
+        Built with <span className="text-ink">Mastra</span> · investigator agent
+        on <span className="font-mono text-ink">{PIPELINE_MODEL}</span> ·
+        Next.js · Supabase · Drizzle. Runs are stateless — nothing is written
+        back.
       </p>
       <div className="flex items-center gap-2">
         <span className="text-ink">Dylan Mérigaud</span>

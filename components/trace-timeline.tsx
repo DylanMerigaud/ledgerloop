@@ -8,11 +8,11 @@ import type { TraceEvent } from "@/lib/trace";
 import type { PipelineRunState } from "@/lib/use-pipeline-run";
 
 /**
- * The agent execution trace — a vertical timeline streamed in live as the run
- * progresses. Each node is one TraceEvent: the agent steps, the tool calls, and
- * (rendered red/amber) the caught discrepancies and the conditional routing to
- * approval. This is the heart of the demo — the visual proof that it's real
- * multi-agent orchestration, not a single prompt.
+ * The execution trace — a vertical timeline streamed in live as the run
+ * progresses. Each node is one TraceEvent: the deterministic steps, the
+ * investigator agent's tool calls and recommendation, and (rendered red/amber)
+ * the caught discrepancies and the routing to approval. This is the heart of the
+ * demo — you watch the agent choose its tools and the human gate pause the run.
  */
 
 export function TraceTimeline({
@@ -32,8 +32,8 @@ export function TraceTimeline({
         title="Run the pipeline"
         body={
           invoiceLabel
-            ? `Watch four agents match, route, and reconcile ${invoiceLabel} — live. Pick a flagged invoice (price or quantity mismatch) to see the run branch to approval and pause for your decision.`
-            : "Select an invoice to begin. Flagged ones — a price or quantity mismatch — branch to approval and pause for your decision."
+            ? `Run ${invoiceLabel} through matching, routing, and reconciliation — live. Pick a flagged invoice (price or quantity mismatch) to watch the investigator agent dig into the variance, then pause for your decision.`
+            : "Select an invoice to begin. Flagged ones — a price or quantity mismatch — trigger the investigator agent and pause for your decision."
         }
         action={
           canRun ? (

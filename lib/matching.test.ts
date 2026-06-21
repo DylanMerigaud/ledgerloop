@@ -4,7 +4,7 @@ import { runMatch, type MatchInput } from "./matching";
 import type { Invoice, PurchaseOrder, GoodsReceipt } from "./schema";
 
 /**
- * Unit tests for the 2/3-way matcher — the deterministic core the Matching agent
+ * Unit tests for the 2/3-way matcher — the deterministic core the matching step
  * calls and the demo's edge cases depend on. Run with `pnpm test` (Node's
  * built-in runner via tsx, no extra deps). These pin the exact verdicts that
  * drive the workflow's conditional routing.

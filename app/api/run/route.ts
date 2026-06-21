@@ -13,14 +13,13 @@ import {
  * POST /api/run — execute the procure-to-pay pipeline for one seeded invoice and
  * STREAM the agent execution trace back to the browser as it happens.
  *
- * Runtime: NODE, not Edge. The spec suggested Edge to dodge serverless timeouts
- * on chained agents, but the Postgres driver needs raw TCP sockets that the Edge
- * runtime doesn't provide. Vercel's Node functions support HTTP response
+ * Runtime: NODE, not Edge. The Postgres driver needs raw TCP sockets that the
+ * Edge runtime doesn't provide. Vercel's Node functions support HTTP response
  * streaming AND a configurable maxDuration, which meets the real goal — a long-
- * enough, non-timing-out stream — while keeping the DB driver working. A full
- * four-agent Haiku run is a few seconds, so 60s is ample headroom.
+ * enough, non-timing-out stream — while keeping the DB driver working. A run is a
+ * few seconds (one short agent call, only on an exception), so 60s is ample.
  *
- * STATELESS BY DESIGN: this reads the seeded invoice/PO/receipt, runs the agents,
+ * STATELESS BY DESIGN: this reads the seeded invoice/PO/receipt, runs the steps,
  * streams the trace, and FORGETS. It never writes to the database — not the
  * agent_runs table, not anything. So the 50th visitor sees the same pristine
  * seeded state as the 1st. (That's why there's no persistence here despite

@@ -16,7 +16,7 @@ import type {
  * effect. The public demo stays self-contained and side-effect-free.
  *
  * The interface is what matters: swap `fakeErp` for a `netSuiteAdapter`
- * implementing the same `ErpAdapter` and the reconciliation agent is unchanged.
+ * implementing the same `ErpAdapter` and the reconciliation step is unchanged.
  * The adapter contract below is deliberately part of the public surface — it's
  * the integration seam a reviewer should see.
  *
@@ -80,9 +80,9 @@ export type HumanApproval = "pending" | "approve" | "reject";
 
 /**
  * Reconcile an invoice by posting it through the ERP adapter — or refusing to.
- * Pure orchestration over the adapter; the Reconciliation agent calls this via a
- * tool. The outcome depends on the approval decision AND, for invoices that need
- * a human, the reviewer's `humanApproval`:
+ * Pure orchestration over the adapter; the reconciliation workflow step calls
+ * this directly. The outcome depends on the approval decision AND, for invoices
+ * that need a human, the reviewer's `humanApproval`:
  *
  *   - blocked (duplicate)            → never posted, outcome "blocked"
  *   - auto (clean, straight-through) → posted

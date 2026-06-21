@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 /**
  * End-to-end test of the human-in-the-loop approval flow, driven through the REAL
- * browser against the REAL backend (Mastra agents on Claude Haiku + Supabase).
+ * browser against the REAL backend (Mastra agent on Claude Haiku + Supabase).
  *
  * This is the check the unit/integration tests can't give: it exercises the
  * actual React hook's cross-phase trace accumulation, the Approve/Reject

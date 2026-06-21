@@ -14,9 +14,9 @@ import { PIPELINE_MODEL } from "./model";
  * verdicts. This validates the orchestration logic offline, with NO LLM calls
  * (no key, no tokens) — safe to run in CI.
  *
- * Without `--dry-run` it would additionally exercise the live agents; that path
+ * Without `--dry-run` it would additionally exercise the live agent; that path
  * needs ANTHROPIC_API_KEY and is intentionally NOT run in CI. (The streaming
- * route is the real end-to-end exercise of the agents.)
+ * route is the real end-to-end exercise of the agent.)
  */
 
 const DRY_RUN = process.argv.includes("--dry-run");

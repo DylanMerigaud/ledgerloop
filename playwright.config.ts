@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Playwright config for the LOCAL end-to-end test (`pnpm e2e`).
  *
- * This drives the real app — real React UI, real Mastra agents (Claude Haiku),
+ * This drives the real app — real React UI, real Mastra agent (Claude Haiku),
  * real Supabase — so it needs ANTHROPIC_API_KEY + DATABASE_URL in the
  * environment (load them from .env). It is deliberately NOT wired into CI: CI has
  * no secrets and shouldn't spend tokens (same stance as the live eval in the

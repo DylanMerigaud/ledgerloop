@@ -1,6 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, formatPct, humanize } from "@/lib/format";
-import type { MatchResult, ApprovalDecision, ReconResult } from "@/lib/schema";
+import type {
+  MatchResult,
+  ApprovalDecision,
+  ReconResult,
+  Investigation,
+} from "@/lib/schema";
 
 /**
  * Rich, type-aware detail for a completed stage. Each stage emits a different
@@ -16,11 +21,43 @@ export function TraceDetail({ data }: { data: unknown }) {
 
   if ("verdict" in d && "exceptions" in d)
     return <MatchDetail match={d as unknown as MatchResult} />;
+  if ("recommendation" in d && "toolsUsed" in d)
+    return <InvestigationDetail inv={d as unknown as Investigation} />;
   if ("tier" in d && "autoApproved" in d)
     return <ApprovalDetail decision={d as unknown as ApprovalDecision} />;
   if ("posted" in d && "glEntries" in d)
     return <ReconDetail recon={d as unknown as ReconResult} />;
   return null;
+}
+
+/** The exception investigator's recommendation — the one agentic output. */
+function InvestigationDetail({ inv }: { inv: Investigation }) {
+  const tone =
+    inv.recommendation === "likely_legitimate"
+      ? "ok"
+      : inv.recommendation === "likely_overcharge"
+        ? "danger"
+        : "warn";
+  return (
+    <div className="space-y-1.5">
+      <Row label="Recommendation">
+        <Badge tone={tone}>{humanize(inv.recommendation)}</Badge>
+      </Row>
+      {inv.toolsUsed.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[11px] text-muted">Records pulled:</span>
+          {inv.toolsUsed.map((t) => (
+            <span
+              key={t}
+              className="rounded-full bg-canvas px-2 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MatchDetail({ match }: { match: MatchResult }) {
