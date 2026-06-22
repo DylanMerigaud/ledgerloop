@@ -222,6 +222,20 @@ export function toTraceEvent(
           };
         }
 
+        if (innerType === "intake-document") {
+          // The intake step writes this the instant it starts so the reveal can
+          // show the document + scan before the vision model returns.
+          return {
+            kind: "step",
+            stage: "intake",
+            status: "running",
+            stepId: "intake",
+            label: "Intake — reading invoice PDF",
+            detail: "Extracting the document with the vision model…",
+            data: { document: asRecord(innerPayload?.["document"]) },
+          };
+        }
+
         return null;
       }
 
@@ -245,14 +259,31 @@ export function toTraceEvent(
       case "workflow-step-finish": {
         if (isMappingStep(stepId)) return null; // hide the .map() plumbing step
         const rawOut = asRecord(payload?.["output"]);
-        // Steps emit a domain object plus a `narration` string, and some wrap the
-        // domain object (the approval step outputs `{ decision, match, vendor }`).
-        // `domain` is the object the UI should colour + render; `narration` is the
-        // agent's prose. Unwrapping here keeps the UI decoupled from step shapes.
         const narration =
           typeof rawOut?.["narration"] === "string"
             ? (rawOut["narration"] as string)
             : undefined;
+
+        // Intake carries the extraction result for the reveal (extracted invoice
+        // + whether it reconciled with the record). Surface just that as the
+        // node's data; a failed extraction (extracted = null) is a soft warn.
+        if (stage === "intake") {
+          const extracted = rawOut?.["extracted"];
+          return {
+            kind: "step",
+            stage: "intake",
+            status: extracted ? "ok" : "warn",
+            stepId: "intake",
+            label: extracted ? "Intake — extracted" : "Intake — using record",
+            detail: narration,
+            data: { extracted, matches: rawOut?.["matches"] === true },
+          };
+        }
+
+        // Other steps emit a domain object plus a `narration` string, and some
+        // wrap the domain object (approval outputs `{ decision, match, vendor }`).
+        // `domain` is the object the UI colours + renders. Unwrapping here keeps
+        // the UI decoupled from step shapes.
         const domain = unwrapStageData(rawOut);
         return {
           kind: "step",
