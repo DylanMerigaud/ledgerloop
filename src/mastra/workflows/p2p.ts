@@ -73,44 +73,38 @@ const EXTRACTION_TIMEOUT_MS = 20_000;
    notes it and proceeds on the record.
 
    The reveal needs the document on screen the instant the run starts (before the
-   model returns), so we write an `intake-document` chunk early via the stream
-   writer; the step's final output then carries `{ extracted, matches }`. */
-const IntakeOut = RunInput.merge(Narrated).merge(
-  z.object({
-    extracted: Invoice.nullable(),
-    matches: z.boolean(),
-  }),
-);
+   model returns), and the final extraction result, are written to the TRACE via
+   the stream writer (an `intake-document` then an `intake-result` chunk) — NOT
+   threaded into the step output, because the downstream steps don't consume them
+   (they run on the trusted record). So intake's output is the run input passed
+   through unchanged: matching receives exactly what it uses, no phantom fields. */
 const intakeStep = createStep({
   id: "intake",
   inputSchema: RunInput,
-  outputSchema: IntakeOut,
+  outputSchema: RunInput,
   execute: async ({ inputData, writer }) => {
     const seed = inputData.invoice;
 
     // Phase-2 resume: the document was already read in phase 1, so skip the vision
     // call and pass straight through (the reveal from phase 1 still stands).
-    if (inputData.skipExtraction) {
-      return { ...inputData, extracted: null, matches: false, narration: "" };
-    }
+    if (inputData.skipExtraction) return inputData;
+
+    const emit = async (chunk: unknown) => {
+      try {
+        await writer?.write(chunk);
+      } catch {
+        /* ignore writer errors — never let the trace affect the result */
+      }
+    };
 
     // Show the document immediately (the on-screen twin of the PDF being read).
-    try {
-      await writer?.write({
-        type: "intake-document",
-        payload: { document: seed },
-      });
-    } catch {
-      /* ignore writer errors — never let the trace affect the result */
-    }
+    await emit({ type: "intake-document", payload: { document: seed } });
 
-    let extracted: Invoice | null = null;
-    let matches = false;
-    let narration =
-      "Couldn't extract the document just now; proceeding on the seeded record.";
+    let result: { extracted: Invoice; matches: boolean } | { extracted: null } =
+      { extracted: null };
     try {
       const pdfBase64 = await renderInvoicePdfBase64(seed);
-      const result = await Promise.race([
+      const out = await Promise.race([
         extractInvoice(pdfBase64),
         new Promise<{ ok: false; kind: "timeout" }>((resolve) =>
           setTimeout(
@@ -119,25 +113,22 @@ const intakeStep = createStep({
           ),
         ),
       ]);
-      if (result.ok) {
-        extracted = result.invoice;
+      if (out.ok) {
         // Did the model's read agree with the seeded record on the fields the
         // pipeline routes on? (Drives the "reconciled with PO record" note.)
-        matches =
-          result.invoice.invoiceNumber === seed.invoiceNumber &&
-          (result.invoice.poNumber ?? null) === (seed.poNumber ?? null) &&
-          Math.abs(result.invoice.total - seed.total) < 0.01;
-        narration = matches
-          ? "Extracted and reconciled with the PO record."
-          : "Extracted; key fields differ from the record (pipeline uses the record).";
+        const matches =
+          out.invoice.invoiceNumber === seed.invoiceNumber &&
+          (out.invoice.poNumber ?? null) === (seed.poNumber ?? null) &&
+          Math.abs(out.invoice.total - seed.total) < 0.01;
+        result = { extracted: out.invoice, matches };
       }
     } catch {
-      /* fail open — narration already set to the fallback */
+      /* fail open — result stays { extracted: null } */
     }
 
-    // Pass the input through unchanged (matching runs on the trusted record);
-    // `extracted`/`matches` ride along only for the trace/reveal.
-    return { ...inputData, extracted, matches, narration };
+    await emit({ type: "intake-result", payload: result });
+    // Matching runs on the trusted record — pass the input through unchanged.
+    return inputData;
   },
 });
 
@@ -152,7 +143,7 @@ const MatchStepOut = MatchResult.merge(Narrated)
   .merge(HumanApproval);
 const matchingStep = createStep({
   id: "matching",
-  inputSchema: IntakeOut,
+  inputSchema: RunInput,
   outputSchema: MatchStepOut,
   execute: async ({ inputData }) => {
     const match = runMatch({

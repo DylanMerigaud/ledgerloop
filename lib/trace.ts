@@ -173,6 +173,10 @@ export function toTraceEvent(
 
       case "workflow-step-start":
         if (isMappingStep(stepId)) return null; // hide the .map() plumbing step
+        // Intake owns its node via the intake-document/intake-result chunks it
+        // writes (they carry the document + extraction result); its bare
+        // lifecycle events would be dataless duplicates, so drop them.
+        if (stage === "intake") return null;
         return {
           kind: "step",
           stage,
@@ -236,6 +240,26 @@ export function toTraceEvent(
           };
         }
 
+        if (innerType === "intake-result") {
+          // The extraction result (the extracted invoice + whether it reconciled
+          // with the record), written when intake finishes. Upserts the same
+          // intake node. A failed extraction (extracted = null) is a soft warn.
+          const extracted = innerPayload?.["extracted"] ?? null;
+          return {
+            kind: "step",
+            stage: "intake",
+            status: extracted ? "ok" : "warn",
+            stepId: "intake",
+            label: extracted ? "Intake — extracted" : "Intake — using record",
+            detail: extracted
+              ? innerPayload?.["matches"] === true
+                ? "Extracted and reconciled with the PO record."
+                : "Extracted; key fields differ from the record (pipeline uses the record)."
+              : "Couldn't extract the document; proceeding on the seeded record.",
+            data: { extracted, matches: innerPayload?.["matches"] === true },
+          };
+        }
+
         return null;
       }
 
@@ -258,29 +282,16 @@ export function toTraceEvent(
       case "workflow-step-result":
       case "workflow-step-finish": {
         if (isMappingStep(stepId)) return null; // hide the .map() plumbing step
+        // Intake's node is owned by its intake-document/intake-result chunks; its
+        // step-result is a bare passthrough (the run input) with nothing to show.
+        if (stage === "intake") return null;
         const rawOut = asRecord(payload?.["output"]);
         const narration =
           typeof rawOut?.["narration"] === "string"
             ? (rawOut["narration"] as string)
             : undefined;
 
-        // Intake carries the extraction result for the reveal (extracted invoice
-        // + whether it reconciled with the record). Surface just that as the
-        // node's data; a failed extraction (extracted = null) is a soft warn.
-        if (stage === "intake") {
-          const extracted = rawOut?.["extracted"];
-          return {
-            kind: "step",
-            stage: "intake",
-            status: extracted ? "ok" : "warn",
-            stepId: "intake",
-            label: extracted ? "Intake — extracted" : "Intake — using record",
-            detail: narration,
-            data: { extracted, matches: rawOut?.["matches"] === true },
-          };
-        }
-
-        // Other steps emit a domain object plus a `narration` string, and some
+        // Steps emit a domain object plus a `narration` string, and some
         // wrap the domain object (approval outputs `{ decision, match, vendor }`).
         // `domain` is the object the UI colours + renders. Unwrapping here keeps
         // the UI decoupled from step shapes.
