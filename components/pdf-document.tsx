@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from "react";
 // rendered page so the layout never shifts.
 const A4_RATIO = 841.89 / 595.28;
 
-export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
+export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
@@ -41,17 +41,17 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
     let page: PDFPageProxy | null = null;
     let rendering: Promise<unknown> | null = null;
 
-    async function loadPage(buf: ArrayBuffer) {
+    const loadPage = async (buf: ArrayBuffer) => {
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
         "pdfjs-dist/build/pdf.worker.min.mjs",
         import.meta.url,
       ).toString();
       return pdfjs.getDocument({ data: buf }).promise;
-    }
+    };
 
-    async function renderAtCurrentWidth() {
-      if (!page || !canvas) return;
+    const renderAtCurrentWidth = async () => {
+      if (!page) return; // `canvas` is already narrowed non-null above
       const cssWidth = canvas.parentElement?.clientWidth ?? 360;
       if (cssWidth === 0) return;
       const base = page.getViewport({ scale: 1 });
@@ -64,7 +64,7 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await page.render({ canvasContext: ctx, viewport }).promise;
-    }
+    };
 
     const ro = new ResizeObserver(() => {
       // Serialise renders — pdf.js throws if a render starts while one is live.
@@ -122,4 +122,4 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
       />
     </div>
   );
-}
+};

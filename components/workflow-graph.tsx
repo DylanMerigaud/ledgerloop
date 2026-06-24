@@ -25,10 +25,12 @@ import { describeCondition } from "@/lib/approval-workflow";
 /** Per-step execution status, when rendering a live run (omit for the static workflow). */
 export type StepStatuses = Record<string, string>;
 
-function statusTone(status: string | undefined): {
+const statusTone = (
+  status: string | undefined,
+): {
   tone: "ok" | "warn" | "danger" | "neutral";
   label: string;
-} | null {
+} | null => {
   switch (status) {
     case "approved":
       return { tone: "ok", label: "Approved" };
@@ -45,21 +47,23 @@ function statusTone(status: string | undefined): {
     default:
       return null;
   }
-}
+};
 
 /** Icon glyph for an integration step's target system. */
-function integrationGlyph(kind: string): string {
+const integrationGlyph = (kind: string): string => {
   if (kind === "netsuite") return "NS";
   if (kind === "slack") return "#";
   if (kind === "jira") return "J";
   return "→";
-}
+};
 
 /** Diff ring + chip for a step when rendering a proposed edit. */
-function changeStyle(change: StepChange["kind"] | undefined): {
+const changeStyle = (
+  change: StepChange["kind"] | undefined,
+): {
   ring: string;
   badge: { tone: "ok" | "warn" | "danger"; label: string } | null;
-} {
+} => {
   switch (change) {
     case "added":
       return {
@@ -79,9 +83,9 @@ function changeStyle(change: StepChange["kind"] | undefined): {
     default:
       return { ring: "ring-line", badge: null };
   }
-}
+};
 
-function StepNode({
+const StepNode = ({
   step,
   status,
   change,
@@ -91,7 +95,7 @@ function StepNode({
   status?: string;
   change?: StepChange["kind"];
   dimmed?: boolean;
-}) {
+}) => {
   const st = statusTone(status);
   const cs = changeStyle(change);
   const isApproval = step.kind === "approval";
@@ -157,28 +161,28 @@ function StepNode({
       )}
     </div>
   );
-}
+};
 
 /** A horizontal connector between flow columns (left → right). */
-function Connector() {
+const Connector = () => {
   return (
     <div className="flex shrink-0 items-center self-center" aria-hidden>
       <div className="h-px w-6 bg-line" />
       <div className="-ml-1 text-line">▸</div>
     </div>
   );
-}
+};
 
 /** One column in the left→right flow (a fixed-width band of one or more nodes). */
-function Column({ children }: { children: React.ReactNode }) {
+const Column = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex w-60 shrink-0 flex-col justify-center gap-3">
       {children}
     </div>
   );
-}
+};
 
-export function WorkflowGraph({
+export const WorkflowGraph = ({
   workflow,
   statuses,
   changes,
@@ -187,7 +191,7 @@ export function WorkflowGraph({
   statuses?: StepStatuses;
   /** When rendering a proposed edit, per-step change kinds for diff colouring. */
   changes?: StepChange[];
-}) {
+}) => {
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
   const changeOf = new Map((changes ?? []).map((c) => [c.id, c.kind]));
 
@@ -286,4 +290,4 @@ export function WorkflowGraph({
       )}
     </div>
   );
-}
+};

@@ -138,9 +138,7 @@ export default tseslint.config(
       ],
 
       // ── Style ───────────────────────────────────────────────────────────────
-      // func-style is applied in a dedicated follow-up pass (217 hand conversions,
-      // no autofix); kept off here so the rest of the alignment lands first.
-      "func-style": "off",
+      "func-style": ["error", "expression", { allowArrowFunctions: true }],
       "prefer-arrow-callback": "error",
       "no-restricted-syntax": [
         "error",

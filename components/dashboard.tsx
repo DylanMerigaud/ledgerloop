@@ -30,16 +30,15 @@ import { usePipelineRun } from "@/lib/use-pipeline-run";
  * per-visitor and ephemeral — nothing is written back (the run route is
  * stateless), so every visitor starts from the same pristine queue.
  */
-
 /**
  * Pull the intake (extraction) node out of the trace and shape it for the reveal.
  * The intake step carries `{ document }` while reading and `{ extracted, matches }`
  * once done; we render the document twin + scan from that. Returns null until an
  * intake event exists (i.e. before a run starts, or on a resume).
  */
-function readIntake(
+const readIntake = (
   trace: TraceEvent[],
-): { document: Invoice; state: ExtractionState } | null {
+): { document: Invoice; state: ExtractionState } | null => {
   const intake = trace.find((e) => e.stage === "intake" && e.kind === "step");
   if (!intake) return null;
   const data = (intake.data ?? {}) as {
@@ -57,19 +56,19 @@ function readIntake(
       matches: data.matches ?? false,
     },
   };
-}
+};
 
 /** Solid play triangle for the Run button. */
-function PlayIcon() {
+const PlayIcon = () => {
   return (
     <svg aria-hidden viewBox="0 0 12 12" className="h-3 w-3 fill-current">
       <path d="M3 1.8v8.4a.6.6 0 0 0 .92.5l6.4-4.2a.6.6 0 0 0 0-1L3.92 1.3A.6.6 0 0 0 3 1.8Z" />
     </svg>
   );
-}
+};
 
 /** Small spinner shown while a run is in flight. */
-function Spinner() {
+const Spinner = () => {
   return (
     <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5 animate-spin">
       <circle
@@ -90,9 +89,9 @@ function Spinner() {
       />
     </svg>
   );
-}
+};
 
-export function Dashboard({ queue }: { queue: QueueItem[] }) {
+export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
   );
@@ -110,12 +109,12 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   const traceScrollRef = useRef<HTMLDivElement | null>(null);
   const [traceMore, setTraceMore] = useState(false);
 
-  function measureTrace() {
+  const measureTrace = () => {
     const el = traceScrollRef.current;
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
     setTraceMore(remaining > 24);
-  }
+  };
 
   useEffect(() => {
     const el = traceScrollRef.current;
@@ -127,7 +126,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
     setTraceMore(state.status !== "idle" && remaining > 24);
   }, [state.trace, state.status]);
 
-  function measureScroll() {
+  const measureScroll = () => {
     const el = listRef.current;
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
@@ -138,7 +137,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
       ),
       atBottom: remaining < 8,
     });
-  }
+  };
 
   // Measure on mount and when the queue changes (rows have a fixed height, so we
   // can turn the hidden pixels into an approximate row count for the pill).
@@ -170,11 +169,11 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
   // selected/running invoice) so the header never contradicts the PDF on screen.
   const previewItem = queue.find((q) => q.id === previewId) ?? selected;
 
-  function select(id: string) {
+  const select = (id: string) => {
     if (id === selectedId || locked) return;
     setSelectedId(id);
     reset();
-  }
+  };
 
   return (
     // Desktop: fill the parent's flex-1 slot (the page is viewport-tall), so the
@@ -190,8 +189,8 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
           </span>
         </CardHeader>
         {/* relative wrapper so the fade + "N more" pill can overlay the scroll
-            area — on macOS the overlay scrollbar is hidden, so these are the cue
-            that the list continues below. Both hide once scrolled to the end. */}
+        area — on macOS the overlay scrollbar is hidden, so these are the cue
+        that the list continues below. Both hide once scrolled to the end. */}
         <div className="relative min-h-0 flex-1">
           <ul
             ref={listRef}
@@ -242,8 +241,8 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
                           {item.poNumber ? ` · ${item.poNumber}` : ""}
                         </span>
                         {/* Once a run is active for the selected row, show its live
-                          outcome badge; otherwise always show the seeded scenario
-                          hint (so selecting a row never blanks the label). */}
+                      outcome badge; otherwise always show the seeded scenario
+                      hint (so selecting a row never blanks the label). */}
                         {isSelected && state.status !== "idle" ? (
                           <Badge tone={outcomeTone(outcome)}>
                             {outcomeLabel(outcome)}
@@ -263,7 +262,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
             })}
           </ul>
           {/* "N more" scroll affordance: a fade + a pill that scrolls the list
-              when clicked. Hidden once the list is at the bottom. */}
+          when clicked. Hidden once the list is at the bottom. */}
           {moreCount > 0 && (
             <>
               <div
@@ -353,8 +352,8 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
           )}
         </CardHeader>
         {/* relative so the bottom fade + "more" affordance can overlay the scroll
-            area — the cue that the trace continues below (esp. on macOS where the
-            scrollbar is hidden). */}
+        area — the cue that the trace continues below (esp. on macOS where the
+        scrollbar is hidden). */}
         <div className="relative min-h-0 flex-1">
           <div
             ref={traceScrollRef}
@@ -362,9 +361,9 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
             className="scrollbar-slim h-full overflow-y-auto px-5 py-4"
           >
             {/* The document + extraction panel is ALWAYS shown when a row is in
-                view (idle preview, or live during a run), so it never unmounts —
-                no flash between selecting and running. `intake` is null until the
-                run emits its first event; until then it's a static preview. */}
+            view (idle preview, or live during a run), so it never unmounts —
+            no flash between selecting and running. `intake` is null until the
+            run emits its first event; until then it's a static preview. */}
             {previewId && (
               <div className="mb-4">
                 <ExtractionReveal
@@ -392,7 +391,7 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
             )}
           </div>
           {/* "more ↓" is a trace affordance — only meaningful once a run is
-              underway, never on the static PDF preview. */}
+          underway, never on the static PDF preview. */}
           {traceMore && state.status !== "idle" && (
             <>
               <div
@@ -419,4 +418,4 @@ export function Dashboard({ queue }: { queue: QueueItem[] }) {
       </Card>
     </div>
   );
-}
+};

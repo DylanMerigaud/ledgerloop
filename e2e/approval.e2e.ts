@@ -17,15 +17,15 @@ import { test, expect, type Page } from "@playwright/test";
 
 const RUN_TIMEOUT = 30_000; // a 4-agent Haiku run is a few seconds; allow margin
 
-async function selectAndRun(page: Page, rowId: string) {
+const selectAndRun = async (page: Page, rowId: string) => {
   await page.getByTestId(`queue-row-${rowId}`).click();
   await page.getByTestId("run-btn").click();
-}
+};
 
 /** A trace step node for a stage, with its status exposed via data-status. */
-function step(page: Page, stage: string) {
+const step = (page: Page, stage: string) => {
   return page.locator(`[data-testid="trace-step-${stage}"]`);
-}
+};
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");

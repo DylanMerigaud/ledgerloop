@@ -29,7 +29,7 @@ import {
 
 let cached: ReturnType<typeof drizzle> | null = null;
 
-function db() {
+const db = () => {
   if (!cached) {
     // `prepare: false` is the Supabase transaction-pooler-safe setting; one
     // connection is plenty for this read-only demo. `env.DATABASE_URL` is required
@@ -39,7 +39,7 @@ function db() {
     cached = drizzle(sql);
   }
   return cached;
-}
+};
 
 /** A queue row for the dashboard's left pane — light, list-shaped. */
 export type QueueItem = {
@@ -55,7 +55,7 @@ export type QueueItem = {
 };
 
 /** All invoices, oldest first, as lightweight queue items for the left pane. */
-export async function listInvoiceQueue(): Promise<QueueItem[]> {
+export const listInvoiceQueue = async (): Promise<QueueItem[]> => {
   const rows = await db()
     .select({
       id: invoices.id,
@@ -71,7 +71,7 @@ export async function listInvoiceQueue(): Promise<QueueItem[]> {
     .from(invoices)
     .orderBy(invoices.createdAt, invoices.id);
   return rows.map(({ createdAt: _createdAt, ...item }) => item);
-}
+};
 
 /** The full document bundle the pipeline needs for one invoice run. */
 export type RunBundle = {
@@ -92,7 +92,7 @@ export type RunBundle = {
  * rows ("INV-2041" original + "INV-2041-RESEND"). The id is what lets us load
  * the exact row the visitor clicked and decide whether THAT row is the duplicate.
  */
-export async function loadRunBundle(id: string): Promise<RunBundle | null> {
+export const loadRunBundle = async (id: string): Promise<RunBundle | null> => {
   const d = db();
 
   const [invoiceRow] = await d
@@ -153,7 +153,7 @@ export async function loadRunBundle(id: string): Promise<RunBundle | null> {
     .map((r) => r.invoiceNumber);
 
   return { invoice, purchaseOrder, goodsReceipt, priorInvoiceNumbers };
-}
+};
 
 /**
  * Load just one invoice by row id — a single, light query. Used by the PDF route,
@@ -161,7 +161,7 @@ export async function loadRunBundle(id: string): Promise<RunBundle | null> {
  * so it skips the three extra reads `loadRunBundle` does). Returns `null` if the
  * row doesn't exist.
  */
-export async function loadInvoiceById(id: string): Promise<TInvoice | null> {
+export const loadInvoiceById = async (id: string): Promise<TInvoice | null> => {
   const [row] = await db()
     .select()
     .from(invoices)
@@ -169,13 +169,13 @@ export async function loadInvoiceById(id: string): Promise<TInvoice | null> {
     .limit(1);
   if (!row) return null;
   return Invoice.parse(toInvoiceShape(row));
-}
+};
 
 /* Row → Zod-input shape mappers. `numeric({ mode: "number" })` already gives us
    numbers; these just drop DB-only columns (id, createdAt, scenario) the Zod
    document schemas don't include (they're `.strict()`). */
 
-function toInvoiceShape(r: typeof invoices.$inferSelect) {
+const toInvoiceShape = (r: typeof invoices.$inferSelect) => {
   return {
     invoiceNumber: r.invoiceNumber,
     poNumber: r.poNumber,
@@ -187,9 +187,9 @@ function toInvoiceShape(r: typeof invoices.$inferSelect) {
     tax: r.tax,
     total: r.total,
   };
-}
+};
 
-function toPoShape(r: typeof purchaseOrders.$inferSelect) {
+const toPoShape = (r: typeof purchaseOrders.$inferSelect) => {
   return {
     poNumber: r.poNumber,
     vendor: r.vendor,
@@ -197,13 +197,13 @@ function toPoShape(r: typeof purchaseOrders.$inferSelect) {
     lineItems: r.lineItems,
     total: r.total,
   };
-}
+};
 
-function toGrShape(r: typeof goodsReceipts.$inferSelect) {
+const toGrShape = (r: typeof goodsReceipts.$inferSelect) => {
   return {
     grNumber: r.grNumber,
     poNumber: r.poNumber,
     receivedDate: r.receivedDate,
     lineItems: r.lineItems,
   };
-}
+};

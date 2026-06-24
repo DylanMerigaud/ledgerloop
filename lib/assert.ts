@@ -8,9 +8,9 @@
  * message that names the cause — so a logic bug surfaces clearly instead of as a
  * downstream `undefined`.
  */
-export function nonNull<T>(value: T | null | undefined, why: string): T {
+export const nonNull = <T>(value: T | null | undefined, why: string): T => {
   if (value == null) {
     throw new Error(`Invariant violated: ${why}`);
   }
   return value;
-}
+};

@@ -39,14 +39,14 @@ const DEFAULT_TIMEOUT_MS = 20_000;
  * Returns the extracted invoice on success, or a failure the caller turns into an
  * error trace event. `extract` + `render` are injectable for offline tests.
  */
-export async function runIntake(
+export const runIntake = async (
   source: Invoice,
   opts: {
     extract?: Extractor;
     render?: (inv: Invoice) => Promise<string>;
     timeoutMs?: number;
   } = {},
-): Promise<IntakeResult> {
+): Promise<IntakeResult> => {
   const extract = opts.extract ?? extractInvoice;
   const render = opts.render ?? renderInvoicePdfBase64;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -94,4 +94,4 @@ export async function runIntake(
     Math.abs(result.invoice.total - source.total) < 0.01;
 
   return { ok: true, invoice: result.invoice, matchesRecord };
-}
+};

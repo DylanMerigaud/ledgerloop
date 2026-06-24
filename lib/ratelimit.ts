@@ -27,7 +27,7 @@ export type RateVerdict =
 let limiter: Ratelimit | null = null;
 let initialized = false;
 
-function getLimiter(): Ratelimit | null {
+const getLimiter = (): Ratelimit | null => {
   if (initialized) return limiter;
   initialized = true;
 
@@ -55,10 +55,10 @@ function getLimiter(): Ratelimit | null {
     analytics: false,
   });
   return limiter;
-}
+};
 
 /** Check (and consume) one unit of the rate budget for the given IP. */
-export async function checkRateLimit(ip: string): Promise<RateVerdict> {
+export const checkRateLimit = async (ip: string): Promise<RateVerdict> => {
   const rl = getLimiter();
   if (!rl) {
     // Failing open: always allow.
@@ -81,14 +81,14 @@ export async function checkRateLimit(ip: string): Promise<RateVerdict> {
     log.error("[ratelimit] Upstash error, failing open:", { err });
     return { ok: true, remaining: null };
   }
-}
+};
 
 /** Best-effort client IP extraction from proxy headers (Vercel-friendly). */
-export function clientIpFrom(headers: Headers): string {
+export const clientIpFrom = (headers: Headers): string => {
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
     const first = forwarded.split(",")[0]?.trim();
     if (first) return first;
   }
   return headers.get("x-real-ip") ?? "anonymous";
-}
+};

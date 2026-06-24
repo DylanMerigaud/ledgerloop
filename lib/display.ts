@@ -17,7 +17,7 @@ export type Outcome =
   | "needs-approval" // routed to a human
   | "blocked"; // duplicate / not posted
 
-export function outcomeTone(outcome: Outcome): BadgeTone {
+export const outcomeTone = (outcome: Outcome): BadgeTone => {
   switch (outcome) {
     case "reconciled":
       return "ok";
@@ -30,9 +30,9 @@ export function outcomeTone(outcome: Outcome): BadgeTone {
     case "pending":
       return "neutral";
   }
-}
+};
 
-export function outcomeLabel(outcome: Outcome): string {
+export const outcomeLabel = (outcome: Outcome): string => {
   switch (outcome) {
     case "reconciled":
       return "Reconciled";
@@ -45,10 +45,10 @@ export function outcomeLabel(outcome: Outcome): string {
     case "pending":
       return "Not run";
   }
-}
+};
 
 /** Hex dot color per outcome (for the queue's leading status dot). */
-export function outcomeDot(outcome: Outcome): string {
+export const outcomeDot = (outcome: Outcome): string => {
   switch (outcome) {
     case "reconciled":
       return "#047857";
@@ -61,10 +61,10 @@ export function outcomeDot(outcome: Outcome): string {
     case "pending":
       return "#D1D5DB";
   }
-}
+};
 
 /** Map a trace step's status to a badge tone (for the timeline). */
-export function statusTone(status: TraceStatus): BadgeTone {
+export const statusTone = (status: TraceStatus): BadgeTone => {
   switch (status) {
     case "ok":
       return "ok";
@@ -79,10 +79,10 @@ export function statusTone(status: TraceStatus): BadgeTone {
     case "skipped":
       return "neutral";
   }
-}
+};
 
 /** Hex color for a trace step's connector dot. */
-export function statusDot(status: TraceStatus): string {
+export const statusDot = (status: TraceStatus): string => {
   switch (status) {
     case "ok":
       return "#047857";
@@ -97,10 +97,10 @@ export function statusDot(status: TraceStatus): string {
     case "skipped":
       return "#D1D5DB";
   }
-}
+};
 
 /** Human label for a pipeline stage. */
-export function stageLabel(stage: TraceStage): string {
+export const stageLabel = (stage: TraceStage): string => {
   switch (stage) {
     case "intake":
       return "Intake";
@@ -115,4 +115,4 @@ export function stageLabel(stage: TraceStage): string {
     case "pipeline":
       return "Pipeline";
   }
-}
+};

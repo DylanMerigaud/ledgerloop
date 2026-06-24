@@ -28,9 +28,9 @@ const SOURCE: Invoice = {
 const render = async () => "ZmFrZS1wZGY=";
 
 /** An extractor that returns a given invoice (or failure). */
-function mockExtractor(invoice: Invoice): Extractor {
+const mockExtractor = (invoice: Invoice): Extractor => {
   return async () => ({ ok: true, invoice });
-}
+};
 
 test("successful extraction returns the extracted invoice", async () => {
   const extracted: Invoice = { ...SOURCE, vendor: "Acme Corporation Ltd" };

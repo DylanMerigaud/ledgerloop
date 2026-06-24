@@ -37,11 +37,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function line(obj: unknown): Uint8Array {
+const line = (obj: unknown): Uint8Array => {
   return new TextEncoder().encode(ndjsonLine(obj));
-}
+};
 
-export async function POST(request: Request): Promise<Response> {
+export const POST = async (request: Request): Promise<Response> => {
   // 0. Rate-limit by IP first — before any work or model calls. The demo is
   //    public and each run spends Anthropic tokens, so this caps abuse. Fails
   //    open if Redis isn't configured (see lib/ratelimit.ts).
@@ -178,4 +178,4 @@ export async function POST(request: Request): Promise<Response> {
       "x-accel-buffering": "no",
     },
   });
-}
+};

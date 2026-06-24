@@ -14,7 +14,7 @@ type Meta = Record<string, unknown>;
 
 const isDev = env.NODE_ENV !== "production";
 
-function emit(level: LogLevel, message: string, meta?: Meta): void {
+const emit = (level: LogLevel, message: string, meta?: Meta): void => {
   if (!isDev) {
     // Production sink would go here (Sentry/PostHog). Kept intentionally silent
     // for now rather than noisy server logs; errors could be forwarded later.
@@ -26,7 +26,7 @@ function emit(level: LogLevel, message: string, meta?: Meta): void {
   if (level === "error") console.error(...args);
   else if (level === "warn") console.warn(...args);
   else console.log(...args);
-}
+};
 
 export const log = {
   debug: (message: string, meta?: Meta) => emit("debug", message, meta),

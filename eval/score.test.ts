@@ -9,13 +9,13 @@ import {
 } from "@/eval/score";
 
 /** Build a scored case quickly. */
-function sc(
+const sc = (
   expected: CaseScore["expected"],
   got: CaseScore["got"],
   failed?: string,
-): CaseScore {
+): CaseScore => {
   return scoreCase("X", "stress", expected, got, failed);
-}
+};
 
 test("scoreCase marks a match correct and a mismatch incorrect", () => {
   assert.equal(sc("likely_overcharge", "likely_overcharge").correct, true);

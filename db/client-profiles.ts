@@ -51,7 +51,7 @@ export const CLIENT_PROFILES: ClientProfile[] = [
 const DEFAULT_PROFILE_ID = "standard";
 
 /** Look up a profile by id; falls back to the standard profile. */
-export function profileById(id: string | null | undefined): ClientProfile {
+export const profileById = (id: string | null | undefined): ClientProfile => {
   return (
     CLIENT_PROFILES.find((p) => p.id === id) ??
     nonNull(
@@ -59,4 +59,4 @@ export function profileById(id: string | null | undefined): ClientProfile {
       `the "${DEFAULT_PROFILE_ID}" profile is always seeded`,
     )
   );
-}
+};

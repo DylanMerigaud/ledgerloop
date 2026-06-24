@@ -18,7 +18,7 @@ import type { QueueItem } from "@/db/client";
  */
 type View = "onboarding" | "pipeline";
 
-export function AppView({ queue }: { queue: QueueItem[] }) {
+export const AppView = ({ queue }: { queue: QueueItem[] }) => {
   const [view, setView] = useState<View>("onboarding");
 
   return (
@@ -29,9 +29,15 @@ export function AppView({ queue }: { queue: QueueItem[] }) {
       </div>
     </div>
   );
-}
+};
 
-function Tabs({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+const Tabs = ({
+  view,
+  onChange,
+}: {
+  view: View;
+  onChange: (v: View) => void;
+}) => {
   return (
     <div className="inline-flex w-fit items-center gap-0.5 rounded-lg bg-canvas p-0.5 ring-1 ring-inset ring-line">
       <TabButton
@@ -48,9 +54,9 @@ function Tabs({ view, onChange }: { view: View; onChange: (v: View) => void }) {
       </TabButton>
     </div>
   );
-}
+};
 
-function TabButton({
+const TabButton = ({
   active,
   onClick,
   children,
@@ -58,7 +64,7 @@ function TabButton({
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <button
       onClick={onClick}
@@ -69,4 +75,4 @@ function TabButton({
       {children}
     </button>
   );
-}
+};

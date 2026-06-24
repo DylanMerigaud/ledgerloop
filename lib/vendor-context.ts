@@ -64,22 +64,22 @@ const VENDOR_CONTEXT: Record<string, VendorContext> = {
 };
 
 /** A short fallback for vendors with no special context on file. */
-function defaultContext(vendor: string): VendorContext {
+const defaultContext = (vendor: string): VendorContext => {
   return {
     priceHistory: `Account: ${vendor}. No price-history notes on file. No surcharge notices and no prior billing disputes recorded.`,
     poNotes: `No buyer notes attached to this vendor's purchase orders.`,
     receiptNotes: `No special receiving notes on file for this vendor.`,
   };
-}
+};
 
-export function vendorPriceHistory(vendor: string): string {
+export const vendorPriceHistory = (vendor: string): string => {
   return (VENDOR_CONTEXT[vendor] ?? defaultContext(vendor)).priceHistory;
-}
+};
 
-export function vendorPoNotes(vendor: string): string {
+export const vendorPoNotes = (vendor: string): string => {
   return (VENDOR_CONTEXT[vendor] ?? defaultContext(vendor)).poNotes;
-}
+};
 
-export function vendorReceiptNotes(vendor: string): string {
+export const vendorReceiptNotes = (vendor: string): string => {
   return (VENDOR_CONTEXT[vendor] ?? defaultContext(vendor)).receiptNotes;
-}
+};

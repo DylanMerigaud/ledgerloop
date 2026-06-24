@@ -63,11 +63,11 @@ export type ExecutionState = {
  * holds back everything behind it (the run pauses), while parallel siblings are
  * all surfaced together.
  */
-export function executeWorkflow(
+export const executeWorkflow = (
   workflow: ApprovalWorkflow,
   ctx: InvoiceContext,
   decisions: Decisions = {},
-): ExecutionState {
+): ExecutionState => {
   const byId = new Map<string, WorkflowStep>(
     workflow.steps.map((s) => [s.id, s]),
   );
@@ -88,7 +88,7 @@ export function executeWorkflow(
   // transparent pass-through (the gate didn't apply), NOT a dead branch, so flow
   // continues past it. A predecessor that is pending/blocked means not-yet; a
   // rejected predecessor hard-stops everything behind it.
-  function resolve(step: WorkflowStep): StepState {
+  const resolve = (step: WorkflowStep): StepState => {
     const preds = predecessors.get(step.id) ?? [];
     // Predecessors are resolved before this step (topo order), so each is present.
     const predStates = preds.map((p) =>
@@ -160,7 +160,7 @@ export function executeWorkflow(
         condText === "always" ? "" : ` (${condText})`
       }.`,
     };
-  }
+  };
 
   // Topological order (the DAG is small; Kahn's algorithm). Then resolve in order
   // so every step sees settled predecessors.
@@ -183,10 +183,10 @@ export function executeWorkflow(
       : "approved";
 
   return { steps, pending, outcome };
-}
+};
 
 /** Kahn topological sort over the step graph. Assumes a DAG (the model is one). */
-function topoOrder(workflow: ApprovalWorkflow): string[] {
+const topoOrder = (workflow: ApprovalWorkflow): string[] => {
   const indegree = new Map<string, number>();
   for (const s of workflow.steps) indegree.set(s.id, 0);
   for (const s of workflow.steps) {
@@ -208,4 +208,4 @@ function topoOrder(workflow: ApprovalWorkflow): string[] {
   // Any nodes not emitted (shouldn't happen in a DAG) are appended so they still resolve.
   for (const s of workflow.steps) if (!order.includes(s.id)) order.push(s.id);
   return order;
-}
+};

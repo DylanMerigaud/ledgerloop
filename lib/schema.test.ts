@@ -9,8 +9,7 @@ import { Invoice, MatchResult, INVOICE_JSON_SCHEMA } from "@/lib/schema";
  * reject, these fail. They also confirm the JSON schema we hand the intake model
  * is well-formed and derived from the same object.
  */
-
-function validInvoice() {
+const validInvoice = () => {
   return {
     invoiceNumber: "INV-1",
     poNumber: "PO-1",
@@ -24,7 +23,7 @@ function validInvoice() {
     tax: null,
     total: 20,
   };
-}
+};
 
 test("a well-formed invoice parses", () => {
   assert.doesNotThrow(() => Invoice.parse(validInvoice()));

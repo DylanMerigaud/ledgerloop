@@ -40,7 +40,7 @@ import {
 import { nonNull } from "@/lib/assert";
 
 /** Same env loading as eval/run.ts — native, no dotenv dep. */
-function loadEnv(): void {
+const loadEnv = (): void => {
   for (const f of [".env.local", ".env"]) {
     try {
       process.loadEnvFile(path.join(process.cwd(), f));
@@ -48,14 +48,14 @@ function loadEnv(): void {
       /* file absent — fine */
     }
   }
-}
+};
 
 type Creds = {
   subdomain: string;
   key: string;
 };
 
-function creds(): Creds {
+const creds = (): Creds => {
   const key = process.env.BAMBOO_HR_API_KEY;
   const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
   if (!key || !subdomain) {
@@ -63,15 +63,15 @@ function creds(): Creds {
     process.exit(1);
   }
   return { key, subdomain };
-}
+};
 
-function api(c: Creds, p: string): string {
+const api = (c: Creds, p: string): string => {
   return `https://${c.subdomain}.bamboohr.com/api/v1${p}`;
-}
+};
 
-function authHeader(c: Creds): string {
+const authHeader = (c: Creds): string => {
   return `Basic ${Buffer.from(`${c.key}:x`).toString("base64")}`;
-}
+};
 
 type ListOption = {
   id: number;
@@ -85,7 +85,7 @@ type ListOption = {
  * id and append ours with a `value` key (the format BambooHR accepts for a new
  * option). Idempotent: a no-op when the option is already present.
  */
-async function ensureDivision(c: Creds): Promise<void> {
+const ensureDivision = async (c: Creds): Promise<void> => {
   const res = await fetch(api(c, "/meta/lists/"), {
     headers: { authorization: authHeader(c), accept: "application/json" },
   });
@@ -121,10 +121,10 @@ async function ensureDivision(c: Creds): Promise<void> {
   if (!put.ok)
     throw new Error(`creating division option failed: HTTP ${put.status}`);
   console.log(`Created Division option "${SEED_DIVISION}".`);
-}
+};
 
 /** Create one employee (flat). Returns the new BambooHR id from the Location header. */
-async function createEmployee(c: Creds, p: SeedPerson): Promise<string> {
+const createEmployee = async (c: Creds, p: SeedPerson): Promise<string> => {
   const res = await fetch(api(c, "/employees/"), {
     method: "POST",
     headers: {
@@ -143,10 +143,14 @@ async function createEmployee(c: Creds, p: SeedPerson): Promise<string> {
   const id = location.match(/employees\/(\d+)/)?.[1];
   if (!id) throw new Error(`no id in Location header for ${p.firstName}`);
   return id;
-}
+};
 
 /** Set division/title/department/manager via the jobInfo table (the only path that sticks). */
-async function setJobInfo(c: Creds, id: string, p: SeedPerson): Promise<void> {
+const setJobInfo = async (
+  c: Creds,
+  id: string,
+  p: SeedPerson,
+): Promise<void> => {
   const body: Record<string, string> = {
     date: "2026-01-01",
     department: p.department,
@@ -171,12 +175,12 @@ async function setJobInfo(c: Creds, id: string, p: SeedPerson): Promise<void> {
       `jobInfo for ${p.firstName} ${p.lastName} failed: HTTP ${res.status}`,
     );
   }
-}
+};
 
 /** Everyone currently in the SEED_DIVISION (the scope of seed/reset). */
-async function seededEmployees(
+const seededEmployees = async (
   c: Creds,
-): Promise<{ id: string; name: string }[]> {
+): Promise<{ id: string; name: string }[]> => {
   const res = await fetch(api(c, "/reports/custom?format=JSON"), {
     method: "POST",
     headers: {
@@ -196,9 +200,9 @@ async function seededEmployees(
   return data.employees
     .filter((e) => e.division === SEED_DIVISION)
     .map((e) => ({ id: String(e.id), name: e.displayName ?? `id ${e.id}` }));
-}
+};
 
-async function seed(): Promise<void> {
+const seed = async (): Promise<void> => {
   const c = creds();
   await ensureDivision(c);
 
@@ -238,9 +242,9 @@ async function seed(): Promise<void> {
       `Deliberate issues for the discovery agent: an employee pointed at a\n` +
       `non-existent manager (surfaces as an unexpected root) and a blank-title second root.`,
   );
-}
+};
 
-async function reset(): Promise<void> {
+const reset = async (): Promise<void> => {
   const c = creds();
   const targets = await seededEmployees(c);
   if (targets.length === 0) {
@@ -265,9 +269,9 @@ async function reset(): Promise<void> {
       ? `Removed all ${targets.length}.`
       : `${failed} could not be deleted (see above).`,
   );
-}
+};
 
-async function main(): Promise<void> {
+const main = async (): Promise<void> => {
   loadEnv();
   const cmd = process.argv[2];
   if (cmd === "reset") {
@@ -278,7 +282,7 @@ async function main(): Promise<void> {
     console.error(`Unknown command "${cmd}". Use: seed | reset`);
     process.exit(1);
   }
-}
+};
 
 main().catch((err: unknown) => {
   console.error("Failed:", err instanceof Error ? err.message : err);

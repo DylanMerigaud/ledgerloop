@@ -163,7 +163,7 @@ const matchingStep = createStep({
   },
 });
 
-function matchLine(m: MatchResult): string {
+const matchLine = (m: MatchResult): string => {
   if (m.verdict === "duplicate") {
     return `${m.invoiceNumber} is a duplicate — blocking to prevent a double payment.`;
   }
@@ -171,7 +171,7 @@ function matchLine(m: MatchResult): string {
     return `Clean ${m.matchType === "three_way" ? "3-way" : "2-way"} match — eligible for straight-through processing.`;
   }
   return `${m.exceptions.length} exception(s) found (max ${(m.maxVariancePct * 100).toFixed(1)}% variance).`;
-}
+};
 
 type MastraLike = {
   getAgent: (id: string) => InvestigatorAgent | undefined;
@@ -187,12 +187,12 @@ type ChunkWriter = {
  * the note). The agent-running + parsing lives in `lib/investigation.ts`, shared
  * with the eval harness; here we add only the workflow-stream concern.
  */
-async function investigate(
+const investigate = async (
   mastra: MastraLike | undefined,
   writer: ChunkWriter | undefined,
   match: MatchResult,
   vendor: string,
-): Promise<Investigation | null> {
+): Promise<Investigation | null> => {
   try {
     const agent = mastra?.getAgent("investigator");
     if (!agent) return null;
@@ -216,7 +216,7 @@ async function investigate(
   } catch {
     return null;
   }
-}
+};
 
 /* ── Branch steps ───────────────────────────────────────────────────────────
    Every branch ends producing the SAME shape so the post-branch .map() can
@@ -240,15 +240,15 @@ const BranchOut = z.object({
 });
 
 /** Flatten the engine's step states to the serialisable shape BranchOut carries. */
-function stepSummaries(
+const stepSummaries = (
   run: ApprovalRun,
-): { id: string; status: string; detail: string }[] {
+): { id: string; status: string; detail: string }[] => {
   return run.state.steps.map((s) => ({
     id: s.id,
     status: s.status,
     detail: s.detail,
   }));
-}
+};
 
 /* Exception path: FIRST the investigator agent (the one open-ended, agentic step)
    reads messy vendor records and recommends how to read the variance; its note is

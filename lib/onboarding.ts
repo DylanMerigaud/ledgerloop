@@ -49,13 +49,13 @@ const STEP = {
   post: "post-netsuite",
 } as const;
 
-function rolePerson(
+const rolePerson = (
   proposal: TProposal,
   role: "manager" | "director" | "department-head",
-): { title: string; name: string | null } {
+): { title: string; name: string | null } => {
   const r = proposal.roles.find((x) => x.role === role);
   return { title: r?.title ?? role, name: r?.employeeName ?? null };
-}
+};
 
 /**
  * Build the validated workflow from the model's fuzzy proposal + the org. Pure and
@@ -63,10 +63,10 @@ function rolePerson(
  * template; only the threshold value and the resolved approver names come from the
  * model.
  */
-export function assembleWorkflow(
+export const assembleWorkflow = (
   org: OrgChart,
   proposal: TProposal,
-): ApprovalWorkflow {
+): ApprovalWorkflow => {
   const manager = rolePerson(proposal, "manager");
   const director = rolePerson(proposal, "director");
   const deptHead = rolePerson(proposal, "department-head");
@@ -126,7 +126,7 @@ export function assembleWorkflow(
     steps,
     roots: [STEP.manager],
   };
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  The full discovery: model proposal + assembly + carry the org issues through
@@ -143,10 +143,10 @@ export type OnboardingResult = {
  * Run the onboarding model over an org and assemble the proposed workflow. Pairs
  * each org issue with the model's note (by index; falls back to the raw detail).
  */
-export async function deriveWorkflow(
+export const deriveWorkflow = async (
   model: ProposalModel,
   org: OrgChart,
-): Promise<OnboardingResult> {
+): Promise<OnboardingResult> => {
   const proposal = await model.propose(org);
   const workflow = assembleWorkflow(org, proposal);
   const issues = org.issues.map((iss, i) => ({
@@ -154,14 +154,14 @@ export async function deriveWorkflow(
     note: proposal.issueNotes[i] ?? iss.detail,
   }));
   return { workflow, proposal, issues };
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  The prompt + a parser for a raw structured-output string
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Compact view of the org handed to the model — titles + reporting, no noise. */
-export function orgForPrompt(org: OrgChart): string {
+export const orgForPrompt = (org: OrgChart): string => {
   const byId = new Map(org.employees.map((e) => [e.id, e]));
   const people = org.employees
     .map((e) => {
@@ -173,7 +173,7 @@ export function orgForPrompt(org: OrgChart): string {
     ? org.issues.map((i) => `- [${i.kind}] ${i.detail}`).join("\n")
     : "- (none)";
   return `EMPLOYEES (${org.employees.length}):\n${people}\n\nDATA-QUALITY ISSUES (${org.issues.length}):\n${issues}`;
-}
+};
 
 /** The instruction handed to the structured-output model. */
 export const ONBOARDING_SYSTEM_PROMPT = `You configure procure-to-pay approval workflows from a company's org chart. Given the employees (title, department, reporting line) and any data-quality issues, you make ONLY the judgement calls a deterministic template can't:
@@ -196,11 +196,11 @@ Return ONLY the JSON object matching the schema. Never invent people who aren't 
  * The prompt body for one org (system prompt is separate). Exposed so the eval and
  * the workflow step build the request identically.
  */
-export function onboardingPrompt(org: OrgChart): string {
+export const onboardingPrompt = (org: OrgChart): string => {
   return `Here is the org to configure an approval workflow for:\n\n${orgForPrompt(org)}\n\nProduce the JSON proposal.`;
-}
+};
 
 /** Validate a raw model JSON value into an OnboardingProposal (or throw). */
-export function parseProposal(raw: unknown): TProposal {
+export const parseProposal = (raw: unknown): TProposal => {
   return OnboardingProposal.parse(raw);
-}
+};

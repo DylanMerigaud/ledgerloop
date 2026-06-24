@@ -97,17 +97,11 @@ const BAMBOO_REPORT_FIELDS = [
  *      become `OrgIssue`s for a human — the forward-deployed-engineer's actual
  *      onboarding work, made explicit.
  */
-export function mapBambooReport(
+export const mapBambooReport = (
   raw: unknown,
   source: string,
-  /**
-   * Optional division to scope to — the way we read ONE client's org out of a
-   * shared sandbox. When set, only employees in that division are kept (and
-   * reporting edges to anyone outside it become dangling, correctly surfaced).
-   * Omitted = the whole account (the recorded sample org).
-   */
   division?: string,
-): OrgChart {
+): OrgChart => {
   // `raw` is unknown (a parsed JSON payload) — read `employees` defensively without
   // a cast that would assert non-null and make the guard look redundant.
   const rows =
@@ -193,7 +187,7 @@ export function mapBambooReport(
   }
 
   return OrgChart.parse({ source, employees, issues });
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Live adapter — real BambooHR
@@ -215,7 +209,10 @@ export type BambooCreds = {
  * @public — the integration seam: swap this for a `workdayHris` implementing
  * `HrisAdapter` and nothing downstream changes (cf. `erp.ts`).
  */
-export function bambooHris(creds: BambooCreds, division?: string): HrisAdapter {
+export const bambooHris = (
+  creds: BambooCreds,
+  division?: string,
+): HrisAdapter => {
   return {
     name: division ? `bamboohr (${division})` : "bamboohr",
     async fetchOrg() {
@@ -223,10 +220,12 @@ export function bambooHris(creds: BambooCreds, division?: string): HrisAdapter {
       return mapBambooReport(raw, "bamboohr", division);
     },
   };
-}
+};
 
 /** The raw HTTP call, exported so the capture script records the exact payload. */
-export async function fetchBambooReport(creds: BambooCreds): Promise<unknown> {
+export const fetchBambooReport = async (
+  creds: BambooCreds,
+): Promise<unknown> => {
   const auth = Buffer.from(`${creds.key}:x`).toString("base64");
   const url = `https://${creds.subdomain}.bamboohr.com/api/v1/reports/custom?format=JSON`;
   const res = await fetch(url, {
@@ -244,7 +243,7 @@ export async function fetchBambooReport(creds: BambooCreds): Promise<unknown> {
     );
   }
   return res.json();
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Recorded adapter — replays the captured real payload
@@ -262,7 +261,9 @@ const FIXTURE_PATH = path.join(
  * Replays the captured BambooHR payload from disk through the SAME mapper the
  * live adapter uses. The fixture is real API output (see the file's `_meta`).
  */
-export function recordedHris(fixturePath: string = FIXTURE_PATH): HrisAdapter {
+export const recordedHris = (
+  fixturePath: string = FIXTURE_PATH,
+): HrisAdapter => {
   return {
     name: "bamboohr (recorded)",
     async fetchOrg() {
@@ -270,7 +271,7 @@ export function recordedHris(fixturePath: string = FIXTURE_PATH): HrisAdapter {
       return mapBambooReport(raw, "bamboohr (recorded)");
     },
   };
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  The single decision point
@@ -293,10 +294,10 @@ export const DEMO_CLIENT_DIVISION = "LedgerLoop Demo";
  *
  * @public — the entry point the onboarding flow uses to read an org.
  */
-export function defaultHris(): HrisAdapter {
+export const defaultHris = (): HrisAdapter => {
   const key = env.BAMBOO_HR_API_KEY;
   const subdomain = env.BAMBOO_HR_SUBDOMAIN;
   return key && subdomain
     ? bambooHris({ key, subdomain }, DEMO_CLIENT_DIVISION)
     : recordedHris();
-}
+};

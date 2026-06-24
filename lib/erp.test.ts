@@ -10,8 +10,7 @@ import type { MatchResult } from "@/lib/schema";
  * which is what the dashboard's posted/awaiting/rejected states depend on. (The
  * outcome itself is decided by the workflow engine, tested in approval-engine.)
  */
-
-function match(over: Partial<MatchResult> = {}): MatchResult {
+const match = (over: Partial<MatchResult> = {}): MatchResult => {
   return {
     invoiceNumber: "INV-1",
     poNumber: "PO-1",
@@ -24,7 +23,7 @@ function match(over: Partial<MatchResult> = {}): MatchResult {
     invoiceTotal: 8704,
     ...over,
   };
-}
+};
 
 test("posted outcome → books to the ERP", async () => {
   const r = await reconcileFromOutcome(

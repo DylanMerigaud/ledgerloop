@@ -46,10 +46,10 @@ type State =
   | { status: "error"; message: string }
   | { status: "done"; data: OnboardingResponse };
 
-export function Onboarding() {
+export const Onboarding = () => {
   const [state, setState] = useState<State>({ status: "idle" });
 
-  async function discover() {
+  const discover = async () => {
     setState({ status: "running" });
     try {
       const res = await fetch(API_ROUTES.onboarding, { method: "POST" });
@@ -66,7 +66,7 @@ export function Onboarding() {
     } catch {
       setState({ status: "error", message: "Could not reach the server." });
     }
-  }
+  };
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,400px)_1fr]">
@@ -135,9 +135,9 @@ export function Onboarding() {
       </Card>
     </div>
   );
-}
+};
 
-function DiscoverySummary({ data }: { data: OnboardingResponse }) {
+const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-[12px] text-muted">
@@ -201,9 +201,9 @@ function DiscoverySummary({ data }: { data: OnboardingResponse }) {
       )}
     </div>
   );
-}
+};
 
-function EmptyState({ running }: { running: boolean }) {
+const EmptyState = ({ running }: { running: boolean }) => {
   return (
     <div className="grid h-full min-h-48 place-items-center text-center">
       <div className="max-w-sm space-y-2">
@@ -223,9 +223,9 @@ function EmptyState({ running }: { running: boolean }) {
       </div>
     </div>
   );
-}
+};
 
-function Spinner({ large }: { large?: boolean }) {
+const Spinner = ({ large }: { large?: boolean }) => {
   return (
     <span
       className={`inline-block animate-spin rounded-full border-2 border-current border-t-transparent ${
@@ -234,4 +234,4 @@ function Spinner({ large }: { large?: boolean }) {
       aria-hidden
     />
   );
-}
+};

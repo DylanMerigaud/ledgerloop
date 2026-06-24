@@ -41,7 +41,7 @@ const IDLE: PipelineRunState = {
   error: null,
 };
 
-export function usePipelineRun() {
+export const usePipelineRun = () => {
   const [state, setState] = useState<PipelineRunState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
   // The trace + step index persist ACROSS phases so a phase-2 approve/reject
@@ -213,4 +213,4 @@ export function usePipelineRun() {
   );
 
   return { state, run, decide, reset };
-}
+};

@@ -24,9 +24,8 @@ import type { MatchResult } from "@/lib/schema";
  * approval question — so callers check `match.verdict === "duplicate"` first and
  * never run the workflow for it.
  */
-
 /** Build the engine's evaluation context from a match result. */
-function contextFromMatch(match: MatchResult): InvoiceContext {
+const contextFromMatch = (match: MatchResult): InvoiceContext => {
   return {
     amount: match.invoiceTotal,
     exceptionAmount: match.exceptionAmount,
@@ -34,7 +33,7 @@ function contextFromMatch(match: MatchResult): InvoiceContext {
     department: "", // department-gated steps need an enriched source; "" = no dept
     verdict: match.verdict,
   };
-}
+};
 
 export type ApprovalRun = {
   state: ExecutionState;
@@ -52,11 +51,11 @@ export type ApprovalRun = {
  * "posted" intent — the reconciliation step does the actual ERP post when this is
  * "posted".
  */
-export function runApproval(
+export const runApproval = (
   workflow: ApprovalWorkflow,
   match: MatchResult,
   decisions: Decisions = {},
-): ApprovalRun {
+): ApprovalRun => {
   const state = executeWorkflow(workflow, contextFromMatch(match), decisions);
   const pending = state.steps.filter((s) => s.status === "pending");
 
@@ -75,17 +74,17 @@ export function runApproval(
         : pendingNarration(pending);
 
   return { state, outcome, pending, narration };
-}
+};
 
-function approvedNarration(state: ExecutionState): string {
+const approvedNarration = (state: ExecutionState): string => {
   const gates = state.steps.filter((s) => s.status === "approved").length;
   if (gates === 0) {
     return "No approval gate applied — clean invoice cleared for straight-through posting.";
   }
   return `All ${gates} required approval${gates === 1 ? "" : "s"} granted — cleared to post.`;
-}
+};
 
-function pendingNarration(pending: StepState[]): string {
+const pendingNarration = (pending: StepState[]): string => {
   if (pending.length === 0) return "Awaiting approval.";
   const names = pending
     .map((p) => p.detail.replace(/^Awaiting /, ""))
@@ -93,4 +92,4 @@ function pendingNarration(pending: StepState[]): string {
   return pending.length === 1
     ? `Awaiting approval: ${names}`
     : `Awaiting ${pending.length} approvals in parallel: ${names}`;
-}
+};

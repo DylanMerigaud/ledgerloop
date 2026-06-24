@@ -107,10 +107,10 @@ export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
  *   • duplicate      → handled as a pre-workflow control (blocked), never routed
  *                      here — a duplicate is a control failure, not an approval.
  */
-export function workflowFromPolicy(
+export const workflowFromPolicy = (
   policy: ApprovalPolicy,
   name = "Default approval workflow",
-): TApprovalWorkflow {
+): TApprovalWorkflow => {
   const isException: WorkflowStep["when"] = {
     kind: "leaf",
     field: "verdict",
@@ -172,12 +172,12 @@ export function workflowFromPolicy(
   ];
 
   return { name, steps, roots: ["manager-review"] };
-}
+};
 
 /** The workflow a profile runs: its explicit one, or the policy-derived default. */
-export function workflowFor(profile: {
+export const workflowFor = (profile: {
   approvalPolicy: ApprovalPolicy;
   workflow?: TApprovalWorkflow;
-}): TApprovalWorkflow {
+}): TApprovalWorkflow => {
   return profile.workflow ?? workflowFromPolicy(profile.approvalPolicy);
-}
+};

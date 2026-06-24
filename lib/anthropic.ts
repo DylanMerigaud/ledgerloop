@@ -20,10 +20,10 @@ export class MissingAnthropicKeyError extends Error {
 
 let cached: Anthropic | null = null;
 
-export function anthropic(): Anthropic {
+export const anthropic = (): Anthropic => {
   if (!cached) {
     if (!env.ANTHROPIC_API_KEY) throw new MissingAnthropicKeyError();
     cached = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   }
   return cached;
-}
+};

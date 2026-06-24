@@ -10,9 +10,7 @@ import type { TraceEvent } from "@/lib/trace";
  * mistook for "blocked" (red) instead of "needs-approval" (amber). These pin the
  * outcome for each reconciliation result so the pill colour is right.
  */
-
-// Minimal trace-event builder carrying a stage `data` payload.
-function ev(data: Record<string, unknown>): TraceEvent {
+const ev = (data: Record<string, unknown>): TraceEvent => {
   return {
     seq: 0,
     kind: "step",
@@ -23,7 +21,7 @@ function ev(data: Record<string, unknown>): TraceEvent {
     data,
     atMs: 0,
   };
-}
+};
 
 const matching = (verdict: string) => ev({ verdict });
 const approval = (

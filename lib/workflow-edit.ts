@@ -36,14 +36,14 @@ export type EditResult = {
  * its diff. Does NOT apply anything — the caller (UI) shows the diff and the human
  * approves before `proposed` ever becomes the live workflow.
  */
-export async function proposeEdit(
+export const proposeEdit = async (
   model: EditModel,
   current: TWorkflow,
   instruction: string,
-): Promise<EditResult> {
+): Promise<EditResult> => {
   const proposed = await model.edit(current, instruction);
   return { proposed, changes: diffWorkflows(current, proposed) };
-}
+};
 
 export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You edit procure-to-pay approval workflows. You are given the CURRENT workflow as JSON and a plain-language instruction, and you return the COMPLETE updated workflow as JSON matching the schema.
 
@@ -56,11 +56,11 @@ Rules:
 - Return ONLY the JSON workflow object. No commentary.`;
 
 /** The prompt body for one edit (system prompt is separate). */
-export function editPrompt(current: TWorkflow, instruction: string): string {
+export const editPrompt = (current: TWorkflow, instruction: string): string => {
   return `CURRENT WORKFLOW:\n${JSON.stringify(current, null, 2)}\n\nINSTRUCTION:\n${instruction}\n\nReturn the complete updated workflow as JSON.`;
-}
+};
 
 /** Validate a raw model JSON value into an ApprovalWorkflow (or throw). */
-export function parseWorkflow(raw: unknown): TWorkflow {
+export const parseWorkflow = (raw: unknown): TWorkflow => {
   return ApprovalWorkflow.parse(raw);
-}
+};

@@ -150,7 +150,7 @@ test("orgForPrompt lists people with resolved manager names + issues", () => {
 });
 
 // ── helper ───────────────────────────────────────────────────────────────────
-function anyCtx(over: Partial<InvoiceContext> = {}): InvoiceContext {
+const anyCtx = (over: Partial<InvoiceContext> = {}): InvoiceContext => {
   return {
     amount: 1000,
     exceptionAmount: 0,
@@ -159,4 +159,4 @@ function anyCtx(over: Partial<InvoiceContext> = {}): InvoiceContext {
     verdict: "clean",
     ...over,
   };
-}
+};

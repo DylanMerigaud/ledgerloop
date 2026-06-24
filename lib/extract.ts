@@ -45,9 +45,9 @@ Rules:
 - Each line item needs a "sku": copy the printed item/SKU code for that line EXACTLY as shown (e.g. the "Item" column). Only if no code is printed, fall back to a short slug of the description.`;
 
 /** Extract a base64-encoded PDF into a validated Invoice (or a tagged failure). */
-export async function extractInvoice(
+export const extractInvoice = async (
   pdfBase64: string,
-): Promise<ExtractionResult> {
+): Promise<ExtractionResult> => {
   let message: Anthropic.Message;
   try {
     message = await anthropic().messages.create({
@@ -107,14 +107,14 @@ export async function extractInvoice(
     ok: true,
     invoice: { ...parsed.data, currency: parsed.data.currency.toUpperCase() },
   };
-}
+};
 
 /**
  * Pull a JSON object out of the model's text. With structured outputs the whole
  * response should already be valid JSON, but stay defensive: strip code fences
  * and, as a last resort, slice from the first "{" to the last "}".
  */
-function extractJsonObject(text: string): unknown {
+const extractJsonObject = (text: string): unknown => {
   const tryParse = (s: string): unknown => {
     try {
       return JSON.parse(s);
@@ -136,9 +136,9 @@ function extractJsonObject(text: string): unknown {
     if (sliced !== undefined) return sliced;
   }
   return undefined;
-}
+};
 
-function mapApiError(err: unknown): ExtractionResult {
+const mapApiError = (err: unknown): ExtractionResult => {
   if (err instanceof MissingAnthropicKeyError) {
     return {
       ok: false,
@@ -162,4 +162,4 @@ function mapApiError(err: unknown): ExtractionResult {
     kind: "api_error",
     message: "Unexpected error contacting the extraction model.",
   };
-}
+};

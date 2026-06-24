@@ -21,7 +21,7 @@ import path from "node:path";
 import { fetchBambooReport, mapBambooReport } from "@/lib/hris";
 
 /** Same env loading as eval/run.ts — native, no dotenv dep. */
-function loadEnv(): void {
+const loadEnv = (): void => {
   for (const f of [".env.local", ".env"]) {
     try {
       process.loadEnvFile(path.join(process.cwd(), f));
@@ -29,9 +29,9 @@ function loadEnv(): void {
       /* file absent — fine */
     }
   }
-}
+};
 
-async function main(): Promise<void> {
+const main = async (): Promise<void> => {
   loadEnv();
   const key = process.env.BAMBOO_HR_API_KEY;
   const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
@@ -69,7 +69,7 @@ async function main(): Promise<void> {
   const outFile = path.join(outDir, "report.json");
   writeFileSync(outFile, JSON.stringify(payload, null, 2) + "\n", "utf8");
   console.log(`Wrote ${path.relative(process.cwd(), outFile)}`);
-}
+};
 
 main().catch((err: unknown) => {
   console.error("Capture failed:", err instanceof Error ? err.message : err);

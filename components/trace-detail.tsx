@@ -11,16 +11,15 @@ import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
  * from a log into something a CTO can read the *reasoning* out of — the exact
  * exception lines, the approval drivers, the GL posting.
  */
-
 /**
  * The trace carries each stage's already-Zod-validated output as `unknown`. We
  * narrow it with type guards on the discriminating fields — not casts — so the
  * render branch and the prop type are checked together. (A guard that returns
  * `d is T` documents AND verifies the shape; a cast would only assert it.)
  */
-function has(d: object, ...keys: string[]): boolean {
+const has = (d: object, ...keys: string[]): boolean => {
   return keys.every((k) => k in d);
-}
+};
 const isMatch = (d: object): d is MatchResult =>
   has(d, "verdict", "exceptions");
 const isInvestigation = (d: object): d is Investigation =>
@@ -31,7 +30,7 @@ const isApprovalSummary = (d: object): d is ApprovalSummary =>
   has(d, "outcome", "steps");
 const isRecon = (d: object): d is ReconResult => has(d, "posted", "glEntries");
 
-export function TraceDetail({ data }: { data: unknown }) {
+export const TraceDetail = ({ data }: { data: unknown }) => {
   if (!data || typeof data !== "object") return null;
   const d = data;
 
@@ -43,7 +42,7 @@ export function TraceDetail({ data }: { data: unknown }) {
   if (isApprovalSummary(d)) return <ApprovalDetail approval={d} />;
   if (isRecon(d)) return <ReconDetail recon={d} />;
   return null;
-}
+};
 
 /** The approval workflow's execution summary, as the step emits it onto the trace. */
 type ApprovalSummary = {
@@ -58,7 +57,7 @@ type WorkflowRunData = {
   outcome: string;
 };
 
-function WorkflowRunDetail({ data }: { data: WorkflowRunData }) {
+const WorkflowRunDetail = ({ data }: { data: WorkflowRunData }) => {
   const statuses: Record<string, string> = {};
   for (const s of data.steps) statuses[s.id] = s.status;
   return (
@@ -66,10 +65,10 @@ function WorkflowRunDetail({ data }: { data: WorkflowRunData }) {
       <WorkflowGraph workflow={data.workflow} statuses={statuses} />
     </div>
   );
-}
+};
 
 /** The exception investigator's recommendation — the one agentic output. */
-function InvestigationDetail({ inv }: { inv: Investigation }) {
+const InvestigationDetail = ({ inv }: { inv: Investigation }) => {
   const tone =
     inv.recommendation === "likely_legitimate"
       ? "ok"
@@ -96,9 +95,9 @@ function InvestigationDetail({ inv }: { inv: Investigation }) {
       )}
     </div>
   );
-}
+};
 
-function MatchDetail({ match }: { match: MatchResult }) {
+const MatchDetail = ({ match }: { match: MatchResult }) => {
   if (match.exceptions.length === 0) {
     return (
       <Row label="Match">
@@ -135,17 +134,17 @@ function MatchDetail({ match }: { match: MatchResult }) {
       ))}
     </div>
   );
-}
+};
 
 /** Per-step status → badge tone for the approval gates. */
-function stepTone(status: string): "ok" | "warn" | "danger" | "neutral" {
+const stepTone = (status: string): "ok" | "warn" | "danger" | "neutral" => {
   if (status === "approved" || status === "done") return "ok";
   if (status === "pending") return "warn";
   if (status === "rejected" || status === "blocked") return "danger";
   return "neutral"; // skipped / other
-}
+};
 
-function ApprovalDetail({ approval }: { approval: ApprovalSummary }) {
+const ApprovalDetail = ({ approval }: { approval: ApprovalSummary }) => {
   const outcomeTone =
     approval.outcome === "posted"
       ? "ok"
@@ -172,9 +171,9 @@ function ApprovalDetail({ approval }: { approval: ApprovalSummary }) {
       )}
     </div>
   );
-}
+};
 
-function ReconDetail({ recon }: { recon: ReconResult }) {
+const ReconDetail = ({ recon }: { recon: ReconResult }) => {
   // Awaiting is a pause (amber), not a failure; posted is success; rejected/
   // blocked are red. Drive the badge off the precise outcome.
   const tone =
@@ -222,19 +221,19 @@ function ReconDetail({ recon }: { recon: ReconResult }) {
       )}
     </div>
   );
-}
+};
 
-function Row({
+const Row = ({
   label,
   children,
 }: {
   label: string;
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <div className="flex items-center justify-between gap-3 text-[12px]">
       <span className="text-muted">{label}</span>
       <span className="text-ink">{children}</span>
     </div>
   );
-}
+};

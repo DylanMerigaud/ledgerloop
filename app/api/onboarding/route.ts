@@ -21,7 +21,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-export async function POST(request: Request): Promise<Response> {
+export const POST = async (request: Request): Promise<Response> => {
   const ip = clientIpFrom(request.headers);
   const verdict = await checkRateLimit(ip);
   if (!verdict.ok) {
@@ -78,4 +78,4 @@ export async function POST(request: Request): Promise<Response> {
       { status: 502 },
     );
   }
-}
+};

@@ -13,12 +13,12 @@ import type { LanguageModel } from "@mastra/core/llm";
  * tool wiring and that the call reaches the trace), and the narration comes back
  * on `.text`. No network, no key, deterministic.
  */
-export function mockToolCallingModel(opts: {
+export const mockToolCallingModel = (opts: {
   toolName: string;
   toolArgs?: unknown;
   narration: string;
   modelId?: string;
-}): LanguageModel {
+}): LanguageModel => {
   const {
     toolName,
     toolArgs = {},
@@ -66,4 +66,4 @@ export function mockToolCallingModel(opts: {
 
   // eslint-disable-next-line no-restricted-syntax -- boundary cast: the mock implements only the slice of Mastra's LanguageModel the tests drive; the full type is large and provider-shaped
   return model as unknown as LanguageModel;
-}
+};

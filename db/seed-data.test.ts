@@ -19,24 +19,19 @@ const WORKFLOW = workflowFromPolicy(DEFAULT_APPROVAL_POLICY);
  * the data or the rules would make the "price mismatch" invoice quietly pass, this
  * fails in CI before it ever reaches a sales call. Pure (no DB, no LLM).
  */
-
-// Reconstruct the duplicate-detection ledger exactly the way the DB read layer
-// does: order-aware. An invoice number counts as "prior" for a given row only if
-// an EARLIER row (lower seed index = earlier createdAt) already carried it — so
-// the first occurrence is clean and a later re-send is the duplicate.
-function ledgerFor(bundle: SeedBundle): string[] {
+const ledgerFor = (bundle: SeedBundle): string[] => {
   const idx = SEED_BUNDLES.indexOf(bundle);
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
-}
+};
 
-function matchOf(bundle: SeedBundle) {
+const matchOf = (bundle: SeedBundle) => {
   return runMatch({
     invoice: bundle.invoice,
     purchaseOrder: bundle.purchaseOrder ?? null,
     goodsReceipt: bundle.goodsReceipt ?? null,
     priorInvoiceNumbers: ledgerFor(bundle),
   });
-}
+};
 
 const byId = (id: string): SeedBundle => {
   const b = SEED_BUNDLES.find((x) => x.id === id);

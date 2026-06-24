@@ -39,21 +39,21 @@ export type ErpPostingResult = {
 };
 
 /** Standard AP double-entry: debit the expense/GR-clearing, credit AP. */
-function buildGlEntries(amount: number): GlEntry[] {
+const buildGlEntries = (amount: number): GlEntry[] => {
   const rounded = Math.round((amount + Number.EPSILON) * 100) / 100;
   return [
     { account: "5000 · Cost of Goods / Expense", debit: rounded, credit: 0 },
     { account: "2000 · Accounts Payable", debit: 0, credit: rounded },
   ];
-}
+};
 
 /** Deterministic pseudo-id from the invoice number, so the demo is reproducible. */
-function refFor(invoiceNumber: string): string {
+const refFor = (invoiceNumber: string): string => {
   let hash = 0;
   for (const ch of invoiceNumber) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   const n = 1000 + (hash % 9000);
   return `NETSUITE-BILL-${n}`;
-}
+};
 
 const fakeErp: ErpAdapter = {
   name: "fake-netsuite",
@@ -86,12 +86,12 @@ export type ApprovalOutcome = "posted" | "awaiting" | "rejected" | "blocked";
  *   - rejected → not posted, returned to the vendor
  *   - posted   → booked to the ERP
  */
-export async function reconcileFromOutcome(
+export const reconcileFromOutcome = async (
   outcome: ApprovalOutcome,
   match: MatchResult,
   vendor: string,
   adapter: ErpAdapter = fakeErp,
-): Promise<ReconResult> {
+): Promise<ReconResult> => {
   const base = {
     invoiceNumber: match.invoiceNumber,
     currency: match.currency,
@@ -148,4 +148,4 @@ export async function reconcileFromOutcome(
     glEntries,
     note: `Posted to ${adapter.name} as ${erpRef}.`,
   };
-}
+};

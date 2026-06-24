@@ -29,12 +29,12 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const POLICY: ApprovalPolicy = DEFAULT_APPROVAL_POLICY;
 const WORKFLOW = workflowFromPolicy(POLICY);
 
-function ledgerFor(bundle: SeedBundle): string[] {
+const ledgerFor = (bundle: SeedBundle): string[] => {
   const idx = SEED_BUNDLES.indexOf(bundle);
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
-}
+};
 
-async function routeOf(bundle: SeedBundle, decisions: Decisions = {}) {
+const routeOf = async (bundle: SeedBundle, decisions: Decisions = {}) => {
   const match = runMatch({
     invoice: bundle.invoice,
     purchaseOrder: bundle.purchaseOrder ?? null,
@@ -52,9 +52,9 @@ async function routeOf(bundle: SeedBundle, decisions: Decisions = {}) {
     bundle.invoice.vendor,
   );
   return { match, approval, recon };
-}
+};
 
-async function main() {
+const main = async () => {
   console.log(`ledgerloop pipeline sanity — model: ${PIPELINE_MODEL}`);
   console.log(
     DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n",
@@ -151,7 +151,7 @@ async function main() {
     process.exit(1);
   }
   console.log("✓ All edge cases route as expected. Pipeline logic is sound.");
-}
+};
 
 main().catch((err) => {
   console.error("✖ Sanity check crashed:", err);

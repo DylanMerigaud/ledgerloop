@@ -10,7 +10,7 @@ const TONES: Record<BadgeTone, string> = {
   accent: "bg-accent-soft text-accent ring-1 ring-inset ring-accent/20",
 };
 
-export function Badge({
+export const Badge = ({
   tone = "neutral",
   className,
   children,
@@ -18,7 +18,7 @@ export function Badge({
   tone?: BadgeTone;
   className?: string;
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <span
       className={cn(
@@ -30,6 +30,6 @@ export function Badge({
       {children}
     </span>
   );
-}
+};
 
 export type { BadgeTone };

@@ -30,14 +30,14 @@ const SUGGESTIONS = [
   "Route Marketing purchases through a marketing lead",
 ];
 
-export function WorkflowEditor({ initial }: { initial: ApprovalWorkflow }) {
+export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
   const [current, setCurrent] = useState<ApprovalWorkflow>(initial);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function submit(text: string) {
+  const submit = async (text: string) => {
     const value = text.trim();
     if (!value || busy) return;
     setBusy(true);
@@ -64,16 +64,16 @@ export function WorkflowEditor({ initial }: { initial: ApprovalWorkflow }) {
     } finally {
       setBusy(false);
     }
-  }
+  };
 
-  function approve() {
+  const approve = () => {
     if (!proposal) return;
     setCurrent(proposal.proposed); // the proposal becomes live
     setProposal(null);
-  }
-  function revert() {
+  };
+  const revert = () => {
     setProposal(null); // discard — current is untouched
-  }
+  };
 
   const changedCount = proposal
     ? proposal.changes.filter((c) => c.kind !== "unchanged").length
@@ -163,4 +163,4 @@ export function WorkflowEditor({ initial }: { initial: ApprovalWorkflow }) {
       </div>
     </div>
   );
-}
+};

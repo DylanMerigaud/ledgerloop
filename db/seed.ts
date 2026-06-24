@@ -24,8 +24,7 @@ import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
  * (Supabase wants a direct, non-pooled connection for DDL/bulk writes), else
  * falls back to DATABASE_URL.
  */
-
-async function main() {
+const main = async () => {
   const url = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
   if (!url) {
     console.error(
@@ -122,7 +121,7 @@ async function main() {
   } finally {
     await sql.end({ timeout: 5 });
   }
-}
+};
 
 main().catch((err) => {
   console.error("✖ Seed failed:", err);

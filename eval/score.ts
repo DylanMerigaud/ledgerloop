@@ -35,13 +35,13 @@ export type Confusion = {
 const POSITIVE: Recommendation = "likely_overcharge";
 
 /** Score one case: did `got` match `expected`? */
-export function scoreCase(
+export const scoreCase = (
   id: string,
   stresses: string,
   expected: Recommendation,
   got: Recommendation | undefined,
   failed?: string,
-): CaseScore {
+): CaseScore => {
   return {
     id,
     stresses,
@@ -50,14 +50,14 @@ export function scoreCase(
     correct: got !== undefined && got === expected,
     failed,
   };
-}
+};
 
 /** Overall accuracy across the scored cases (failed cases count as incorrect). */
-export function accuracy(scores: CaseScore[]): number {
+export const accuracy = (scores: CaseScore[]): number => {
   if (scores.length === 0) return 0;
   const correct = scores.filter((s) => s.correct).length;
   return correct / scores.length;
-}
+};
 
 /**
  * Precision / recall / F1 for the "likely_overcharge" positive class.
@@ -65,7 +65,7 @@ export function accuracy(scores: CaseScore[]): number {
  *   FP — got overcharge, expected something else
  *   FN — expected overcharge, got something else (or failed)
  */
-export function overchargeConfusion(scores: CaseScore[]): Confusion {
+export const overchargeConfusion = (scores: CaseScore[]): Confusion => {
   let tp = 0;
   let fp = 0;
   let fn = 0;
@@ -90,4 +90,4 @@ export function overchargeConfusion(scores: CaseScore[]): Confusion {
     recall,
     f1,
   };
-}
+};

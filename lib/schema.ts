@@ -345,7 +345,7 @@ const UNSUPPORTED_SCHEMA_KEYS = [
   "format",
 ];
 
-function stripUnsupported(node: unknown): void {
+const stripUnsupported = (node: unknown): void => {
   if (Array.isArray(node)) {
     for (const item of node) stripUnsupported(item);
     return;
@@ -355,7 +355,7 @@ function stripUnsupported(node: unknown): void {
     for (const key of UNSUPPORTED_SCHEMA_KEYS) delete obj[key];
     for (const value of Object.values(obj)) stripUnsupported(value);
   }
-}
+};
 
 /**
  * Turn any Zod object into a JSON schema shaped for an Anthropic structured-output
@@ -364,9 +364,9 @@ function stripUnsupported(node: unknown): void {
  * (`.safeParse`); this is only what we hand the model. Shared by every structured
  * generation (invoice extraction, onboarding proposal) so the discipline is identical.
  */
-export function toModelJsonSchema(
+export const toModelJsonSchema = (
   schema: z.ZodType<unknown>,
-): Record<string, unknown> {
+): Record<string, unknown> => {
   const json = zodToJsonSchema(schema, {
     $refStrategy: "none",
     target: "jsonSchema7",
@@ -374,6 +374,6 @@ export function toModelJsonSchema(
   delete json["$schema"];
   stripUnsupported(json);
   return json;
-}
+};
 
 export const INVOICE_JSON_SCHEMA = toModelJsonSchema(Invoice);

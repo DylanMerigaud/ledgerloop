@@ -22,7 +22,7 @@ const EditRequest = z.object({
   instruction: z.string().trim().min(1, "an instruction is required"),
 });
 
-export async function POST(request: Request): Promise<Response> {
+export const POST = async (request: Request): Promise<Response> => {
   const ip = clientIpFrom(request.headers);
   const verdict = await checkRateLimit(ip);
   if (!verdict.ok) {
@@ -66,4 +66,4 @@ export async function POST(request: Request): Promise<Response> {
       { status: 422 },
     );
   }
-}
+};

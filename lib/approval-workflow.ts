@@ -166,7 +166,10 @@ export type InvoiceContext = {
   verdict: "clean" | "exception" | "duplicate";
 };
 
-function valueFor(field: ConditionField, ctx: InvoiceContext): string | number {
+const valueFor = (
+  field: ConditionField,
+  ctx: InvoiceContext,
+): string | number => {
   switch (field) {
     case "amount":
       return ctx.amount;
@@ -179,13 +182,13 @@ function valueFor(field: ConditionField, ctx: InvoiceContext): string | number {
     case "verdict":
       return ctx.verdict;
   }
-}
+};
 
-function compare(
+const compare = (
   left: string | number,
   op: ConditionOp,
   right: string | number,
-): boolean {
+): boolean => {
   // Numeric comparison when both sides are numbers; otherwise string equality
   // (only == / != are meaningful for strings).
   if (typeof left === "number" && typeof right === "number") {
@@ -216,13 +219,13 @@ function compare(
     default:
       return false;
   }
-}
+};
 
 /** Evaluate a condition against an invoice context. Pure. */
-export function evaluateCondition(
+export const evaluateCondition = (
   cond: Condition,
   ctx: InvoiceContext,
-): boolean {
+): boolean => {
   switch (cond.kind) {
     case "always":
       return true;
@@ -233,10 +236,10 @@ export function evaluateCondition(
     case "any":
       return cond.conditions.some((c) => evaluateCondition(c, ctx));
   }
-}
+};
 
 /** Render a condition as a short human string, for traces and the UI. */
-export function describeCondition(cond: Condition): string {
+export const describeCondition = (cond: Condition): string => {
   switch (cond.kind) {
     case "always":
       return "always";
@@ -247,7 +250,7 @@ export function describeCondition(cond: Condition): string {
     case "any":
       return cond.conditions.map(describeCondition).join(" or ");
   }
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Diff — compare two workflows (for the chat-edit preview)
@@ -266,7 +269,7 @@ export type StepChange =
   | { kind: "unchanged"; id: string; label: string };
 
 /** Human-readable summary of how one step differs between two workflows. */
-function stepFieldDiffs(a: WorkflowStep, b: WorkflowStep): string[] {
+const stepFieldDiffs = (a: WorkflowStep, b: WorkflowStep): string[] => {
   const fields: string[] = [];
   if (a.kind !== b.kind) fields.push("type");
   if (a.label !== b.label) fields.push("label");
@@ -280,13 +283,13 @@ function stepFieldDiffs(a: WorkflowStep, b: WorkflowStep): string[] {
   if (aTitle !== bTitle) fields.push("role");
   if (a.next.join(",") !== b.next.join(",")) fields.push("routing");
   return fields;
-}
+};
 
 /** Diff two workflows by step id: added / removed / changed / unchanged. @public */
-export function diffWorkflows(
+export const diffWorkflows = (
   current: ApprovalWorkflow,
   proposed: ApprovalWorkflow,
-): StepChange[] {
+): StepChange[] => {
   const cur = new Map(current.steps.map((s) => [s.id, s]));
   const prop = new Map(proposed.steps.map((s) => [s.id, s]));
   const changes: StepChange[] = [];
@@ -310,7 +313,7 @@ export function diffWorkflows(
     if (!prop.has(id)) changes.push({ kind: "removed", id, label: c.label });
   }
   return changes;
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Onboarding: the FUZZY decisions the agent makes (not the whole DAG)
