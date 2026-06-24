@@ -46,8 +46,11 @@ export interface SeedPerson {
  * and never touches the sample staff. Division is a legitimate org field (not a
  * detourned tag), so it reads cleanly in BambooHR. The option is created once per
  * account by the seed script (see scripts/seed-bamboo.ts).
+ *
+ * Same constant the live adapter scopes reads to (`DEMO_CLIENT_DIVISION`), so the
+ * onboarding agent reads exactly what the seed wrote.
  */
-export const SEED_DIVISION = "LedgerLoop Demo";
+export { DEMO_CLIENT_DIVISION as SEED_DIVISION } from "@/lib/hris";
 
 /** A manager name intentionally NOT seeded — BambooHR drops it, leaving an orphan. */
 const ABSENT_MANAGER_NAME = "Riley Stone";

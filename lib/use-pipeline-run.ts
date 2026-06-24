@@ -5,7 +5,11 @@ import { TraceEvent } from "@/lib/trace";
 import { NdjsonBuffer } from "@/lib/ndjson";
 import { type StreamDone } from "@/lib/api-types";
 import type { Outcome } from "@/lib/display";
-import { deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
+import {
+  deriveOutcome,
+  isAwaitingApproval,
+  decisionsForPending,
+} from "@/lib/run-outcome";
 
 /**
  * Client hook that runs the pipeline for an invoice and exposes the live trace.
@@ -107,10 +111,17 @@ export function usePipelineRun() {
       };
 
       try {
+        // The approval workflow can have several gates pending in parallel. The
+        // single Approve/Reject button applies the reviewer's decision to ALL of
+        // them (the collect-all set), sent as the per-step `decisions` map. (A
+        // richer per-gate UI can send a subset.)
+        const body = decision
+          ? { id, decisions: decisionsForPending(eventsRef.current, decision) }
+          : { id };
         const res = await fetch("/api/run", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(decision ? { id, decision } : { id }),
+          body: JSON.stringify(body),
           signal: controller.signal,
         });
 

@@ -58,22 +58,52 @@ test("duplicate MatchResult output → error status", () => {
   assert.equal(e.status, "error");
 });
 
-test("blocked ApprovalDecision → error status", () => {
+test("blocked approval outcome → error status", () => {
   const e = toTraceEvent({
     type: "workflow-step-result",
-    payload: { id: "approval", output: { tier: "blocked" } },
+    payload: {
+      id: "approval-blocked",
+      output: {
+        approval: { outcome: "blocked", steps: [] },
+        match: {},
+        vendor: "x",
+      },
+    },
   });
   assert.ok(e);
   assert.equal(e.status, "error");
 });
 
-test("auto ApprovalDecision → ok status", () => {
+test("posted approval outcome → ok status", () => {
   const e = toTraceEvent({
     type: "workflow-step-result",
-    payload: { id: "approval", output: { tier: "auto" } },
+    payload: {
+      id: "approval-auto",
+      output: {
+        approval: { outcome: "posted", steps: [] },
+        match: {},
+        vendor: "x",
+      },
+    },
   });
   assert.ok(e);
   assert.equal(e.status, "ok");
+});
+
+test("awaiting approval outcome → waiting status", () => {
+  const e = toTraceEvent({
+    type: "workflow-step-result",
+    payload: {
+      id: "approval",
+      output: {
+        approval: { outcome: "awaiting", steps: [] },
+        match: {},
+        vendor: "x",
+      },
+    },
+  });
+  assert.ok(e);
+  assert.equal(e.status, "waiting");
 });
 
 test("un-posted ReconResult → error status", () => {
@@ -208,19 +238,24 @@ test("run-level events have an empty stepId", () => {
   assert.equal(e?.stepId, "");
 });
 
-test("approval step output is unwrapped: nested decision drives status + data", () => {
-  // The approval step emits { decision, match, vendor, narration } — the status
-  // and the rich-render `data` must come from the nested ApprovalDecision, not
-  // the wrapper (regression guard for the nesting bug found by the runtime probe).
+test("approval step output is unwrapped: nested approval summary drives status + data", () => {
+  // The approval step emits { approval: { outcome, steps }, match, vendor,
+  // narration } — the status and the rich-render `data` must come from the nested
+  // approval summary, not the wrapper.
   const e = toTraceEvent({
     type: "workflow-step-result",
     payload: {
       id: "approval",
       output: {
-        decision: {
-          tier: "manager",
-          autoApproved: false,
-          reason: "Routed to manager.",
+        approval: {
+          outcome: "awaiting",
+          steps: [
+            {
+              id: "manager-review",
+              status: "pending",
+              detail: "Awaiting Manager.",
+            },
+          ],
         },
         match: { verdict: "exception" },
         vendor: "Severn Steelworks",
@@ -229,9 +264,13 @@ test("approval step output is unwrapped: nested decision drives status + data", 
     },
   });
   assert.ok(e);
-  assert.equal(e.status, "warn", "manager tier → amber");
+  assert.equal(e.status, "waiting", "awaiting outcome → amber/pause");
   const data = e.data as Record<string, unknown>;
-  assert.equal(data["tier"], "manager", "data is the unwrapped decision");
+  assert.equal(
+    data["outcome"],
+    "awaiting",
+    "data is the unwrapped approval summary",
+  );
   assert.equal(e.detail, "Needs manager sign-off.");
 });
 
@@ -239,13 +278,9 @@ test("blocked approval (nested) → error status", () => {
   const e = toTraceEvent({
     type: "workflow-step-result",
     payload: {
-      id: "approval",
+      id: "approval-blocked",
       output: {
-        decision: {
-          tier: "blocked",
-          autoApproved: false,
-          reason: "Duplicate.",
-        },
+        approval: { outcome: "blocked", steps: [] },
         vendor: "x",
       },
     },

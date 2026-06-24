@@ -340,16 +340,16 @@ export function toTraceEvent(
 /**
  * Pull the domain object the UI should render out of a step's raw output. Most
  * steps emit the domain object's fields at the top level (alongside `narration`);
- * the approval step wraps it as `{ decision, match, vendor }`. We return the
- * approval DECISION in that case (that's what the approval node shows), falling
- * back to the raw output for the flat steps.
+ * the approval step wraps it as `{ approval: { outcome, steps }, match, vendor }`.
+ * We return the approval summary in that case (that's what the approval node
+ * shows), falling back to the raw output for the flat steps.
  */
 function unwrapStageData(
   out: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   if (!out) return undefined;
-  const decision = asRecord(out["decision"]);
-  if (decision && "tier" in decision) return decision;
+  const approval = asRecord(out["approval"]);
+  if (approval && "outcome" in approval) return approval;
   return out;
 }
 
@@ -362,11 +362,10 @@ function stepStatusFromOutput(
   if (out["verdict"] === "duplicate") return "error";
   if (out["verdict"] === "exception") return "warn";
   if (out["verdict"] === "clean") return "ok";
-  // ApprovalDecision
-  if (out["tier"] === "blocked") return "error";
-  if (out["tier"] === "manager" || out["tier"] === "director") return "warn";
-  if (out["tier"] === "auto") return "ok";
-  // ReconResult (by outcome — more precise than the bare `posted` flag)
+  // Approval summary AND ReconResult both carry `outcome` with the same vocabulary.
+  //   awaiting → still waiting on a human (amber/pause)
+  //   posted   → cleared / booked (green)
+  //   rejected/blocked → not posted (red)
   if (out["outcome"] === "awaiting") return "waiting";
   if (out["outcome"] === "rejected" || out["outcome"] === "blocked")
     return "error";

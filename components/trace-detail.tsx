@@ -1,11 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, formatPct, humanize } from "@/lib/format";
-import type {
-  MatchResult,
-  ApprovalDecision,
-  ReconResult,
-  Investigation,
-} from "@/lib/schema";
+import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
 
 /**
  * Rich, type-aware detail for a completed stage. Each stage emits a different
@@ -23,11 +18,17 @@ export function TraceDetail({ data }: { data: unknown }) {
     return <MatchDetail match={d as unknown as MatchResult} />;
   if ("recommendation" in d && "toolsUsed" in d)
     return <InvestigationDetail inv={d as unknown as Investigation} />;
-  if ("tier" in d && "autoApproved" in d)
-    return <ApprovalDetail decision={d as unknown as ApprovalDecision} />;
+  if ("outcome" in d && "steps" in d)
+    return <ApprovalDetail approval={d as unknown as ApprovalSummary} />;
   if ("posted" in d && "glEntries" in d)
     return <ReconDetail recon={d as unknown as ReconResult} />;
   return null;
+}
+
+/** The approval workflow's execution summary, as the step emits it onto the trace. */
+interface ApprovalSummary {
+  outcome: "posted" | "awaiting" | "rejected" | "blocked";
+  steps: { id: string; status: string; detail: string }[];
 }
 
 /** The exception investigator's recommendation — the one agentic output. */
@@ -99,33 +100,38 @@ function MatchDetail({ match }: { match: MatchResult }) {
   );
 }
 
-function ApprovalDetail({ decision }: { decision: ApprovalDecision }) {
+/** Per-step status → badge tone for the approval gates. */
+function stepTone(status: string): "ok" | "warn" | "danger" | "neutral" {
+  if (status === "approved" || status === "done") return "ok";
+  if (status === "pending") return "warn";
+  if (status === "rejected" || status === "blocked") return "danger";
+  return "neutral"; // skipped / other
+}
+
+function ApprovalDetail({ approval }: { approval: ApprovalSummary }) {
+  const outcomeTone =
+    approval.outcome === "posted"
+      ? "ok"
+      : approval.outcome === "awaiting"
+        ? "warn"
+        : "danger";
+  // Only the steps that actually mattered — hide the ones that skipped (their
+  // condition wasn't met for this invoice), so the trace shows the path taken.
+  const shown = approval.steps.filter((s) => s.status !== "skipped");
   return (
-    <div className="space-y-1">
-      <Row label="Tier">
-        <Badge
-          tone={
-            decision.tier === "blocked"
-              ? "danger"
-              : decision.autoApproved
-                ? "ok"
-                : "warn"
-          }
-        >
-          {humanize(decision.tier)}
-        </Badge>
+    <div className="space-y-1.5">
+      <Row label="Outcome">
+        <Badge tone={outcomeTone}>{humanize(approval.outcome)}</Badge>
       </Row>
-      {decision.exceptionAmount > 0 && (
-        <Row label="At stake">
-          <span className="tnum">
-            {formatMoney(decision.exceptionAmount, decision.currency)}
-          </span>
-        </Row>
-      )}
-      {decision.maxVariancePct > 0 && (
-        <Row label="Max variance">
-          <span className="tnum">{formatPct(decision.maxVariancePct)}</span>
-        </Row>
+      {shown.length > 0 && (
+        <div className="space-y-1">
+          {shown.map((s) => (
+            <div key={s.id} className="flex items-center gap-2">
+              <Badge tone={stepTone(s.status)}>{humanize(s.status)}</Badge>
+              <span className="text-[11px] text-muted">{s.detail}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

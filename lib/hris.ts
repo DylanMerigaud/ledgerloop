@@ -94,12 +94,27 @@ const BAMBOO_REPORT_FIELDS = [
  *      become `OrgIssue`s for a human — the forward-deployed-engineer's actual
  *      onboarding work, made explicit.
  */
-export function mapBambooReport(raw: unknown, source: string): OrgChart {
+export function mapBambooReport(
+  raw: unknown,
+  source: string,
+  /**
+   * Optional division to scope to — the way we read ONE client's org out of a
+   * shared sandbox. When set, only employees in that division are kept (and
+   * reporting edges to anyone outside it become dangling, correctly surfaced).
+   * Omitted = the whole account (the recorded sample org).
+   */
+  division?: string,
+): OrgChart {
   const rows = (raw as BambooReport)?.employees ?? [];
 
-  // 1. Keep active rows that have an id; normalise each field.
+  // 1. Keep active rows that have an id; normalise each field. When a division
+  //    scope is given, keep only that division — this is how one client's org is
+  //    isolated from the rest of the sandbox.
   const active = rows.filter(
-    (r) => (r.status ?? "Active") === "Active" && r.id,
+    (r) =>
+      (r.status ?? "Active") === "Active" &&
+      r.id &&
+      (division === undefined || (r.division ?? "") === division),
   );
   const employees = active.map((r) => {
     const name =
@@ -191,12 +206,12 @@ export interface BambooCreds {
  * @public — the integration seam: swap this for a `workdayHris` implementing
  * `HrisAdapter` and nothing downstream changes (cf. `erp.ts`).
  */
-export function bambooHris(creds: BambooCreds): HrisAdapter {
+export function bambooHris(creds: BambooCreds, division?: string): HrisAdapter {
   return {
-    name: "bamboohr",
+    name: division ? `bamboohr (${division})` : "bamboohr",
     async fetchOrg() {
       const raw = await fetchBambooReport(creds);
-      return mapBambooReport(raw, "bamboohr");
+      return mapBambooReport(raw, "bamboohr", division);
     },
   };
 }
@@ -253,15 +268,26 @@ export function recordedHris(fixturePath: string = FIXTURE_PATH): HrisAdapter {
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The ONLY place the live-vs-recorded choice is made. Live when both creds are
- * present (you, with the trial key); recorded otherwise (CI, a teammate, after
- * the trial expires). Everything else in the app calls this and is oblivious —
- * that's what keeps the fallback from leaking `if (key)` across the codebase.
+ * The division a demo client's org lives under in the shared BambooHR sandbox.
+ * The live adapter scopes to it so onboarding reads ONE clean client org (the
+ * seeded tree) instead of the whole account's sample staff. The seed script
+ * stamps every seeded employee with this division — same constant, one source.
+ */
+export const DEMO_CLIENT_DIVISION = "LedgerLoop Demo";
+
+/**
+ * The ONLY place the live-vs-recorded choice is made. Live (scoped to the demo
+ * client's division) when both creds are present (you, with the trial key);
+ * recorded — the full captured sample org — otherwise (CI, a teammate, after the
+ * trial expires). Everything else in the app calls this and is oblivious — that's
+ * what keeps the fallback from leaking `if (key)` across the codebase.
  *
  * @public — the entry point the onboarding flow uses to read an org.
  */
 export function defaultHris(): HrisAdapter {
   const key = process.env.BAMBOO_HR_API_KEY;
   const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
-  return key && subdomain ? bambooHris({ key, subdomain }) : recordedHris();
+  return key && subdomain
+    ? bambooHris({ key, subdomain }, DEMO_CLIENT_DIVISION)
+    : recordedHris();
 }

@@ -25,7 +25,10 @@ function ev(data: Record<string, unknown>): TraceEvent {
 }
 
 const matching = (verdict: string) => ev({ verdict });
-const approval = (tier: string) => ev({ tier });
+const approval = (
+  outcome: string,
+  steps: { id: string; status: string; detail: string }[] = [],
+) => ev({ outcome, steps });
 const recon = (outcome: string, posted: boolean) => ev({ outcome, posted });
 
 test("clean → reconciled (posted)", () => {
@@ -71,12 +74,17 @@ test("duplicate → blocked", () => {
   assert.equal(deriveOutcome(trace, true), "blocked");
 });
 
-test("mid-stream (only matching+approval so far) → needs-approval before recon arrives", () => {
-  // Before the reconciliation event streams in, an exception still reads as
-  // needs-approval (from the tier hint), not blocked.
-  const trace = [matching("exception"), approval("manager")];
+test("mid-stream: an awaiting approval node reads as needs-approval before recon", () => {
+  // The approval node now carries the workflow outcome directly, so an awaiting
+  // gate signals needs-approval as soon as it streams in (before reconciliation).
+  const trace = [
+    matching("exception"),
+    approval("awaiting", [
+      { id: "manager-review", status: "pending", detail: "Awaiting Manager." },
+    ]),
+  ];
   assert.equal(deriveOutcome(trace, false), "needs-approval");
-  assert.equal(isAwaitingApproval(trace), false); // no awaiting event yet
+  assert.equal(isAwaitingApproval(trace), true); // the gate is pending
 });
 
 test("running with no recognizable data yet → running", () => {

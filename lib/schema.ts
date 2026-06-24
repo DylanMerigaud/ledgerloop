@@ -208,31 +208,9 @@ export const Investigation = z
   .strict();
 export type Investigation = z.infer<typeof Investigation>;
 
-/* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 3 — approval decision (output of the deterministic policy)
- * ────────────────────────────────────────────────────────────────────────── */
-
-/**
- * Who must sign off. Tiers escalate with the money/variance at stake. A clean
- * invoice is `auto` (no human); larger exceptions climb to manager / director.
- */
-export const ApproverTier = z.enum(["auto", "manager", "director", "blocked"]);
-export type ApproverTier = z.infer<typeof ApproverTier>;
-
-export const ApprovalDecision = z
-  .object({
-    invoiceNumber: z.string(),
-    tier: ApproverTier,
-    /** True only for `auto` — the straight-through-processing path. */
-    autoApproved: z.boolean(),
-    reason: z.string(),
-    /** Echoed through so reconciliation/UI can show what drove the routing. */
-    maxVariancePct: z.number().nonnegative(),
-    exceptionAmount: z.number().nonnegative(),
-    currency: Currency,
-  })
-  .strict();
-export type ApprovalDecision = z.infer<typeof ApprovalDecision>;
+/* Approval is no longer a single tier decision — it's a conditional workflow DAG
+   (lib/approval-workflow.ts) executed per invoice (lib/approval-engine.ts). The
+   old `ApproverTier` / `ApprovalDecision` types were retired in that migration. */
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Stage 4 — reconciliation result (output of the deterministic ERP post)
@@ -379,14 +357,23 @@ function stripUnsupported(node: unknown): void {
   }
 }
 
-function buildInvoiceJsonSchema(): Record<string, unknown> {
-  const schema = zodToJsonSchema(Invoice, {
+/**
+ * Turn any Zod object into a JSON schema shaped for an Anthropic structured-output
+ * call: inlined (no `$ref`/`definitions`), `$schema` removed, and the keywords the
+ * structured-output schema rejects stripped. The Zod object stays the runtime gate
+ * (`.safeParse`); this is only what we hand the model. Shared by every structured
+ * generation (invoice extraction, onboarding proposal) so the discipline is identical.
+ */
+export function toModelJsonSchema(
+  schema: z.ZodType<unknown>,
+): Record<string, unknown> {
+  const json = zodToJsonSchema(schema, {
     $refStrategy: "none",
     target: "jsonSchema7",
   }) as Record<string, unknown>;
-  delete schema["$schema"];
-  stripUnsupported(schema);
-  return schema;
+  delete json["$schema"];
+  stripUnsupported(json);
+  return json;
 }
 
-export const INVOICE_JSON_SCHEMA = buildInvoiceJsonSchema();
+export const INVOICE_JSON_SCHEMA = toModelJsonSchema(Invoice);

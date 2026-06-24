@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runMatch } from "./matching";
-import { routeApproval } from "./policy";
+import { runApproval } from "./approval-run";
+import { workflowFromPolicy } from "./client-profile";
 import { CLIENT_PROFILES, profileById } from "@/db/client-profiles";
 import type { Invoice, PurchaseOrder } from "./schema";
 
@@ -54,23 +55,29 @@ test("a 3% overage is an exception under the strict profile, clean under relaxed
   assert.equal(relaxedMatch.verdict, "clean");
 });
 
-test("the same exception routes to a different tier per profile", () => {
-  // Force an exception both ways by using the strict match (an exception exists).
+test("the same exception runs each profile's workflow (gate fires either way)", () => {
+  // Force an exception by using the strict match (an exception exists).
   const match = runMatch(
     { invoice: INV, purchaseOrder: PO, goodsReceipt: null },
     strict.tolerances,
   );
   assert.equal(match.verdict, "exception");
 
-  // ~30 USD at stake, 3% variance.
-  const strictDecision = routeApproval(match, strict.approvalPolicy);
-  const relaxedDecision = routeApproval(match, relaxed.approvalPolicy);
-
-  // strict: 2% manager threshold → 3% trips manager.
-  assert.equal(strictDecision.tier, "manager");
-  // relaxed: 10% manager threshold, $5k → 3% / $30 stays under → still manager
-  // (an exception never auto-approves), but proves the policy is applied, not fixed.
-  assert.equal(relaxedDecision.tier, "manager");
+  // ~30 USD at stake, 3% variance. Both profiles' workflows put it in front of a
+  // human (an exception never auto-posts); this proves the per-client workflow is
+  // applied, derived from each profile's policy.
+  const strictRun = runApproval(
+    workflowFromPolicy(strict.approvalPolicy),
+    match,
+  );
+  const relaxedRun = runApproval(
+    workflowFromPolicy(relaxed.approvalPolicy),
+    match,
+  );
+  assert.equal(strictRun.outcome, "awaiting");
+  assert.equal(relaxedRun.outcome, "awaiting");
+  assert.ok(strictRun.pending.some((p) => p.id === "manager-review"));
+  assert.ok(relaxedRun.pending.some((p) => p.id === "manager-review"));
 });
 
 test("profileById falls back to standard for unknown / missing ids", () => {
