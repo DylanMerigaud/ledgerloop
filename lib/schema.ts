@@ -273,6 +273,74 @@ export const ReconResult = z
 export type ReconResult = z.infer<typeof ReconResult>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
+ *  HRIS / org model — the onboarding side, INTERNAL types
+ * ────────────────────────────────────────────────────────────────────────── *
+ *
+ * The onboarding discovery agent reads a client's HRIS (BambooHR today) and
+ * derives the approval matrix that drives the P2P pipeline. These are OUR types,
+ * not the HRIS's. Every HRIS shapes employees/reporting differently (BambooHR's
+ * `supervisorEId`, Workday's worker references, …); the adapter
+ * ([`lib/hris.ts`](./hris.ts)) maps each vendor onto this one model, so the agent
+ * and the rest of the app never see a vendor-specific field. Same discipline as
+ * the invoice side: one internal model, adapters at the edge.
+ */
+
+/** One person in the org, normalised from whatever the HRIS calls these. */
+export const Employee = z
+  .object({
+    /** Stable HRIS id (string — BambooHR ids are numeric-but-stringly). */
+    id: z.string().min(1),
+    name: z.string().min(1),
+    title: z.string(),
+    department: z.string(),
+    /** Org unit above department where the HRIS has one; "" when it doesn't. */
+    division: z.string(),
+    /**
+     * The id of this person's manager, or null at the top of the tree. We key
+     * the hierarchy on ID, never on a name string: the same HRIS returns a
+     * person's name in different formats across endpoints ("Jennifer Caldwell"
+     * vs "Caldwell, Jennifer"), so name-matching silently breaks. ID is the only
+     * reliable edge.
+     */
+    managerId: z.string().nullable(),
+  })
+  .strict();
+export type Employee = z.infer<typeof Employee>;
+
+/**
+ * A reporting edge the agent could NOT resolve cleanly — a person whose manager
+ * id points nowhere, a cycle, or an active employee with no manager who isn't
+ * plausibly the CEO. Surfaced to the human reviewer rather than guessed: this is
+ * the data-quality work a forward-deployed engineer actually does on onboarding,
+ * made explicit instead of hidden.
+ */
+export const OrgIssue = z
+  .object({
+    employeeId: z.string(),
+    employeeName: z.string(),
+    kind: z.enum(["dangling-manager", "cycle", "orphan", "self-managed"]),
+    detail: z.string(),
+  })
+  .strict();
+export type OrgIssue = z.infer<typeof OrgIssue>;
+
+/**
+ * The normalised org as the agent sees it: the clean roster plus the issues that
+ * need a human. The pipeline never consumes this directly — the agent turns it
+ * into a proposed approval policy, a human validates, and THAT becomes a
+ * ClientProfile (see [`lib/client-profile.ts`](./client-profile.ts)).
+ */
+export const OrgChart = z
+  .object({
+    /** Where this org was read from, e.g. "bamboohr" or "bamboohr (recorded)". */
+    source: z.string(),
+    employees: z.array(Employee),
+    issues: z.array(OrgIssue),
+  })
+  .strict();
+export type OrgChart = z.infer<typeof OrgChart>;
+
+/* ────────────────────────────────────────────────────────────────────────── *
  *  JSON Schema derived from the Invoice Zod object
  * ────────────────────────────────────────────────────────────────────────── */
 

@@ -16,6 +16,9 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx db/seed.ts",
+    "hris:capture": "tsx scripts/capture-bamboo.ts",
+    "hris:seed": "tsx scripts/seed-bamboo.ts seed",
+    "hris:reset": "tsx scripts/seed-bamboo.ts reset",
     "sanity": "tsx src/mastra/sanity.ts",
     "eval": "tsx eval/run.ts",
     "e2e": "playwright test"
