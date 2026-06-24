@@ -36,3 +36,6 @@ tsconfig.tsbuildinfo
 /playwright-report
 /blob-report
 /.playwright
+
+# private product/strategy notes — not for the public repo
+/.product
