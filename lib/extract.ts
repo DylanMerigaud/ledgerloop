@@ -16,9 +16,8 @@ import {
  * model reads the PDF directly (vision); nothing is guessed off filenames.
  *
  * Result is a tagged union so callers map each failure to a state instead of a
- * thrown error. Note: in the demo, the extracted invoice is shown to prove the
- * read happened, but the downstream pipeline runs on the trusted seeded record —
- * so a model misread degrades the reveal, never the deterministic verdicts.
+ * thrown error. The extracted invoice is what the pipeline then runs on (see
+ * `lib/intake.ts`); a failure stops the run rather than fabricating data.
  */
 
 /** Sonnet reads the PDF directly via vision; extraction is transcription, not reasoning. */
@@ -40,7 +39,7 @@ Rules:
 - Numbers are plain JSON numbers — no currency symbols, no thousands separators, a period as decimal.
 - "lineItems" is one entry per billed line; "amount" is that line's total.
 - "subtotal" is the pre-tax sum; "total" is the final amount due. Transcribe the numbers as printed, even if they don't add up — a downstream checker flags inconsistencies. Do NOT silently fix the math.
-- Each line item needs a "sku": use the printed code if present, else a short slug of the description.`;
+- Each line item needs a "sku": copy the printed item/SKU code for that line EXACTLY as shown (e.g. the "Item" column). Only if no code is printed, fall back to a short slug of the description.`;
 
 class MissingApiKeyError extends Error {
   constructor() {

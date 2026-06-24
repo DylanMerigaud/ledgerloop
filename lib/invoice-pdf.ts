@@ -77,11 +77,16 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   }
 
   // ── Line-item table ───────────────────────────────────────────────────────
+  // The SKU column is printed because matching joins invoice ↔ PO ↔ receipt by
+  // SKU — the extraction has to be able to read the item code off the document
+  // (a real invoice carries one), otherwise the downstream match has no key.
   y += 24;
-  const colDesc = MARGIN;
-  const colQty = 330;
-  const colUnit = 400;
+  const colSku = MARGIN;
+  const colDesc = MARGIN + 110;
+  const colQty = 360;
+  const colUnit = 420;
   const colAmt = PAGE_W - MARGIN;
+  draw("Item", colSku, y, bold, 9, muted);
   draw("Description", colDesc, y, bold, 9, muted);
   draw("Qty", colQty, y, bold, 9, muted);
   draw("Unit price", colUnit, y, bold, 9, muted);
@@ -96,6 +101,7 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   y += 18;
 
   for (const li of invoice.lineItems) {
+    draw(li.sku, colSku, y, font, 9);
     draw(li.description, colDesc, y, font, 10);
     draw(String(li.qty), colQty, y, font, 10);
     draw(money(li.unitPrice, invoice.currency), colUnit, y, font, 10);

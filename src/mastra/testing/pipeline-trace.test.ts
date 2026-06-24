@@ -58,6 +58,10 @@ async function runTrace(mastra: Mastra, b: SeedBundle) {
       purchaseOrder: b.purchaseOrder ?? null,
       goodsReceipt: b.goodsReceipt ?? null,
       priorInvoiceNumbers,
+      // Skip the intake vision call — this test runs offline (no API key) and is
+      // about the matching → investigation → routing wiring, not extraction.
+      // The intake step + runIntake have their own test (lib/intake.test.ts).
+      skipExtraction: true,
     },
   });
   const raw: unknown[] = [];

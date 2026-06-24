@@ -13,17 +13,18 @@ import type { Invoice } from "@/lib/schema";
  *
  * Two states, driven by the intake trace node:
  *   • running  — scanning: the sweep animates, fields are still "reading…"
- *   • done     — the extracted fields are shown; matching ones are checked.
+ *   • done     — the extracted fields are shown; a badge says whether the header
+ *                reconciled with the PO record.
  *
- * The downstream pipeline runs on the trusted seeded record, so a model misread
- * degrades this reveal, never the verdicts.
+ * The extracted invoice is what the rest of the pipeline runs on (matching joins
+ * it against the PO) — the data on screen is the data that drives the verdicts.
  */
 
 export interface ExtractionState {
   status: "running" | "done";
   /** The invoice the model extracted (present once done). */
   extracted: Invoice | null;
-  /** Did the extracted key fields reconcile with the seeded record? */
+  /** Did the extracted header reconcile with the PO record? */
   matches: boolean;
 }
 

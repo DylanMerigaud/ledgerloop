@@ -14,8 +14,7 @@ import { runMatch } from "@/lib/matching";
 import { routeApproval } from "@/lib/policy";
 import { reconcile } from "@/lib/erp";
 import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
-import { renderInvoicePdfBase64 } from "@/lib/invoice-pdf";
-import { extractInvoice } from "@/lib/extract";
+import { runIntake } from "@/lib/intake";
 import { CTX } from "../tools/context";
 
 /**
@@ -57,38 +56,28 @@ const RunInput = z.object({
 /* A narration field every stage adds for the trace. */
 const Narrated = z.object({ narration: z.string() });
 
-/* Hard cap on the extraction call so a slow model never stalls a run. */
-const EXTRACTION_TIMEOUT_MS = 20_000;
-
 /* ── Step 1: Intake (document extraction) ───────────────────────────────────
-   The first workflow step: render the invoice to a PDF and have the vision model
-   read it back into structured data. This is one of the two AI touch-points (the
-   other is the exception investigator); the rest of the pipeline is deterministic.
+   The first workflow step, and the first of the two AI touch-points (the other
+   is the exception investigator). It renders the source record to a PDF and has
+   the vision model read it back ([`lib/intake.ts`](../../../lib/intake.ts)).
 
-   Deliberate split: the extraction is SHOWN (the reveal proves the read happened),
-   but the pipeline downstream runs on the TRUSTED seeded record, so a model
-   misread degrades the reveal, never the verdicts — the seeded edge cases stay
-   reliable. So intake passes the input through UNCHANGED to matching, and only
-   surfaces what it extracted for the trace. Fails open: a timeout/error just
-   notes it and proceeds on the record.
+   The extracted invoice is what the REST OF THE PIPELINE RUNS ON — matching joins
+   the extracted lines against the PO/receipt. Like production: the document is the
+   source of truth; if the read fails, we don't invent data — the run stops with
+   an error (no silent fallback to the record). The seeded record is only what we
+   render the PDF from (our stand-in for "a vendor PDF arrived"), and the PO /
+   receipt / prior numbers stay as the reference (they come from the DB, as they'd
+   come from the ERP in production).
 
-   The reveal needs the document on screen the instant the run starts (before the
-   model returns), and the final extraction result, are written to the TRACE via
-   the stream writer (an `intake-document` then an `intake-result` chunk) — NOT
-   threaded into the step output, because the downstream steps don't consume them
-   (they run on the trusted record). So intake's output is the run input passed
-   through unchanged: matching receives exactly what it uses, no phantom fields. */
+   The reveal needs the document on screen the instant the run starts, so we write
+   an `intake-document` chunk before calling the model, then an `intake-result`
+   when it returns. The step OUTPUTS the extracted invoice (swapped in for the
+   source), so matching consumes exactly what was read. */
 const intakeStep = createStep({
   id: "intake",
   inputSchema: RunInput,
   outputSchema: RunInput,
   execute: async ({ inputData, writer }) => {
-    const seed = inputData.invoice;
-
-    // Phase-2 resume: the document was already read in phase 1, so skip the vision
-    // call and pass straight through (the reveal from phase 1 still stands).
-    if (inputData.skipExtraction) return inputData;
-
     const emit = async (chunk: unknown) => {
       try {
         await writer?.write(chunk);
@@ -97,44 +86,37 @@ const intakeStep = createStep({
       }
     };
 
-    // Show the document immediately (the on-screen twin of the PDF being read).
-    await emit({ type: "intake-document", payload: { document: seed } });
+    // Phase-2 resume: the document was read in phase 1. Re-running the workflow
+    // re-enters intake, but we don't pay for a second vision call — pass the
+    // already-known invoice through. (Phase-1 extraction drives the run; the
+    // resume just continues it.)
+    if (inputData.skipExtraction) return inputData;
 
-    let result: { extracted: Invoice; matches: boolean } | { extracted: null } =
-      { extracted: null };
-    try {
-      const pdfBase64 = await renderInvoicePdfBase64(seed);
-      const out = await Promise.race([
-        extractInvoice(pdfBase64),
-        new Promise<{ ok: false; kind: "timeout" }>((resolve) =>
-          setTimeout(
-            () => resolve({ ok: false, kind: "timeout" }),
-            EXTRACTION_TIMEOUT_MS,
-          ),
-        ),
-      ]);
-      if (out.ok) {
-        // Did the model's read agree with the seeded record on the fields the
-        // pipeline routes on? (Drives the "reconciled with PO record" note.)
-        const matches =
-          out.invoice.invoiceNumber === seed.invoiceNumber &&
-          (out.invoice.poNumber ?? null) === (seed.poNumber ?? null) &&
-          Math.abs(out.invoice.total - seed.total) < 0.01;
-        result = { extracted: out.invoice, matches };
-      }
-    } catch {
-      /* fail open — result stays { extracted: null } */
+    // Show the document immediately (the on-screen twin of the PDF being read).
+    await emit({
+      type: "intake-document",
+      payload: { document: inputData.invoice },
+    });
+
+    const result = await runIntake(inputData.invoice);
+    await emit({ type: "intake-result", payload: result });
+
+    if (!result.ok) {
+      // Like production: no document, no run. Surface a clear failure instead of
+      // fabricating data.
+      throw new Error(`Intake failed — ${result.reason}`);
     }
 
-    await emit({ type: "intake-result", payload: result });
-    // Matching runs on the trusted record — pass the input through unchanged.
-    return inputData;
+    // The pipeline runs on the EXTRACTED invoice; PO/receipt/ledger stay as the
+    // reference. (The matching step joins them.)
+    return { ...inputData, invoice: result.invoice };
   },
 });
 
 /* ── Step 2: Matching ───────────────────────────────────────────────────────
-   The authoritative verdict comes from the pure matcher; its `verdict` drives the
-   branch below. We carry the vendor + the reviewer's decision forward. */
+   The authoritative verdict comes from the pure matcher, run on the EXTRACTED
+   invoice vs the PO/receipt; its `verdict` drives the branch below. We carry the
+   vendor + the reviewer's decision forward. */
 const HumanApproval = z.object({
   humanApproval: z.enum(["pending", "approve", "reject"]),
 });

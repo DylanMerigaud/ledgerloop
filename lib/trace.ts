@@ -241,22 +241,26 @@ export function toTraceEvent(
         }
 
         if (innerType === "intake-result") {
-          // The extraction result (the extracted invoice + whether it reconciled
-          // with the record), written when intake finishes. Upserts the same
-          // intake node. A failed extraction (extracted = null) is a soft warn.
-          const extracted = innerPayload?.["extracted"] ?? null;
+          // The intake result (`runIntake`): on success the extracted invoice +
+          // whether its header reconciled with the record; on failure a reason.
+          // Upserts the same intake node.
+          const ok = innerPayload?.["ok"] === true;
+          const extracted = ok ? (innerPayload?.["invoice"] ?? null) : null;
+          const matches = innerPayload?.["matchesRecord"] === true;
           return {
             kind: "step",
             stage: "intake",
-            status: extracted ? "ok" : "warn",
+            status: ok ? "ok" : "error",
             stepId: "intake",
-            label: extracted ? "Intake — extracted" : "Intake — using record",
-            detail: extracted
-              ? innerPayload?.["matches"] === true
-                ? "Extracted and reconciled with the PO record."
-                : "Extracted; key fields differ from the record (pipeline uses the record)."
-              : "Couldn't extract the document; proceeding on the seeded record.",
-            data: { extracted, matches: innerPayload?.["matches"] === true },
+            label: ok ? "Intake — extracted" : "Intake — failed",
+            detail: ok
+              ? matches
+                ? "Read the document and reconciled it with the PO record."
+                : "Read the document; header differs from the PO record."
+              : typeof innerPayload?.["reason"] === "string"
+                ? (innerPayload["reason"] as string)
+                : "Could not read the document.",
+            data: { extracted, matches },
           };
         }
 
