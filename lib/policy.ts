@@ -1,4 +1,5 @@
 import type { MatchResult, ApprovalDecision, ApproverTier } from "./schema";
+import { DEFAULT_APPROVAL_POLICY, type ApprovalPolicy } from "./client-profile";
 
 /**
  * Approval routing policy — pure, deterministic, unit-tested.
@@ -14,33 +15,26 @@ import type { MatchResult, ApprovalDecision, ApproverTier } from "./schema";
  * on a sales call ("a 7% overcharge on a $30k line jumps straight to director").
  */
 
-const APPROVAL_POLICY = {
-  /** Manager sign-off kicks in above this exposure or variance. */
-  manager: {
-    amount: 1_000, // money at stake on exception lines, in the invoice currency
-    variancePct: 0.05, // 5%
-  },
-  /** Director sign-off for material exposure or large variances. */
-  director: {
-    amount: 10_000,
-    variancePct: 0.1, // 10%
-  },
-} as const;
+/* The thresholds now come from the client profile (`lib/client-profile.ts`) so a
+   strict manufacturer and a loose distributor can route differently without code
+   changes. `routeApproval` takes the policy as a parameter, defaulting to the
+   standard tiers. */
 
 /** Decide the approver tier from the money + variance at stake. */
 function tierFor(
   exceptionAmount: number,
   maxVariancePct: number,
+  policy: ApprovalPolicy,
 ): ApproverTier {
   if (
-    exceptionAmount >= APPROVAL_POLICY.director.amount ||
-    maxVariancePct >= APPROVAL_POLICY.director.variancePct
+    exceptionAmount >= policy.director.amount ||
+    maxVariancePct >= policy.director.variancePct
   ) {
     return "director";
   }
   if (
-    exceptionAmount >= APPROVAL_POLICY.manager.amount ||
-    maxVariancePct >= APPROVAL_POLICY.manager.variancePct
+    exceptionAmount >= policy.manager.amount ||
+    maxVariancePct >= policy.manager.variancePct
   ) {
     return "manager";
   }
@@ -68,7 +62,10 @@ function money(n: number, currency: string): string {
  *   verdict "clean"     → "auto"     (straight-through processing, no human)
  *   verdict "exception" → manager | director  (by money + variance)
  */
-export function routeApproval(match: MatchResult): ApprovalDecision {
+export function routeApproval(
+  match: MatchResult,
+  policy: ApprovalPolicy = DEFAULT_APPROVAL_POLICY,
+): ApprovalDecision {
   const base = {
     invoiceNumber: match.invoiceNumber,
     maxVariancePct: match.maxVariancePct,
@@ -95,7 +92,7 @@ export function routeApproval(match: MatchResult): ApprovalDecision {
   }
 
   // exception → tiered human approval
-  const tier = tierFor(match.exceptionAmount, match.maxVariancePct);
+  const tier = tierFor(match.exceptionAmount, match.maxVariancePct, policy);
   const drivers: string[] = [];
   if (match.exceptionAmount > 0)
     drivers.push(`${money(match.exceptionAmount, match.currency)} at stake`);

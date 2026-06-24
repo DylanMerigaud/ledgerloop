@@ -15,6 +15,11 @@ import { routeApproval } from "@/lib/policy";
 import { reconcile } from "@/lib/erp";
 import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
 import { runIntake } from "@/lib/intake";
+import {
+  ClientProfile,
+  DEFAULT_TOLERANCES,
+  DEFAULT_APPROVAL_POLICY,
+} from "@/lib/client-profile";
 import { CTX } from "../tools/context";
 
 /**
@@ -51,6 +56,11 @@ const RunInput = z.object({
   /* On a phase-2 resume the document was already read in phase 1 — skip the
      vision call so an approve/reject doesn't re-extract (wasted cost + latency). */
   skipExtraction: z.boolean().default(false),
+  /* The client profile drives the per-customer behaviour: matching tolerances and
+     approval tiers. Optional — defaults to the standard values so a run without a
+     profile behaves as before. This is what onboarding produces and the pipeline
+     consumes. */
+  profile: ClientProfile.optional(),
 });
 
 /* A narration field every stage adds for the trace. */
@@ -122,22 +132,28 @@ const HumanApproval = z.object({
 });
 const MatchStepOut = MatchResult.merge(Narrated)
   .merge(z.object({ vendor: z.string() }))
-  .merge(HumanApproval);
+  .merge(HumanApproval)
+  // Carry the profile forward so the approval branch can apply the client's tiers.
+  .merge(z.object({ profile: ClientProfile.optional() }));
 const matchingStep = createStep({
   id: "matching",
   inputSchema: RunInput,
   outputSchema: MatchStepOut,
   execute: async ({ inputData }) => {
-    const match = runMatch({
-      invoice: inputData.invoice,
-      purchaseOrder: inputData.purchaseOrder,
-      goodsReceipt: inputData.goodsReceipt,
-      priorInvoiceNumbers: inputData.priorInvoiceNumbers,
-    });
+    const match = runMatch(
+      {
+        invoice: inputData.invoice,
+        purchaseOrder: inputData.purchaseOrder,
+        goodsReceipt: inputData.goodsReceipt,
+        priorInvoiceNumbers: inputData.priorInvoiceNumbers,
+      },
+      inputData.profile?.tolerances ?? DEFAULT_TOLERANCES,
+    );
     return {
       ...match,
       vendor: inputData.invoice.vendor,
       humanApproval: inputData.humanApproval,
+      profile: inputData.profile,
       narration: matchLine(match),
     };
   },
@@ -218,7 +234,13 @@ const investigateAndRouteStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData, mastra, writer }) => {
-    const { vendor, humanApproval, narration: _prior, ...match } = inputData;
+    const {
+      vendor,
+      humanApproval,
+      profile,
+      narration: _prior,
+      ...match
+    } = inputData;
 
     // `mastra`/`writer` are cast to our minimal contracts — we only use a tiny,
     // stable slice of each (getAgent → generate; writer.write), and keeping the
@@ -241,7 +263,10 @@ const investigateAndRouteStep = createStep({
       }
     }
 
-    const decision = routeApproval(match);
+    const decision = routeApproval(
+      match,
+      profile?.approvalPolicy ?? DEFAULT_APPROVAL_POLICY,
+    );
     return {
       decision,
       match,
@@ -253,14 +278,24 @@ const investigateAndRouteStep = createStep({
 });
 
 /* Duplicate path: a control failure, not a pricing question — nothing to
-   investigate. The blocked decision is surfaced directly. */
+   investigate. The blocked decision is surfaced directly. (Policy doesn't affect
+   a duplicate — it's always blocked — but we pass it for uniformity.) */
 const blockStep = createStep({
   id: "approval-blocked", // same stage; a duplicate is a (blocked) approval outcome
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData }) => {
-    const { vendor, humanApproval, narration: _prior, ...match } = inputData;
-    const decision = routeApproval(match);
+    const {
+      vendor,
+      humanApproval,
+      profile,
+      narration: _prior,
+      ...match
+    } = inputData;
+    const decision = routeApproval(
+      match,
+      profile?.approvalPolicy ?? DEFAULT_APPROVAL_POLICY,
+    );
     return {
       decision,
       match,
@@ -278,8 +313,17 @@ const autoApproveStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData }) => {
-    const { vendor, humanApproval, narration: _prior, ...match } = inputData;
-    const decision = routeApproval(match);
+    const {
+      vendor,
+      humanApproval,
+      profile,
+      narration: _prior,
+      ...match
+    } = inputData;
+    const decision = routeApproval(
+      match,
+      profile?.approvalPolicy ?? DEFAULT_APPROVAL_POLICY,
+    );
     return {
       decision,
       match,

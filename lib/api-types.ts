@@ -18,6 +18,10 @@ import { z } from "zod";
 export const RunRequest = z.object({
   id: z.string().min(1, "an invoice id is required"),
   decision: z.enum(["approve", "reject"]).optional(),
+  /** Which client profile to run under (tolerances + approval tiers). Optional —
+      defaults to the standard profile. This is how the same invoice routes
+      differently per onboarded client. */
+  profileId: z.string().optional(),
 });
 export type RunRequest = z.infer<typeof RunRequest>;
 

@@ -1,5 +1,6 @@
 import { mastra } from "@/src/mastra";
 import { loadRunBundle } from "@/db/client";
+import { profileById } from "@/db/client-profiles";
 import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
 import { ndjsonLine } from "@/lib/ndjson";
 import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
@@ -64,11 +65,13 @@ export async function POST(request: Request): Promise<Response> {
   // 1. Parse + validate the request body.
   let id: string;
   let decision: "approve" | "reject" | undefined;
+  let profileId: string | undefined;
   try {
     const body: unknown = await request.json();
     const parsed = RunRequest.parse(body);
     id = parsed.id;
     decision = parsed.decision;
+    profileId = parsed.profileId;
   } catch {
     return Response.json(
       {
@@ -131,6 +134,9 @@ export async function POST(request: Request): Promise<Response> {
             // top, but the document was already read — skip the (costly) vision
             // call the second time. The reveal from phase 1 still stands.
             skipExtraction: decision !== undefined,
+            // Run under the requested client profile (tolerances + approval tiers);
+            // defaults to the standard profile.
+            profile: profileById(profileId),
           },
         });
 

@@ -5,6 +5,7 @@ import type {
   MatchResult,
   MatchException,
 } from "./schema";
+import { DEFAULT_TOLERANCES, type MatchTolerances } from "./client-profile";
 
 /**
  * The 2/3-way matcher — the deterministic core of the demo.
@@ -22,15 +23,10 @@ import type {
  * "3-way"  = invoice ↔ PO ↔ receipt  (also: did we actually receive it?)
  */
 
-/** Tolerances below which a variance is treated as rounding noise, not a real exception. */
-const MATCH_TOLERANCE = {
-  /** Relative price tolerance (1% — absorbs FX/rounding without hiding real overcharges). */
-  pricePct: 0.01,
-  /** Absolute per-line money tolerance for the amount = qty × price arithmetic check. */
-  lineAmountAbs: 0.01,
-  /** Quantity tolerance (exact — you either received the units or you didn't). */
-  qtyAbs: 0,
-} as const;
+/* Tolerances below which a variance is treated as rounding noise, not a real
+   exception, now come from the client profile (`lib/client-profile.ts`) so they
+   can differ per customer (a strict manufacturer at 0.5%, a loose distributor at
+   5%). `runMatch` takes them as a parameter, defaulting to the standard values. */
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -73,7 +69,10 @@ export interface MatchInput {
  *   - "exception" → routed to Approval
  *   - "clean"     → straight-through to Reconciliation
  */
-export function runMatch(input: MatchInput): MatchResult {
+export function runMatch(
+  input: MatchInput,
+  tolerances: MatchTolerances = DEFAULT_TOLERANCES,
+): MatchResult {
   const {
     invoice,
     purchaseOrder,
@@ -126,9 +125,7 @@ export function runMatch(input: MatchInput): MatchResult {
     // 2. Internal arithmetic: does the line's own amount equal qty × unitPrice?
     //    Catches transcription/parser errors before we even compare to the PO.
     const computed = round2(line.qty * line.unitPrice);
-    if (
-      Math.abs(computed - round2(line.amount)) > MATCH_TOLERANCE.lineAmountAbs
-    ) {
+    if (Math.abs(computed - round2(line.amount)) > tolerances.lineAmountAbs) {
       exceptions.push({
         sku: line.sku,
         code: "unit_price_x_qty",
@@ -152,7 +149,7 @@ export function runMatch(input: MatchInput): MatchResult {
       });
     } else {
       const priceVar = relDiff(line.unitPrice, po.unitPrice);
-      if (priceVar > MATCH_TOLERANCE.pricePct) {
+      if (priceVar > tolerances.pricePct) {
         exceptions.push({
           sku: line.sku,
           code: "price_variance",
@@ -162,7 +159,7 @@ export function runMatch(input: MatchInput): MatchResult {
           expectedValue: po.unitPrice,
         });
       }
-      if (Math.abs(line.qty - po.qty) > MATCH_TOLERANCE.qtyAbs) {
+      if (Math.abs(line.qty - po.qty) > tolerances.qtyAbs) {
         exceptions.push({
           sku: line.sku,
           code: "qty_variance_po",
@@ -188,7 +185,7 @@ export function runMatch(input: MatchInput): MatchResult {
           invoiceValue: line.qty,
           expectedValue: null,
         });
-      } else if (line.qty - gr.receivedQty > MATCH_TOLERANCE.qtyAbs) {
+      } else if (line.qty - gr.receivedQty > tolerances.qtyAbs) {
         exceptions.push({
           sku: line.sku,
           code: "qty_variance_receipt",
