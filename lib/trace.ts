@@ -115,7 +115,7 @@ export type TraceEvent = z.infer<typeof TraceEvent>;
 /** The subset of a Mastra `WorkflowStreamEvent` we read. Defensive, not exhaustive. */
 interface RawChunk {
   type?: unknown;
-  payload?: { id?: unknown; status?: unknown; output?: unknown } | unknown;
+  payload?: unknown; // always narrowed via asRecord() before use
 }
 
 function asRecord(v: unknown): Record<string, unknown> | undefined {
@@ -155,8 +155,7 @@ export function toTraceEvent(
     const c = chunk as RawChunk;
     const type = typeof c?.type === "string" ? c.type : "";
     const payload = asRecord(c?.payload);
-    const stepId =
-      typeof payload?.["id"] === "string" ? (payload["id"] as string) : "";
+    const stepId = typeof payload?.["id"] === "string" ? payload["id"] : "";
     const stage = stageForStep(stepId);
 
     switch (type) {
@@ -198,7 +197,7 @@ export function toTraceEvent(
         if (innerType === "tool-call") {
           const toolName =
             typeof innerPayload?.["toolName"] === "string"
-              ? (innerPayload["toolName"] as string)
+              ? innerPayload["toolName"]
               : "tool";
           return {
             kind: "tool",
@@ -213,7 +212,7 @@ export function toTraceEvent(
           const investigation = asRecord(innerPayload?.["investigation"]);
           const rationale =
             typeof investigation?.["rationale"] === "string"
-              ? (investigation["rationale"] as string)
+              ? investigation["rationale"]
               : undefined;
           return {
             kind: "finding",
@@ -258,7 +257,7 @@ export function toTraceEvent(
                 ? "Read the document and reconciled it with the PO record."
                 : "Read the document; header differs from the PO record."
               : typeof innerPayload?.["reason"] === "string"
-                ? (innerPayload["reason"] as string)
+                ? innerPayload["reason"]
                 : "Could not read the document.",
             data: { extracted, matches },
           };
@@ -272,7 +271,7 @@ export function toTraceEvent(
         // a tool name, not a workflow step id — map the stage from the tool name.
         const name =
           typeof payload?.["toolName"] === "string"
-            ? (payload["toolName"] as string)
+            ? payload["toolName"]
             : "tool";
         return {
           kind: "tool",
@@ -292,7 +291,7 @@ export function toTraceEvent(
         const rawOut = asRecord(payload?.["output"]);
         const narration =
           typeof rawOut?.["narration"] === "string"
-            ? (rawOut["narration"] as string)
+            ? rawOut["narration"]
             : undefined;
 
         // Steps emit a domain object plus a `narration` string, and some
@@ -389,8 +388,8 @@ function stepDetailFromOutput(
   out: Record<string, unknown> | undefined,
 ): string | undefined {
   if (!out) return undefined;
-  if (typeof out["reason"] === "string") return out["reason"] as string;
-  if (typeof out["note"] === "string") return out["note"] as string;
+  if (typeof out["reason"] === "string") return out["reason"];
+  if (typeof out["note"] === "string") return out["note"];
   return undefined;
 }
 

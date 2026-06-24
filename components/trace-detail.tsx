@@ -12,22 +12,36 @@ import type { ApprovalWorkflow } from "@/lib/approval-workflow";
  * exception lines, the approval drivers, the GL posting.
  */
 
+/**
+ * The trace carries each stage's already-Zod-validated output as `unknown`. We
+ * narrow it with type guards on the discriminating fields — not casts — so the
+ * render branch and the prop type are checked together. (A guard that returns
+ * `d is T` documents AND verifies the shape; a cast would only assert it.)
+ */
+function has(d: object, ...keys: string[]): boolean {
+  return keys.every((k) => k in d);
+}
+const isMatch = (d: object): d is MatchResult =>
+  has(d, "verdict", "exceptions");
+const isInvestigation = (d: object): d is Investigation =>
+  has(d, "recommendation", "toolsUsed");
+const isWorkflowRun = (d: object): d is WorkflowRunData =>
+  has(d, "workflow", "steps");
+const isApprovalSummary = (d: object): d is ApprovalSummary =>
+  has(d, "outcome", "steps");
+const isRecon = (d: object): d is ReconResult => has(d, "posted", "glEntries");
+
 export function TraceDetail({ data }: { data: unknown }) {
   if (!data || typeof data !== "object") return null;
-  const d = data as Record<string, unknown>;
+  const d = data;
 
-  if ("verdict" in d && "exceptions" in d)
-    return <MatchDetail match={d as unknown as MatchResult} />;
-  if ("recommendation" in d && "toolsUsed" in d)
-    return <InvestigationDetail inv={d as unknown as Investigation} />;
+  if (isMatch(d)) return <MatchDetail match={d} />;
+  if (isInvestigation(d)) return <InvestigationDetail inv={d} />;
   // The approval-workflow node carries the full graph + per-step status — render
   // the SAME graph the onboarding screen draws, coloured by this run's path.
-  if ("workflow" in d && "steps" in d)
-    return <WorkflowRunDetail data={d as unknown as WorkflowRunData} />;
-  if ("outcome" in d && "steps" in d)
-    return <ApprovalDetail approval={d as unknown as ApprovalSummary} />;
-  if ("posted" in d && "glEntries" in d)
-    return <ReconDetail recon={d as unknown as ReconResult} />;
+  if (isWorkflowRun(d)) return <WorkflowRunDetail data={d} />;
+  if (isApprovalSummary(d)) return <ApprovalDetail approval={d} />;
+  if (isRecon(d)) return <ReconDetail recon={d} />;
   return null;
 }
 

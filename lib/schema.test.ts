@@ -79,14 +79,8 @@ test("MatchResult round-trips its own valid shape", () => {
 
 test("INVOICE_JSON_SCHEMA is an object schema without a $schema meta key", () => {
   assert.equal(typeof INVOICE_JSON_SCHEMA, "object");
-  assert.equal(
-    (INVOICE_JSON_SCHEMA as Record<string, unknown>)["type"],
-    "object",
-  );
-  assert.equal(
-    "$schema" in (INVOICE_JSON_SCHEMA as Record<string, unknown>),
-    false,
-  );
+  assert.equal(INVOICE_JSON_SCHEMA["type"], "object");
+  assert.equal("$schema" in INVOICE_JSON_SCHEMA, false);
   // derived from the same object → it must mention the required top-level fields
   const props = (
     INVOICE_JSON_SCHEMA as { properties?: Record<string, unknown> }

@@ -64,5 +64,8 @@ export function mockToolCallingModel(opts: {
     },
   };
 
+  // Boundary cast (justified): the mock implements only the slice of Mastra's
+  // `LanguageModel` the tests drive; the full type is large and provider-shaped.
+  // eslint-disable-next-line no-restricted-syntax
   return model as unknown as LanguageModel;
 }

@@ -34,9 +34,7 @@ test("a tool reads requestContext and the agent invokes it (mock model)", async 
     outputSchema: z.object({ echoed: z.string() }),
     execute: async (_input, context) => {
       toolRan = true;
-      sawContextValue = context?.requestContext?.get("secret") as
-        | string
-        | undefined;
+      sawContextValue = context?.requestContext?.get("secret");
       return { echoed: sawContextValue ?? "(missing)" };
     },
   });

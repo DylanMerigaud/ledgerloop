@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "test": "tsx --test \"**/*.test.ts\"",
     "knip": "knip",
     "format": "prettier --write \"**/*.{ts,tsx,css,mjs}\"",
@@ -42,17 +43,20 @@
     "zod-to-json-schema": "3.25.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "1.60.0",
     "@types/node": "22.19.21",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "10.5.0",
     "drizzle-kit": "0.31.10",
+    "eslint": "9",
     "knip": "6.16.1",
     "postcss": "8.5.15",
     "prettier": "3.8.4",
     "tailwindcss": "3.4.17",
     "tsx": "4.22.4",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "typescript-eslint": "8"
   }
 }

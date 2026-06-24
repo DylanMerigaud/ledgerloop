@@ -267,12 +267,7 @@ const investigateAndRouteStep = createStep({
       ...match
     } = inputData;
 
-    const investigation = await investigate(
-      mastra as unknown as MastraLike | undefined,
-      writer as unknown as ChunkWriter | undefined,
-      match,
-      vendor,
-    );
+    const investigation = await investigate(mastra, writer, match, vendor);
     if (investigation) {
       try {
         await writer?.write({

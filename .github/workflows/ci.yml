@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    name: format · typecheck · knip · test · build · eval
+    name: format · typecheck · lint · knip · test · build · eval
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +28,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Lint (ESLint — cast/any hygiene)
+        run: pnpm lint
 
       - name: Dead-code check (knip)
         run: pnpm knip

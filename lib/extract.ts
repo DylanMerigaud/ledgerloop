@@ -129,7 +129,7 @@ export async function extractInvoice(
  * and, as a last resort, slice from the first "{" to the last "}".
  */
 function extractJsonObject(text: string): unknown {
-  const tryParse = (s: string): unknown | undefined => {
+  const tryParse = (s: string): unknown => {
     try {
       return JSON.parse(s);
     } catch {
