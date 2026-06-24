@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq } from "drizzle-orm";
-import { invoices, purchaseOrders, goodsReceipts } from "./schema";
+
+import { invoices, purchaseOrders, goodsReceipts } from "@/db/schema";
+import { env } from "@/lib/env";
 import {
   Invoice,
   PurchaseOrder,
@@ -29,22 +31,18 @@ let cached: ReturnType<typeof drizzle> | null = null;
 
 function db() {
   if (!cached) {
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      throw new Error(
-        "DATABASE_URL is not set. Point it at your Supabase Postgres (see .env.example).",
-      );
-    }
     // `prepare: false` is the Supabase transaction-pooler-safe setting; one
-    // connection is plenty for this read-only demo.
-    const sql = postgres(url, { prepare: false, max: 1 });
+    // connection is plenty for this read-only demo. `env.DATABASE_URL` is required
+    // and validated at env load, so a missing value fails clearly there (the error
+    // names DATABASE_URL, which the run route keys its setup notice off).
+    const sql = postgres(env.DATABASE_URL, { prepare: false, max: 1 });
     cached = drizzle(sql);
   }
   return cached;
 }
 
 /** A queue row for the dashboard's left pane — light, list-shaped. */
-export interface QueueItem {
+export type QueueItem = {
   /** Stable per-row key — the value to pass to the run route (NOT the invoice number). */
   id: string;
   invoiceNumber: string;
@@ -54,7 +52,7 @@ export interface QueueItem {
   currency: string;
   issueDate: string;
   scenario: string | null;
-}
+};
 
 /** All invoices, oldest first, as lightweight queue items for the left pane. */
 export async function listInvoiceQueue(): Promise<QueueItem[]> {
@@ -76,13 +74,13 @@ export async function listInvoiceQueue(): Promise<QueueItem[]> {
 }
 
 /** The full document bundle the pipeline needs for one invoice run. */
-export interface RunBundle {
+export type RunBundle = {
   invoice: TInvoice;
   purchaseOrder: TPurchaseOrder | null;
   goodsReceipt: TGoodsReceipt | null;
   /** Other invoice numbers in the ledger — for duplicate detection. */
   priorInvoiceNumbers: string[];
-}
+};
 
 /**
  * Load everything needed to run the pipeline for one invoice, validating each

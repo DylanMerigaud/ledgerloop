@@ -158,13 +158,13 @@ export type ApprovalWorkflow = z.infer<typeof ApprovalWorkflow>;
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** The facts about an invoice a condition is evaluated against. */
-export interface InvoiceContext {
+export type InvoiceContext = {
   amount: number;
   exceptionAmount: number;
   variancePct: number;
   department: string;
   verdict: "clean" | "exception" | "duplicate";
-}
+};
 
 function valueFor(field: ConditionField, ctx: InvoiceContext): string | number {
   switch (field) {

@@ -1,24 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { TraceTimeline } from "@/components/trace-timeline";
+
 import {
   ExtractionReveal,
   type ExtractionState,
 } from "@/components/extraction-reveal";
-import { usePipelineRun } from "@/lib/use-pipeline-run";
-import { formatMoney } from "@/lib/format";
-import type { Invoice } from "@/lib/schema";
-import type { TraceEvent } from "@/lib/trace";
+import { TraceTimeline } from "@/components/trace-timeline";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import type { QueueItem } from "@/db/client";
 import {
   outcomeDot,
   outcomeLabel,
   outcomeTone,
   type Outcome,
 } from "@/lib/display";
-import type { QueueItem } from "@/db/client";
+import { formatMoney } from "@/lib/format";
+import type { Invoice } from "@/lib/schema";
+import type { TraceEvent } from "@/lib/trace";
+import { usePipelineRun } from "@/lib/use-pipeline-run";
 
 /**
  * The split-view dashboard.

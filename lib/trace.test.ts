@@ -1,11 +1,12 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
 import {
   toTraceEvent,
   stageForStep,
   pipelineErrorEvent,
   TraceEvent,
-} from "./trace";
+} from "@/lib/trace";
 
 /**
  * Tests for the Mastra-chunk → TraceEvent adapter. The two properties that

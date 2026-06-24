@@ -22,24 +22,26 @@
  */
 
 import { join } from "node:path";
+
 import { RequestContext } from "@mastra/core/request-context";
-import { mastra } from "@/src/mastra";
-import { PIPELINE_MODEL } from "@/src/mastra/model";
+
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
-import { runMatch } from "@/lib/matching";
-import {
-  runInvestigation,
-  INVESTIGATION_CTX_KEY,
-  type InvestigatorAgent,
-} from "@/lib/investigation";
-import { EVAL_CASES, type EvalCase } from "./cases";
+import { EVAL_CASES, type EvalCase } from "@/eval/cases";
 import {
   scoreCase,
   accuracy,
   overchargeConfusion,
   type CaseScore,
   type Recommendation,
-} from "./score";
+} from "@/eval/score";
+import {
+  runInvestigation,
+  INVESTIGATION_CTX_KEY,
+  type InvestigatorAgent,
+} from "@/lib/investigation";
+import { runMatch } from "@/lib/matching";
+import { mastra } from "@/src/mastra";
+import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 // ── ANSI helpers (no dependency) ────────────────────────────────────────────
 const C = {

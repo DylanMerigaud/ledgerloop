@@ -1,11 +1,11 @@
+import { DEFAULT_TOLERANCES, type MatchTolerances } from "@/lib/client-profile";
 import type {
   Invoice,
   PurchaseOrder,
   GoodsReceipt,
   MatchResult,
   MatchException,
-} from "./schema";
-import { DEFAULT_TOLERANCES, type MatchTolerances } from "./client-profile";
+} from "@/lib/schema";
 
 /**
  * The 2/3-way matcher — the deterministic core of the demo.
@@ -50,7 +50,7 @@ function money(n: number, currency: string): string {
   return `${v} ${currency}`;
 }
 
-export interface MatchInput {
+export type MatchInput = {
   invoice: Invoice;
   purchaseOrder: PurchaseOrder | null;
   goodsReceipt: GoodsReceipt | null;
@@ -60,7 +60,7 @@ export interface MatchInput {
    * The pipeline passes the seeded ledger; the check stays pure and testable.
    */
   priorInvoiceNumbers?: readonly string[];
-}
+};
 
 /**
  * Run the match. Returns a fully-populated `MatchResult` whose `verdict` drives

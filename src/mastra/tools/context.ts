@@ -10,12 +10,12 @@
  *
  * Keyed by a typed record so `requestContext.get(...)` is type-safe on both ends.
  */
-export interface ToolContext {
+export type ToolContext = {
   /** For the investigator's tools — which vendor's records they may read. */
   investigation: {
     vendor: string;
   };
-}
+};
 
 export const CTX = {
   investigation: "investigation",

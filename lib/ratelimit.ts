@@ -1,6 +1,9 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
+import { env } from "@/lib/env";
+import { log } from "@/lib/logger";
+
 /**
  * Per-IP rate limiting via Upstash, for the public "Run pipeline" endpoint.
  * Configured for 8 runs per 10 minutes — enough to explore every seeded scenario
@@ -32,12 +35,11 @@ function getLimiter(): Ratelimit | null {
   //   • Upstash directly  → UPSTASH_REDIS_REST_URL / _TOKEN
   //   • Vercel Marketplace → KV_REST_API_URL / _TOKEN (Vercel's Upstash add-on,
   //     which keeps the legacy "KV" prefix)
-  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+  const url = env.UPSTASH_REDIS_REST_URL ?? env.KV_REST_API_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN ?? env.KV_REST_API_TOKEN;
 
   if (!url || !token) {
-    console.warn(
+    log.warn(
       "[ratelimit] No Redis credentials found " +
         "(UPSTASH_REDIS_REST_URL/_TOKEN or KV_REST_API_URL/_TOKEN) — " +
         "rate limiting is DISABLED (failing open).",
@@ -76,7 +78,7 @@ export async function checkRateLimit(ip: string): Promise<RateVerdict> {
   } catch (err) {
     // If Redis itself errors, don't take the whole endpoint down — fail open but
     // log it so the operator notices.
-    console.error("[ratelimit] Upstash error, failing open:", err);
+    log.error("[ratelimit] Upstash error, failing open:", { err });
     return { ok: true, remaining: null };
   }
 }

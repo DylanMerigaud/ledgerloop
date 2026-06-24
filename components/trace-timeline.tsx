@@ -1,9 +1,9 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { TraceDetail } from "@/components/trace-detail";
-import { formatDuration, humanize } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
 import { statusDot, statusTone, stageLabel } from "@/lib/display";
+import { formatDuration, humanize } from "@/lib/format";
 import type { TraceEvent } from "@/lib/trace";
 import type { PipelineRunState } from "@/lib/use-pipeline-run";
 

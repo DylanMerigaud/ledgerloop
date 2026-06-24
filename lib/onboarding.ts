@@ -4,8 +4,8 @@ import {
   type ApprovalWorkflow,
   type WorkflowStep,
   type Condition,
-} from "./approval-workflow";
-import type { OrgChart } from "./schema";
+} from "@/lib/approval-workflow";
+import type { OrgChart } from "@/lib/schema";
 
 /**
  * Onboarding discovery — turn a client's org into an approval workflow.
@@ -33,9 +33,9 @@ import type { OrgChart } from "./schema";
  */
 
 /** Anything that can produce a structured proposal from a prompt — real model or fake. */
-export interface ProposalModel {
+export type ProposalModel = {
   propose: (org: OrgChart) => Promise<TProposal>;
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Deterministic assembly — proposal + org → validated ApprovalWorkflow
@@ -132,12 +132,12 @@ export function assembleWorkflow(
  *  The full discovery: model proposal + assembly + carry the org issues through
  * ────────────────────────────────────────────────────────────────────────── */
 
-export interface OnboardingResult {
+export type OnboardingResult = {
   workflow: ApprovalWorkflow;
   proposal: TProposal;
   /** The org issues paired with the model's plain-language note for each. */
   issues: { detail: string; note: string }[];
-}
+};
 
 /**
  * Run the onboarding model over an org and assemble the proposed workflow. Pairs

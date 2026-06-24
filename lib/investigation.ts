@@ -1,4 +1,4 @@
-import type { MatchResult, Investigation } from "./schema";
+import type { MatchResult, Investigation } from "@/lib/schema";
 
 /**
  * The reusable core of the exception investigation — shared by the workflow step
@@ -19,19 +19,19 @@ import type { MatchResult, Investigation } from "./schema";
  *   - `steps[].text` carries per-step text; `text` concatenates across steps, so
  *     we read the last NON-EMPTY step instead (the post-tool conclusion).
  */
-interface AgentResult {
+type AgentResult = {
   text?: string;
   steps?: Array<{ text?: string }>;
   toolCalls?: Array<{ payload?: { toolName?: string } }>;
-}
+};
 
 /** Anything that can run a prompt — the real Mastra Agent, or a test/eval fake. */
-export interface InvestigatorAgent {
+export type InvestigatorAgent = {
   generate: (
     prompt: string,
     options?: { requestContext?: unknown },
   ) => Promise<AgentResult>;
-}
+};
 
 /** The requestContext key the investigator's tools read the trusted vendor from. */
 export const INVESTIGATION_CTX_KEY = "investigation";

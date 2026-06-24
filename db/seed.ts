@@ -1,7 +1,13 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { invoices, purchaseOrders, goodsReceipts, agentRuns } from "./schema";
-import { SEED_BUNDLES } from "./seed-data";
+
+import {
+  invoices,
+  purchaseOrders,
+  goodsReceipts,
+  agentRuns,
+} from "@/db/schema";
+import { SEED_BUNDLES } from "@/db/seed-data";
 import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**

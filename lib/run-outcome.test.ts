@@ -1,7 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deriveOutcome, isAwaitingApproval } from "./run-outcome";
-import type { TraceEvent } from "./trace";
+import { test } from "node:test";
+
+import { deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
+import type { TraceEvent } from "@/lib/trace";
 
 /**
  * Tests for the queue-pill outcome logic. This had a real bug: an `awaiting`

@@ -1,6 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classify } from "./investigation";
+import { test } from "node:test";
+
+import { classify } from "@/lib/investigation";
 
 /**
  * `classify` turns the agent's free-text recommendation into a label. It's a

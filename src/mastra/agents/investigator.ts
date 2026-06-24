@@ -1,10 +1,11 @@
 import { Agent } from "@mastra/core/agent";
-import { PIPELINE_MODEL } from "../model";
+
+import { PIPELINE_MODEL } from "@/src/mastra/model";
 import {
   priceHistoryTool,
   poNotesTool,
   receiptNotesTool,
-} from "../tools/investigator-tools";
+} from "@/src/mastra/tools/investigator-tools";
 
 /**
  * The Exception Investigator — the one genuinely agentic step in the pipeline.

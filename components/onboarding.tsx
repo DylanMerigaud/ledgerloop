@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
+import { API_ROUTES } from "@/lib/api-routes";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 
 /**
@@ -20,13 +22,13 @@ import type { ApprovalWorkflow } from "@/lib/approval-workflow";
  * issues before it goes live. (Conversational edits are the next layer.)
  */
 
-interface RoleResolution {
+type RoleResolution = {
   role: string;
   title: string;
   employeeName: string | null;
   rationale: string;
-}
-interface OnboardingResponse {
+};
+type OnboardingResponse = {
   source: string;
   employeeCount: number;
   workflow: ApprovalWorkflow;
@@ -36,7 +38,7 @@ interface OnboardingResponse {
     summary: string;
   };
   issues: { detail: string; note: string }[];
-}
+};
 
 type State =
   | { status: "idle" }
@@ -50,7 +52,7 @@ export function Onboarding() {
   async function discover() {
     setState({ status: "running" });
     try {
-      const res = await fetch("/api/onboarding", { method: "POST" });
+      const res = await fetch(API_ROUTES.onboarding, { method: "POST" });
       if (!res.ok) {
         const msg = await res
           .json()

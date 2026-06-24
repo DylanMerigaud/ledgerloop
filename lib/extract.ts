@@ -1,9 +1,12 @@
-import Anthropic, { APIError } from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { APIError } from "@anthropic-ai/sdk";
+
+import { anthropic, MissingAnthropicKeyError } from "@/lib/anthropic";
 import {
   Invoice,
   INVOICE_JSON_SCHEMA,
   type Invoice as TInvoice,
-} from "./schema";
+} from "@/lib/schema";
 
 /**
  * Document extraction — the intake step's real work: a vendor's invoice PDF in,
@@ -41,30 +44,13 @@ Rules:
 - "subtotal" is the pre-tax sum; "total" is the final amount due. Transcribe the numbers as printed, even if they don't add up — a downstream checker flags inconsistencies. Do NOT silently fix the math.
 - Each line item needs a "sku": copy the printed item/SKU code for that line EXACTLY as shown (e.g. the "Item" column). Only if no code is printed, fall back to a short slug of the description.`;
 
-class MissingApiKeyError extends Error {
-  constructor() {
-    super("ANTHROPIC_API_KEY is not set");
-    this.name = "MissingApiKeyError";
-  }
-}
-
-let cachedClient: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!cachedClient) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new MissingApiKeyError();
-    cachedClient = new Anthropic({ apiKey });
-  }
-  return cachedClient;
-}
-
 /** Extract a base64-encoded PDF into a validated Invoice (or a tagged failure). */
 export async function extractInvoice(
   pdfBase64: string,
 ): Promise<ExtractionResult> {
   let message: Anthropic.Message;
   try {
-    message = await getClient().messages.create({
+    message = await anthropic().messages.create({
       model: EXTRACTION_MODEL,
       // Headroom for invoices with many line items — a truncated response would
       // be invalid JSON (caught below, but better to not truncate in the first place).
@@ -153,7 +139,7 @@ function extractJsonObject(text: string): unknown {
 }
 
 function mapApiError(err: unknown): ExtractionResult {
-  if (err instanceof MissingApiKeyError) {
+  if (err instanceof MissingAnthropicKeyError) {
     return {
       ok: false,
       kind: "api_error",

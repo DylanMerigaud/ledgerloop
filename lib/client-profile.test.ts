@@ -1,10 +1,11 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runMatch } from "./matching";
-import { runApproval } from "./approval-run";
-import { workflowFromPolicy } from "./client-profile";
+import { test } from "node:test";
+
 import { CLIENT_PROFILES, profileById } from "@/db/client-profiles";
-import type { Invoice, PurchaseOrder } from "./schema";
+import { runApproval } from "@/lib/approval-run";
+import { workflowFromPolicy } from "@/lib/client-profile";
+import { runMatch } from "@/lib/matching";
+import type { Invoice, PurchaseOrder } from "@/lib/schema";
 
 /**
  * Profile-driven behaviour — the config-driven claim. The SAME invoice routes

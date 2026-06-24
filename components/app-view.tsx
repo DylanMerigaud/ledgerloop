@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import { Dashboard } from "@/components/dashboard";
 import { Onboarding } from "@/components/onboarding";
 import type { QueueItem } from "@/db/client";

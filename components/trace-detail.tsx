@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { WorkflowGraph } from "@/components/workflow-graph";
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { formatMoney, formatPct, humanize } from "@/lib/format";
 import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
-import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 
 /**
  * Rich, type-aware detail for a completed stage. Each stage emits a different
@@ -46,21 +46,21 @@ export function TraceDetail({ data }: { data: unknown }) {
 }
 
 /** The approval workflow's execution summary, as the step emits it onto the trace. */
-interface ApprovalSummary {
+type ApprovalSummary = {
   outcome: "posted" | "awaiting" | "rejected" | "blocked";
   steps: { id: string; status: string; detail: string }[];
-}
+};
 
 /** The live approval-workflow node: the graph structure + this run's step statuses. */
-interface WorkflowRunData {
+type WorkflowRunData = {
   workflow: ApprovalWorkflow;
   steps: { id: string; status: string; detail: string }[];
   outcome: string;
-}
+};
 
 function WorkflowRunDetail({ data }: { data: WorkflowRunData }) {
   const statuses: Record<string, string> = {};
-  for (const s of data.steps ?? []) statuses[s.id] = s.status;
+  for (const s of data.steps) statuses[s.id] = s.status;
   return (
     <div className="-mx-1">
       <WorkflowGraph workflow={data.workflow} statuses={statuses} />

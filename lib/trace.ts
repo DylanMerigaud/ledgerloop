@@ -112,12 +112,6 @@ export type TraceEvent = z.infer<typeof TraceEvent>;
  *  Adapter: raw Mastra chunk → TraceEvent (or null to drop)
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** The subset of a Mastra `WorkflowStreamEvent` we read. Defensive, not exhaustive. */
-interface RawChunk {
-  type?: unknown;
-  payload?: unknown; // always narrowed via asRecord() before use
-}
-
 function asRecord(v: unknown): Record<string, unknown> | undefined {
   return typeof v === "object" && v !== null
     ? (v as Record<string, unknown>)
@@ -152,9 +146,12 @@ export function toTraceEvent(
   chunk: unknown,
 ): Omit<TraceEvent, "seq" | "atMs"> | null {
   try {
-    const c = chunk as RawChunk;
-    const type = typeof c?.type === "string" ? c.type : "";
-    const payload = asRecord(c?.payload);
+    // `chunk` is genuinely unknown — narrow it through `asRecord` (which handles
+    // null/non-object) rather than casting to a non-null shape. No lying cast, so
+    // no "unnecessary" optional chains downstream.
+    const c = asRecord(chunk);
+    const type = typeof c?.["type"] === "string" ? c["type"] : "";
+    const payload = asRecord(c?.["payload"]);
     const stepId = typeof payload?.["id"] === "string" ? payload["id"] : "";
     const stage = stageForStep(stepId);
 
@@ -244,7 +241,8 @@ export function toTraceEvent(
           // whether its header reconciled with the record; on failure a reason.
           // Upserts the same intake node.
           const ok = innerPayload?.["ok"] === true;
-          const extracted = ok ? (innerPayload?.["invoice"] ?? null) : null;
+          // `ok` being true means innerPayload is present (narrowed), so no `?.`.
+          const extracted = ok ? (innerPayload["invoice"] ?? null) : null;
           const matches = innerPayload?.["matchesRecord"] === true;
           return {
             kind: "step",

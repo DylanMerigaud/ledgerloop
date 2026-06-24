@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
 import { WorkflowGraph } from "@/components/workflow-graph";
+import { API_ROUTES } from "@/lib/api-routes";
 import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
 
 /**
@@ -17,10 +19,10 @@ import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
  * (a pending edit). Reads POST /api/workflow/edit.
  */
 
-interface Proposal {
+type Proposal = {
   proposed: ApprovalWorkflow;
   changes: StepChange[];
-}
+};
 
 const SUGGESTIONS = [
   "Above $25k, also require CFO approval",
@@ -41,7 +43,7 @@ export function WorkflowEditor({ initial }: { initial: ApprovalWorkflow }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/workflow/edit", {
+      const res = await fetch(API_ROUTES.workflowEdit, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ workflow: current, instruction: value }),

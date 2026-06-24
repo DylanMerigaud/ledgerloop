@@ -1,14 +1,14 @@
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
-import { runMatch } from "@/lib/matching";
+import type { Decisions } from "@/lib/approval-engine";
 import { runApproval } from "@/lib/approval-run";
-import { reconcileFromOutcome } from "@/lib/erp";
 import {
   workflowFromPolicy,
   DEFAULT_APPROVAL_POLICY,
   type ApprovalPolicy,
 } from "@/lib/client-profile";
-import type { Decisions } from "@/lib/approval-engine";
-import { PIPELINE_MODEL } from "./model";
+import { reconcileFromOutcome } from "@/lib/erp";
+import { runMatch } from "@/lib/matching";
+import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 /**
  * Pipeline sanity check — `tsx src/mastra/sanity.ts [--dry-run]`.

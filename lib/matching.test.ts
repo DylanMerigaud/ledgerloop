@@ -1,7 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runMatch, type MatchInput } from "./matching";
-import type { Invoice, PurchaseOrder, GoodsReceipt } from "./schema";
+import { test } from "node:test";
+
+import { runMatch, type MatchInput } from "@/lib/matching";
+import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**
  * Unit tests for the 2/3-way matcher — the deterministic core the matching step

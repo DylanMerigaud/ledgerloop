@@ -1,13 +1,14 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { executeWorkflow } from "@/lib/approval-engine";
+import { ApprovalWorkflow, type InvoiceContext } from "@/lib/approval-workflow";
 import {
   workflowFromPolicy,
   workflowFor,
   DEFAULT_APPROVAL_POLICY,
   type ApprovalPolicy,
-} from "./client-profile";
-import { ApprovalWorkflow, type InvoiceContext } from "./approval-workflow";
-import { executeWorkflow } from "./approval-engine";
+} from "@/lib/client-profile";
 
 /**
  * The DAG bridge must reproduce the OLD flat two-tier behaviour, so migrating the

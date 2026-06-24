@@ -31,6 +31,7 @@
  * job info with reportsTo.
  */
 import path from "node:path";
+
 import {
   SEED_ORG,
   SEED_DIVISION,
@@ -49,10 +50,10 @@ function loadEnv(): void {
   }
 }
 
-interface Creds {
+type Creds = {
   subdomain: string;
   key: string;
-}
+};
 
 function creds(): Creds {
   const key = process.env.BAMBOO_HR_API_KEY;
@@ -72,11 +73,11 @@ function authHeader(c: Creds): string {
   return `Basic ${Buffer.from(`${c.key}:x`).toString("base64")}`;
 }
 
-interface ListOption {
+type ListOption = {
   id: number;
   name: string | null;
   archived: "yes" | "no";
-}
+};
 
 /**
  * Make sure the SEED_DIVISION exists as a Division option, creating it if needed.

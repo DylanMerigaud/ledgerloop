@@ -1,8 +1,9 @@
+import { z } from "zod";
+
 import { ApprovalWorkflow } from "@/lib/approval-workflow";
+import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
 import { proposeEdit } from "@/lib/workflow-edit";
 import { anthropicEditModel } from "@/lib/workflow-edit-model";
-import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
-import { z } from "zod";
 
 /**
  * POST /api/workflow/edit — propose a conversational edit to an approval workflow.

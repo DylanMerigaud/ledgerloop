@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatMoney } from "@/lib/format";
+
 import { PdfDocument } from "@/components/pdf-document";
+import { formatMoney } from "@/lib/format";
 import type { Invoice } from "@/lib/schema";
 
 /**
@@ -20,13 +21,13 @@ import type { Invoice } from "@/lib/schema";
  * it against the PO) — the data on screen is the data that drives the verdicts.
  */
 
-export interface ExtractionState {
+export type ExtractionState = {
   status: "running" | "done";
   /** The invoice the model extracted (present once done). */
   extracted: Invoice | null;
   /** Did the extracted header reconcile with the PO record? */
   matches: boolean;
-}
+};
 
 /** The fields we reveal on the right, in order. */
 const FIELD_DELAY_MS = 140;

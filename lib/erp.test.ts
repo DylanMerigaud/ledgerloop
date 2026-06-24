@@ -1,7 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { reconcileFromOutcome } from "./erp";
-import type { MatchResult } from "./schema";
+import { test } from "node:test";
+
+import { reconcileFromOutcome } from "@/lib/erp";
+import type { MatchResult } from "@/lib/schema";
 
 /**
  * Unit tests for reconciliation — the step that posts to the (fake) ERP, driven

@@ -1,11 +1,12 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
 import {
   scoreCase,
   accuracy,
   overchargeConfusion,
   type CaseScore,
-} from "./score";
+} from "@/eval/score";
 
 /** Build a scored case quickly. */
 function sc(

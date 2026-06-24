@@ -13,7 +13,7 @@ import type { Investigation } from "@/lib/schema";
 
 export type Recommendation = Investigation["recommendation"];
 
-export interface CaseScore {
+export type CaseScore = {
   id: string;
   stresses: string;
   expected: Recommendation;
@@ -21,16 +21,16 @@ export interface CaseScore {
   got: Recommendation | undefined;
   correct: boolean;
   failed?: string;
-}
+};
 
-export interface Confusion {
+export type Confusion = {
   truePositives: number;
   falsePositives: number;
   falseNegatives: number;
   precision: number;
   recall: number;
   f1: number;
-}
+};
 
 const POSITIVE: Recommendation = "likely_overcharge";
 

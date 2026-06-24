@@ -1,7 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { diffWorkflows, type ApprovalWorkflow } from "./approval-workflow";
-import { proposeEdit, type EditModel } from "./workflow-edit";
+import { test } from "node:test";
+
+import { diffWorkflows, type ApprovalWorkflow } from "@/lib/approval-workflow";
+import { proposeEdit, type EditModel } from "@/lib/workflow-edit";
 
 /**
  * The diff is what the preview renders and what makes "approve/revert" meaningful,

@@ -3,12 +3,12 @@ import {
   type Decisions,
   type ExecutionState,
   type StepState,
-} from "./approval-engine";
+} from "@/lib/approval-engine";
 import {
   type ApprovalWorkflow,
   type InvoiceContext,
-} from "./approval-workflow";
-import type { MatchResult } from "./schema";
+} from "@/lib/approval-workflow";
+import type { MatchResult } from "@/lib/schema";
 
 /**
  * The bridge between the conditional-workflow ENGINE and the per-invoice pipeline.
@@ -36,7 +36,7 @@ function contextFromMatch(match: MatchResult): InvoiceContext {
   };
 }
 
-export interface ApprovalRun {
+export type ApprovalRun = {
   state: ExecutionState;
   /** "posted" once every active gate is approved; "awaiting" while gates pend; "rejected" on a no. */
   outcome: "posted" | "awaiting" | "rejected";
@@ -44,7 +44,7 @@ export interface ApprovalRun {
   pending: StepState[];
   /** One-line summary for the trace/narration. */
   narration: string;
-}
+};
 
 /**
  * Run the approval workflow for a matched invoice and summarise it. Maps the

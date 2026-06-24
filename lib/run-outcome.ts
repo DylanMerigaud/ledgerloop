@@ -1,5 +1,5 @@
-import type { TraceEvent } from "@/lib/trace";
 import type { Outcome } from "@/lib/display";
+import type { TraceEvent } from "@/lib/trace";
 
 /**
  * Pure helpers that derive the coarse per-invoice state from the streamed trace.
@@ -20,10 +20,10 @@ export function isAwaitingApproval(trace: TraceEvent[]): boolean {
 }
 
 /** One pending approval step on the approval node's data. */
-interface PendingStep {
+type PendingStep = {
   id: string;
   status: string;
-}
+};
 
 /**
  * Build the per-step decisions map for a resume: apply the reviewer's single
@@ -38,8 +38,9 @@ export function decisionsForPending(
   for (const e of trace) {
     const steps = dataOf(e)?.["steps"];
     if (!Array.isArray(steps)) continue;
-    for (const s of steps as PendingStep[]) {
-      if (s?.status === "pending" && typeof s.id === "string") {
+    for (const raw of steps) {
+      const s = raw as PendingStep;
+      if (s.status === "pending" && typeof s.id === "string") {
         out[s.id] = decision;
       }
     }

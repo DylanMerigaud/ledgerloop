@@ -1,9 +1,9 @@
+import { nonNull } from "@/lib/assert";
 import type { ClientProfile } from "@/lib/client-profile";
 import {
   DEFAULT_TOLERANCES,
   DEFAULT_APPROVAL_POLICY,
 } from "@/lib/client-profile";
-import { nonNull } from "@/lib/assert";
 
 /**
  * Seeded client profiles — the demo's stand-in for "onboarded customers". Each is

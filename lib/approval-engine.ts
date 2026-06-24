@@ -4,8 +4,8 @@ import {
   type ApprovalWorkflow,
   type WorkflowStep,
   type InvoiceContext,
-} from "./approval-workflow";
-import { nonNull } from "./assert";
+} from "@/lib/approval-workflow";
+import { nonNull } from "@/lib/assert";
 
 /**
  * Approval workflow engine — walk the DAG for one invoice and compute the state
@@ -38,24 +38,24 @@ type StepStatus =
   | "done" // integration step that ran
   | "blocked"; // couldn't run because an upstream step was rejected
 
-export interface StepState {
+export type StepState = {
   id: string;
   status: StepStatus;
   /** Human-readable reason, for the trace/UI. */
   detail: string;
-}
+};
 
 /** The human's decision on a given approval step id. */
 type StepDecision = "approve" | "reject";
 export type Decisions = Record<string, StepDecision>;
 
-export interface ExecutionState {
+export type ExecutionState = {
   steps: StepState[];
   /** Approval step ids currently waiting on a human (collect-all). */
   pending: string[];
   /** Overall: are we waiting, finished clean, or blocked by a rejection. */
   outcome: "awaiting" | "approved" | "rejected";
-}
+};
 
 /**
  * Compute the execution snapshot. Walks the DAG in topological waves: a step is

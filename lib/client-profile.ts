@@ -1,9 +1,10 @@
 import { z } from "zod";
+
 import {
   ApprovalWorkflow,
   type ApprovalWorkflow as TApprovalWorkflow,
   type WorkflowStep,
-} from "./approval-workflow";
+} from "@/lib/approval-workflow";
 
 /**
  * A CLIENT PROFILE — the config that makes the pipeline behave differently per

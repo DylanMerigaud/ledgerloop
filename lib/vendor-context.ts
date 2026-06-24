@@ -17,14 +17,14 @@
  * Keyed by vendor name (matching the seeded invoices/POs).
  */
 
-interface VendorContext {
+type VendorContext = {
   /** Free-text price history / account notes a buyer might keep on a vendor. */
   priceHistory: string;
   /** Buyer-side notes attached to the purchase order (intent, side agreements). */
   poNotes: string;
   /** Warehouse / receiving notes — often where the real story of a delivery is. */
   receiptNotes: string;
-}
+};
 
 const VENDOR_CONTEXT: Record<string, VendorContext> = {
   "Severn Steelworks": {

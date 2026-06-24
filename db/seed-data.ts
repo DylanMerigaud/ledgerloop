@@ -21,14 +21,14 @@ import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
  * the queue shows.
  */
 
-export interface SeedBundle {
+export type SeedBundle = {
   /** A stable, unique row id (the duplicate needs a distinct id from its twin). */
   id: string;
   scenario: string;
   invoice: Invoice;
   purchaseOrder?: PurchaseOrder;
   goodsReceipt?: GoodsReceipt;
-}
+};
 
 /* Helper to keep line construction terse + arithmetically correct by default. */
 function line(

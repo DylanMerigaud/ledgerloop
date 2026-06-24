@@ -1,10 +1,11 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { executeWorkflow, type Decisions } from "./approval-engine";
+import { test } from "node:test";
+
+import { executeWorkflow, type Decisions } from "@/lib/approval-engine";
 import {
   type ApprovalWorkflow,
   type InvoiceContext,
-} from "./approval-workflow";
+} from "@/lib/approval-workflow";
 
 /**
  * The engine drives payment routing, so it's tested exhaustively. The fixture is

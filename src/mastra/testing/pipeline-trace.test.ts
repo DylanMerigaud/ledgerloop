@@ -1,16 +1,18 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
-import { mockToolCallingModel } from "./mock-model";
-import { p2pWorkflow } from "../workflows/p2p";
+
+import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
+import { toTraceEvent, type TraceEvent } from "@/lib/trace";
+import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
 import {
   priceHistoryTool,
   poNotesTool,
   receiptNotesTool,
-} from "../tools/investigator-tools";
-import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
-import { toTraceEvent, type TraceEvent } from "@/lib/trace";
+} from "@/src/mastra/tools/investigator-tools";
+import { p2pWorkflow } from "@/src/mastra/workflows/p2p";
 
 /**
  * Full-pipeline offline integration test: run the REAL p2p workflow end to end

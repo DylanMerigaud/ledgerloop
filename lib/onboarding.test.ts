@@ -1,18 +1,19 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  assembleWorkflow,
-  deriveWorkflow,
-  orgForPrompt,
-  type ProposalModel,
-} from "./onboarding";
+import { test } from "node:test";
+
 import {
   ApprovalWorkflow,
   evaluateCondition,
   type OnboardingProposal,
   type InvoiceContext,
-} from "./approval-workflow";
-import type { OrgChart } from "./schema";
+} from "@/lib/approval-workflow";
+import {
+  assembleWorkflow,
+  deriveWorkflow,
+  orgForPrompt,
+  type ProposalModel,
+} from "@/lib/onboarding";
+import type { OrgChart } from "@/lib/schema";
 
 /**
  * The deterministic assembly is the part that must be exact: given the model's

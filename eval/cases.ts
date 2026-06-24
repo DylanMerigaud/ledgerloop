@@ -18,7 +18,7 @@ import type { Investigation } from "@/lib/schema";
 /** A scoreable recommendation (the investigator's three possible verdicts). */
 type Expected = Investigation["recommendation"];
 
-export interface EvalCase {
+export type EvalCase = {
   /** Row id in db/seed-data.ts. */
   id: string;
   /** What this case stresses — printed in the report. */
@@ -27,7 +27,7 @@ export interface EvalCase {
   expected: Expected;
   /** Why that's the defensible answer (kept honest; not shown to the agent). */
   rationale: string;
-}
+};
 
 export const EVAL_CASES: EvalCase[] = [
   {

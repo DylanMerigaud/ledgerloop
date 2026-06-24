@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import type { PDFPageProxy } from "pdfjs-dist";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Renders the real invoice PDF (the same bytes the vision model reads) to a
@@ -25,7 +25,12 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Cancellation flag for the async load. Read via `isCancelled()` (a function,
+    // not the variable) inside the IIFE: TS narrows a bare boolean to `false` after
+    // the first check and can't see the cleanup flip it across awaits — a function
+    // call isn't narrowed, so each check is honest (not flagged as "always false").
     let cancelled = false;
+    const isCancelled = () => cancelled;
     const canvas = canvasRef.current;
     if (!canvas) return;
     setReady(false);
@@ -69,25 +74,25 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
         .catch(() => {});
     });
 
-    (async () => {
+    void (async () => {
       try {
         const buf = await fetch(src).then((r) => {
           if (!r.ok) throw new Error(`pdf fetch ${r.status}`);
           return r.arrayBuffer();
         });
-        if (cancelled) return;
+        if (isCancelled()) return;
 
         const pdf = await loadPage(buf);
-        if (cancelled) return;
+        if (isCancelled()) return;
         page = await pdf.getPage(1);
-        if (cancelled) return;
+        if (isCancelled()) return;
 
         await renderAtCurrentWidth();
-        if (cancelled) return;
+        if (isCancelled()) return;
         setReady(true);
         if (canvas.parentElement) ro.observe(canvas.parentElement);
       } catch {
-        if (!cancelled) setError(true);
+        if (!isCancelled()) setError(true);
       }
     })();
 

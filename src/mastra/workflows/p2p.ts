@@ -1,27 +1,28 @@
-import { z } from "zod";
-import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { RequestContext } from "@mastra/core/request-context";
-import {
-  Invoice,
-  PurchaseOrder,
-  GoodsReceipt,
-  MatchResult,
-  Investigation,
-  ReconResult,
-} from "@/lib/schema";
-import { runMatch } from "@/lib/matching";
-import { reconcileFromOutcome } from "@/lib/erp";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
+import { z } from "zod";
+
 import { runApproval, type ApprovalRun } from "@/lib/approval-run";
 import { ApprovalWorkflow as ApprovalWorkflowSchema } from "@/lib/approval-workflow";
-import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
-import { runIntake } from "@/lib/intake";
 import {
   ClientProfile,
   DEFAULT_TOLERANCES,
   DEFAULT_APPROVAL_POLICY,
   workflowFor,
 } from "@/lib/client-profile";
-import { CTX } from "../tools/context";
+import { reconcileFromOutcome } from "@/lib/erp";
+import { runIntake } from "@/lib/intake";
+import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
+import { runMatch } from "@/lib/matching";
+import {
+  Invoice,
+  PurchaseOrder,
+  GoodsReceipt,
+  MatchResult,
+  type Investigation,
+  ReconResult,
+} from "@/lib/schema";
+import { CTX } from "@/src/mastra/tools/context";
 
 /**
  * The procure-to-pay workflow — the showcase.
@@ -93,7 +94,7 @@ const intakeStep = createStep({
   execute: async ({ inputData, writer }) => {
     const emit = async (chunk: unknown) => {
       try {
-        await writer?.write(chunk);
+        await writer.write(chunk);
       } catch {
         /* ignore writer errors — never let the trace affect the result */
       }
@@ -172,12 +173,12 @@ function matchLine(m: MatchResult): string {
   return `${m.exceptions.length} exception(s) found (max ${(m.maxVariancePct * 100).toFixed(1)}% variance).`;
 }
 
-interface MastraLike {
+type MastraLike = {
   getAgent: (id: string) => InvestigatorAgent | undefined;
-}
-interface ChunkWriter {
+};
+type ChunkWriter = {
   write: (chunk: unknown) => Promise<void>;
-}
+};
 
 /**
  * Run the investigator agent over a flagged match and surface its tool calls on
@@ -270,7 +271,7 @@ const investigateAndRouteStep = createStep({
     const investigation = await investigate(mastra, writer, match, vendor);
     if (investigation) {
       try {
-        await writer?.write({
+        await writer.write({
           type: "investigation",
           payload: { investigation },
         });

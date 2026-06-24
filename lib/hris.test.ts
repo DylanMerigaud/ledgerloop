@@ -1,8 +1,9 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mapBambooReport, recordedHris } from "./hris";
-import { OrgChart } from "./schema";
+import { test } from "node:test";
+
+import { mapBambooReport, recordedHris } from "@/lib/hris";
+import { OrgChart } from "@/lib/schema";
 
 /**
  * Two layers:

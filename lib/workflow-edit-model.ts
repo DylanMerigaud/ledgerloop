@@ -1,15 +1,17 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { toModelJsonSchema } from "./schema";
+import type Anthropic from "@anthropic-ai/sdk";
+
+import { anthropic } from "@/lib/anthropic";
 import {
   ApprovalWorkflow,
   type ApprovalWorkflow as TWorkflow,
-} from "./approval-workflow";
+} from "@/lib/approval-workflow";
+import { toModelJsonSchema } from "@/lib/schema";
 import {
   WORKFLOW_EDIT_SYSTEM_PROMPT,
   editPrompt,
   parseWorkflow,
   type EditModel,
-} from "./workflow-edit";
+} from "@/lib/workflow-edit";
 
 /**
  * The real conversational-edit model — a structured-output Anthropic call that
@@ -23,19 +25,9 @@ import {
 const EDIT_MODEL = "claude-sonnet-4-6";
 const WORKFLOW_JSON_SCHEMA = toModelJsonSchema(ApprovalWorkflow);
 
-let cachedClient: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!cachedClient) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
-    cachedClient = new Anthropic({ apiKey });
-  }
-  return cachedClient;
-}
-
 export const anthropicEditModel: EditModel = {
   async edit(current: TWorkflow, instruction: string) {
-    const message = await getClient().messages.create({
+    const message = await anthropic().messages.create({
       model: EDIT_MODEL,
       max_tokens: 2048,
       system: WORKFLOW_EDIT_SYSTEM_PROMPT,

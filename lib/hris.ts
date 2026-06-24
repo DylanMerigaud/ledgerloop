@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { Employee, OrgChart, type OrgIssue } from "./schema";
-import { nonNull } from "./assert";
+
+import { nonNull } from "@/lib/assert";
+import { env } from "@/lib/env";
+import { Employee, OrgChart, type OrgIssue } from "@/lib/schema";
 
 /**
  * HRIS adapter — the onboarding side's integration seam.
@@ -28,11 +30,11 @@ import { nonNull } from "./assert";
  *
  * @public
  */
-export interface HrisAdapter {
+export type HrisAdapter = {
   readonly name: string;
   /** Fetch the normalised org. Throws only on transport/parse failure. */
   fetchOrg(): Promise<OrgChart>;
-}
+};
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  The vendor's wire shape (BambooHR) — confined to this file
@@ -44,7 +46,7 @@ export interface HrisAdapter {
  * (BambooHR returns numbers as strings) and absent values come back as "" or are
  * omitted, so every field is optional/loose here and tightened by the mapper.
  */
-interface BambooReportRow {
+type BambooReportRow = {
   id?: string;
   firstName?: string;
   lastName?: string;
@@ -56,11 +58,11 @@ interface BambooReportRow {
   supervisorEmail?: string;
   /** "Active" | "Inactive" — terminated staff would pollute the hierarchy. */
   status?: string;
-}
+};
 
-interface BambooReport {
+type BambooReport = {
   employees?: BambooReportRow[];
-}
+};
 
 /** The exact fields the report request asks BambooHR for. */
 const BAMBOO_REPORT_FIELDS = [
@@ -106,7 +108,12 @@ export function mapBambooReport(
    */
   division?: string,
 ): OrgChart {
-  const rows = (raw as BambooReport)?.employees ?? [];
+  // `raw` is unknown (a parsed JSON payload) — read `employees` defensively without
+  // a cast that would assert non-null and make the guard look redundant.
+  const rows =
+    typeof raw === "object" && raw !== null && "employees" in raw
+      ? ((raw as BambooReport).employees ?? [])
+      : [];
 
   // 1. Keep active rows that have an id; normalise each field. When a division
   //    scope is given, keep only that division — this is how one client's org is
@@ -193,12 +200,12 @@ export function mapBambooReport(
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** @public — credentials a live BambooHR adapter needs. */
-export interface BambooCreds {
+export type BambooCreds = {
   /** Company subdomain: the `neige` in `neige.bamboohr.com`. */
   subdomain: string;
   /** API key — sent as the Basic-auth username, password is any value. */
   key: string;
-}
+};
 
 /**
  * Live BambooHR adapter. One `POST /reports/custom` returns the whole org with
@@ -287,8 +294,8 @@ export const DEMO_CLIENT_DIVISION = "LedgerLoop Demo";
  * @public — the entry point the onboarding flow uses to read an org.
  */
 export function defaultHris(): HrisAdapter {
-  const key = process.env.BAMBOO_HR_API_KEY;
-  const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
+  const key = env.BAMBOO_HR_API_KEY;
+  const subdomain = env.BAMBOO_HR_SUBDOMAIN;
   return key && subdomain
     ? bambooHris({ key, subdomain }, DEMO_CLIENT_DIVISION)
     : recordedHris();

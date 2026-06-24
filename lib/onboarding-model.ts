@@ -1,12 +1,14 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { toModelJsonSchema, type OrgChart } from "./schema";
-import { OnboardingProposal } from "./approval-workflow";
+import type Anthropic from "@anthropic-ai/sdk";
+
+import { anthropic } from "@/lib/anthropic";
+import { OnboardingProposal } from "@/lib/approval-workflow";
 import {
   ONBOARDING_SYSTEM_PROMPT,
   onboardingPrompt,
   parseProposal,
   type ProposalModel,
-} from "./onboarding";
+} from "@/lib/onboarding";
+import { toModelJsonSchema, type OrgChart } from "@/lib/schema";
 
 /**
  * The real onboarding model — a structured-output Anthropic call that produces an
@@ -26,16 +28,6 @@ const ONBOARDING_MODEL = "claude-sonnet-4-6";
 
 const PROPOSAL_JSON_SCHEMA = toModelJsonSchema(OnboardingProposal);
 
-let cachedClient: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!cachedClient) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
-    cachedClient = new Anthropic({ apiKey });
-  }
-  return cachedClient;
-}
-
 /**
  * The production `ProposalModel`: a structured-output call to Anthropic.
  *
@@ -44,7 +36,7 @@ function getClient(): Anthropic {
  */
 export const anthropicProposalModel: ProposalModel = {
   async propose(org: OrgChart) {
-    const message = await getClient().messages.create({
+    const message = await anthropic().messages.create({
       model: ONBOARDING_MODEL,
       max_tokens: 2048,
       system: ONBOARDING_SYSTEM_PROMPT,

@@ -1,14 +1,14 @@
-import { mastra } from "@/src/mastra";
 import { loadRunBundle } from "@/db/client";
 import { profileById } from "@/db/client-profiles";
-import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
-import { ndjsonLine } from "@/lib/ndjson";
-import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
 import {
   RunRequest,
   STREAM_CONTENT_TYPE,
   type StreamDone,
 } from "@/lib/api-types";
+import { ndjsonLine } from "@/lib/ndjson";
+import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
+import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
+import { mastra } from "@/src/mastra";
 
 /**
  * POST /api/run — execute the procure-to-pay pipeline for one seeded invoice and

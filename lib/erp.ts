@@ -1,4 +1,4 @@
-import type { MatchResult, ReconResult, GlEntry } from "./schema";
+import type { MatchResult, ReconResult, GlEntry } from "@/lib/schema";
 
 /**
  * Fake ERP adapter.
@@ -17,26 +17,26 @@ import type { MatchResult, ReconResult, GlEntry } from "./schema";
  *
  * @public
  */
-export interface ErpAdapter {
+export type ErpAdapter = {
   readonly name: string;
   postVendorBill(req: ErpPostingRequest): Promise<ErpPostingResult>;
-}
+};
 
 /** @public — the request shape an ERP adapter receives. */
-export interface ErpPostingRequest {
+export type ErpPostingRequest = {
   invoiceNumber: string;
   poNumber: string | null;
   vendor: string;
   amount: number;
   currency: string;
-}
+};
 
 /** @public — what an ERP adapter returns on a successful post. */
-export interface ErpPostingResult {
+export type ErpPostingResult = {
   /** The ERP's reference for the created bill, e.g. "NETSUITE-BILL-1042". */
   erpRef: string;
   glEntries: GlEntry[];
-}
+};
 
 /** Standard AP double-entry: debit the expense/GR-clearing, credit AP. */
 function buildGlEntries(amount: number): GlEntry[] {

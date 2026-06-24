@@ -1,12 +1,13 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
 import {
   ApprovalWorkflow,
-  Condition,
+  type Condition,
   evaluateCondition,
   describeCondition,
   type InvoiceContext,
-} from "./approval-workflow";
+} from "@/lib/approval-workflow";
 
 /**
  * The condition evaluator is the load-bearing part of the DAG model — the engine

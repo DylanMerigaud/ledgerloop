@@ -28,7 +28,7 @@
  *     has dangling-manager detection for sources that DO emit broken ids.)
  */
 
-export interface SeedPerson {
+export type SeedPerson = {
   firstName: string;
   lastName: string;
   /** Must exist in the BambooHR Job Title list. "" = deliberately blank. */
@@ -37,7 +37,7 @@ export interface SeedPerson {
   department: string;
   /** Full "First Last" of the manager, or null for a tree root. */
   managerName: string | null;
-}
+};
 
 /**
  * Every seeded employee is placed in this dedicated Division. It's how the seed

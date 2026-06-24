@@ -3,7 +3,7 @@ import {
   type ApprovalWorkflow as TWorkflow,
   diffWorkflows,
   type StepChange,
-} from "./approval-workflow";
+} from "@/lib/approval-workflow";
 
 /**
  * Conversational workflow editing — turn a natural-language instruction into a
@@ -22,14 +22,14 @@ import {
  * + diff; the model is injected so it's testable with a fake.
  */
 
-export interface EditModel {
+export type EditModel = {
   edit: (current: TWorkflow, instruction: string) => Promise<TWorkflow>;
-}
+};
 
-export interface EditResult {
+export type EditResult = {
   proposed: TWorkflow;
   changes: StepChange[];
-}
+};
 
 /**
  * Run an edit instruction against the current workflow and return the proposal +

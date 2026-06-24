@@ -45,8 +45,8 @@ export type RunRequest = z.infer<typeof RunRequest>;
 export const STREAM_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";
 
 /** Terminal marker appended after the last trace event. */
-export interface StreamDone {
+export type StreamDone = {
   done: true;
   /** Total wall-clock duration of the run, ms. */
   durationMs: number;
-}
+};

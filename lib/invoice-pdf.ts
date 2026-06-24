@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
-import type { Invoice } from "./schema";
+
+import type { Invoice } from "@/lib/schema";
 
 /**
  * Render an `Invoice` to a realistic one-page PDF (pdf-lib). Generated on demand
