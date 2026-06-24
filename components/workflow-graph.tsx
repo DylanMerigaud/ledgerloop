@@ -159,9 +159,23 @@ function StepNode({
   );
 }
 
-/** A small connector line between flow rows. */
+/** A horizontal connector between flow columns (left → right). */
 function Connector() {
-  return <div className="mx-auto h-4 w-px bg-line" aria-hidden />;
+  return (
+    <div className="flex shrink-0 items-center self-center" aria-hidden>
+      <div className="h-px w-6 bg-line" />
+      <div className="-ml-1 text-line">▸</div>
+    </div>
+  );
+}
+
+/** One column in the left→right flow (a fixed-width band of one or more nodes). */
+function Column({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex w-60 shrink-0 flex-col justify-center gap-3">
+      {children}
+    </div>
+  );
 }
 
 export function WorkflowGraph({
@@ -177,11 +191,11 @@ export function WorkflowGraph({
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
   const changeOf = new Map((changes ?? []).map((c) => [c.id, c.kind]));
 
-  // Layout: walk from the roots. A step that fans out to >1 NEXT renders those as
-  // parallel lanes; lanes that all converge on the same downstream step rejoin
-  // before it. The template is shallow (root → fan-out → join), so a simple
-  // three-band layout (roots / fan-out lanes / shared tail) reads cleanly without
-  // a general graph layout engine.
+  // Layout is LEFT → RIGHT (the category convention — cf. the Pivot/Ramp/Zip
+  // canvases): the root gate, then its fan-out steps stacked as parallel rows in
+  // the middle column, rejoining at the shared tail on the right. The template is
+  // shallow (root → fan-out → join), so a three-column band reads cleanly without
+  // a general graph-layout engine. Scrolls horizontally if it overflows.
   const roots = workflow.roots
     .map((id) => byId.get(id))
     .filter(Boolean) as WorkflowStep[];
@@ -210,21 +224,23 @@ export function WorkflowGraph({
   const removed = (changes ?? []).filter((c) => c.kind === "removed");
 
   return (
-    <div className="space-y-0">
+    <div className="flex items-stretch gap-0 overflow-x-auto pb-2">
       {/* Root gate */}
       {root && (
-        <StepNode
-          step={root}
-          status={statuses?.[root.id]}
-          change={changeOf.get(root.id)}
-        />
+        <Column>
+          <StepNode
+            step={root}
+            status={statuses?.[root.id]}
+            change={changeOf.get(root.id)}
+          />
+        </Column>
       )}
 
       {lanes.length > 0 && (
         <>
           <Connector />
-          {/* Parallel lanes */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Parallel lanes — stacked rows in one column */}
+          <Column>
             {lanes.map((s) => (
               <StepNode
                 key={s.id}
@@ -233,35 +249,39 @@ export function WorkflowGraph({
                 change={changeOf.get(s.id)}
               />
             ))}
-          </div>
+          </Column>
         </>
       )}
 
       {tail.length > 0 && (
         <>
           <Connector />
-          {tail.map((s) => (
-            <StepNode
-              key={s.id}
-              step={s}
-              status={statuses?.[s.id]}
-              change={changeOf.get(s.id)}
-            />
-          ))}
+          <Column>
+            {tail.map((s) => (
+              <StepNode
+                key={s.id}
+                step={s}
+                status={statuses?.[s.id]}
+                change={changeOf.get(s.id)}
+              />
+            ))}
+          </Column>
         </>
       )}
 
       {removed.length > 0 && (
         <>
           <Connector />
-          {removed.map((c) => (
-            <div
-              key={c.id}
-              className="w-full rounded-lg bg-danger-soft/30 px-3 py-2 text-[13px] font-medium text-ink line-through opacity-60 ring-1 ring-inset ring-danger-line"
-            >
-              {c.label}
-            </div>
-          ))}
+          <Column>
+            {removed.map((c) => (
+              <div
+                key={c.id}
+                className="rounded-lg bg-danger-soft/30 px-3 py-2 text-[13px] font-medium text-ink line-through opacity-60 ring-1 ring-inset ring-danger-line"
+              >
+                {c.label}
+              </div>
+            ))}
+          </Column>
         </>
       )}
     </div>
