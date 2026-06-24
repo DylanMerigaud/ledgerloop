@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
+import { WorkflowGraph } from "@/components/workflow-graph";
 import { formatMoney, formatPct, humanize } from "@/lib/format";
 import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 
 /**
  * Rich, type-aware detail for a completed stage. Each stage emits a different
@@ -18,6 +20,10 @@ export function TraceDetail({ data }: { data: unknown }) {
     return <MatchDetail match={d as unknown as MatchResult} />;
   if ("recommendation" in d && "toolsUsed" in d)
     return <InvestigationDetail inv={d as unknown as Investigation} />;
+  // The approval-workflow node carries the full graph + per-step status — render
+  // the SAME graph the onboarding screen draws, coloured by this run's path.
+  if ("workflow" in d && "steps" in d)
+    return <WorkflowRunDetail data={d as unknown as WorkflowRunData} />;
   if ("outcome" in d && "steps" in d)
     return <ApprovalDetail approval={d as unknown as ApprovalSummary} />;
   if ("posted" in d && "glEntries" in d)
@@ -29,6 +35,23 @@ export function TraceDetail({ data }: { data: unknown }) {
 interface ApprovalSummary {
   outcome: "posted" | "awaiting" | "rejected" | "blocked";
   steps: { id: string; status: string; detail: string }[];
+}
+
+/** The live approval-workflow node: the graph structure + this run's step statuses. */
+interface WorkflowRunData {
+  workflow: ApprovalWorkflow;
+  steps: { id: string; status: string; detail: string }[];
+  outcome: string;
+}
+
+function WorkflowRunDetail({ data }: { data: WorkflowRunData }) {
+  const statuses: Record<string, string> = {};
+  for (const s of data.steps ?? []) statuses[s.id] = s.status;
+  return (
+    <div className="-mx-1">
+      <WorkflowGraph workflow={data.workflow} statuses={statuses} />
+    </div>
+  );
 }
 
 /** The exception investigator's recommendation — the one agentic output. */

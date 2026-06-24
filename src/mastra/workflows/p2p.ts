@@ -12,6 +12,7 @@ import {
 import { runMatch } from "@/lib/matching";
 import { reconcileFromOutcome } from "@/lib/erp";
 import { runApproval, type ApprovalRun } from "@/lib/approval-run";
+import { ApprovalWorkflow as ApprovalWorkflowSchema } from "@/lib/approval-workflow";
 import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
 import { runIntake } from "@/lib/intake";
 import {
@@ -226,28 +227,16 @@ const ApprovalRunOut = z.object({
   steps: z.array(
     z.object({ id: z.string(), status: z.string(), detail: z.string() }),
   ),
+  /* The workflow graph this run executed — carried so the trace can render the
+     SAME graph the onboarding screen draws, coloured by this invoice's path.
+     Optional (the duplicate block has no workflow). */
+  workflow: ApprovalWorkflowSchema.optional(),
 });
 const BranchOut = z.object({
   approval: ApprovalRunOut,
   match: MatchResult,
   vendor: z.string(),
 });
-
-/* Emit one trace chunk per workflow step so the timeline/canvas can render the
-   DAG with each gate's live status (approved / pending / skipped / done / …). */
-async function emitWorkflowSteps(
-  writer: ChunkWriter | undefined,
-  run: ApprovalRun,
-): Promise<void> {
-  try {
-    await writer?.write({
-      type: "approval-workflow",
-      payload: { outcome: run.outcome, steps: run.state.steps },
-    });
-  } catch {
-    /* ignore writer errors — never let the trace affect the result */
-  }
-}
 
 /** Flatten the engine's step states to the serialisable shape BranchOut carries. */
 function stepSummaries(
@@ -295,15 +284,13 @@ const investigateAndRouteStep = createStep({
       }
     }
 
-    const run = runApproval(
-      workflowFor(profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY }),
-      match,
-      decisions,
+    const workflow = workflowFor(
+      profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
     );
-    await emitWorkflowSteps(writer as unknown as ChunkWriter | undefined, run);
+    const run = runApproval(workflow, match, decisions);
 
     return {
-      approval: { outcome: run.outcome, steps: stepSummaries(run) },
+      approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
       match,
       vendor,
       narration: run.narration,
@@ -341,7 +328,7 @@ const autoApproveStep = createStep({
   id: "approval-auto",
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
-  execute: async ({ inputData, writer }) => {
+  execute: async ({ inputData }) => {
     const {
       vendor,
       decisions,
@@ -349,14 +336,12 @@ const autoApproveStep = createStep({
       narration: _prior,
       ...match
     } = inputData;
-    const run = runApproval(
-      workflowFor(profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY }),
-      match,
-      decisions,
+    const workflow = workflowFor(
+      profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
     );
-    await emitWorkflowSteps(writer as unknown as ChunkWriter | undefined, run);
+    const run = runApproval(workflow, match, decisions);
     return {
-      approval: { outcome: run.outcome, steps: stepSummaries(run) },
+      approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
       match,
       vendor,
       narration: run.narration,
