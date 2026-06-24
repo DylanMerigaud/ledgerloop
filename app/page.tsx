@@ -1,4 +1,4 @@
-import { Dashboard } from "@/components/dashboard";
+import { AppView } from "@/components/app-view";
 import { SocialLinks } from "@/components/social-links";
 import { listInvoiceQueue, type QueueItem } from "@/db/client";
 import { PIPELINE_MODEL } from "@/src/mastra/model";
@@ -40,7 +40,7 @@ export default async function Page() {
         ) : queue.length === 0 ? (
           <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
         ) : (
-          <Dashboard queue={queue} />
+          <AppView queue={queue} />
         )}
       </div>
       <Footer />
