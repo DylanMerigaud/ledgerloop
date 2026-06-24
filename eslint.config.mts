@@ -112,15 +112,12 @@ export default tseslint.config(
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-      // Mastra step/tool `execute` + workflow callbacks are async by contract.
-      "@typescript-eslint/require-await": "off",
-      // The `unknown` trace/DB boundaries are guarded by hand; tsc strict covers
-      // the real holes — these would only drown the signal.
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-unsafe-return": "off",
+      // require-await stays ON globally (catches a forgotten await elsewhere); it's
+      // turned off only for src/mastra/** below, where Mastra's step/tool `execute`
+      // and workflow callbacks are async by API contract even without an await.
+      // no-unsafe-* are LEFT ON (error, from recommendedTypeChecked) — stricter
+      // than ugc. They catch real unguarded `unknown` access; the genuine
+      // `unknown` boundaries (trace adapter, DB rows) narrow through helpers.
 
       // ── Imports ─────────────────────────────────────────────────────────────
       "import/order": [
@@ -230,6 +227,14 @@ export default tseslint.config(
     },
   },
 
+  // Mastra workflows/agents/tools: `execute` and the workflow `.map()`/`.branch()`
+  // callbacks are async by Mastra's API contract even when a given body has no
+  // await — that's the framework shape, not a mistake. Scoped here, not global.
+  {
+    files: ["src/mastra/**/*.ts"],
+    rules: { "@typescript-eslint/require-await": "off" },
+  },
+
   // Tests: `!` and `any` on just-defined fixtures are provably safe; keep the
   // cast/logic rules (real safety) but relax the ceremony ones. `node:test`'s
   // `test()` returns a promise the runner owns, so floating-promises is noise here.
@@ -240,6 +245,8 @@ export default tseslint.config(
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/no-unnecessary-condition": "off",
       "@typescript-eslint/no-floating-promises": "off",
+      // Mock implementations satisfy async interfaces with no await — fine in tests.
+      "@typescript-eslint/require-await": "off",
     },
   },
 

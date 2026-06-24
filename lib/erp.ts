@@ -57,11 +57,13 @@ const refFor = (invoiceNumber: string): string => {
 
 const fakeErp: ErpAdapter = {
   name: "fake-netsuite",
-  async postVendorBill(req) {
-    return {
+  // Synchronous stub, but the adapter contract is async (a real ERP post is) — so
+  // return a resolved promise instead of an `async` method with no await.
+  postVendorBill(req) {
+    return Promise.resolve({
       erpRef: refFor(req.invoiceNumber),
       glEntries: buildGlEntries(req.amount),
-    };
+    });
   },
 };
 

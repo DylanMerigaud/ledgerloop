@@ -36,7 +36,7 @@ const base: ApprovalWorkflow = {
 
 /** Deep clone so edits don't mutate the base fixture. */
 const clone = (w: ApprovalWorkflow): ApprovalWorkflow =>
-  JSON.parse(JSON.stringify(w));
+  JSON.parse(JSON.stringify(w)) as ApprovalWorkflow;
 
 test("identical workflows diff as all unchanged", () => {
   const changes = diffWorkflows(base, clone(base));

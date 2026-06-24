@@ -266,9 +266,11 @@ export const recordedHris = (
 ): HrisAdapter => {
   return {
     name: "bamboohr (recorded)",
-    async fetchOrg() {
+    // Reads the fixture synchronously, but the adapter contract is async (the live
+    // one does HTTP) — return a resolved promise rather than an await-less `async`.
+    fetchOrg() {
       const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
-      return mapBambooReport(raw, "bamboohr (recorded)");
+      return Promise.resolve(mapBambooReport(raw, "bamboohr (recorded)"));
     },
   };
 };

@@ -147,12 +147,14 @@ const mapApiError = (err: unknown): ExtractionResult => {
     };
   }
   if (err instanceof APIError) {
+    // The SDK types `status` loosely (any); narrow to a number for our result type.
+    const status = typeof err.status === "number" ? err.status : undefined;
     return {
       ok: false,
       kind: "api_error",
-      status: err.status,
+      status,
       message:
-        err.status === 429
+        status === 429
           ? "Extraction model rate-limited — try again shortly."
           : "The extraction model returned an error.",
     };

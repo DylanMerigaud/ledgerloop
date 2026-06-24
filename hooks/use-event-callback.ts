@@ -17,6 +17,8 @@ export const useEventCallback = <
     ref.current = fn;
   });
 
-  return useRef<T>(((...args: Parameters<T>) => ref.current(...args)) as T)
-    .current;
+  return useRef<T>(
+    ((...args: Parameters<T>): ReturnType<T> =>
+      ref.current(...args) as ReturnType<T>) as T,
+  ).current;
 };

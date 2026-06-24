@@ -46,6 +46,6 @@ test("round-trips a sequence of values through serialize → parse", () => {
   ];
   const wire = values.map(ndjsonLine).join("");
   const buf = new NdjsonBuffer();
-  const parsed = buf.push(wire).map((l) => JSON.parse(l));
+  const parsed = buf.push(wire).map((l) => JSON.parse(l) as unknown);
   assert.deepEqual(parsed, values);
 });
