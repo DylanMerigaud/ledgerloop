@@ -250,6 +250,69 @@ export function describeCondition(cond: Condition): string {
 }
 
 /* ────────────────────────────────────────────────────────────────────────── *
+ *  Diff — compare two workflows (for the chat-edit preview)
+ * ────────────────────────────────────────────────────────────────────────── *
+ *
+ * A conversational edit produces a PROPOSED workflow; nothing is applied until a
+ * human approves. The preview is this diff between the current (live) workflow and
+ * the proposal: which steps were added, removed, or changed. Pure + keyed on step
+ * id, so it's testable and the UI can colour the graph from it.
+ */
+
+export type StepChange =
+  | { kind: "added"; id: string; label: string }
+  | { kind: "removed"; id: string; label: string }
+  | { kind: "changed"; id: string; label: string; fields: string[] }
+  | { kind: "unchanged"; id: string; label: string };
+
+/** Human-readable summary of how one step differs between two workflows. */
+function stepFieldDiffs(a: WorkflowStep, b: WorkflowStep): string[] {
+  const fields: string[] = [];
+  if (a.kind !== b.kind) fields.push("type");
+  if (a.label !== b.label) fields.push("label");
+  if (describeCondition(a.when) !== describeCondition(b.when))
+    fields.push("condition");
+  const aAppr = a.kind === "approval" ? a.approverName : null;
+  const bAppr = b.kind === "approval" ? b.approverName : null;
+  if (aAppr !== bAppr) fields.push("approver");
+  const aTitle = a.kind === "approval" ? a.approverTitle : null;
+  const bTitle = b.kind === "approval" ? b.approverTitle : null;
+  if (aTitle !== bTitle) fields.push("role");
+  if (a.next.join(",") !== b.next.join(",")) fields.push("routing");
+  return fields;
+}
+
+/** Diff two workflows by step id: added / removed / changed / unchanged. @public */
+export function diffWorkflows(
+  current: ApprovalWorkflow,
+  proposed: ApprovalWorkflow,
+): StepChange[] {
+  const cur = new Map(current.steps.map((s) => [s.id, s]));
+  const prop = new Map(proposed.steps.map((s) => [s.id, s]));
+  const changes: StepChange[] = [];
+
+  // Added / changed / unchanged — iterate the proposal (the new shape).
+  for (const [id, p] of prop) {
+    const c = cur.get(id);
+    if (!c) {
+      changes.push({ kind: "added", id, label: p.label });
+      continue;
+    }
+    const fields = stepFieldDiffs(c, p);
+    changes.push(
+      fields.length > 0
+        ? { kind: "changed", id, label: p.label, fields }
+        : { kind: "unchanged", id, label: p.label },
+    );
+  }
+  // Removed — in current but not in the proposal.
+  for (const [id, c] of cur) {
+    if (!prop.has(id)) changes.push({ kind: "removed", id, label: c.label });
+  }
+  return changes;
+}
+
+/* ────────────────────────────────────────────────────────────────────────── *
  *  Onboarding: the FUZZY decisions the agent makes (not the whole DAG)
  * ────────────────────────────────────────────────────────────────────────── *
  *

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { WorkflowGraph } from "@/components/workflow-graph";
+import { WorkflowEditor } from "@/components/workflow-editor";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 
 /**
@@ -115,13 +115,17 @@ export function Onboarding() {
           <CardTitle>Derived approval workflow</CardTitle>
           {state.status === "done" && (
             <span className="text-[11px] text-muted">
-              proposal · review before activating
+              edit in plain language · approve to apply
             </span>
           )}
         </CardHeader>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-hidden p-4">
           {state.status === "done" ? (
-            <WorkflowGraph workflow={state.data.workflow} />
+            // Key by the discovered workflow so a re-run resets the editor state.
+            <WorkflowEditor
+              key={state.data.workflow.name + state.data.employeeCount}
+              initial={state.data.workflow}
+            />
           ) : (
             <EmptyState running={state.status === "running"} />
           )}

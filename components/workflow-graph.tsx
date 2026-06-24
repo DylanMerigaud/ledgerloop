@@ -1,5 +1,9 @@
 import { Badge } from "@/components/ui/badge";
-import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
+import type {
+  ApprovalWorkflow,
+  WorkflowStep,
+  StepChange,
+} from "@/lib/approval-workflow";
 import { describeCondition } from "@/lib/approval-workflow";
 
 /**
@@ -51,25 +55,54 @@ function integrationGlyph(kind: string): string {
   return "→";
 }
 
+/** Diff ring + chip for a step when rendering a proposed edit. */
+function changeStyle(change: StepChange["kind"] | undefined): {
+  ring: string;
+  badge: { tone: "ok" | "warn" | "danger"; label: string } | null;
+} {
+  switch (change) {
+    case "added":
+      return {
+        ring: "ring-ok-line bg-ok-soft/30",
+        badge: { tone: "ok", label: "Added" },
+      };
+    case "changed":
+      return {
+        ring: "ring-warn-line bg-warn-soft/30",
+        badge: { tone: "warn", label: "Changed" },
+      };
+    case "removed":
+      return {
+        ring: "ring-danger-line bg-danger-soft/30",
+        badge: { tone: "danger", label: "Removed" },
+      };
+    default:
+      return { ring: "ring-line", badge: null };
+  }
+}
+
 function StepNode({
   step,
   status,
+  change,
   dimmed,
 }: {
   step: WorkflowStep;
   status?: string;
+  change?: StepChange["kind"];
   dimmed?: boolean;
 }) {
   const st = statusTone(status);
+  const cs = changeStyle(change);
   const isApproval = step.kind === "approval";
   const condition = describeCondition(step.when);
   const unconditional = step.when.kind === "always";
 
   return (
     <div
-      className={`w-full rounded-lg bg-surface px-3 py-2 ring-1 ring-inset ring-line shadow-card ${
-        dimmed ? "opacity-50" : ""
-      }`}
+      className={`w-full rounded-lg bg-surface px-3 py-2 ring-1 ring-inset shadow-card ${cs.ring} ${
+        dimmed || change === "removed" ? "opacity-60" : ""
+      } ${change === "removed" ? "line-through" : ""}`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
@@ -84,7 +117,11 @@ function StepNode({
           )}
           {step.label}
         </span>
-        {st && <Badge tone={st.tone}>{st.label}</Badge>}
+        {cs.badge ? (
+          <Badge tone={cs.badge.tone}>{cs.badge.label}</Badge>
+        ) : (
+          st && <Badge tone={st.tone}>{st.label}</Badge>
+        )}
       </div>
 
       {isApproval && (
@@ -130,11 +167,15 @@ function Connector() {
 export function WorkflowGraph({
   workflow,
   statuses,
+  changes,
 }: {
   workflow: ApprovalWorkflow;
   statuses?: StepStatuses;
+  /** When rendering a proposed edit, per-step change kinds for diff colouring. */
+  changes?: StepChange[];
 }) {
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
+  const changeOf = new Map((changes ?? []).map((c) => [c.id, c.kind]));
 
   // Layout: walk from the roots. A step that fans out to >1 NEXT renders those as
   // parallel lanes; lanes that all converge on the same downstream step rejoin
@@ -164,10 +205,20 @@ export function WorkflowGraph({
     .map((id) => byId.get(id))
     .filter(Boolean) as WorkflowStep[];
 
+  // Removed steps aren't in the proposed workflow's `steps`; surface them (struck)
+  // from the diff so the preview shows what's going away.
+  const removed = (changes ?? []).filter((c) => c.kind === "removed");
+
   return (
     <div className="space-y-0">
       {/* Root gate */}
-      {root && <StepNode step={root} status={statuses?.[root.id]} />}
+      {root && (
+        <StepNode
+          step={root}
+          status={statuses?.[root.id]}
+          change={changeOf.get(root.id)}
+        />
+      )}
 
       {lanes.length > 0 && (
         <>
@@ -175,7 +226,12 @@ export function WorkflowGraph({
           {/* Parallel lanes */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {lanes.map((s) => (
-              <StepNode key={s.id} step={s} status={statuses?.[s.id]} />
+              <StepNode
+                key={s.id}
+                step={s}
+                status={statuses?.[s.id]}
+                change={changeOf.get(s.id)}
+              />
             ))}
           </div>
         </>
@@ -185,7 +241,26 @@ export function WorkflowGraph({
         <>
           <Connector />
           {tail.map((s) => (
-            <StepNode key={s.id} step={s} status={statuses?.[s.id]} />
+            <StepNode
+              key={s.id}
+              step={s}
+              status={statuses?.[s.id]}
+              change={changeOf.get(s.id)}
+            />
+          ))}
+        </>
+      )}
+
+      {removed.length > 0 && (
+        <>
+          <Connector />
+          {removed.map((c) => (
+            <div
+              key={c.id}
+              className="w-full rounded-lg bg-danger-soft/30 px-3 py-2 text-[13px] font-medium text-ink line-through opacity-60 ring-1 ring-inset ring-danger-line"
+            >
+              {c.label}
+            </div>
           ))}
         </>
       )}
