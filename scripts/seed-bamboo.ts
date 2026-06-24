@@ -36,6 +36,7 @@ import {
   SEED_DIVISION,
   type SeedPerson,
 } from "@/db/fixtures/bamboohr/seed-org";
+import { nonNull } from "@/lib/assert";
 
 /** Same env loading as eval/run.ts — native, no dotenv dep. */
 function loadEnv(): void {
@@ -220,7 +221,10 @@ async function seed(): Promise<void> {
 
   // Pass 2 — set job info incl. division + the reporting edge.
   for (const p of SEED_ORG) {
-    const id = created.get(`${p.firstName} ${p.lastName}`)!;
+    const id = nonNull(
+      created.get(`${p.firstName} ${p.lastName}`),
+      "every person was created in pass 1",
+    );
     await setJobInfo(c, id, p);
     const rel = p.managerName ? ` → ${p.managerName}` : " (root)";
     console.log(

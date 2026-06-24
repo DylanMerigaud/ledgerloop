@@ -3,6 +3,7 @@ import {
   DEFAULT_TOLERANCES,
   DEFAULT_APPROVAL_POLICY,
 } from "@/lib/client-profile";
+import { nonNull } from "@/lib/assert";
 
 /**
  * Seeded client profiles — the demo's stand-in for "onboarded customers". Each is
@@ -53,6 +54,9 @@ const DEFAULT_PROFILE_ID = "standard";
 export function profileById(id: string | null | undefined): ClientProfile {
   return (
     CLIENT_PROFILES.find((p) => p.id === id) ??
-    CLIENT_PROFILES.find((p) => p.id === DEFAULT_PROFILE_ID)!
+    nonNull(
+      CLIENT_PROFILES.find((p) => p.id === DEFAULT_PROFILE_ID),
+      `the "${DEFAULT_PROFILE_ID}" profile is always seeded`,
+    )
   );
 }

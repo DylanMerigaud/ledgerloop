@@ -5,6 +5,7 @@ import {
   type WorkflowStep,
   type InvoiceContext,
 } from "./approval-workflow";
+import { nonNull } from "./assert";
 
 /**
  * Approval workflow engine — walk the DAG for one invoice and compute the state
@@ -89,7 +90,10 @@ export function executeWorkflow(
   // rejected predecessor hard-stops everything behind it.
   function resolve(step: WorkflowStep): StepState {
     const preds = predecessors.get(step.id) ?? [];
-    const predStates = preds.map((p) => state.get(p)!);
+    // Predecessors are resolved before this step (topo order), so each is present.
+    const predStates = preds.map((p) =>
+      nonNull(state.get(p), `predecessor ${p} resolved before ${step.id}`),
+    );
 
     const anyPredRejected = predStates.some((p) => p.status === "rejected");
     const anyPredWaiting = predStates.some(
@@ -165,7 +169,10 @@ export function executeWorkflow(
     if (step) state.set(id, resolve(step));
   }
 
-  const steps = workflow.steps.map((s) => state.get(s.id)!);
+  // Every step was resolved in the loop above, so each has a state.
+  const steps = workflow.steps.map((s) =>
+    nonNull(state.get(s.id), `step ${s.id} was resolved`),
+  );
   const pending = steps.filter((s) => s.status === "pending").map((s) => s.id);
   const rejected = steps.some((s) => s.status === "rejected");
 
@@ -190,8 +197,7 @@ function topoOrder(workflow: ApprovalWorkflow): string[] {
     .map(([id]) => id);
   const order: string[] = [];
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
-  while (queue.length) {
-    const id = queue.shift()!;
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     order.push(id);
     for (const n of byId.get(id)?.next ?? []) {
       const d = (indegree.get(n) ?? 0) - 1;

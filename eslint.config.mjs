@@ -45,6 +45,10 @@ export default tseslint.config(
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       // No `any` — it silently turns off the type checker. Use `unknown` + a guard.
       "@typescript-eslint/no-explicit-any": "error",
+      // No bare `x!` — it asserts non-null with no reason and crashes opaquely if
+      // wrong. Use `nonNull(x, why)` (lib/assert.ts), which states the invariant
+      // and throws a named error if it's ever violated.
+      "@typescript-eslint/no-non-null-assertion": "error",
       // The double-cast `x as unknown as T` defeats every safety check. Ban it;
       // the rare legitimate boundary cast must be an annotated, reviewed exception.
       "no-restricted-syntax": [
@@ -92,10 +96,13 @@ export default tseslint.config(
     },
   },
   {
-    // Tests lean on small casts for fixtures — keep them honest but not noisy.
+    // Tests lean on small casts + `!` on fixtures they just defined — provably
+    // safe and not worth the ceremony. Keep the cast rules (real safety) but relax
+    // `any` and non-null here so test code stays terse.
     files: ["**/*.test.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
 );

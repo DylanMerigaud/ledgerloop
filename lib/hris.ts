@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { Employee, OrgChart, type OrgIssue } from "./schema";
+import { nonNull } from "./assert";
 
 /**
  * HRIS adapter — the onboarding side's integration seam.
@@ -124,7 +125,8 @@ export function mapBambooReport(
     const managerId =
       r.supervisorEId && r.supervisorEId !== "0" ? r.supervisorEId : null;
     return Employee.parse({
-      id: r.id!,
+      // `active` was filtered on `r.id` being present, so it's a string here.
+      id: nonNull(r.id, "active row has an id (filtered above)"),
       name,
       title: r.jobTitle?.trim() ?? "",
       department: r.department?.trim() ?? "",
