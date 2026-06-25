@@ -1,14 +1,14 @@
-import { mastra } from "@/src/mastra";
 import { loadRunBundle } from "@/db/client";
 import { profileById } from "@/db/client-profiles";
-import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
-import { ndjsonLine } from "@/lib/ndjson";
-import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
 import {
   RunRequest,
   STREAM_CONTENT_TYPE,
   type StreamDone,
 } from "@/lib/api-types";
+import { ndjsonLine } from "@/lib/ndjson";
+import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
+import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
+import { mastra } from "@/src/mastra";
 
 /**
  * POST /api/run — execute the procure-to-pay pipeline for one seeded invoice and
@@ -37,11 +37,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function line(obj: unknown): Uint8Array {
+const line = (obj: unknown): Uint8Array => {
   return new TextEncoder().encode(ndjsonLine(obj));
-}
+};
 
-export async function POST(request: Request): Promise<Response> {
+export const POST = async (request: Request): Promise<Response> => {
   // 0. Rate-limit by IP first — before any work or model calls. The demo is
   //    public and each run spends Anthropic tokens, so this caps abuse. Fails
   //    open if Redis isn't configured (see lib/ratelimit.ts).
@@ -64,27 +64,29 @@ export async function POST(request: Request): Promise<Response> {
 
   // 1. Parse + validate the request body.
   let id: string;
-  let decision: "approve" | "reject" | undefined;
+  let decisions: Record<string, "approve" | "reject">;
   let profileId: string | undefined;
   try {
     const body: unknown = await request.json();
     const parsed = RunRequest.parse(body);
     id = parsed.id;
-    decision = parsed.decision;
+    decisions = parsed.decisions ?? {};
     profileId = parsed.profileId;
   } catch {
     return Response.json(
       {
-        error: 'Body must be { id: string, decision?: "approve" | "reject" }.',
+        error:
+          'Body must be { id: string, decisions?: { [stepId]: "approve" | "reject" } }.',
       },
       { status: 400 },
     );
   }
-  // The reviewer's decision maps to the workflow's humanApproval input. No
-  // decision → "pending" (an exception pauses for a human). "approve"/"reject"
-  // are phase-2 resumes. Recomputing the cheap deterministic prefix instead of
-  // restoring a persisted snapshot is what keeps the human-in-the-loop stateless.
-  const humanApproval = decision ?? "pending";
+  // The reviewer's per-step decisions drive the approval workflow. None → every
+  // active gate pauses as pending (phase 1). A resume sends decisions by step id
+  // (phase 2); the bill posts only once all active gates are approved. Recomputing
+  // the deterministic prefix from the decisions (not a persisted snapshot) is what
+  // keeps the human-in-the-loop stateless.
+  const hasDecisions = Object.keys(decisions).length > 0;
 
   // 2. Load the seeded document bundle (READ ONLY). Done before opening the
   //    stream so a missing invoice / missing DB config is a clean HTTP error
@@ -129,12 +131,12 @@ export async function POST(request: Request): Promise<Response> {
             purchaseOrder: bundle.purchaseOrder,
             goodsReceipt: bundle.goodsReceipt,
             priorInvoiceNumbers: bundle.priorInvoiceNumbers,
-            humanApproval,
-            // On a phase-2 resume (approve/reject) the workflow re-runs from the
+            decisions,
+            // On a phase-2 resume (decisions present) the workflow re-runs from the
             // top, but the document was already read — skip the (costly) vision
             // call the second time. The reveal from phase 1 still stands.
-            skipExtraction: decision !== undefined,
-            // Run under the requested client profile (tolerances + approval tiers);
+            skipExtraction: hasDecisions,
+            // Run under the requested client profile (tolerances + approval workflow);
             // defaults to the standard profile.
             profile: profileById(profileId),
           },
@@ -176,4 +178,4 @@ export async function POST(request: Request): Promise<Response> {
       "x-accel-buffering": "no",
     },
   });
-}
+};

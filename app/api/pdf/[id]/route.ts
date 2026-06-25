@@ -21,10 +21,10 @@ import { renderInvoicePdf } from "@/lib/invoice-pdf";
 
 export const runtime = "nodejs";
 
-export async function GET(
+export const GET = async (
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
-): Promise<Response> {
+): Promise<Response> => {
   const { id } = await params;
 
   let invoice: Awaited<ReturnType<typeof loadInvoiceById>>;
@@ -50,4 +50,4 @@ export async function GET(
       "cache-control": "public, max-age=3600, immutable",
     },
   });
-}
+};

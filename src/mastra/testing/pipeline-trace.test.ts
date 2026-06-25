@@ -1,16 +1,18 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
-import { mockToolCallingModel } from "./mock-model";
-import { p2pWorkflow } from "../workflows/p2p";
+
+import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
+import { toTraceEvent, type TraceEvent } from "@/lib/trace";
+import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
 import {
   priceHistoryTool,
   poNotesTool,
   receiptNotesTool,
-} from "../tools/investigator-tools";
-import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
-import { toTraceEvent, type TraceEvent } from "@/lib/trace";
+} from "@/src/mastra/tools/investigator-tools";
+import { p2pWorkflow } from "@/src/mastra/workflows/p2p";
 
 /**
  * Full-pipeline offline integration test: run the REAL p2p workflow end to end
@@ -23,8 +25,7 @@ import { toTraceEvent, type TraceEvent } from "@/lib/trace";
  * The deterministic stages (match / route / reconcile) have no agent, so this is
  * the one place the agentic path is exercised. No network, no key, CI-safe.
  */
-
-function mastraWithMockInvestigator(narration: string) {
+const mastraWithMockInvestigator = (narration: string) => {
   return new Mastra({
     agents: {
       investigator: new Agent({
@@ -44,9 +45,9 @@ function mastraWithMockInvestigator(narration: string) {
     },
     workflows: { p2p: p2pWorkflow },
   });
-}
+};
 
-async function runTrace(mastra: Mastra, b: SeedBundle) {
+const runTrace = async (mastra: Mastra, b: SeedBundle) => {
   const idx = SEED_BUNDLES.indexOf(b);
   const priorInvoiceNumbers = SEED_BUNDLES.slice(0, idx).map(
     (x) => x.invoice.invoiceNumber,
@@ -72,14 +73,14 @@ async function runTrace(mastra: Mastra, b: SeedBundle) {
     raw.push(value);
   }
   return raw;
-}
+};
 
 /**
  * Apply the exact adapter + upsert-by-stepId logic the client hook uses, so the
  * test asserts against the timeline a user would actually see (each stage one
  * node that transitions running → done), not the raw start+result event pair.
  */
-function timelineFrom(raw: unknown[]): TraceEvent[] {
+const timelineFrom = (raw: unknown[]): TraceEvent[] => {
   const events: TraceEvent[] = [];
   const stepIndex = new Map<string, number>();
   let seq = 0;
@@ -99,7 +100,7 @@ function timelineFrom(raw: unknown[]): TraceEvent[] {
     }
   }
   return events;
-}
+};
 
 test("an exception invokes the investigator agent's real tool, reaching the trace", async () => {
   const mastra = mastraWithMockInvestigator(

@@ -1,9 +1,9 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { TraceDetail } from "@/components/trace-detail";
-import { formatDuration, humanize } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
 import { statusDot, statusTone, stageLabel } from "@/lib/display";
+import { formatDuration, humanize } from "@/lib/format";
 import type { TraceEvent } from "@/lib/trace";
 import type { PipelineRunState } from "@/lib/use-pipeline-run";
 
@@ -14,8 +14,7 @@ import type { PipelineRunState } from "@/lib/use-pipeline-run";
  * the caught discrepancies and the routing to approval. This is the heart of the
  * demo — you watch the agent choose its tools and the human gate pause the run.
  */
-
-export function TraceTimeline({
+export const TraceTimeline = ({
   state,
   invoiceLabel,
   canRun,
@@ -25,7 +24,7 @@ export function TraceTimeline({
   invoiceLabel: string | null;
   canRun: boolean;
   onRun: () => void;
-}) {
+}) => {
   if (state.status === "idle") {
     return (
       <Empty
@@ -98,9 +97,9 @@ export function TraceTimeline({
       )}
     </div>
   );
-}
+};
 
-function TraceNode({
+const TraceNode = ({
   event,
   isLast,
   live,
@@ -108,7 +107,7 @@ function TraceNode({
   event: TraceEvent;
   isLast: boolean;
   live: boolean;
-}) {
+}) => {
   const dot = statusDot(event.status);
   const isRunning = event.status === "running" && live;
   const showStageChip = event.stage !== "pipeline" && event.kind !== "tool";
@@ -166,10 +165,10 @@ function TraceNode({
       </div>
     </div>
   );
-}
+};
 
 /** Short chip text summarizing a step's outcome (verdict / tier / posted). */
-function verdictChip(event: TraceEvent): string {
+const verdictChip = (event: TraceEvent): string => {
   const d = event.data as Record<string, unknown> | undefined;
   if (d) {
     if (typeof d["verdict"] === "string") return humanize(d["verdict"]);
@@ -179,9 +178,9 @@ function verdictChip(event: TraceEvent): string {
   }
   if (event.status === "running") return "Running";
   return stageLabel(event.stage);
-}
+};
 
-function PendingNode() {
+const PendingNode = () => {
   return (
     <div className="relative pl-8">
       <span
@@ -193,9 +192,9 @@ function PendingNode() {
       </div>
     </div>
   );
-}
+};
 
-function Empty({
+const Empty = ({
   title,
   body,
   tone = "neutral",
@@ -205,7 +204,7 @@ function Empty({
   body: string;
   tone?: "neutral" | "danger";
   action?: React.ReactNode;
-}) {
+}) => {
   return (
     <div className="flex h-full min-h-[240px] flex-col items-center justify-center px-8 text-center">
       <p
@@ -219,4 +218,4 @@ function Empty({
       {action}
     </div>
   );
-}
+};

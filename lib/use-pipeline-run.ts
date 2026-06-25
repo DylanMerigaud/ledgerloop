@@ -1,11 +1,18 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { TraceEvent } from "@/lib/trace";
-import { NdjsonBuffer } from "@/lib/ndjson";
+import { useRef, useState } from "react";
+
+import { useEventCallback } from "@/hooks/use-event-callback";
+import { API_ROUTES } from "@/lib/api-routes";
 import { type StreamDone } from "@/lib/api-types";
 import type { Outcome } from "@/lib/display";
-import { deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
+import { NdjsonBuffer } from "@/lib/ndjson";
+import {
+  deriveOutcome,
+  isAwaitingApproval,
+  decisionsForPending,
+} from "@/lib/run-outcome";
+import { TraceEvent } from "@/lib/trace";
 
 /**
  * Client hook that runs the pipeline for an invoice and exposes the live trace.
@@ -18,13 +25,13 @@ import { deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
  * `outcome` is derived as they arrive so the queue pill can update in real time.
  */
 
-export interface PipelineRunState {
+export type PipelineRunState = {
   status: "idle" | "running" | "awaiting" | "done" | "error";
   trace: TraceEvent[];
   outcome: Outcome;
   durationMs: number | null;
   error: string | null;
-}
+};
 
 const IDLE: PipelineRunState = {
   status: "idle",
@@ -34,7 +41,7 @@ const IDLE: PipelineRunState = {
   error: null,
 };
 
-export function usePipelineRun() {
+export const usePipelineRun = () => {
   const [state, setState] = useState<PipelineRunState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
   // The trace + step index persist ACROSS phases so a phase-2 approve/reject
@@ -43,19 +50,19 @@ export function usePipelineRun() {
   const eventsRef = useRef<TraceEvent[]>([]);
   const stepIndexRef = useRef<Map<string, number>>(new Map());
 
-  const reset = useCallback(() => {
+  const reset = useEventCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     eventsRef.current = [];
     stepIndexRef.current = new Map();
     setState(IDLE);
-  }, []);
+  });
 
   /**
    * Stream one run/resume. `decision` undefined = phase 1 (may pause for a
    * human); "approve"/"reject" = phase 2 resume onto the existing trace.
    */
-  const stream = useCallback(
+  const stream = useEventCallback(
     async (id: string, decision?: "approve" | "reject") => {
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -107,10 +114,17 @@ export function usePipelineRun() {
       };
 
       try {
-        const res = await fetch("/api/run", {
+        // The approval workflow can have several gates pending in parallel. The
+        // single Approve/Reject button applies the reviewer's decision to ALL of
+        // them (the collect-all set), sent as the per-step `decisions` map. (A
+        // richer per-gate UI can send a subset.)
+        const body = decision
+          ? { id, decisions: decisionsForPending(eventsRef.current, decision) }
+          : { id };
+        const res = await fetch(API_ROUTES.run, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(decision ? { id, decision } : { id }),
+          body: JSON.stringify(body),
           signal: controller.signal,
         });
 
@@ -191,14 +205,12 @@ export function usePipelineRun() {
         }));
       }
     },
-    [],
   );
 
-  const run = useCallback((id: string) => stream(id), [stream]);
-  const decide = useCallback(
+  const run = useEventCallback((id: string) => stream(id));
+  const decide = useEventCallback(
     (id: string, decision: "approve" | "reject") => stream(id, decision),
-    [stream],
   );
 
   return { state, run, decide, reset };
-}
+};

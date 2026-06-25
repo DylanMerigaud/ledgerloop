@@ -1,26 +1,28 @@
-import { z } from "zod";
-import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { RequestContext } from "@mastra/core/request-context";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
+import { z } from "zod";
+
+import { runApproval, type ApprovalRun } from "@/lib/approval-run";
+import { ApprovalWorkflow as ApprovalWorkflowSchema } from "@/lib/approval-workflow";
+import {
+  ClientProfile,
+  DEFAULT_TOLERANCES,
+  DEFAULT_APPROVAL_POLICY,
+  workflowFor,
+} from "@/lib/client-profile";
+import { reconcileFromOutcome } from "@/lib/erp";
+import { runIntake } from "@/lib/intake";
+import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
+import { runMatch } from "@/lib/matching";
 import {
   Invoice,
   PurchaseOrder,
   GoodsReceipt,
   MatchResult,
-  Investigation,
-  ApprovalDecision,
+  type Investigation,
   ReconResult,
 } from "@/lib/schema";
-import { runMatch } from "@/lib/matching";
-import { routeApproval } from "@/lib/policy";
-import { reconcile } from "@/lib/erp";
-import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
-import { runIntake } from "@/lib/intake";
-import {
-  ClientProfile,
-  DEFAULT_TOLERANCES,
-  DEFAULT_APPROVAL_POLICY,
-} from "@/lib/client-profile";
-import { CTX } from "../tools/context";
+import { CTX } from "@/src/mastra/tools/context";
 
 /**
  * The procure-to-pay workflow — the showcase.
@@ -44,22 +46,24 @@ import { CTX } from "../tools/context";
  */
 
 /* The state the workflow is seeded with — produced by the DB read layer. The
-   optional `humanApproval` is the reviewer's decision for invoices that need a
-   human gate: "pending" (run pauses at reconciliation), "approve", or "reject".
-   Clean and duplicate invoices ignore it. */
+   optional `decisions` are the reviewer's per-step approvals (keyed by workflow
+   step id): empty on the first run (active gates pause as pending), populated on a
+   resume. The approval workflow is a DAG so several gates can pend in parallel —
+   the bill posts only once every active gate is approved. Clean invoices have no
+   active gate; a duplicate is blocked before the workflow runs. */
 const RunInput = z.object({
   invoice: Invoice,
   purchaseOrder: PurchaseOrder.nullable(),
   goodsReceipt: GoodsReceipt.nullable(),
   priorInvoiceNumbers: z.array(z.string()),
-  humanApproval: z.enum(["pending", "approve", "reject"]).default("pending"),
+  decisions: z.record(z.string(), z.enum(["approve", "reject"])).default({}),
   /* On a phase-2 resume the document was already read in phase 1 — skip the
-     vision call so an approve/reject doesn't re-extract (wasted cost + latency). */
+     vision call so a resume doesn't re-extract (wasted cost + latency). */
   skipExtraction: z.boolean().default(false),
   /* The client profile drives the per-customer behaviour: matching tolerances and
-     approval tiers. Optional — defaults to the standard values so a run without a
-     profile behaves as before. This is what onboarding produces and the pipeline
-     consumes. */
+     the approval workflow. Optional — defaults to the standard values so a run
+     without a profile behaves as before. This is what onboarding produces and the
+     pipeline consumes. */
   profile: ClientProfile.optional(),
 });
 
@@ -90,7 +94,7 @@ const intakeStep = createStep({
   execute: async ({ inputData, writer }) => {
     const emit = async (chunk: unknown) => {
       try {
-        await writer?.write(chunk);
+        await writer.write(chunk);
       } catch {
         /* ignore writer errors — never let the trace affect the result */
       }
@@ -127,13 +131,13 @@ const intakeStep = createStep({
    The authoritative verdict comes from the pure matcher, run on the EXTRACTED
    invoice vs the PO/receipt; its `verdict` drives the branch below. We carry the
    vendor + the reviewer's decision forward. */
-const HumanApproval = z.object({
-  humanApproval: z.enum(["pending", "approve", "reject"]),
+const Decisions = z.object({
+  decisions: z.record(z.string(), z.enum(["approve", "reject"])),
 });
 const MatchStepOut = MatchResult.merge(Narrated)
   .merge(z.object({ vendor: z.string() }))
-  .merge(HumanApproval)
-  // Carry the profile forward so the approval branch can apply the client's tiers.
+  .merge(Decisions)
+  // Carry the profile forward so the approval step can run the client's workflow.
   .merge(z.object({ profile: ClientProfile.optional() }));
 const matchingStep = createStep({
   id: "matching",
@@ -152,14 +156,14 @@ const matchingStep = createStep({
     return {
       ...match,
       vendor: inputData.invoice.vendor,
-      humanApproval: inputData.humanApproval,
+      decisions: inputData.decisions,
       profile: inputData.profile,
       narration: matchLine(match),
     };
   },
 });
 
-function matchLine(m: MatchResult): string {
+const matchLine = (m: MatchResult): string => {
   if (m.verdict === "duplicate") {
     return `${m.invoiceNumber} is a duplicate — blocking to prevent a double payment.`;
   }
@@ -167,14 +171,14 @@ function matchLine(m: MatchResult): string {
     return `Clean ${m.matchType === "three_way" ? "3-way" : "2-way"} match — eligible for straight-through processing.`;
   }
   return `${m.exceptions.length} exception(s) found (max ${(m.maxVariancePct * 100).toFixed(1)}% variance).`;
-}
+};
 
-interface MastraLike {
+type MastraLike = {
   getAgent: (id: string) => InvestigatorAgent | undefined;
-}
-interface ChunkWriter {
+};
+type ChunkWriter = {
   write: (chunk: unknown) => Promise<void>;
-}
+};
 
 /**
  * Run the investigator agent over a flagged match and surface its tool calls on
@@ -183,12 +187,12 @@ interface ChunkWriter {
  * the note). The agent-running + parsing lives in `lib/investigation.ts`, shared
  * with the eval harness; here we add only the workflow-stream concern.
  */
-async function investigate(
+const investigate = async (
   mastra: MastraLike | undefined,
   writer: ChunkWriter | undefined,
   match: MatchResult,
   vendor: string,
-): Promise<Investigation | null> {
+): Promise<Investigation | null> => {
   try {
     const agent = mastra?.getAgent("investigator");
     if (!agent) return null;
@@ -212,23 +216,45 @@ async function investigate(
   } catch {
     return null;
   }
-}
+};
 
 /* ── Branch steps ───────────────────────────────────────────────────────────
-   Every branch ends producing the SAME shape — { decision, match, vendor,
-   humanApproval } (plus narration) — so the post-branch .map() can normalise to
-   one ApprovalDecision regardless of which path ran. */
+   Every branch ends producing the SAME shape so the post-branch .map() can
+   normalise regardless of which path ran. The approval result is the conditional
+   workflow's execution summary (`ApprovalRunOut`): the outcome the bill posts on,
+   the per-step states (for the trace/canvas), and whether it's a duplicate block. */
+const ApprovalRunOut = z.object({
+  outcome: z.enum(["posted", "awaiting", "rejected", "blocked"]),
+  steps: z.array(
+    z.object({ id: z.string(), status: z.string(), detail: z.string() }),
+  ),
+  /* The workflow graph this run executed — carried so the trace can render the
+     SAME graph the onboarding screen draws, coloured by this invoice's path.
+     Optional (the duplicate block has no workflow). */
+  workflow: ApprovalWorkflowSchema.optional(),
+});
 const BranchOut = z.object({
-  decision: ApprovalDecision,
+  approval: ApprovalRunOut,
   match: MatchResult,
   vendor: z.string(),
-  humanApproval: z.enum(["pending", "approve", "reject"]),
 });
+
+/** Flatten the engine's step states to the serialisable shape BranchOut carries. */
+const stepSummaries = (
+  run: ApprovalRun,
+): { id: string; status: string; detail: string }[] => {
+  return run.state.steps.map((s) => ({
+    id: s.id,
+    status: s.status,
+    detail: s.detail,
+  }));
+};
 
 /* Exception path: FIRST the investigator agent (the one open-ended, agentic step)
    reads messy vendor records and recommends how to read the variance; its note is
-   written to the trace as its own node. THEN deterministic policy decides the
-   approver tier. The agent informs the human; it never decides the tier. */
+   written to the trace as its own node. THEN the conditional approval WORKFLOW is
+   executed — its gates (manager/director/department, by condition) decide who must
+   sign off. The agent informs the human; it decides no gate. */
 const investigateAndRouteStep = createStep({
   id: "approval", // stage = approval on the trace; the investigation is a sub-node
   inputSchema: MatchStepOut,
@@ -236,25 +262,16 @@ const investigateAndRouteStep = createStep({
   execute: async ({ inputData, mastra, writer }) => {
     const {
       vendor,
-      humanApproval,
+      decisions,
       profile,
       narration: _prior,
       ...match
     } = inputData;
 
-    // `mastra`/`writer` are cast to our minimal contracts — we only use a tiny,
-    // stable slice of each (getAgent → generate; writer.write), and keeping the
-    // local interfaces means `investigate` stays unit-testable with a fake.
-    const investigation = await investigate(
-      mastra as unknown as MastraLike | undefined,
-      writer as unknown as ChunkWriter | undefined,
-      match,
-      vendor,
-    );
+    const investigation = await investigate(mastra, writer, match, vendor);
     if (investigation) {
-      // Surface the agent's recommendation as its own trace node, before routing.
       try {
-        await writer?.write({
+        await writer.write({
           type: "investigation",
           payload: { investigation },
         });
@@ -263,23 +280,22 @@ const investigateAndRouteStep = createStep({
       }
     }
 
-    const decision = routeApproval(
-      match,
-      profile?.approvalPolicy ?? DEFAULT_APPROVAL_POLICY,
+    const workflow = workflowFor(
+      profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
     );
+    const run = runApproval(workflow, match, decisions);
+
     return {
-      decision,
+      approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
       match,
       vendor,
-      humanApproval,
-      narration: decision.reason,
+      narration: run.narration,
     };
   },
 });
 
 /* Duplicate path: a control failure, not a pricing question — nothing to
-   investigate. The blocked decision is surfaced directly. (Policy doesn't affect
-   a duplicate — it's always blocked — but we pass it for uniformity.) */
+   investigate and no workflow to run. Surfaced directly as a blocked outcome. */
 const blockStep = createStep({
   id: "approval-blocked", // same stage; a duplicate is a (blocked) approval outcome
   inputSchema: MatchStepOut,
@@ -287,27 +303,23 @@ const blockStep = createStep({
   execute: async ({ inputData }) => {
     const {
       vendor,
-      humanApproval,
-      profile,
+      decisions: _decisions,
+      profile: _profile,
       narration: _prior,
       ...match
     } = inputData;
-    const decision = routeApproval(
-      match,
-      profile?.approvalPolicy ?? DEFAULT_APPROVAL_POLICY,
-    );
     return {
-      decision,
+      approval: { outcome: "blocked" as const, steps: [] },
       match,
       vendor,
-      humanApproval,
-      narration: decision.reason,
+      narration: `Blocked: ${match.invoiceNumber} is a duplicate of an already-processed invoice. Held for AP review — not routed for approval.`,
     };
   },
 });
 
-/* Clean path: auto-approve. routeApproval returns the `auto` decision for a clean
-   verdict; we surface it directly so the trace shows the STP path. */
+/* Clean path: run the workflow too — for a clean invoice every gate's condition is
+   false, so they all skip and the run resolves straight to "posted" (the
+   straight-through path), through the exact same engine as an exception. */
 const autoApproveStep = createStep({
   id: "approval-auto",
   inputSchema: MatchStepOut,
@@ -315,35 +327,34 @@ const autoApproveStep = createStep({
   execute: async ({ inputData }) => {
     const {
       vendor,
-      humanApproval,
+      decisions,
       profile,
       narration: _prior,
       ...match
     } = inputData;
-    const decision = routeApproval(
-      match,
-      profile?.approvalPolicy ?? DEFAULT_APPROVAL_POLICY,
+    const workflow = workflowFor(
+      profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
     );
+    const run = runApproval(workflow, match, decisions);
     return {
-      decision,
+      approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
       match,
       vendor,
-      humanApproval,
-      narration:
-        "Auto-approved — clean match, no human approval required (straight-through).",
+      narration: run.narration,
     };
   },
 });
 
 /* ── Step 4: Reconciliation ─────────────────────────────────────────────────
-   Posts (or refuses to post) via the fake ERP. Deterministic. Final output. */
+   Posts (or refuses to post) via the ERP adapter, driven by the workflow outcome.
+   Deterministic. Final output. */
 const reconciliationStep = createStep({
   id: "reconciliation",
   inputSchema: BranchOut,
   outputSchema: ReconResult.merge(Narrated),
   execute: async ({ inputData }) => {
-    const { decision, match, vendor, humanApproval } = inputData;
-    const recon = await reconcile(decision, match, vendor, humanApproval);
+    const { approval, match, vendor } = inputData;
+    const recon = await reconcileFromOutcome(approval.outcome, match, vendor);
     return { ...recon, narration: recon.note };
   },
 });

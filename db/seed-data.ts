@@ -21,30 +21,30 @@ import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
  * the queue shows.
  */
 
-export interface SeedBundle {
+export type SeedBundle = {
   /** A stable, unique row id (the duplicate needs a distinct id from its twin). */
   id: string;
   scenario: string;
   invoice: Invoice;
   purchaseOrder?: PurchaseOrder;
   goodsReceipt?: GoodsReceipt;
-}
+};
 
 /* Helper to keep line construction terse + arithmetically correct by default. */
-function line(
+const line = (
   sku: string,
   description: string,
   qty: number,
   unitPrice: number,
-) {
+) => {
   return { sku, description, qty, unitPrice, amount: round2(qty * unitPrice) };
-}
-function round2(n: number): number {
+};
+const round2 = (n: number): number => {
   return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-function sum(items: { amount: number }[]): number {
+};
+const sum = (items: { amount: number }[]): number => {
   return round2(items.reduce((a, b) => a + b.amount, 0));
-}
+};
 
 /* ── 1. Clean 3-way match (straight-through) ────────────────────────────────
    Industrial fasteners; invoice = PO = receipt. Auto-approved. */

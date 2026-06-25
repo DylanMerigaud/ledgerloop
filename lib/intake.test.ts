@@ -1,7 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runIntake, type Extractor } from "./intake";
-import type { Invoice } from "./schema";
+import { test } from "node:test";
+
+import { runIntake, type Extractor } from "@/lib/intake";
+import type { Invoice } from "@/lib/schema";
 
 /**
  * Intake tests — the "mock vision" coverage. The real extraction calls the
@@ -27,9 +28,9 @@ const SOURCE: Invoice = {
 const render = async () => "ZmFrZS1wZGY=";
 
 /** An extractor that returns a given invoice (or failure). */
-function mockExtractor(invoice: Invoice): Extractor {
+const mockExtractor = (invoice: Invoice): Extractor => {
   return async () => ({ ok: true, invoice });
-}
+};
 
 test("successful extraction returns the extracted invoice", async () => {
   const extracted: Invoice = { ...SOURCE, vendor: "Acme Corporation Ltd" };

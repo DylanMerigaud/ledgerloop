@@ -7,6 +7,7 @@ import {
   numeric,
   index,
 } from "drizzle-orm/pg-core";
+
 import type {
   LineItem,
   GoodsReceiptLine,

@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
 
-export function Card({
+export const Card = ({
   className,
   children,
 }: {
   className?: string;
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <div
       className={cn("rounded-xl bg-surface shadow-card ring-line", className)}
@@ -14,29 +14,29 @@ export function Card({
       {children}
     </div>
   );
-}
+};
 
-export function CardHeader({
+export const CardHeader = ({
   className,
   children,
 }: {
   className?: string;
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <div className={cn("border-b border-line px-4 py-3", className)}>
       {children}
     </div>
   );
-}
+};
 
-export function CardTitle({
+export const CardTitle = ({
   className,
   children,
 }: {
   className?: string;
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <h3
       className={cn(
@@ -47,4 +47,4 @@ export function CardTitle({
       {children}
     </h3>
   );
-}
+};

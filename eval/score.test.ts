@@ -1,20 +1,21 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
 import {
   scoreCase,
   accuracy,
   overchargeConfusion,
   type CaseScore,
-} from "./score";
+} from "@/eval/score";
 
 /** Build a scored case quickly. */
-function sc(
+const sc = (
   expected: CaseScore["expected"],
   got: CaseScore["got"],
   failed?: string,
-): CaseScore {
+): CaseScore => {
   return scoreCase("X", "stress", expected, got, failed);
-}
+};
 
 test("scoreCase marks a match correct and a mismatch incorrect", () => {
   assert.equal(sc("likely_overcharge", "likely_overcharge").correct, true);

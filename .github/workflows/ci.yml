@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    name: format · typecheck · knip · test · build · eval
+    name: format · typecheck · lint · knip · test · build · eval
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +28,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Lint (ESLint — cast/any hygiene)
+        run: pnpm lint
 
       - name: Dead-code check (knip)
         run: pnpm knip
@@ -51,3 +54,9 @@ jobs:
       # scoring offline (a perfect score is expected). Run the real eval locally.
       - name: Investigator eval (dry-run, no API calls)
         run: pnpm eval --dry-run
+
+      # The conversational-edit eval scores whether the model maps an instruction
+      # to the right WorkflowEditOp. `--dry-run` exercises the corpus + scoring
+      # offline; the live run (real model, 8/8) is local.
+      - name: Workflow-edit eval (dry-run, no API calls)
+        run: pnpm eval:edit --dry-run

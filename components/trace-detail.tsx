@@ -1,11 +1,8 @@
 import { Badge } from "@/components/ui/badge";
+import { WorkflowGraph } from "@/components/workflow-graph";
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { formatMoney, formatPct, humanize } from "@/lib/format";
-import type {
-  MatchResult,
-  ApprovalDecision,
-  ReconResult,
-  Investigation,
-} from "@/lib/schema";
+import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
 
 /**
  * Rich, type-aware detail for a completed stage. Each stage emits a different
@@ -14,24 +11,64 @@ import type {
  * from a log into something a CTO can read the *reasoning* out of — the exact
  * exception lines, the approval drivers, the GL posting.
  */
+/**
+ * The trace carries each stage's already-Zod-validated output as `unknown`. We
+ * narrow it with type guards on the discriminating fields — not casts — so the
+ * render branch and the prop type are checked together. (A guard that returns
+ * `d is T` documents AND verifies the shape; a cast would only assert it.)
+ */
+const has = (d: object, ...keys: string[]): boolean => {
+  return keys.every((k) => k in d);
+};
+const isMatch = (d: object): d is MatchResult =>
+  has(d, "verdict", "exceptions");
+const isInvestigation = (d: object): d is Investigation =>
+  has(d, "recommendation", "toolsUsed");
+const isWorkflowRun = (d: object): d is WorkflowRunData =>
+  has(d, "workflow", "steps");
+const isApprovalSummary = (d: object): d is ApprovalSummary =>
+  has(d, "outcome", "steps");
+const isRecon = (d: object): d is ReconResult => has(d, "posted", "glEntries");
 
-export function TraceDetail({ data }: { data: unknown }) {
+export const TraceDetail = ({ data }: { data: unknown }) => {
   if (!data || typeof data !== "object") return null;
-  const d = data as Record<string, unknown>;
+  const d = data;
 
-  if ("verdict" in d && "exceptions" in d)
-    return <MatchDetail match={d as unknown as MatchResult} />;
-  if ("recommendation" in d && "toolsUsed" in d)
-    return <InvestigationDetail inv={d as unknown as Investigation} />;
-  if ("tier" in d && "autoApproved" in d)
-    return <ApprovalDetail decision={d as unknown as ApprovalDecision} />;
-  if ("posted" in d && "glEntries" in d)
-    return <ReconDetail recon={d as unknown as ReconResult} />;
+  if (isMatch(d)) return <MatchDetail match={d} />;
+  if (isInvestigation(d)) return <InvestigationDetail inv={d} />;
+  // The approval-workflow node carries the full graph + per-step status — render
+  // the SAME graph the onboarding screen draws, coloured by this run's path.
+  if (isWorkflowRun(d)) return <WorkflowRunDetail data={d} />;
+  if (isApprovalSummary(d)) return <ApprovalDetail approval={d} />;
+  if (isRecon(d)) return <ReconDetail recon={d} />;
   return null;
-}
+};
+
+/** The approval workflow's execution summary, as the step emits it onto the trace. */
+type ApprovalSummary = {
+  outcome: "posted" | "awaiting" | "rejected" | "blocked";
+  steps: { id: string; status: string; detail: string }[];
+};
+
+/** The live approval-workflow node: the graph structure + this run's step statuses. */
+type WorkflowRunData = {
+  workflow: ApprovalWorkflow;
+  steps: { id: string; status: string; detail: string }[];
+  outcome: string;
+};
+
+const WorkflowRunDetail = ({ data }: { data: WorkflowRunData }) => {
+  const statuses: Record<string, string> = {};
+  for (const s of data.steps) statuses[s.id] = s.status;
+  return (
+    <div className="-mx-1">
+      <WorkflowGraph workflow={data.workflow} statuses={statuses} />
+    </div>
+  );
+};
 
 /** The exception investigator's recommendation — the one agentic output. */
-function InvestigationDetail({ inv }: { inv: Investigation }) {
+const InvestigationDetail = ({ inv }: { inv: Investigation }) => {
   const tone =
     inv.recommendation === "likely_legitimate"
       ? "ok"
@@ -58,9 +95,9 @@ function InvestigationDetail({ inv }: { inv: Investigation }) {
       )}
     </div>
   );
-}
+};
 
-function MatchDetail({ match }: { match: MatchResult }) {
+const MatchDetail = ({ match }: { match: MatchResult }) => {
   if (match.exceptions.length === 0) {
     return (
       <Row label="Match">
@@ -97,41 +134,46 @@ function MatchDetail({ match }: { match: MatchResult }) {
       ))}
     </div>
   );
-}
+};
 
-function ApprovalDetail({ decision }: { decision: ApprovalDecision }) {
+/** Per-step status → badge tone for the approval gates. */
+const stepTone = (status: string): "ok" | "warn" | "danger" | "neutral" => {
+  if (status === "approved" || status === "done") return "ok";
+  if (status === "pending") return "warn";
+  if (status === "rejected" || status === "blocked") return "danger";
+  return "neutral"; // skipped / other
+};
+
+const ApprovalDetail = ({ approval }: { approval: ApprovalSummary }) => {
+  const outcomeTone =
+    approval.outcome === "posted"
+      ? "ok"
+      : approval.outcome === "awaiting"
+        ? "warn"
+        : "danger";
+  // Only the steps that actually mattered — hide the ones that skipped (their
+  // condition wasn't met for this invoice), so the trace shows the path taken.
+  const shown = approval.steps.filter((s) => s.status !== "skipped");
   return (
-    <div className="space-y-1">
-      <Row label="Tier">
-        <Badge
-          tone={
-            decision.tier === "blocked"
-              ? "danger"
-              : decision.autoApproved
-                ? "ok"
-                : "warn"
-          }
-        >
-          {humanize(decision.tier)}
-        </Badge>
+    <div className="space-y-1.5">
+      <Row label="Outcome">
+        <Badge tone={outcomeTone}>{humanize(approval.outcome)}</Badge>
       </Row>
-      {decision.exceptionAmount > 0 && (
-        <Row label="At stake">
-          <span className="tnum">
-            {formatMoney(decision.exceptionAmount, decision.currency)}
-          </span>
-        </Row>
-      )}
-      {decision.maxVariancePct > 0 && (
-        <Row label="Max variance">
-          <span className="tnum">{formatPct(decision.maxVariancePct)}</span>
-        </Row>
+      {shown.length > 0 && (
+        <div className="space-y-1">
+          {shown.map((s) => (
+            <div key={s.id} className="flex items-center gap-2">
+              <Badge tone={stepTone(s.status)}>{humanize(s.status)}</Badge>
+              <span className="text-[11px] text-muted">{s.detail}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
-}
+};
 
-function ReconDetail({ recon }: { recon: ReconResult }) {
+const ReconDetail = ({ recon }: { recon: ReconResult }) => {
   // Awaiting is a pause (amber), not a failure; posted is success; rejected/
   // blocked are red. Drive the badge off the precise outcome.
   const tone =
@@ -179,19 +221,19 @@ function ReconDetail({ recon }: { recon: ReconResult }) {
       )}
     </div>
   );
-}
+};
 
-function Row({
+const Row = ({
   label,
   children,
 }: {
   label: string;
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <div className="flex items-center justify-between gap-3 text-[12px]">
       <span className="text-muted">{label}</span>
       <span className="text-ink">{children}</span>
     </div>
   );
-}
+};

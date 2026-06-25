@@ -1,3 +1,4 @@
+import { nonNull } from "@/lib/assert";
 import type { ClientProfile } from "@/lib/client-profile";
 import {
   DEFAULT_TOLERANCES,
@@ -50,9 +51,12 @@ export const CLIENT_PROFILES: ClientProfile[] = [
 const DEFAULT_PROFILE_ID = "standard";
 
 /** Look up a profile by id; falls back to the standard profile. */
-export function profileById(id: string | null | undefined): ClientProfile {
+export const profileById = (id: string | null | undefined): ClientProfile => {
   return (
     CLIENT_PROFILES.find((p) => p.id === id) ??
-    CLIENT_PROFILES.find((p) => p.id === DEFAULT_PROFILE_ID)!
+    nonNull(
+      CLIENT_PROFILES.find((p) => p.id === DEFAULT_PROFILE_ID),
+      `the "${DEFAULT_PROFILE_ID}" profile is always seeded`,
+    )
   );
-}
+};

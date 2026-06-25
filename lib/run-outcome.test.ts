@@ -1,7 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deriveOutcome, isAwaitingApproval } from "./run-outcome";
-import type { TraceEvent } from "./trace";
+import { test } from "node:test";
+
+import { deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
+import type { TraceEvent } from "@/lib/trace";
 
 /**
  * Tests for the queue-pill outcome logic. This had a real bug: an `awaiting`
@@ -9,9 +10,7 @@ import type { TraceEvent } from "./trace";
  * mistook for "blocked" (red) instead of "needs-approval" (amber). These pin the
  * outcome for each reconciliation result so the pill colour is right.
  */
-
-// Minimal trace-event builder carrying a stage `data` payload.
-function ev(data: Record<string, unknown>): TraceEvent {
+const ev = (data: Record<string, unknown>): TraceEvent => {
   return {
     seq: 0,
     kind: "step",
@@ -22,10 +21,13 @@ function ev(data: Record<string, unknown>): TraceEvent {
     data,
     atMs: 0,
   };
-}
+};
 
 const matching = (verdict: string) => ev({ verdict });
-const approval = (tier: string) => ev({ tier });
+const approval = (
+  outcome: string,
+  steps: { id: string; status: string; detail: string }[] = [],
+) => ev({ outcome, steps });
 const recon = (outcome: string, posted: boolean) => ev({ outcome, posted });
 
 test("clean → reconciled (posted)", () => {
@@ -71,12 +73,17 @@ test("duplicate → blocked", () => {
   assert.equal(deriveOutcome(trace, true), "blocked");
 });
 
-test("mid-stream (only matching+approval so far) → needs-approval before recon arrives", () => {
-  // Before the reconciliation event streams in, an exception still reads as
-  // needs-approval (from the tier hint), not blocked.
-  const trace = [matching("exception"), approval("manager")];
+test("mid-stream: an awaiting approval node reads as needs-approval before recon", () => {
+  // The approval node now carries the workflow outcome directly, so an awaiting
+  // gate signals needs-approval as soon as it streams in (before reconciliation).
+  const trace = [
+    matching("exception"),
+    approval("awaiting", [
+      { id: "manager-review", status: "pending", detail: "Awaiting Manager." },
+    ]),
+  ];
   assert.equal(deriveOutcome(trace, false), "needs-approval");
-  assert.equal(isAwaitingApproval(trace), false); // no awaiting event yet
+  assert.equal(isAwaitingApproval(trace), true); // the gate is pending
 });
 
 test("running with no recognizable data yet → running", () => {

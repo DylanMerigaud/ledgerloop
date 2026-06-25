@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import type { PDFPageProxy } from "pdfjs-dist";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Renders the real invoice PDF (the same bytes the vision model reads) to a
@@ -19,13 +19,18 @@ import type { PDFPageProxy } from "pdfjs-dist";
 // rendered page so the layout never shifts.
 const A4_RATIO = 841.89 / 595.28;
 
-export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
+export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Cancellation flag for the async load. Read via `isCancelled()` (a function,
+    // not the variable) inside the IIFE: TS narrows a bare boolean to `false` after
+    // the first check and can't see the cleanup flip it across awaits — a function
+    // call isn't narrowed, so each check is honest (not flagged as "always false").
     let cancelled = false;
+    const isCancelled = () => cancelled;
     const canvas = canvasRef.current;
     if (!canvas) return;
     setReady(false);
@@ -36,17 +41,17 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
     let page: PDFPageProxy | null = null;
     let rendering: Promise<unknown> | null = null;
 
-    async function loadPage(buf: ArrayBuffer) {
+    const loadPage = async (buf: ArrayBuffer) => {
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
         "pdfjs-dist/build/pdf.worker.min.mjs",
         import.meta.url,
       ).toString();
       return pdfjs.getDocument({ data: buf }).promise;
-    }
+    };
 
-    async function renderAtCurrentWidth() {
-      if (!page || !canvas) return;
+    const renderAtCurrentWidth = async () => {
+      if (!page) return; // `canvas` is already narrowed non-null above
       const cssWidth = canvas.parentElement?.clientWidth ?? 360;
       if (cssWidth === 0) return;
       const base = page.getViewport({ scale: 1 });
@@ -59,7 +64,7 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await page.render({ canvasContext: ctx, viewport }).promise;
-    }
+    };
 
     const ro = new ResizeObserver(() => {
       // Serialise renders — pdf.js throws if a render starts while one is live.
@@ -69,25 +74,25 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
         .catch(() => {});
     });
 
-    (async () => {
+    void (async () => {
       try {
         const buf = await fetch(src).then((r) => {
           if (!r.ok) throw new Error(`pdf fetch ${r.status}`);
           return r.arrayBuffer();
         });
-        if (cancelled) return;
+        if (isCancelled()) return;
 
         const pdf = await loadPage(buf);
-        if (cancelled) return;
+        if (isCancelled()) return;
         page = await pdf.getPage(1);
-        if (cancelled) return;
+        if (isCancelled()) return;
 
         await renderAtCurrentWidth();
-        if (cancelled) return;
+        if (isCancelled()) return;
         setReady(true);
         if (canvas.parentElement) ro.observe(canvas.parentElement);
       } catch {
-        if (!cancelled) setError(true);
+        if (!isCancelled()) setError(true);
       }
     })();
 
@@ -117,4 +122,4 @@ export function PdfDocument({ src, dim }: { src: string; dim: boolean }) {
       />
     </div>
   );
-}
+};

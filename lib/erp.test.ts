@@ -1,16 +1,16 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { reconcile } from "./erp";
-import type { ApprovalDecision, MatchResult } from "./schema";
+import { test } from "node:test";
+
+import { reconcileFromOutcome } from "@/lib/erp";
+import type { MatchResult } from "@/lib/schema";
 
 /**
- * Unit tests for reconciliation — the step that posts to the (fake) ERP, and the
- * second half of the human-in-the-loop gate. These pin the outcome for each
- * approval tier × reviewer decision, which is exactly what the Approve/Reject
- * buttons in the dashboard depend on.
+ * Unit tests for reconciliation — the step that posts to the (fake) ERP, driven
+ * by the approval workflow's outcome. These pin what happens for each outcome,
+ * which is what the dashboard's posted/awaiting/rejected states depend on. (The
+ * outcome itself is decided by the workflow engine, tested in approval-engine.)
  */
-
-function match(over: Partial<MatchResult> = {}): MatchResult {
+const match = (over: Partial<MatchResult> = {}): MatchResult => {
   return {
     invoiceNumber: "INV-1",
     poNumber: "PO-1",
@@ -23,78 +23,54 @@ function match(over: Partial<MatchResult> = {}): MatchResult {
     invoiceTotal: 8704,
     ...over,
   };
-}
+};
 
-function decision(tier: ApprovalDecision["tier"]): ApprovalDecision {
-  return {
-    invoiceNumber: "INV-1",
-    tier,
-    autoApproved: tier === "auto",
-    reason: "",
-    maxVariancePct: 0.09,
-    exceptionAmount: 6544,
-    currency: "GBP",
-  };
-}
-
-test("clean/auto invoice posts immediately (no human needed)", async () => {
-  const r = await reconcile(
-    decision("auto"),
+test("posted outcome → books to the ERP", async () => {
+  const r = await reconcileFromOutcome(
+    "posted",
     match({ verdict: "clean" }),
     "Acme",
   );
-  assert.equal(r.outcome, "posted");
-  assert.equal(r.posted, true);
-  assert.match(r.erpRef ?? "", /NETSUITE-BILL-/);
-  assert.ok(r.glEntries.length === 2);
-});
-
-test("duplicate is blocked, never posted, regardless of decision", async () => {
-  for (const ha of ["pending", "approve", "reject"] as const) {
-    const r = await reconcile(
-      decision("blocked"),
-      match({ verdict: "duplicate" }),
-      "Acme",
-      ha,
-    );
-    assert.equal(r.outcome, "blocked");
-    assert.equal(r.posted, false);
-    assert.equal(r.erpRef, null);
-  }
-});
-
-test("exception with pending → HELD (awaiting), not posted — the pause", async () => {
-  const r = await reconcile(decision("manager"), match(), "Acme", "pending");
-  assert.equal(r.outcome, "awaiting");
-  assert.equal(r.posted, false);
-  assert.equal(r.erpRef, null);
-  assert.equal(r.glEntries.length, 0);
-});
-
-test("exception with approve → posts to ERP", async () => {
-  const r = await reconcile(decision("director"), match(), "Acme", "approve");
   assert.equal(r.outcome, "posted");
   assert.equal(r.posted, true);
   assert.match(r.erpRef ?? "", /NETSUITE-BILL-/);
   assert.equal(r.glEntries.length, 2);
 });
 
-test("exception with reject → not posted, outcome rejected", async () => {
-  const r = await reconcile(decision("manager"), match(), "Acme", "reject");
+test("blocked outcome (duplicate) → never posted", async () => {
+  const r = await reconcileFromOutcome(
+    "blocked",
+    match({ verdict: "duplicate" }),
+    "Acme",
+  );
+  assert.equal(r.outcome, "blocked");
+  assert.equal(r.posted, false);
+  assert.equal(r.erpRef, null);
+});
+
+test("awaiting outcome → HELD, not posted — the pause", async () => {
+  const r = await reconcileFromOutcome("awaiting", match(), "Acme");
+  assert.equal(r.outcome, "awaiting");
+  assert.equal(r.posted, false);
+  assert.equal(r.erpRef, null);
+  assert.equal(r.glEntries.length, 0);
+});
+
+test("rejected outcome → not posted", async () => {
+  const r = await reconcileFromOutcome("rejected", match(), "Acme");
   assert.equal(r.outcome, "rejected");
   assert.equal(r.posted, false);
   assert.equal(r.erpRef, null);
 });
 
 test("GL entries balance (debit total == credit total) when posted", async () => {
-  const r = await reconcile(
-    decision("auto"),
+  const r = await reconcileFromOutcome(
+    "posted",
     match({ verdict: "clean" }),
     "Acme",
-    "approve",
   );
-  const debit = r.glEntries.reduce((s, g) => s + g.debit, 0);
-  const credit = r.glEntries.reduce((s, g) => s + g.credit, 0);
+  const debit = r.glEntries.reduce((s: number, g) => s + g.debit, 0);
+  const credit = r.glEntries.reduce((s: number, g) => s + g.credit, 0);
   assert.equal(debit, credit);
   assert.equal(debit, r.amount);
 });

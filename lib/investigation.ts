@@ -1,4 +1,4 @@
-import type { MatchResult, Investigation } from "./schema";
+import type { MatchResult, Investigation } from "@/lib/schema";
 
 /**
  * The reusable core of the exception investigation — shared by the workflow step
@@ -19,28 +19,28 @@ import type { MatchResult, Investigation } from "./schema";
  *   - `steps[].text` carries per-step text; `text` concatenates across steps, so
  *     we read the last NON-EMPTY step instead (the post-tool conclusion).
  */
-interface AgentResult {
+type AgentResult = {
   text?: string;
   steps?: Array<{ text?: string }>;
   toolCalls?: Array<{ payload?: { toolName?: string } }>;
-}
+};
 
 /** Anything that can run a prompt — the real Mastra Agent, or a test/eval fake. */
-export interface InvestigatorAgent {
+export type InvestigatorAgent = {
   generate: (
     prompt: string,
     options?: { requestContext?: unknown },
   ) => Promise<AgentResult>;
-}
+};
 
 /** The requestContext key the investigator's tools read the trusted vendor from. */
 export const INVESTIGATION_CTX_KEY = "investigation";
 
 /** The prompt handed to the investigator for a flagged match. */
-function investigationPrompt(match: MatchResult, vendor: string): string {
+const investigationPrompt = (match: MatchResult, vendor: string): string => {
   const lines = match.exceptions.map((e) => `- ${e.message}`).join("\n");
   return `Vendor: ${vendor}. The matcher flagged invoice ${match.invoiceNumber} with these variance(s):\n${lines}\n\nInvestigate using your tools, then recommend how the reviewer should read this variance.`;
-}
+};
 
 /**
  * The agent's closing text. `res.text` concatenates text across all internal
@@ -48,17 +48,17 @@ function investigationPrompt(match: MatchResult, vendor: string): string {
  * produced text — the conclusion after the tool ran — and only fall back to
  * `res.text` if no step had any.
  */
-function finalText(res: AgentResult): string {
+const finalText = (res: AgentResult): string => {
   const steps = res.steps ?? [];
   for (let i = steps.length - 1; i >= 0; i--) {
     const t = steps[i]?.text?.trim();
     if (t) return t;
   }
   return (res.text ?? "").trim();
-}
+};
 
 /** Which tools the agent actually called, in order, de-duplicated. */
-function toolsUsedFrom(res: AgentResult): string[] {
+const toolsUsedFrom = (res: AgentResult): string[] => {
   const names: string[] = [];
   for (const call of res.toolCalls ?? []) {
     const name = call.payload?.toolName;
@@ -67,7 +67,7 @@ function toolsUsedFrom(res: AgentResult): string[] {
     }
   }
   return names;
-}
+};
 
 /**
  * Coarse, deterministic read of the agent's prose into a recommendation tag (the
@@ -79,7 +79,7 @@ function toolsUsedFrom(res: AgentResult): string[] {
  * stray word later in the paragraph (e.g. "returned for correction") flipping a
  * clearly-legitimate verdict to "unclear".
  */
-export function classify(text: string): Investigation["recommendation"] {
+export const classify = (text: string): Investigation["recommendation"] => {
   const t = text.toLowerCase();
   const lead = t.slice(0, 120);
   const leadOvercharge =
@@ -97,7 +97,7 @@ export function classify(text: string): Investigation["recommendation"] {
   if (bad && !legit) return "likely_overcharge";
   if (legit && !bad) return "likely_legitimate";
   return "unclear";
-}
+};
 
 /**
  * Run the investigator agent over a flagged match and parse its output into a
@@ -106,12 +106,12 @@ export function classify(text: string): Investigation["recommendation"] {
  * `requestContext` instance is passed through opaquely so this module needn't
  * depend on Mastra's type.
  */
-export async function runInvestigation(
+export const runInvestigation = async (
   agent: InvestigatorAgent,
   match: MatchResult,
   vendor: string,
   requestContext: unknown,
-): Promise<{ investigation: Investigation; toolsUsed: string[] } | null> {
+): Promise<{ investigation: Investigation; toolsUsed: string[] } | null> => {
   const res = await agent.generate(investigationPrompt(match, vendor), {
     requestContext,
   });
@@ -127,4 +127,4 @@ export async function runInvestigation(
     },
     toolsUsed,
   };
-}
+};

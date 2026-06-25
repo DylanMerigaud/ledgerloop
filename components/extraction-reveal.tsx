@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatMoney } from "@/lib/format";
+
 import { PdfDocument } from "@/components/pdf-document";
+import { formatMoney } from "@/lib/format";
 import type { Invoice } from "@/lib/schema";
 
 /**
@@ -20,18 +21,18 @@ import type { Invoice } from "@/lib/schema";
  * it against the PO) — the data on screen is the data that drives the verdicts.
  */
 
-export interface ExtractionState {
+export type ExtractionState = {
   status: "running" | "done";
   /** The invoice the model extracted (present once done). */
   extracted: Invoice | null;
   /** Did the extracted header reconcile with the PO record? */
   matches: boolean;
-}
+};
 
 /** The fields we reveal on the right, in order. */
 const FIELD_DELAY_MS = 140;
 
-export function ExtractionReveal({
+export const ExtractionReveal = ({
   pdfSrc,
   state,
   extractedInvoice,
@@ -42,7 +43,7 @@ export function ExtractionReveal({
   state: ExtractionState | null;
   /** The invoice the run carries (for the fields panel). Null in preview. */
   extractedInvoice: Invoice | null;
-}) {
+}) => {
   // Three modes: preview (no run), running (scanning), done (fields shown).
   const mode: "preview" | "running" | "done" =
     state == null ? "preview" : state.status === "running" ? "running" : "done";
@@ -97,7 +98,7 @@ export function ExtractionReveal({
       className="grid grid-cols-1 gap-3 sm:grid-cols-[1.1fr_1fr]"
     >
       {/* The real PDF the model reads. `border` (not inset ring) so the canvas
-          doesn't paint over the frame. */}
+      doesn't paint over the frame. */}
       <div className="relative overflow-hidden rounded-lg border border-line bg-white shadow-card">
         {/* scan sweep only while the model is actually reading */}
         {running && (
@@ -142,7 +143,7 @@ export function ExtractionReveal({
       </div>
     </div>
   );
-}
+};
 
 /** The field labels shown in the Extracted panel, in order (stable across modes). */
 const FIELD_LABELS = [
@@ -154,7 +155,7 @@ const FIELD_LABELS = [
   "Total",
 ];
 
-function FieldRow({
+const FieldRow = ({
   label,
   value,
   state,
@@ -162,7 +163,7 @@ function FieldRow({
   label: string;
   value: string;
   state: "reading" | "pending" | "shown";
-}) {
+}) => {
   return (
     <div className="flex items-baseline justify-between gap-3 text-[12px]">
       <span className="shrink-0 text-muted">{label}</span>
@@ -180,10 +181,10 @@ function FieldRow({
       )}
     </div>
   );
-}
+};
 
 /** Field values aligned positionally with FIELD_LABELS. */
-function buildFields(inv: Invoice): { value: string }[] {
+const buildFields = (inv: Invoice): { value: string }[] => {
   return [
     { value: inv.vendor },
     { value: inv.invoiceNumber },
@@ -192,4 +193,4 @@ function buildFields(inv: Invoice): { value: string }[] {
     { value: String(inv.lineItems.length) },
     { value: formatMoney(inv.total, inv.currency) },
   ];
-}
+};

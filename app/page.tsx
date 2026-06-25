@@ -1,4 +1,4 @@
-import { Dashboard } from "@/components/dashboard";
+import { AppView } from "@/components/app-view";
 import { SocialLinks } from "@/components/social-links";
 import { listInvoiceQueue, type QueueItem } from "@/db/client";
 import { PIPELINE_MODEL } from "@/src/mastra/model";
@@ -40,7 +40,7 @@ export default async function Page() {
         ) : queue.length === 0 ? (
           <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
         ) : (
-          <Dashboard queue={queue} />
+          <AppView queue={queue} />
         )}
       </div>
       <Footer />
@@ -48,7 +48,7 @@ export default async function Page() {
   );
 }
 
-function Header() {
+const Header = () => {
   return (
     <header className="mb-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -77,9 +77,9 @@ function Header() {
       </div>
     </header>
   );
-}
+};
 
-function FlowChip({ n, label }: { n: number; label: string }) {
+const FlowChip = ({ n, label }: { n: number; label: string }) => {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 ring-1 ring-inset ring-line">
       <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent">
@@ -88,17 +88,17 @@ function FlowChip({ n, label }: { n: number; label: string }) {
       {label}
     </span>
   );
-}
+};
 
-function Arrow() {
+const Arrow = () => {
   return (
     <span aria-hidden className="text-line">
       →
     </span>
   );
-}
+};
 
-function SetupNotice({ detail }: { detail: string }) {
+const SetupNotice = ({ detail }: { detail: string }) => {
   return (
     <div className="rounded-xl border border-warn-line bg-warn-soft/50 px-5 py-4 text-[13px] text-ink">
       <p className="font-medium">Almost there — the demo needs its database.</p>
@@ -120,9 +120,9 @@ function SetupNotice({ detail }: { detail: string }) {
       </p>
     </div>
   );
-}
+};
 
-function Footer() {
+const Footer = () => {
   return (
     <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] text-muted">
       <p>
@@ -137,4 +137,4 @@ function Footer() {
       </div>
     </footer>
   );
-}
+};

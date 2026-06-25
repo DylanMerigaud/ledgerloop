@@ -35,7 +35,7 @@ export const TraceStage = z.enum([
 export type TraceStage = z.infer<typeof TraceStage>;
 
 /** Map a Mastra step id to its pipeline stage (step ids are defined in the workflow). */
-export function stageForStep(stepId: string): TraceStage {
+export const stageForStep = (stepId: string): TraceStage => {
   if (stepId.startsWith("intake")) return "intake";
   if (stepId.startsWith("matching")) return "matching";
   // "approval", "approval-auto", "approval-blocked" all belong to the Approval stage.
@@ -44,7 +44,7 @@ export function stageForStep(stepId: string): TraceStage {
     return "reconciliation";
   }
   return "pipeline";
-}
+};
 
 /**
  * Internal orchestration steps we DON'T surface on the timeline. The `.map()`
@@ -54,16 +54,16 @@ export function stageForStep(stepId: string): TraceStage {
  * is NOT treated as internal here — tool-call chunks carry a tool name instead of
  * a step id and are mapped to their stage by `stageForTool`.)
  */
-function isMappingStep(stepId: string): boolean {
+const isMappingStep = (stepId: string): boolean => {
   return stepId.startsWith("mapping");
-}
+};
 
 /** Map one of our tool names to its pipeline stage (tool-call chunks carry the name, not a step id). */
-function stageForTool(toolName: string): TraceStage {
+const stageForTool = (toolName: string): TraceStage => {
   // The investigator agent's tools — these are the real tool-calls in the demo.
   if (toolName.startsWith("get-")) return "investigation";
   return "pipeline";
-}
+};
 
 export const TraceStatus = z.enum([
   "running",
@@ -112,21 +112,15 @@ export type TraceEvent = z.infer<typeof TraceEvent>;
  *  Adapter: raw Mastra chunk → TraceEvent (or null to drop)
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** The subset of a Mastra `WorkflowStreamEvent` we read. Defensive, not exhaustive. */
-interface RawChunk {
-  type?: unknown;
-  payload?: { id?: unknown; status?: unknown; output?: unknown } | unknown;
-}
-
-function asRecord(v: unknown): Record<string, unknown> | undefined {
+const asRecord = (v: unknown): Record<string, unknown> | undefined => {
   return typeof v === "object" && v !== null
     ? (v as Record<string, unknown>)
     : undefined;
-}
+};
 
 /** Friendly stage label for a step id. Deterministic stages say "step"; the one
     agentic stage (investigation) says "agent". */
-function stageLabel(stage: TraceStage): string {
+const stageLabel = (stage: TraceStage): string => {
   switch (stage) {
     case "intake":
       return "Intake";
@@ -141,22 +135,24 @@ function stageLabel(stage: TraceStage): string {
     case "pipeline":
       return "Pipeline";
   }
-}
+};
 
 /**
  * Convert one raw Mastra chunk to a partial TraceEvent (sans `seq`/`atMs`, which
  * the route stamps). Returns `null` for chunks we intentionally don't surface
  * (internal lifecycle noise) or anything malformed — never throws.
  */
-export function toTraceEvent(
+export const toTraceEvent = (
   chunk: unknown,
-): Omit<TraceEvent, "seq" | "atMs"> | null {
+): Omit<TraceEvent, "seq" | "atMs"> | null => {
   try {
-    const c = chunk as RawChunk;
-    const type = typeof c?.type === "string" ? c.type : "";
-    const payload = asRecord(c?.payload);
-    const stepId =
-      typeof payload?.["id"] === "string" ? (payload["id"] as string) : "";
+    // `chunk` is genuinely unknown — narrow it through `asRecord` (which handles
+    // null/non-object) rather than casting to a non-null shape. No lying cast, so
+    // no "unnecessary" optional chains downstream.
+    const c = asRecord(chunk);
+    const type = typeof c?.["type"] === "string" ? c["type"] : "";
+    const payload = asRecord(c?.["payload"]);
+    const stepId = typeof payload?.["id"] === "string" ? payload["id"] : "";
     const stage = stageForStep(stepId);
 
     switch (type) {
@@ -198,7 +194,7 @@ export function toTraceEvent(
         if (innerType === "tool-call") {
           const toolName =
             typeof innerPayload?.["toolName"] === "string"
-              ? (innerPayload["toolName"] as string)
+              ? innerPayload["toolName"]
               : "tool";
           return {
             kind: "tool",
@@ -213,7 +209,7 @@ export function toTraceEvent(
           const investigation = asRecord(innerPayload?.["investigation"]);
           const rationale =
             typeof investigation?.["rationale"] === "string"
-              ? (investigation["rationale"] as string)
+              ? investigation["rationale"]
               : undefined;
           return {
             kind: "finding",
@@ -245,7 +241,8 @@ export function toTraceEvent(
           // whether its header reconciled with the record; on failure a reason.
           // Upserts the same intake node.
           const ok = innerPayload?.["ok"] === true;
-          const extracted = ok ? (innerPayload?.["invoice"] ?? null) : null;
+          // `ok` being true means innerPayload is present (narrowed), so no `?.`.
+          const extracted = ok ? (innerPayload["invoice"] ?? null) : null;
           const matches = innerPayload?.["matchesRecord"] === true;
           return {
             kind: "step",
@@ -258,7 +255,7 @@ export function toTraceEvent(
                 ? "Read the document and reconciled it with the PO record."
                 : "Read the document; header differs from the PO record."
               : typeof innerPayload?.["reason"] === "string"
-                ? (innerPayload["reason"] as string)
+                ? innerPayload["reason"]
                 : "Could not read the document.",
             data: { extracted, matches },
           };
@@ -272,7 +269,7 @@ export function toTraceEvent(
         // a tool name, not a workflow step id — map the stage from the tool name.
         const name =
           typeof payload?.["toolName"] === "string"
-            ? (payload["toolName"] as string)
+            ? payload["toolName"]
             : "tool";
         return {
           kind: "tool",
@@ -292,7 +289,7 @@ export function toTraceEvent(
         const rawOut = asRecord(payload?.["output"]);
         const narration =
           typeof rawOut?.["narration"] === "string"
-            ? (rawOut["narration"] as string)
+            ? rawOut["narration"]
             : undefined;
 
         // Steps emit a domain object plus a `narration` string, and some
@@ -335,71 +332,70 @@ export function toTraceEvent(
   } catch {
     return null; // never let a weird chunk crash the stream
   }
-}
+};
 
 /**
  * Pull the domain object the UI should render out of a step's raw output. Most
  * steps emit the domain object's fields at the top level (alongside `narration`);
- * the approval step wraps it as `{ decision, match, vendor }`. We return the
- * approval DECISION in that case (that's what the approval node shows), falling
- * back to the raw output for the flat steps.
+ * the approval step wraps it as `{ approval: { outcome, steps }, match, vendor }`.
+ * We return the approval summary in that case (that's what the approval node
+ * shows), falling back to the raw output for the flat steps.
  */
-function unwrapStageData(
+const unwrapStageData = (
   out: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
+): Record<string, unknown> | undefined => {
   if (!out) return undefined;
-  const decision = asRecord(out["decision"]);
-  if (decision && "tier" in decision) return decision;
+  const approval = asRecord(out["approval"]);
+  if (approval && "outcome" in approval) return approval;
   return out;
-}
+};
 
 /** Derive a traffic-light status from a stage's domain object, if recognizable. */
-function stepStatusFromOutput(
+const stepStatusFromOutput = (
   out: Record<string, unknown> | undefined,
-): TraceStatus {
+): TraceStatus => {
   if (!out) return "ok";
   // MatchResult
   if (out["verdict"] === "duplicate") return "error";
   if (out["verdict"] === "exception") return "warn";
   if (out["verdict"] === "clean") return "ok";
-  // ApprovalDecision
-  if (out["tier"] === "blocked") return "error";
-  if (out["tier"] === "manager" || out["tier"] === "director") return "warn";
-  if (out["tier"] === "auto") return "ok";
-  // ReconResult (by outcome — more precise than the bare `posted` flag)
+  // Approval summary AND ReconResult both carry `outcome` with the same vocabulary.
+  //   awaiting → still waiting on a human (amber/pause)
+  //   posted   → cleared / booked (green)
+  //   rejected/blocked → not posted (red)
   if (out["outcome"] === "awaiting") return "waiting";
   if (out["outcome"] === "rejected" || out["outcome"] === "blocked")
     return "error";
   if (out["outcome"] === "posted") return "ok";
   if (out["posted"] === false) return "error";
   return "ok";
-}
+};
 
 /** Traffic-light for the investigator's recommendation. */
-function investigationStatus(
+const investigationStatus = (
   inv: Record<string, unknown> | undefined,
-): TraceStatus {
+): TraceStatus => {
   const rec = inv?.["recommendation"];
   if (rec === "likely_overcharge") return "error";
   if (rec === "likely_legitimate") return "ok";
   return "warn"; // unclear / unknown
-}
+};
 
 /** Fallback one-line summary when a stage produced no narration. */
-function stepDetailFromOutput(
+const stepDetailFromOutput = (
   out: Record<string, unknown> | undefined,
-): string | undefined {
+): string | undefined => {
   if (!out) return undefined;
-  if (typeof out["reason"] === "string") return out["reason"] as string;
-  if (typeof out["note"] === "string") return out["note"] as string;
+  if (typeof out["reason"] === "string") return out["reason"];
+  if (typeof out["note"] === "string") return out["note"];
   return undefined;
-}
+};
 
 /** Build a synthetic error event (used by the route when a step throws). */
-export function pipelineErrorEvent(
+export const pipelineErrorEvent = (
   message: string,
   stage: TraceStage = "pipeline",
-): Omit<TraceEvent, "seq" | "atMs"> {
+): Omit<TraceEvent, "seq" | "atMs"> => {
   return {
     kind: "finding",
     stage,
@@ -408,4 +404,4 @@ export function pipelineErrorEvent(
     label: "Pipeline error",
     detail: message,
   };
-}
+};

@@ -1,35 +1,37 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SEED_BUNDLES, type SeedBundle } from "./seed-data";
-import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
+import { test } from "node:test";
+
+import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
+import { runApproval } from "@/lib/approval-run";
+import {
+  workflowFromPolicy,
+  DEFAULT_APPROVAL_POLICY,
+} from "@/lib/client-profile";
 import { runMatch } from "@/lib/matching";
-import { routeApproval } from "@/lib/policy";
+import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
+
+const WORKFLOW = workflowFromPolicy(DEFAULT_APPROVAL_POLICY);
 
 /**
  * The seed dataset IS the demo scenario, so it's tested like one. These run the
- * real matcher + policy over every seeded bundle and assert each lands on the
- * verdict/tier the on-stage walkthrough depends on. If a future tweak to the
- * data or the rules would make the "price mismatch" invoice quietly pass, this
+ * real matcher + approval workflow over every seeded bundle and assert each lands
+ * on the verdict/routing the on-stage walkthrough depends on. If a future tweak to
+ * the data or the rules would make the "price mismatch" invoice quietly pass, this
  * fails in CI before it ever reaches a sales call. Pure (no DB, no LLM).
  */
-
-// Reconstruct the duplicate-detection ledger exactly the way the DB read layer
-// does: order-aware. An invoice number counts as "prior" for a given row only if
-// an EARLIER row (lower seed index = earlier createdAt) already carried it — so
-// the first occurrence is clean and a later re-send is the duplicate.
-function ledgerFor(bundle: SeedBundle): string[] {
+const ledgerFor = (bundle: SeedBundle): string[] => {
   const idx = SEED_BUNDLES.indexOf(bundle);
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
-}
+};
 
-function matchOf(bundle: SeedBundle) {
+const matchOf = (bundle: SeedBundle) => {
   return runMatch({
     invoice: bundle.invoice,
     purchaseOrder: bundle.purchaseOrder ?? null,
     goodsReceipt: bundle.goodsReceipt ?? null,
     priorInvoiceNumbers: ledgerFor(bundle),
   });
-}
+};
 
 const byId = (id: string): SeedBundle => {
   const b = SEED_BUNDLES.find((x) => x.id === id);
@@ -99,7 +101,7 @@ test("the original of the duplicate pair is itself clean", () => {
   assert.equal(matchOf(byId("INV-2041")).verdict, "clean");
 });
 
-test("clean bundles route to auto-approval (straight-through)", () => {
+test("clean bundles route straight through (no gate, posts)", () => {
   for (const id of [
     "INV-2040",
     "INV-2044",
@@ -107,8 +109,9 @@ test("clean bundles route to auto-approval (straight-through)", () => {
     "INV-2049",
     "INV-2043",
   ]) {
-    const decision = routeApproval(matchOf(byId(id)));
-    assert.equal(decision.tier, "auto", `${id} should be auto-approved`);
+    const run = runApproval(WORKFLOW, matchOf(byId(id)));
+    assert.equal(run.outcome, "posted", `${id} should be straight-through`);
+    assert.equal(run.pending.length, 0, `${id} should need no approval`);
   }
 });
 
@@ -118,11 +121,15 @@ test("the services invoice is a clean 2-way match (no receipt)", () => {
   assert.equal(m.verdict, "clean");
 });
 
-test("exceptions route to a human tier; the duplicate is blocked", () => {
-  assert.notEqual(routeApproval(matchOf(byId("INV-2042"))).tier, "auto");
-  assert.notEqual(routeApproval(matchOf(byId("INV-2045"))).tier, "auto"); // arithmetic
-  assert.notEqual(routeApproval(matchOf(byId("INV-2046"))).tier, "auto"); // off-PO
-  assert.equal(routeApproval(matchOf(byId("INV-2041-RESEND"))).tier, "blocked");
+test("exceptions need a human gate; the duplicate is a (pre-workflow) block", () => {
+  // An exception pauses with at least one pending approval gate.
+  for (const id of ["INV-2042", "INV-2045", "INV-2046"]) {
+    const run = runApproval(WORKFLOW, matchOf(byId(id)));
+    assert.equal(run.outcome, "awaiting", `${id} should await approval`);
+    assert.ok(run.pending.length >= 1, `${id} should have a pending gate`);
+  }
+  // The duplicate is a control failure caught at matching — never routed.
+  assert.equal(matchOf(byId("INV-2041-RESEND")).verdict, "duplicate");
 });
 
 test("the queue is a healthy mix: majority clean, with each edge case present", () => {

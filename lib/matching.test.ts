@@ -1,7 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runMatch, type MatchInput } from "./matching";
-import type { Invoice, PurchaseOrder, GoodsReceipt } from "./schema";
+import { test } from "node:test";
+
+import { runMatch, type MatchInput } from "@/lib/matching";
+import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**
  * Unit tests for the 2/3-way matcher — the deterministic core the matching step
@@ -9,8 +10,7 @@ import type { Invoice, PurchaseOrder, GoodsReceipt } from "./schema";
  * built-in runner via tsx, no extra deps). These pin the exact verdicts that
  * drive the workflow's conditional routing.
  */
-
-function invoice(over: Partial<Invoice> = {}): Invoice {
+const invoice = (over: Partial<Invoice> = {}): Invoice => {
   return {
     invoiceNumber: "INV-100",
     poNumber: "PO-100",
@@ -38,9 +38,9 @@ function invoice(over: Partial<Invoice> = {}): Invoice {
     total: 300,
     ...over,
   };
-}
+};
 
-function po(over: Partial<PurchaseOrder> = {}): PurchaseOrder {
+const po = (over: Partial<PurchaseOrder> = {}): PurchaseOrder => {
   return {
     poNumber: "PO-100",
     vendor: "Acme Steel",
@@ -64,9 +64,9 @@ function po(over: Partial<PurchaseOrder> = {}): PurchaseOrder {
     total: 300,
     ...over,
   };
-}
+};
 
-function receipt(over: Partial<GoodsReceipt> = {}): GoodsReceipt {
+const receipt = (over: Partial<GoodsReceipt> = {}): GoodsReceipt => {
   return {
     grNumber: "GR-100",
     poNumber: "PO-100",
@@ -77,16 +77,16 @@ function receipt(over: Partial<GoodsReceipt> = {}): GoodsReceipt {
     ],
     ...over,
   };
-}
+};
 
-function run(over: Partial<MatchInput> = {}) {
+const run = (over: Partial<MatchInput> = {}) => {
   return runMatch({
     invoice: invoice(),
     purchaseOrder: po(),
     goodsReceipt: receipt(),
     ...over,
   });
-}
+};
 
 test("clean 3-way match → clean verdict, no exceptions", () => {
   const r = run();

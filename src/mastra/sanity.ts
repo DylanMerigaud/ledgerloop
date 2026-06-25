@@ -1,15 +1,21 @@
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
+import type { Decisions } from "@/lib/approval-engine";
+import { runApproval } from "@/lib/approval-run";
+import {
+  workflowFromPolicy,
+  DEFAULT_APPROVAL_POLICY,
+  type ApprovalPolicy,
+} from "@/lib/client-profile";
+import { reconcileFromOutcome } from "@/lib/erp";
 import { runMatch } from "@/lib/matching";
-import { routeApproval } from "@/lib/policy";
-import { reconcile } from "@/lib/erp";
-import { PIPELINE_MODEL } from "./model";
+import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 /**
  * Pipeline sanity check — `tsx src/mastra/sanity.ts [--dry-run]`.
  *
  * In `--dry-run` mode (the default in CI) it runs the DETERMINISTIC pipeline
- * path — the exact runMatch → routeApproval → reconcile functions the Mastra
- * steps use — over every seeded invoice, prints the routing each takes, and
+ * path — the exact runMatch → approval workflow engine → reconcile functions the
+ * Mastra steps use — over every seeded invoice, prints the routing each takes, and
  * exits non-zero if the three headline edge cases don't land on their intended
  * verdicts. This validates the orchestration logic offline, with NO LLM calls
  * (no key, no tokens) — safe to run in CI.
@@ -20,33 +26,35 @@ import { PIPELINE_MODEL } from "./model";
  */
 
 const DRY_RUN = process.argv.includes("--dry-run");
+const POLICY: ApprovalPolicy = DEFAULT_APPROVAL_POLICY;
+const WORKFLOW = workflowFromPolicy(POLICY);
 
-function ledgerFor(bundle: SeedBundle): string[] {
+const ledgerFor = (bundle: SeedBundle): string[] => {
   const idx = SEED_BUNDLES.indexOf(bundle);
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
-}
+};
 
-async function routeOf(
-  bundle: SeedBundle,
-  humanApproval: "pending" | "approve" | "reject" = "pending",
-) {
+const routeOf = async (bundle: SeedBundle, decisions: Decisions = {}) => {
   const match = runMatch({
     invoice: bundle.invoice,
     purchaseOrder: bundle.purchaseOrder ?? null,
     goodsReceipt: bundle.goodsReceipt ?? null,
     priorInvoiceNumbers: ledgerFor(bundle),
   });
-  const decision = routeApproval(match);
-  const recon = await reconcile(
-    decision,
+  // A duplicate is a pre-workflow control failure (blocked); otherwise run the DAG.
+  const approval =
+    match.verdict === "duplicate"
+      ? { outcome: "blocked" as const, pending: [] }
+      : runApproval(WORKFLOW, match, decisions);
+  const recon = await reconcileFromOutcome(
+    approval.outcome,
     match,
     bundle.invoice.vendor,
-    humanApproval,
   );
-  return { match, decision, recon };
-}
+  return { match, approval, recon };
+};
 
-async function main() {
+const main = async () => {
   console.log(`ledgerloop pipeline sanity — model: ${PIPELINE_MODEL}`);
   console.log(
     DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n",
@@ -63,19 +71,21 @@ async function main() {
   let failures = 0;
 
   for (const b of SEED_BUNDLES) {
-    const { match, decision, recon } = await routeOf(b); // pending: shows the pause
+    const { match, approval, recon } = await routeOf(b); // no decisions: shows the pause
     const route =
-      decision.tier === "auto"
+      approval.outcome === "posted"
         ? `straight-through → posted (${recon.erpRef})`
-        : decision.tier === "blocked"
+        : approval.outcome === "blocked"
           ? "BLOCKED (not posted)"
-          : `→ ${decision.tier} approval → ⏸ awaiting human decision`;
+          : `→ ${approval.pending.map((p) => p.id).join(", ")} → ⏸ awaiting human decision`;
     rows.push(
       `  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`,
     );
   }
 
-  console.log("Invoice          Verdict    Routing (humanApproval = pending)");
+  console.log(
+    "Invoice          Verdict    Routing (no reviewer decisions yet)",
+  );
   console.log(rows.join("\n"));
   console.log();
 
@@ -103,9 +113,14 @@ async function main() {
   // must PAUSE when pending, POST only after approval, and stay un-posted on reject.
   const priceMismatch = SEED_BUNDLES.find((b) => b.id === "INV-2042");
   if (priceMismatch) {
-    const pending = (await routeOf(priceMismatch, "pending")).recon;
-    const approved = (await routeOf(priceMismatch, "approve")).recon;
-    const rejected = (await routeOf(priceMismatch, "reject")).recon;
+    // The price-mismatch exception activates the manager gate; decide it by step id.
+    const pending = (await routeOf(priceMismatch, {})).recon;
+    const approved = (
+      await routeOf(priceMismatch, { "manager-review": "approve" })
+    ).recon;
+    const rejected = (
+      await routeOf(priceMismatch, { "manager-review": "reject" })
+    ).recon;
     if (pending.outcome !== "awaiting" || pending.posted) {
       console.error(
         `✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`,
@@ -136,7 +151,7 @@ async function main() {
     process.exit(1);
   }
   console.log("✓ All edge cases route as expected. Pipeline logic is sound.");
-}
+};
 
 main().catch((err) => {
   console.error("✖ Sanity check crashed:", err);

@@ -1,6 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Invoice, MatchResult, INVOICE_JSON_SCHEMA } from "./schema";
+import { test } from "node:test";
+
+import { Invoice, MatchResult, INVOICE_JSON_SCHEMA } from "@/lib/schema";
 
 /**
  * Schema accept/reject tests — the single-source-of-truth guarantee in action.
@@ -8,8 +9,7 @@ import { Invoice, MatchResult, INVOICE_JSON_SCHEMA } from "./schema";
  * reject, these fail. They also confirm the JSON schema we hand the intake model
  * is well-formed and derived from the same object.
  */
-
-function validInvoice() {
+const validInvoice = () => {
   return {
     invoiceNumber: "INV-1",
     poNumber: "PO-1",
@@ -23,7 +23,7 @@ function validInvoice() {
     tax: null,
     total: 20,
   };
-}
+};
 
 test("a well-formed invoice parses", () => {
   assert.doesNotThrow(() => Invoice.parse(validInvoice()));
@@ -79,14 +79,8 @@ test("MatchResult round-trips its own valid shape", () => {
 
 test("INVOICE_JSON_SCHEMA is an object schema without a $schema meta key", () => {
   assert.equal(typeof INVOICE_JSON_SCHEMA, "object");
-  assert.equal(
-    (INVOICE_JSON_SCHEMA as Record<string, unknown>)["type"],
-    "object",
-  );
-  assert.equal(
-    "$schema" in (INVOICE_JSON_SCHEMA as Record<string, unknown>),
-    false,
-  );
+  assert.equal(INVOICE_JSON_SCHEMA["type"], "object");
+  assert.equal("$schema" in INVOICE_JSON_SCHEMA, false);
   // derived from the same object → it must mention the required top-level fields
   const props = (
     INVOICE_JSON_SCHEMA as { properties?: Record<string, unknown> }

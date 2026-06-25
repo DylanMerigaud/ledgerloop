@@ -1,6 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NdjsonBuffer, ndjsonLine } from "./ndjson";
+import { test } from "node:test";
+
+import { NdjsonBuffer, ndjsonLine } from "@/lib/ndjson";
 
 /**
  * Tests for the NDJSON framing — the contract shared by the run route (writer)
@@ -45,6 +46,6 @@ test("round-trips a sequence of values through serialize → parse", () => {
   ];
   const wire = values.map(ndjsonLine).join("");
   const buf = new NdjsonBuffer();
-  const parsed = buf.push(wire).map((l) => JSON.parse(l));
+  const parsed = buf.push(wire).map((l) => JSON.parse(l) as unknown);
   assert.deepEqual(parsed, values);
 });

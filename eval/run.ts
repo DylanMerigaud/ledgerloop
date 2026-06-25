@@ -22,24 +22,26 @@
  */
 
 import { join } from "node:path";
+
 import { RequestContext } from "@mastra/core/request-context";
-import { mastra } from "@/src/mastra";
-import { PIPELINE_MODEL } from "@/src/mastra/model";
+
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
-import { runMatch } from "@/lib/matching";
-import {
-  runInvestigation,
-  INVESTIGATION_CTX_KEY,
-  type InvestigatorAgent,
-} from "@/lib/investigation";
-import { EVAL_CASES, type EvalCase } from "./cases";
+import { EVAL_CASES, type EvalCase } from "@/eval/cases";
 import {
   scoreCase,
   accuracy,
   overchargeConfusion,
   type CaseScore,
   type Recommendation,
-} from "./score";
+} from "@/eval/score";
+import {
+  runInvestigation,
+  INVESTIGATION_CTX_KEY,
+  type InvestigatorAgent,
+} from "@/lib/investigation";
+import { runMatch } from "@/lib/matching";
+import { mastra } from "@/src/mastra";
+import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 // ── ANSI helpers (no dependency) ────────────────────────────────────────────
 const C = {
@@ -56,7 +58,7 @@ const useColor = process.stdout.isTTY;
 const col = (code: string, s: string) =>
   useColor ? `${code}${s}${C.reset}` : s;
 
-function loadEnv() {
+const loadEnv = () => {
   for (const f of [".env.local", ".env"]) {
     try {
       process.loadEnvFile(join(process.cwd(), f));
@@ -64,15 +66,15 @@ function loadEnv() {
       /* file absent — fine */
     }
   }
-}
+};
 
 /** Prior invoice numbers for duplicate detection — everything seeded before it. */
-function priorNumbersFor(bundle: SeedBundle): string[] {
+const priorNumbersFor = (bundle: SeedBundle): string[] => {
   const idx = SEED_BUNDLES.indexOf(bundle);
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
-}
+};
 
-async function runOneCase(c: EvalCase, dryRun: boolean): Promise<CaseScore> {
+const runOneCase = async (c: EvalCase, dryRun: boolean): Promise<CaseScore> => {
   const bundle = SEED_BUNDLES.find((b) => b.id === c.id);
   if (!bundle) {
     return scoreCase(c.id, c.stresses, c.expected, undefined, "no seed bundle");
@@ -138,21 +140,21 @@ async function runOneCase(c: EvalCase, dryRun: boolean): Promise<CaseScore> {
     );
   }
   return scoreCase(c.id, c.stresses, c.expected, got);
-}
+};
 
 // ── reporting ────────────────────────────────────────────────────────────────
 
-function pct(n: number): string {
+const pct = (n: number): string => {
   return `${(n * 100).toFixed(0)}%`;
-}
-function colorPct(n: number): string {
+};
+const colorPct = (n: number): string => {
   const s = pct(n).padStart(4);
   if (n >= 0.999) return col(C.green, s);
   if (n >= 0.75) return col(C.yellow, s);
   return col(C.red, s);
-}
+};
 
-function printTable(scores: CaseScore[]) {
+const printTable = (scores: CaseScore[]) => {
   console.log(col(C.bold, "\nPer-case results\n"));
   const idW = Math.max(8, ...scores.map((s) => s.id.length));
   console.log(
@@ -181,9 +183,9 @@ function printTable(scores: CaseScore[]) {
         col(C.dim, `  ${s.stresses}`),
     );
   }
-}
+};
 
-function printSummary(scores: CaseScore[]) {
+const printSummary = (scores: CaseScore[]) => {
   const conf = overchargeConfusion(scores);
   console.log(col(C.bold, "\nSummary\n"));
   const row = (label: string, value: string) =>
@@ -209,9 +211,9 @@ function printSummary(scores: CaseScore[]) {
   );
   row("Overcharge F1", colorPct(conf.f1));
   console.log();
-}
+};
 
-async function main() {
+const main = async () => {
   loadEnv();
 
   const args = process.argv.slice(2);
@@ -289,7 +291,7 @@ async function main() {
     );
   }
   process.exit(hardFailures > 0 || recallMiss ? 1 : 0);
-}
+};
 
 main().catch((err) => {
   console.error(err);

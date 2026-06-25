@@ -1,9 +1,12 @@
-import Anthropic, { APIError } from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { APIError } from "@anthropic-ai/sdk";
+
+import { anthropic, MissingAnthropicKeyError } from "@/lib/anthropic";
 import {
   Invoice,
   INVOICE_JSON_SCHEMA,
   type Invoice as TInvoice,
-} from "./schema";
+} from "@/lib/schema";
 
 /**
  * Document extraction — the intake step's real work: a vendor's invoice PDF in,
@@ -41,30 +44,13 @@ Rules:
 - "subtotal" is the pre-tax sum; "total" is the final amount due. Transcribe the numbers as printed, even if they don't add up — a downstream checker flags inconsistencies. Do NOT silently fix the math.
 - Each line item needs a "sku": copy the printed item/SKU code for that line EXACTLY as shown (e.g. the "Item" column). Only if no code is printed, fall back to a short slug of the description.`;
 
-class MissingApiKeyError extends Error {
-  constructor() {
-    super("ANTHROPIC_API_KEY is not set");
-    this.name = "MissingApiKeyError";
-  }
-}
-
-let cachedClient: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!cachedClient) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new MissingApiKeyError();
-    cachedClient = new Anthropic({ apiKey });
-  }
-  return cachedClient;
-}
-
 /** Extract a base64-encoded PDF into a validated Invoice (or a tagged failure). */
-export async function extractInvoice(
+export const extractInvoice = async (
   pdfBase64: string,
-): Promise<ExtractionResult> {
+): Promise<ExtractionResult> => {
   let message: Anthropic.Message;
   try {
-    message = await getClient().messages.create({
+    message = await anthropic().messages.create({
       model: EXTRACTION_MODEL,
       // Headroom for invoices with many line items — a truncated response would
       // be invalid JSON (caught below, but better to not truncate in the first place).
@@ -121,15 +107,15 @@ export async function extractInvoice(
     ok: true,
     invoice: { ...parsed.data, currency: parsed.data.currency.toUpperCase() },
   };
-}
+};
 
 /**
  * Pull a JSON object out of the model's text. With structured outputs the whole
  * response should already be valid JSON, but stay defensive: strip code fences
  * and, as a last resort, slice from the first "{" to the last "}".
  */
-function extractJsonObject(text: string): unknown {
-  const tryParse = (s: string): unknown | undefined => {
+const extractJsonObject = (text: string): unknown => {
+  const tryParse = (s: string): unknown => {
     try {
       return JSON.parse(s);
     } catch {
@@ -150,10 +136,10 @@ function extractJsonObject(text: string): unknown {
     if (sliced !== undefined) return sliced;
   }
   return undefined;
-}
+};
 
-function mapApiError(err: unknown): ExtractionResult {
-  if (err instanceof MissingApiKeyError) {
+const mapApiError = (err: unknown): ExtractionResult => {
+  if (err instanceof MissingAnthropicKeyError) {
     return {
       ok: false,
       kind: "api_error",
@@ -161,12 +147,14 @@ function mapApiError(err: unknown): ExtractionResult {
     };
   }
   if (err instanceof APIError) {
+    // The SDK types `status` loosely (any); narrow to a number for our result type.
+    const status = typeof err.status === "number" ? err.status : undefined;
     return {
       ok: false,
       kind: "api_error",
-      status: err.status,
+      status,
       message:
-        err.status === 429
+        status === 429
           ? "Extraction model rate-limited — try again shortly."
           : "The extraction model returned an error.",
     };
@@ -176,4 +164,4 @@ function mapApiError(err: unknown): ExtractionResult {
     kind: "api_error",
     message: "Unexpected error contacting the extraction model.",
   };
-}
+};

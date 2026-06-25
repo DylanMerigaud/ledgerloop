@@ -1,6 +1,7 @@
 import { Mastra } from "@mastra/core";
-import { investigatorAgent } from "./agents/investigator";
-import { p2pWorkflow } from "./workflows/p2p";
+
+import { investigatorAgent } from "@/src/mastra/agents/investigator";
+import { p2pWorkflow } from "@/src/mastra/workflows/p2p";
 
 /**
  * The central Mastra instance — registers the procure-to-pay workflow and the one

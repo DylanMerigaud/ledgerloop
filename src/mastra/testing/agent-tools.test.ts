@@ -1,11 +1,13 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
+
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
+import { RequestContext } from "@mastra/core/request-context";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { RequestContext } from "@mastra/core/request-context";
-import { mockToolCallingModel } from "./mock-model";
+
+import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
 
 /**
  * Offline integration test for the "real agent calls its tool" wiring — the
@@ -34,9 +36,7 @@ test("a tool reads requestContext and the agent invokes it (mock model)", async 
     outputSchema: z.object({ echoed: z.string() }),
     execute: async (_input, context) => {
       toolRan = true;
-      sawContextValue = context?.requestContext?.get("secret") as
-        | string
-        | undefined;
+      sawContextValue = context?.requestContext?.get("secret");
       return { echoed: sawContextValue ?? "(missing)" };
     },
   });

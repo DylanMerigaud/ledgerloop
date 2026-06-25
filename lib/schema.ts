@@ -208,31 +208,9 @@ export const Investigation = z
   .strict();
 export type Investigation = z.infer<typeof Investigation>;
 
-/* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 3 — approval decision (output of the deterministic policy)
- * ────────────────────────────────────────────────────────────────────────── */
-
-/**
- * Who must sign off. Tiers escalate with the money/variance at stake. A clean
- * invoice is `auto` (no human); larger exceptions climb to manager / director.
- */
-export const ApproverTier = z.enum(["auto", "manager", "director", "blocked"]);
-export type ApproverTier = z.infer<typeof ApproverTier>;
-
-export const ApprovalDecision = z
-  .object({
-    invoiceNumber: z.string(),
-    tier: ApproverTier,
-    /** True only for `auto` — the straight-through-processing path. */
-    autoApproved: z.boolean(),
-    reason: z.string(),
-    /** Echoed through so reconciliation/UI can show what drove the routing. */
-    maxVariancePct: z.number().nonnegative(),
-    exceptionAmount: z.number().nonnegative(),
-    currency: Currency,
-  })
-  .strict();
-export type ApprovalDecision = z.infer<typeof ApprovalDecision>;
+/* Approval is no longer a single tier decision — it's a conditional workflow DAG
+   (lib/approval-workflow.ts) executed per invoice (lib/approval-engine.ts). The
+   old `ApproverTier` / `ApprovalDecision` types were retired in that migration. */
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Stage 4 — reconciliation result (output of the deterministic ERP post)
@@ -273,6 +251,74 @@ export const ReconResult = z
 export type ReconResult = z.infer<typeof ReconResult>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
+ *  HRIS / org model — the onboarding side, INTERNAL types
+ * ────────────────────────────────────────────────────────────────────────── *
+ *
+ * The onboarding discovery agent reads a client's HRIS (BambooHR today) and
+ * derives the approval matrix that drives the P2P pipeline. These are OUR types,
+ * not the HRIS's. Every HRIS shapes employees/reporting differently (BambooHR's
+ * `supervisorEId`, Workday's worker references, …); the adapter
+ * ([`lib/hris.ts`](./hris.ts)) maps each vendor onto this one model, so the agent
+ * and the rest of the app never see a vendor-specific field. Same discipline as
+ * the invoice side: one internal model, adapters at the edge.
+ */
+
+/** One person in the org, normalised from whatever the HRIS calls these. */
+export const Employee = z
+  .object({
+    /** Stable HRIS id (string — BambooHR ids are numeric-but-stringly). */
+    id: z.string().min(1),
+    name: z.string().min(1),
+    title: z.string(),
+    department: z.string(),
+    /** Org unit above department where the HRIS has one; "" when it doesn't. */
+    division: z.string(),
+    /**
+     * The id of this person's manager, or null at the top of the tree. We key
+     * the hierarchy on ID, never on a name string: the same HRIS returns a
+     * person's name in different formats across endpoints ("Jennifer Caldwell"
+     * vs "Caldwell, Jennifer"), so name-matching silently breaks. ID is the only
+     * reliable edge.
+     */
+    managerId: z.string().nullable(),
+  })
+  .strict();
+export type Employee = z.infer<typeof Employee>;
+
+/**
+ * A reporting edge the agent could NOT resolve cleanly — a person whose manager
+ * id points nowhere, a cycle, or an active employee with no manager who isn't
+ * plausibly the CEO. Surfaced to the human reviewer rather than guessed: this is
+ * the data-quality work a forward-deployed engineer actually does on onboarding,
+ * made explicit instead of hidden.
+ */
+export const OrgIssue = z
+  .object({
+    employeeId: z.string(),
+    employeeName: z.string(),
+    kind: z.enum(["dangling-manager", "cycle", "orphan", "self-managed"]),
+    detail: z.string(),
+  })
+  .strict();
+export type OrgIssue = z.infer<typeof OrgIssue>;
+
+/**
+ * The normalised org as the agent sees it: the clean roster plus the issues that
+ * need a human. The pipeline never consumes this directly — the agent turns it
+ * into a proposed approval policy, a human validates, and THAT becomes a
+ * ClientProfile (see [`lib/client-profile.ts`](./client-profile.ts)).
+ */
+export const OrgChart = z
+  .object({
+    /** Where this org was read from, e.g. "bamboohr" or "bamboohr (recorded)". */
+    source: z.string(),
+    employees: z.array(Employee),
+    issues: z.array(OrgIssue),
+  })
+  .strict();
+export type OrgChart = z.infer<typeof OrgChart>;
+
+/* ────────────────────────────────────────────────────────────────────────── *
  *  JSON Schema derived from the Invoice Zod object
  * ────────────────────────────────────────────────────────────────────────── */
 
@@ -299,7 +345,7 @@ const UNSUPPORTED_SCHEMA_KEYS = [
   "format",
 ];
 
-function stripUnsupported(node: unknown): void {
+const stripUnsupported = (node: unknown): void => {
   if (Array.isArray(node)) {
     for (const item of node) stripUnsupported(item);
     return;
@@ -309,16 +355,25 @@ function stripUnsupported(node: unknown): void {
     for (const key of UNSUPPORTED_SCHEMA_KEYS) delete obj[key];
     for (const value of Object.values(obj)) stripUnsupported(value);
   }
-}
+};
 
-function buildInvoiceJsonSchema(): Record<string, unknown> {
-  const schema = zodToJsonSchema(Invoice, {
+/**
+ * Turn any Zod object into a JSON schema shaped for an Anthropic structured-output
+ * call: inlined (no `$ref`/`definitions`), `$schema` removed, and the keywords the
+ * structured-output schema rejects stripped. The Zod object stays the runtime gate
+ * (`.safeParse`); this is only what we hand the model. Shared by every structured
+ * generation (invoice extraction, onboarding proposal) so the discipline is identical.
+ */
+export const toModelJsonSchema = (
+  schema: z.ZodType<unknown>,
+): Record<string, unknown> => {
+  const json = zodToJsonSchema(schema, {
     $refStrategy: "none",
     target: "jsonSchema7",
   }) as Record<string, unknown>;
-  delete schema["$schema"];
-  stripUnsupported(schema);
-  return schema;
-}
+  delete json["$schema"];
+  stripUnsupported(json);
+  return json;
+};
 
-export const INVOICE_JSON_SCHEMA = buildInvoiceJsonSchema();
+export const INVOICE_JSON_SCHEMA = toModelJsonSchema(Invoice);

@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq } from "drizzle-orm";
-import { invoices, purchaseOrders, goodsReceipts } from "./schema";
+
+import { invoices, purchaseOrders, goodsReceipts } from "@/db/schema";
+import { env } from "@/lib/env";
 import {
   Invoice,
   PurchaseOrder,
@@ -27,24 +29,20 @@ import {
 
 let cached: ReturnType<typeof drizzle> | null = null;
 
-function db() {
+const db = () => {
   if (!cached) {
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      throw new Error(
-        "DATABASE_URL is not set. Point it at your Supabase Postgres (see .env.example).",
-      );
-    }
     // `prepare: false` is the Supabase transaction-pooler-safe setting; one
-    // connection is plenty for this read-only demo.
-    const sql = postgres(url, { prepare: false, max: 1 });
+    // connection is plenty for this read-only demo. `env.DATABASE_URL` is required
+    // and validated at env load, so a missing value fails clearly there (the error
+    // names DATABASE_URL, which the run route keys its setup notice off).
+    const sql = postgres(env.DATABASE_URL, { prepare: false, max: 1 });
     cached = drizzle(sql);
   }
   return cached;
-}
+};
 
 /** A queue row for the dashboard's left pane — light, list-shaped. */
-export interface QueueItem {
+export type QueueItem = {
   /** Stable per-row key — the value to pass to the run route (NOT the invoice number). */
   id: string;
   invoiceNumber: string;
@@ -54,10 +52,10 @@ export interface QueueItem {
   currency: string;
   issueDate: string;
   scenario: string | null;
-}
+};
 
 /** All invoices, oldest first, as lightweight queue items for the left pane. */
-export async function listInvoiceQueue(): Promise<QueueItem[]> {
+export const listInvoiceQueue = async (): Promise<QueueItem[]> => {
   const rows = await db()
     .select({
       id: invoices.id,
@@ -73,16 +71,16 @@ export async function listInvoiceQueue(): Promise<QueueItem[]> {
     .from(invoices)
     .orderBy(invoices.createdAt, invoices.id);
   return rows.map(({ createdAt: _createdAt, ...item }) => item);
-}
+};
 
 /** The full document bundle the pipeline needs for one invoice run. */
-export interface RunBundle {
+export type RunBundle = {
   invoice: TInvoice;
   purchaseOrder: TPurchaseOrder | null;
   goodsReceipt: TGoodsReceipt | null;
   /** Other invoice numbers in the ledger — for duplicate detection. */
   priorInvoiceNumbers: string[];
-}
+};
 
 /**
  * Load everything needed to run the pipeline for one invoice, validating each
@@ -94,7 +92,7 @@ export interface RunBundle {
  * rows ("INV-2041" original + "INV-2041-RESEND"). The id is what lets us load
  * the exact row the visitor clicked and decide whether THAT row is the duplicate.
  */
-export async function loadRunBundle(id: string): Promise<RunBundle | null> {
+export const loadRunBundle = async (id: string): Promise<RunBundle | null> => {
   const d = db();
 
   const [invoiceRow] = await d
@@ -155,7 +153,7 @@ export async function loadRunBundle(id: string): Promise<RunBundle | null> {
     .map((r) => r.invoiceNumber);
 
   return { invoice, purchaseOrder, goodsReceipt, priorInvoiceNumbers };
-}
+};
 
 /**
  * Load just one invoice by row id — a single, light query. Used by the PDF route,
@@ -163,7 +161,7 @@ export async function loadRunBundle(id: string): Promise<RunBundle | null> {
  * so it skips the three extra reads `loadRunBundle` does). Returns `null` if the
  * row doesn't exist.
  */
-export async function loadInvoiceById(id: string): Promise<TInvoice | null> {
+export const loadInvoiceById = async (id: string): Promise<TInvoice | null> => {
   const [row] = await db()
     .select()
     .from(invoices)
@@ -171,13 +169,13 @@ export async function loadInvoiceById(id: string): Promise<TInvoice | null> {
     .limit(1);
   if (!row) return null;
   return Invoice.parse(toInvoiceShape(row));
-}
+};
 
 /* Row → Zod-input shape mappers. `numeric({ mode: "number" })` already gives us
    numbers; these just drop DB-only columns (id, createdAt, scenario) the Zod
    document schemas don't include (they're `.strict()`). */
 
-function toInvoiceShape(r: typeof invoices.$inferSelect) {
+const toInvoiceShape = (r: typeof invoices.$inferSelect) => {
   return {
     invoiceNumber: r.invoiceNumber,
     poNumber: r.poNumber,
@@ -189,9 +187,9 @@ function toInvoiceShape(r: typeof invoices.$inferSelect) {
     tax: r.tax,
     total: r.total,
   };
-}
+};
 
-function toPoShape(r: typeof purchaseOrders.$inferSelect) {
+const toPoShape = (r: typeof purchaseOrders.$inferSelect) => {
   return {
     poNumber: r.poNumber,
     vendor: r.vendor,
@@ -199,13 +197,13 @@ function toPoShape(r: typeof purchaseOrders.$inferSelect) {
     lineItems: r.lineItems,
     total: r.total,
   };
-}
+};
 
-function toGrShape(r: typeof goodsReceipts.$inferSelect) {
+const toGrShape = (r: typeof goodsReceipts.$inferSelect) => {
   return {
     grNumber: r.grNumber,
     poNumber: r.poNumber,
     receivedDate: r.receivedDate,
     lineItems: r.lineItems,
   };
-}
+};

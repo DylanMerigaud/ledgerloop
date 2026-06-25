@@ -1,7 +1,13 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { invoices, purchaseOrders, goodsReceipts, agentRuns } from "./schema";
-import { SEED_BUNDLES } from "./seed-data";
+
+import {
+  invoices,
+  purchaseOrders,
+  goodsReceipts,
+  agentRuns,
+} from "@/db/schema";
+import { SEED_BUNDLES } from "@/db/seed-data";
 import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**
@@ -18,8 +24,7 @@ import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
  * (Supabase wants a direct, non-pooled connection for DDL/bulk writes), else
  * falls back to DATABASE_URL.
  */
-
-async function main() {
+const main = async () => {
   const url = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
   if (!url) {
     console.error(
@@ -116,7 +121,7 @@ async function main() {
   } finally {
     await sql.end({ timeout: 5 });
   }
-}
+};
 
 main().catch((err) => {
   console.error("✖ Seed failed:", err);

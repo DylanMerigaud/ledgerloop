@@ -1,6 +1,6 @@
-import type { Invoice } from "./schema";
-import { extractInvoice, type ExtractionResult } from "./extract";
-import { renderInvoicePdfBase64 } from "./invoice-pdf";
+import { extractInvoice, type ExtractionResult } from "@/lib/extract";
+import { renderInvoicePdfBase64 } from "@/lib/invoice-pdf";
+import type { Invoice } from "@/lib/schema";
 
 /**
  * The intake core — render the source document to a PDF, read it back with the
@@ -19,17 +19,17 @@ import { renderInvoicePdfBase64 } from "./invoice-pdf";
 /** Render `source` to a PDF and extract it; same tagged result as `extractInvoice`. */
 export type Extractor = (pdfBase64: string) => Promise<ExtractionResult>;
 
-interface IntakeOk {
+type IntakeOk = {
   ok: true;
   /** The invoice the pipeline runs on (the model's output). */
   invoice: Invoice;
   /** True when the extracted header reconciles with the source record. */
   matchesRecord: boolean;
-}
-interface IntakeFail {
+};
+type IntakeFail = {
   ok: false;
   reason: string;
-}
+};
 export type IntakeResult = IntakeOk | IntakeFail;
 
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -39,14 +39,14 @@ const DEFAULT_TIMEOUT_MS = 20_000;
  * Returns the extracted invoice on success, or a failure the caller turns into an
  * error trace event. `extract` + `render` are injectable for offline tests.
  */
-export async function runIntake(
+export const runIntake = async (
   source: Invoice,
   opts: {
     extract?: Extractor;
     render?: (inv: Invoice) => Promise<string>;
     timeoutMs?: number;
   } = {},
-): Promise<IntakeResult> {
+): Promise<IntakeResult> => {
   const extract = opts.extract ?? extractInvoice;
   const render = opts.render ?? renderInvoicePdfBase64;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -94,4 +94,4 @@ export async function runIntake(
     Math.abs(result.invoice.total - source.total) < 0.01;
 
   return { ok: true, invoice: result.invoice, matchesRecord };
-}
+};

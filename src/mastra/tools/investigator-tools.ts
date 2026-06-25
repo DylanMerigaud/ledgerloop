@@ -1,11 +1,12 @@
-import { z } from "zod";
 import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
+
 import {
   vendorPriceHistory,
   vendorPoNotes,
   vendorReceiptNotes,
 } from "@/lib/vendor-context";
-import { CTX, type ToolContext } from "./context";
+import { CTX, type ToolContext } from "@/src/mastra/tools/context";
 
 /**
  * Tools for the EXCEPTION INVESTIGATOR agent.
@@ -24,8 +25,7 @@ import { CTX, type ToolContext } from "./context";
  * RECOMMENDATION shown to the human before they approve or reject; the money
  * decision stays with the reviewer, and the routing stays deterministic.
  */
-
-function vendorFromContext(context: unknown): string {
+const vendorFromContext = (context: unknown): string => {
   const ctx = context as
     | { requestContext?: { get: (k: string) => unknown } }
     | undefined;
@@ -36,7 +36,7 @@ function vendorFromContext(context: unknown): string {
     throw new Error("investigator tool: no investigation context set");
   }
   return vendor.vendor;
-}
+};
 
 export const priceHistoryTool = createTool({
   id: "get-vendor-price-history",

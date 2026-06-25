@@ -1,6 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatMoney, formatPct, formatDuration, humanize } from "./format";
+import { test } from "node:test";
+
+import { formatMoney, formatPct, formatDuration, humanize } from "@/lib/format";
 
 test("formatMoney: 2dp + currency suffix, with thousands separators", () => {
   assert.equal(formatMoney(1234.5, "USD"), "1,234.50 USD");

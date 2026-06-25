@@ -29,6 +29,6 @@ export class NdjsonBuffer {
 }
 
 /** Serialize a value as one NDJSON line (JSON + "\n"). */
-export function ndjsonLine(value: unknown): string {
+export const ndjsonLine = (value: unknown): string => {
   return JSON.stringify(value) + "\n";
-}
+};

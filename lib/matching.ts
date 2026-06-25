@@ -1,11 +1,11 @@
+import { DEFAULT_TOLERANCES, type MatchTolerances } from "@/lib/client-profile";
 import type {
   Invoice,
   PurchaseOrder,
   GoodsReceipt,
   MatchResult,
   MatchException,
-} from "./schema";
-import { DEFAULT_TOLERANCES, type MatchTolerances } from "./client-profile";
+} from "@/lib/schema";
 
 /**
  * The 2/3-way matcher — the deterministic core of the demo.
@@ -22,35 +22,29 @@ import { DEFAULT_TOLERANCES, type MatchTolerances } from "./client-profile";
  * "2-way"  = invoice ↔ PO            (price + quantity ordered)
  * "3-way"  = invoice ↔ PO ↔ receipt  (also: did we actually receive it?)
  */
-
-/* Tolerances below which a variance is treated as rounding noise, not a real
-   exception, now come from the client profile (`lib/client-profile.ts`) so they
-   can differ per customer (a strict manufacturer at 0.5%, a loose distributor at
-   5%). `runMatch` takes them as a parameter, defaulting to the standard values. */
-
-function round2(n: number): number {
+const round2 = (n: number): number => {
   return Math.round((n + Number.EPSILON) * 100) / 100;
-}
+};
 
 /** Relative difference |a − b| / max(|b|, ε), guarding divide-by-zero. */
-function relDiff(actual: number, expected: number): number {
+const relDiff = (actual: number, expected: number): number => {
   const denom = Math.max(Math.abs(expected), 1e-9);
   return Math.abs(actual - expected) / denom;
-}
+};
 
-function pct(n: number): string {
+const pct = (n: number): string => {
   return `${(n * 100).toFixed(1)}%`;
-}
+};
 
-function money(n: number, currency: string): string {
+const money = (n: number, currency: string): string => {
   const v = round2(n).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
   return `${v} ${currency}`;
-}
+};
 
-export interface MatchInput {
+export type MatchInput = {
   invoice: Invoice;
   purchaseOrder: PurchaseOrder | null;
   goodsReceipt: GoodsReceipt | null;
@@ -60,7 +54,7 @@ export interface MatchInput {
    * The pipeline passes the seeded ledger; the check stays pure and testable.
    */
   priorInvoiceNumbers?: readonly string[];
-}
+};
 
 /**
  * Run the match. Returns a fully-populated `MatchResult` whose `verdict` drives
@@ -69,10 +63,10 @@ export interface MatchInput {
  *   - "exception" → routed to Approval
  *   - "clean"     → straight-through to Reconciliation
  */
-export function runMatch(
+export const runMatch = (
   input: MatchInput,
   tolerances: MatchTolerances = DEFAULT_TOLERANCES,
-): MatchResult {
+): MatchResult => {
   const {
     invoice,
     purchaseOrder,
@@ -218,10 +212,10 @@ export function runMatch(
     currency,
     invoiceTotal: invoice.total,
   };
-}
+};
 
 /** The invoice-side money on the line an exception refers to (for "amount at stake"). */
-function exceptionLineAmount(invoice: Invoice, e: MatchException): number {
+const exceptionLineAmount = (invoice: Invoice, e: MatchException): number => {
   const line = invoice.lineItems.find((li) => li.sku === e.sku);
   return line ? Math.abs(line.amount) : 0;
-}
+};

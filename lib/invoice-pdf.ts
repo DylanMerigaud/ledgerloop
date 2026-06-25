@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
-import type { Invoice } from "./schema";
+
+import type { Invoice } from "@/lib/schema";
 
 /**
  * Render an `Invoice` to a realistic one-page PDF (pdf-lib). Generated on demand
@@ -17,7 +18,7 @@ const PAGE_W = 595.28; // A4 portrait, points
 const PAGE_H = 841.89;
 const MARGIN = 56;
 
-function money(n: number, currency: string): string {
+const money = (n: number, currency: string): string => {
   return (
     n.toLocaleString("en-US", {
       minimumFractionDigits: 2,
@@ -26,10 +27,12 @@ function money(n: number, currency: string): string {
     " " +
     currency
   );
-}
+};
 
 /** Returns the invoice as PDF bytes (Uint8Array). */
-export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
+export const renderInvoicePdf = async (
+  invoice: Invoice,
+): Promise<Uint8Array> => {
   const doc = await PDFDocument.create();
   const page = doc.addPage([PAGE_W, PAGE_H]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -131,12 +134,12 @@ export async function renderInvoicePdf(invoice: Invoice): Promise<Uint8Array> {
   totalRow("Total due", money(invoice.total, invoice.currency), bold, 12);
 
   return doc.save();
-}
+};
 
 /** Render and return base64 — the form the vision model's `document` block wants. */
-export async function renderInvoicePdfBase64(
+export const renderInvoicePdfBase64 = async (
   invoice: Invoice,
-): Promise<string> {
+): Promise<string> => {
   const bytes = await renderInvoicePdf(invoice);
   return Buffer.from(bytes).toString("base64");
-}
+};
