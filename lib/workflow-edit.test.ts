@@ -122,6 +122,53 @@ test("add-integration: runs after the post, doesn't alter other conditions", () 
   );
 });
 
+test("a SECOND notification still branches off the ERP post, not the first", () => {
+  // Regression: postStepId used to return "the integration with no outgoing edge",
+  // so once Slack trailed the post, a second notification chained off Slack and an
+  // added approval converged on Slack — tangling the graph. The post must stay the
+  // join node regardless of trailing notifications.
+  const withSlack = applyEditOp(base, {
+    op: "add-integration",
+    label: "Slack notify",
+    integration: "slack",
+  });
+  const withJira = applyEditOp(withSlack, {
+    op: "add-integration",
+    label: "Jira ticket",
+    integration: "jira",
+  });
+  const post = withJira.steps.find((s) => s.id === "post");
+  const slack = withJira.steps.find((s) => s.label === "Slack notify");
+  const jira = withJira.steps.find((s) => s.label === "Jira ticket");
+  assert.ok(post && slack && jira);
+  // Both notifications hang off the post in parallel; neither chains off the other.
+  assert.ok(post.next.includes(slack.id), "post → slack");
+  assert.ok(post.next.includes(jira.id), "post → jira");
+  assert.deepEqual(slack.next, [], "slack has no trailing edge");
+  assert.deepEqual(jira.next, [], "jira has no trailing edge");
+});
+
+test("an approval added AFTER a notification converges on the ERP post", () => {
+  const withSlack = applyEditOp(base, {
+    op: "add-integration",
+    label: "Slack notify",
+    integration: "slack",
+  });
+  const next = applyEditOp(withSlack, {
+    op: "add-approval",
+    label: "VP sign-off",
+    approverTitle: "VP",
+    amountOver: 100000,
+    department: null,
+  });
+  const vp = next.steps.find((s) => s.label === "VP sign-off");
+  const slack = next.steps.find((s) => s.label === "Slack notify");
+  assert.ok(vp && slack);
+  // The new gate routes into the ERP post (the join), NOT the trailing Slack node.
+  assert.deepEqual(vp.next, ["post"], "VP gate → post (not slack)");
+  assert.ok(!slack.next.includes(vp.id), "slack does not point at the gate");
+});
+
 test("set-threshold: changes only the targeted gate's amount", () => {
   const next = applyEditOp(base, {
     op: "set-threshold",

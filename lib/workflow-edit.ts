@@ -105,10 +105,26 @@ const conditionFor = (
   return { kind: "all", conditions: leaves };
 };
 
-/** The final integration step everything routes into (the post), if any. */
-const postStepId = (wf: TWorkflow): string | null =>
-  wf.steps.find((s) => s.kind === "integration" && s.next.length === 0)?.id ??
-  null;
+/**
+ * The ERP "post" step — the join node approvals converge into. Found robustly as
+ * the integration that approval steps point at (NOT "the integration with no
+ * outgoing edge", which breaks once a notification trails after the post). Falls
+ * back to the netsuite integration, then any integration.
+ */
+const postStepId = (wf: TWorkflow): string | null => {
+  const approvalTargets = new Set(
+    wf.steps.filter((s) => s.kind === "approval").flatMap((s) => s.next),
+  );
+  const converged = wf.steps.find(
+    (s) => s.kind === "integration" && approvalTargets.has(s.id),
+  );
+  if (converged) return converged.id;
+  const netsuite = wf.steps.find(
+    (s) => s.kind === "integration" && s.integration === "netsuite",
+  );
+  if (netsuite) return netsuite.id;
+  return wf.steps.find((s) => s.kind === "integration")?.id ?? null;
+};
 
 /**
  * Apply one edit op to a workflow, returning a NEW workflow (input untouched).
@@ -166,7 +182,9 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 
     case "add-integration": {
       const id = uniqueId(next, slug(op.label));
-      // An integration "when an invoice posts" runs after the post step.
+      // A notification runs after the ERP post, in PARALLEL with any other
+      // notification (post → slack, post → jira side by side) — they're
+      // independent, so we branch each straight off the post, never chain them.
       const post = postStepId(next);
       const newStep: WorkflowStep = {
         id,
@@ -247,8 +265,8 @@ export const proposeEdit = async (
 
 export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instruction into ONE structured edit for a procure-to-pay approval workflow. You are given the current workflow's steps (id, label, kind, approver) and the instruction. Return a single edit op:
 
-- add-approval: a new human approval gate. Set "approverTitle" (the role, e.g. "CFO"), "amountOver" (the dollar threshold it applies above, or null for every invoice), and "department" (scope to one department like "IT", or null for any).
-- add-integration: a system action — "slack", "jira", or "netsuite" — that runs when an invoice posts.
+- add-approval: a new human approval gate. Set "label" to a SHORT title only (e.g. "CFO review" or "VP sign-off") — do NOT put the threshold or department in the label, they're shown separately. Set "approverTitle" (the role, e.g. "CFO"), "amountOver" (the dollar threshold it applies above, or null for every invoice), and "department" (scope to one department like "IT", or null for any).
+- add-integration: a system action — "slack", "jira", or "netsuite" — that runs after the bill posts. Set "label" to a short title (e.g. "Notify on Slack", "Open Jira ticket").
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
 - set-approver: set the person on an existing approval step (by "stepId").
 - remove-step: remove a step by "stepId".

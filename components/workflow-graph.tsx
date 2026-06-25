@@ -234,11 +234,13 @@ const NODE_SEP = 40; // vertical gap between siblings
 const RANK_SEP = 110; // horizontal gap between columns (generous, Pivot-like)
 
 /**
- * Lay out the graph LR with dagre. Heights are REAL measured heights (a `when` chip
- * or a 2-line title makes a card taller — guessing that is what threw the centering
- * off). `ranker: "tight-tree"` packs and centers the tree so a parent sits on the
- * middle of its children — the balanced look from reactflow-auto-layout's dagre-tree
- * algorithm, no hand-rolled centering pass needed.
+ * Lay out the graph LR with dagre using REAL measured heights, then a centering pass
+ * that sits each parent on the vertical MIDDLE of its children's bounding box (top of
+ * the topmost child to bottom of the bottommost) and each join node on its parents'
+ * box. dagre's `tight-tree` alone centers on the barycenter, which drifts when
+ * siblings have different heights (a tall 2-line `Director` card vs a short one) —
+ * bounding-box centering with the true heights is what makes the parent sit dead
+ * center, the Pivot look.
  */
 const layout = (
   nodes: Node<NodeData>[],
@@ -260,15 +262,39 @@ const layout = (
   for (const e of edges) g.setEdge(e.source, e.target);
   dagre.layout(g);
 
+  const cy = new Map<string, number>(); // node id → center Y
+  for (const id of g.nodes()) cy.set(id, g.node(id).y);
+  const halfOf = (id: string): number => (h.get(id) ?? 80) / 2;
+  const boxMid = (ids: string[]): number => {
+    const tops = ids.map((k) => (cy.get(k) ?? 0) - halfOf(k));
+    const bots = ids.map((k) => (cy.get(k) ?? 0) + halfOf(k));
+    return (Math.min(...tops) + Math.max(...bots)) / 2;
+  };
+
+  const childrenOf = new Map<string, string[]>();
+  const parentsOf = new Map<string, string[]>();
+  for (const e of edges) {
+    childrenOf.set(e.source, [...(childrenOf.get(e.source) ?? []), e.target]);
+    parentsOf.set(e.target, [...(parentsOf.get(e.target) ?? []), e.source]);
+  }
+  // Parents centered on their children (right→left so children settle first).
+  for (const id of [...g.nodes()].sort((a, b) => g.node(b).x - g.node(a).x)) {
+    const kids = childrenOf.get(id) ?? [];
+    if (kids.length >= 2) cy.set(id, boxMid(kids));
+  }
+  // Join nodes centered on their parents (left→right).
+  for (const id of [...g.nodes()].sort((a, b) => g.node(a).x - g.node(b).x)) {
+    const parents = parentsOf.get(id) ?? [];
+    if (parents.length >= 2) cy.set(id, boxMid(parents));
+  }
+
   return nodes.map((n) => {
     const node = g.node(n.id);
+    const centerY = cy.get(n.id) ?? node.y;
     // dagre gives the center; React Flow positions by top-left.
     return {
       ...n,
-      position: {
-        x: node.x - node.width / 2,
-        y: node.y - node.height / 2,
-      },
+      position: { x: node.x - node.width / 2, y: centerY - halfOf(n.id) },
     };
   });
 };
