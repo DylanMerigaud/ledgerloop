@@ -1,36 +1,48 @@
+"use client";
+
+import {
+  ReactFlow,
+  Background,
+  Handle,
+  Position,
+  useReactFlow,
+  ReactFlowProvider,
+  type Node,
+  type Edge,
+  type NodeProps,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import dagre from "dagre";
+import { useEffect, useMemo } from "react";
+
 import { Badge } from "@/components/ui/badge";
-import type {
-  ApprovalWorkflow,
-  WorkflowStep,
-  StepChange,
+import {
+  type ApprovalWorkflow,
+  type WorkflowStep,
+  type StepChange,
+  describeCondition,
 } from "@/lib/approval-workflow";
-import { describeCondition } from "@/lib/approval-workflow";
 
 /**
- * Renders an approval workflow as a top-down flow with parallel branches.
+ * The approval workflow as a real flow canvas (React Flow), laid out left→right by
+ * dagre. The category convention is a node-and-edge canvas; this is that, in the
+ * app's own card style. Nodes are VARIABLE height (an approval card with an
+ * approver + a condition is taller than a bare integration), so we let React Flow
+ * MEASURE each node first, then run dagre with the real dimensions — no guessing,
+ * clean spacing whatever the content.
  *
- * Deliberately NOT a free-floating drag canvas (that's every competitor's
- * signature — Ramp, Zip, Pivot). This reads top-to-bottom like the rest of the
- * app's execution trace: the root gate, then its fan-out branches laid side by
- * side as parallel lanes, rejoining at the final step. Each node is a compact
- * card in the product's own design language.
- *
- * The point this view makes that a hand-built canvas can't: every approver was
- * RESOLVED from the org by the agent (or flagged unresolved for a human). An
- * optional `statuses` map colours each node by its live execution state, so the
- * same component renders both the derived workflow (onboarding) and a running
- * invoice's path through it.
+ * The same component renders three things off one workflow: the derived workflow
+ * (onboarding), a proposed edit (diff colours via `changes`), and a live run
+ * (per-step status colours via `statuses`).
  */
 
-/** Per-step execution status, when rendering a live run (omit for the static workflow). */
 export type StepStatuses = Record<string, string>;
+
+/* ── node visuals ──────────────────────────────────────────────────────────── */
 
 const statusTone = (
   status: string | undefined,
-): {
-  tone: "ok" | "warn" | "danger" | "neutral";
-  label: string;
-} | null => {
+): { tone: "ok" | "warn" | "danger" | "neutral"; label: string } | null => {
   switch (status) {
     case "approved":
       return { tone: "ok", label: "Approved" };
@@ -49,65 +61,60 @@ const statusTone = (
   }
 };
 
-/** Icon glyph for an integration step's target system. */
-const integrationGlyph = (kind: string): string => {
-  if (kind === "netsuite") return "NS";
-  if (kind === "slack") return "#";
-  if (kind === "jira") return "J";
-  return "→";
-};
+const integrationGlyph = (kind: string): string =>
+  kind === "netsuite"
+    ? "NS"
+    : kind === "slack"
+      ? "#"
+      : kind === "jira"
+        ? "J"
+        : "→";
 
-/** Diff ring + chip for a step when rendering a proposed edit. */
-const changeStyle = (
-  change: StepChange["kind"] | undefined,
-): {
-  ring: string;
-  badge: { tone: "ok" | "warn" | "danger"; label: string } | null;
-} => {
+const changeRing = (change: StepChange["kind"] | undefined): string => {
   switch (change) {
     case "added":
-      return {
-        ring: "ring-ok-line bg-ok-soft/30",
-        badge: { tone: "ok", label: "Added" },
-      };
+      return "ring-ok-line bg-ok-soft/30";
     case "changed":
-      return {
-        ring: "ring-warn-line bg-warn-soft/30",
-        badge: { tone: "warn", label: "Changed" },
-      };
+      return "ring-warn-line bg-warn-soft/30";
     case "removed":
-      return {
-        ring: "ring-danger-line bg-danger-soft/30",
-        badge: { tone: "danger", label: "Removed" },
-      };
+      return "ring-danger-line bg-danger-soft/30";
     default:
-      return { ring: "ring-line", badge: null };
+      return "ring-line";
   }
 };
 
-const StepNode = ({
-  step,
-  status,
-  change,
-  dimmed,
-}: {
+const changeBadge = (
+  change: StepChange["kind"] | undefined,
+): { tone: "ok" | "warn" | "danger"; label: string } | null => {
+  if (change === "added") return { tone: "ok", label: "Added" };
+  if (change === "changed") return { tone: "warn", label: "Changed" };
+  if (change === "removed") return { tone: "danger", label: "Removed" };
+  return null;
+};
+
+/** The data each React Flow node carries. */
+type NodeData = {
   step: WorkflowStep;
   status?: string;
   change?: StepChange["kind"];
-  dimmed?: boolean;
-}) => {
+};
+
+/** A workflow step rendered as the app's card — used as a React Flow custom node. */
+const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
+  const { step, status, change } = data;
   const st = statusTone(status);
-  const cs = changeStyle(change);
+  const cb = changeBadge(change);
   const isApproval = step.kind === "approval";
   const condition = describeCondition(step.when);
   const unconditional = step.when.kind === "always";
 
   return (
     <div
-      className={`w-full rounded-lg bg-surface px-3 py-2 ring-1 ring-inset shadow-card ${cs.ring} ${
-        dimmed || change === "removed" ? "opacity-60" : ""
-      } ${change === "removed" ? "line-through" : ""}`}
+      className={`w-60 rounded-lg bg-surface px-3 py-2 shadow-card ring-1 ring-inset ${changeRing(
+        change,
+      )} ${change === "removed" ? "opacity-60 line-through" : ""}`}
     >
+      <Handle type="target" position={Position.Left} className="!bg-line" />
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
           {isApproval ? (
@@ -121,8 +128,8 @@ const StepNode = ({
           )}
           {step.label}
         </span>
-        {cs.badge ? (
-          <Badge tone={cs.badge.tone}>{cs.badge.label}</Badge>
+        {cb ? (
+          <Badge tone={cb.tone}>{cb.label}</Badge>
         ) : (
           st && <Badge tone={st.tone}>{st.label}</Badge>
         )}
@@ -146,7 +153,7 @@ const StepNode = ({
             </>
           ) : (
             <span className="font-medium text-warn">
-              ⚠ unresolved — {step.approverTitle} (assign a person)
+              ⚠ unresolved — {step.approverTitle}
             </span>
           )}
         </div>
@@ -159,135 +166,155 @@ const StepNode = ({
           </span>
         </div>
       )}
+      <Handle type="source" position={Position.Right} className="!bg-line" />
     </div>
   );
 };
 
-/** A horizontal connector between flow columns (left → right). */
-const Connector = () => {
-  return (
-    <div className="flex shrink-0 items-center self-center" aria-hidden>
-      <div className="h-px w-6 bg-line" />
-      <div className="-ml-1 text-line">▸</div>
-    </div>
-  );
+const nodeTypes = { step: StepNode };
+
+/* ── layout ────────────────────────────────────────────────────────────────── */
+
+// Fixed node box for layout. Width is fixed (`w-60` = 240px). Height is derived
+// DETERMINISTICALLY from the card's content (no measurement round-trip — that
+// timing was unreliable in React Flow): a header row, plus an approver row and/or
+// a condition chip when present. Generous enough that dagre never overlaps.
+const NODE_WIDTH = 240;
+const nodeHeight = (step: WorkflowStep): number => {
+  let h = 40; // header row + padding
+  if (step.kind === "approval") h += 22; // approver / unresolved line
+  if (step.when.kind !== "always") h += 24; // the `when …` chip
+  return h;
 };
 
-/** One column in the left→right flow (a fixed-width band of one or more nodes). */
-const Column = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <div className="flex w-60 shrink-0 flex-col justify-center gap-3">
-      {children}
-    </div>
-  );
+/** Run dagre with deterministic node sizes; return positioned nodes (LR). */
+const layout = (nodes: Node<NodeData>[], edges: Edge[]): Node<NodeData>[] => {
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({ rankdir: "LR", nodesep: 28, ranksep: 64 });
+  g.setDefaultEdgeLabel(() => ({}));
+  for (const n of nodes) {
+    g.setNode(n.id, { width: NODE_WIDTH, height: nodeHeight(n.data.step) });
+  }
+  for (const e of edges) g.setEdge(e.source, e.target);
+  dagre.layout(g);
+  return nodes.map((n) => {
+    const node = g.node(n.id);
+    // dagre gives the center; React Flow positions by top-left.
+    return {
+      ...n,
+      position: { x: node.x - node.width / 2, y: node.y - node.height / 2 },
+    };
+  });
 };
 
-export const WorkflowGraph = ({
+/* ── the graph ─────────────────────────────────────────────────────────────── */
+
+const Inner = ({
   workflow,
   statuses,
   changes,
 }: {
   workflow: ApprovalWorkflow;
   statuses?: StepStatuses;
-  /** When rendering a proposed edit, per-step change kinds for diff colouring. */
   changes?: StepChange[];
 }) => {
-  const byId = new Map(workflow.steps.map((s) => [s.id, s]));
-  const changeOf = new Map((changes ?? []).map((c) => [c.id, c.kind]));
-
-  // Layout is LEFT → RIGHT (the category convention — cf. the Pivot/Ramp/Zip
-  // canvases): the root gate, then its fan-out steps stacked as parallel rows in
-  // the middle column, rejoining at the shared tail on the right. The template is
-  // shallow (root → fan-out → join), so a three-column band reads cleanly without
-  // a general graph-layout engine. Scrolls horizontally if it overflows.
-  const roots = workflow.roots
-    .map((id) => byId.get(id))
-    .filter(Boolean) as WorkflowStep[];
-
-  // The "tail" = steps every branch converges on (here: the final post). Detect as
-  // steps that are the `next` of multiple other steps.
-  const incoming = new Map<string, number>();
-  for (const s of workflow.steps)
-    for (const n of s.next) incoming.set(n, (incoming.get(n) ?? 0) + 1);
-  const tailIds = new Set(
-    [...incoming.entries()].filter(([, c]) => c > 1).map(([id]) => id),
+  const changeOf = useMemo(
+    () => new Map((changes ?? []).map((c) => [c.id, c.kind])),
+    [changes],
   );
 
-  // Fan-out lanes: the root's next steps that aren't the shared tail.
-  const root = roots[0];
-  const laneIds = root ? root.next.filter((id) => !tailIds.has(id)) : [];
-  const lanes = laneIds
-    .map((id) => byId.get(id))
-    .filter(Boolean) as WorkflowStep[];
-  const tail = [...tailIds]
-    .map((id) => byId.get(id))
-    .filter(Boolean) as WorkflowStep[];
+  // Removed steps aren't in `steps` — synthesize a node from the diff so the
+  // preview shows what's going away.
+  const removed = useMemo(
+    () => (changes ?? []).filter((c) => c.kind === "removed"),
+    [changes],
+  );
 
-  // Removed steps aren't in the proposed workflow's `steps`; surface them (struck)
-  // from the diff so the preview shows what's going away.
-  const removed = (changes ?? []).filter((c) => c.kind === "removed");
+  const initialNodes = useMemo<Node<NodeData>[]>(() => {
+    const real = workflow.steps.map((step) => ({
+      id: step.id,
+      type: "step",
+      position: { x: 0, y: 0 },
+      data: {
+        step,
+        status: statuses?.[step.id],
+        change: changeOf.get(step.id),
+      },
+    }));
+    const gone = removed.map((c) => ({
+      id: c.id,
+      type: "step",
+      position: { x: 0, y: 0 },
+      data: {
+        step: {
+          id: c.id,
+          kind: "approval" as const,
+          label: c.label,
+          when: { kind: "always" as const },
+          approverTitle: "",
+          approverName: null,
+          next: [],
+        },
+        change: "removed" as const,
+      },
+    }));
+    return [...real, ...gone];
+  }, [workflow, statuses, changeOf, removed]);
+
+  const edges = useMemo<Edge[]>(() => {
+    const out: Edge[] = [];
+    for (const s of workflow.steps)
+      for (const n of s.next)
+        out.push({
+          id: `${s.id}->${n}`,
+          source: s.id,
+          target: n,
+          animated: false,
+        });
+    return out;
+  }, [workflow]);
+
+  // Lay out deterministically (sizes derived from content) — no measurement round
+  // trip, so positions are right on the first render.
+  const laidOutNodes = useMemo(
+    () => layout(initialNodes, edges),
+    [initialNodes, edges],
+  );
+  const { fitView } = useReactFlow<Node<NodeData>>();
+
+  // Fit the view whenever the laid-out graph changes (new discovery / proposal).
+  useEffect(() => {
+    requestAnimationFrame(() => void fitView({ padding: 0.15, duration: 200 }));
+  }, [laidOutNodes, fitView]);
 
   return (
-    <div className="flex items-stretch gap-0 overflow-x-auto pb-2">
-      {/* Root gate */}
-      {root && (
-        <Column>
-          <StepNode
-            step={root}
-            status={statuses?.[root.id]}
-            change={changeOf.get(root.id)}
-          />
-        </Column>
-      )}
+    <ReactFlow
+      nodes={laidOutNodes}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      fitView
+      proOptions={{ hideAttribution: true }}
+      nodesDraggable={false}
+      nodesConnectable={false}
+      edgesFocusable={false}
+      minZoom={0.4}
+      maxZoom={1.5}
+    >
+      <Background gap={16} color="#E5E7EB" />
+    </ReactFlow>
+  );
+};
 
-      {lanes.length > 0 && (
-        <>
-          <Connector />
-          {/* Parallel lanes — stacked rows in one column */}
-          <Column>
-            {lanes.map((s) => (
-              <StepNode
-                key={s.id}
-                step={s}
-                status={statuses?.[s.id]}
-                change={changeOf.get(s.id)}
-              />
-            ))}
-          </Column>
-        </>
-      )}
-
-      {tail.length > 0 && (
-        <>
-          <Connector />
-          <Column>
-            {tail.map((s) => (
-              <StepNode
-                key={s.id}
-                step={s}
-                status={statuses?.[s.id]}
-                change={changeOf.get(s.id)}
-              />
-            ))}
-          </Column>
-        </>
-      )}
-
-      {removed.length > 0 && (
-        <>
-          <Connector />
-          <Column>
-            {removed.map((c) => (
-              <div
-                key={c.id}
-                className="rounded-lg bg-danger-soft/30 px-3 py-2 text-[13px] font-medium text-ink line-through opacity-60 ring-1 ring-inset ring-danger-line"
-              >
-                {c.label}
-              </div>
-            ))}
-          </Column>
-        </>
-      )}
+export const WorkflowGraph = (props: {
+  workflow: ApprovalWorkflow;
+  statuses?: StepStatuses;
+  changes?: StepChange[];
+}) => {
+  return (
+    <div className="h-full min-h-[320px] w-full">
+      <ReactFlowProvider>
+        <Inner {...props} />
+      </ReactFlowProvider>
     </div>
   );
 };
