@@ -79,29 +79,29 @@ const Header = () => {
   );
 };
 
-/** Logo mark: a clean closed loop (a cycle) — on the nose for "ledgerloop". */
+/** Logo mark: an "ll" monogram whose strokes curl into a loop — the ledgerloop
+    glyph (matches app/icon.svg). The second stroke is the accent. */
 const LogoMark = () => {
   return (
     <div
       aria-hidden
       className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-ink"
     >
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" aria-hidden>
-        {/* a near-full circle with a small gap, plus an arrowhead, reads as a loop */}
+      <svg viewBox="0 0 32 32" className="size-[19px]" fill="none" aria-hidden>
         <path
-          d="M19 12a7 7 0 1 1-2.5-5.36"
+          d="M12 7v12a4 4 0 0 0 4 4"
           stroke="white"
-          strokeWidth="2.3"
-          strokeLinecap="round"
-        />
-        <path
-          d="M16.5 3.5v3.2h-3.2"
-          stroke="white"
-          strokeWidth="2.3"
+          strokeWidth="3.1"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <circle cx="12" cy="12" r="2.1" className="fill-accent" />
+        <path
+          d="M20 7v12a4 4 0 0 0 4 4"
+          className="stroke-accent"
+          strokeWidth="3.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     </div>
   );
