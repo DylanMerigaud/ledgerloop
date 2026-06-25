@@ -23,6 +23,7 @@
     "sanity": "tsx src/mastra/sanity.ts",
     "eval": "tsx eval/run.ts",
     "eval:edit": "tsx eval/edit-run.ts",
+    "eval:edit-agent": "tsx eval/edit-agent-run.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

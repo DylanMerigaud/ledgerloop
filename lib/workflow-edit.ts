@@ -68,6 +68,28 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     })
     .strict(),
   z.object({ op: z.literal("remove-step"), stepId: z.string() }).strict(),
+  z
+    .object({
+      op: z.literal("insert-approval-after"),
+      /** Insert the new gate immediately AFTER this step (on its outgoing edges). */
+      afterStepId: z.string(),
+      label: z.string(),
+      approverTitle: z.string(),
+      amountOver: z.number().nullable(),
+      department: z.string().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("add-parallel-after"),
+      /** The new gate runs only once ALL of these steps have settled (AND-join). */
+      afterStepIds: z.array(z.string()),
+      label: z.string(),
+      approverTitle: z.string(),
+      amountOver: z.number().nullable(),
+      department: z.string().nullable(),
+    })
+    .strict(),
   /** The model couldn't map the instruction to a supported edit — change nothing. */
   z.object({ op: z.literal("none"), reason: z.string() }).strict(),
 ]);
@@ -200,7 +222,73 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       next.steps.push(newStep);
       return next;
     }
+
+    case "insert-approval-after": {
+      const after = next.steps.find((s) => s.id === op.afterStepId);
+      if (!after) return next; // unknown anchor — no-op
+      const id = uniqueId(next, slug(op.label));
+      const newStep: WorkflowStep = {
+        id,
+        kind: "approval",
+        label: op.label,
+        when: conditionFor(op.amountOver, op.department),
+        approverTitle: op.approverTitle,
+        approverName: null,
+        // The new gate takes over what `after` used to point at…
+        next: [...after.next],
+      };
+      // …and `after` now points only at the new gate (true insertion).
+      after.next = [id];
+      next.steps.push(newStep);
+      return wouldCycle(next) ? wf : next; // guard: never break the DAG
+    }
+
+    case "add-parallel-after": {
+      const anchors = next.steps.filter((s) => op.afterStepIds.includes(s.id));
+      if (anchors.length === 0) return next;
+      const id = uniqueId(next, slug(op.label));
+      // The new gate runs after ALL anchors (AND-join in the engine) and then flows
+      // into the post (the common convergence point), like the other gates.
+      const post = postStepId(next);
+      const newStep: WorkflowStep = {
+        id,
+        kind: "approval",
+        label: op.label,
+        when: conditionFor(op.amountOver, op.department),
+        approverTitle: op.approverTitle,
+        approverName: null,
+        next: post ? [post] : [],
+      };
+      for (const a of anchors) {
+        // Re-point each anchor to the new gate; drop a direct anchor→post edge so
+        // the post waits for the new gate instead of racing it.
+        a.next = [...new Set([...a.next.filter((n) => n !== post), id])];
+      }
+      next.steps.push(newStep);
+      return wouldCycle(next) ? wf : next;
+    }
   }
+};
+
+/** True if the step graph contains a cycle (Kahn: not all nodes emitted). */
+const wouldCycle = (wf: TWorkflow): boolean => {
+  const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
+  for (const s of wf.steps)
+    for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
+  const queue = [...indeg.entries()]
+    .filter(([, d]) => d === 0)
+    .map(([id]) => id);
+  const byId = new Map(wf.steps.map((s) => [s.id, s]));
+  let emitted = 0;
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+    emitted++;
+    for (const n of byId.get(id)?.next ?? []) {
+      const d = (indeg.get(n) ?? 0) - 1;
+      indeg.set(n, d);
+      if (d === 0) queue.push(n);
+    }
+  }
+  return emitted !== wf.steps.length;
 };
 
 /** Replace just the amount comparison inside a condition, keeping the rest. */
@@ -270,6 +358,8 @@ export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instr
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
 - set-approver: set the person on an existing approval step (by "stepId").
 - remove-step: remove a step by "stepId".
+- insert-approval-after: insert a new approval gate IMMEDIATELY AFTER one existing step (use "afterStepId"). Use this for "add a step between X and Y" or "after the manager, add …". Same label/approverTitle/amountOver/department fields as add-approval.
+- add-parallel-after: a new approval gate that runs only once ALL of the given steps have been approved (use "afterStepIds": a list). Use this for "after the two reviews, require a final sign-off" / "a step that waits for both X and Y". Same label/approverTitle/amountOver/department fields.
 - none: if the instruction doesn't map to any of the above, or asks for something already true — give a short "reason".
 
 Pick the SINGLE op that best matches. If the instruction asks for something the workflow already does, return "none" with a reason. Return only the JSON op.`;
@@ -290,3 +380,57 @@ export const editPrompt = (current: TWorkflow, instruction: string): string => {
 /** Validate a raw model JSON value into a WorkflowEditOp (or throw). */
 export const parseEditOp = (raw: unknown): WorkflowEditOp =>
   WorkflowEditOp.parse(raw);
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ *  Multi-op planning (the agent) — an ORDERED list of ops for one instruction
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** A flat ARRAY of ops — the agent's plan. (Array, not nested, so the grammar
+    stays in-bounds; the discriminated union itself is already small + flat.) */
+export const WorkflowEditPlan = z
+  .object({ ops: z.array(WorkflowEditOp) })
+  .strict();
+export type WorkflowEditPlan = z.infer<typeof WorkflowEditPlan>;
+
+export const parseEditPlan = (raw: unknown): WorkflowEditOp[] =>
+  WorkflowEditPlan.parse(raw).ops;
+
+export const WORKFLOW_PLAN_SYSTEM_PROMPT = `You translate a plain-language instruction (which may ask for SEVERAL changes) into an ORDERED list of structured edits for a procure-to-pay approval workflow, then I apply them in order and validate the result.
+
+Return { "ops": [ ... ] } where each op is one of:
+- add-approval { label, approverTitle, amountOver|null, department|null }: a new gate after the first step. Keep "label" a short title only.
+- add-integration { label, integration: "slack"|"jira"|"netsuite" }: a system action after the bill posts.
+- set-threshold { stepId, amountOver }: change an existing gate's amount threshold.
+- set-approver { stepId, approverName }: set the person on a gate.
+- remove-step { stepId }.
+- insert-approval-after { afterStepId, label, approverTitle, amountOver|null, department|null }: insert a gate immediately AFTER one step.
+- add-parallel-after { afterStepIds: [..], label, approverTitle, amountOver|null, department|null }: a gate that runs once ALL the listed steps are approved (use for "after X and Y, a step that waits on both").
+- none { reason }: only if NOTHING in the instruction maps to a supported edit.
+
+Rules:
+- Output the ops in the order they should be applied.
+- For a multi-part instruction ("add a CFO gate over $50k AND a Slack notice"), return one op per part.
+- Don't add something the workflow already has.
+- If I send you VALIDATION ISSUES from a previous attempt, return ops that FIX them (e.g. resolve an approver, merge a duplicate, add a second approver on a high-value path).
+Return only the JSON object.`;
+
+/** Prompt body for the planner: current steps (+ conditions) + the instruction, and
+    optionally the validation feedback from a previous attempt to correct. */
+export const planPrompt = (
+  current: TWorkflow,
+  instruction: string,
+  feedback?: { issues: { message: string }[]; triedOps: WorkflowEditOp[] },
+): string => {
+  const steps = current.steps
+    .map((s) => {
+      const who =
+        s.kind === "approval" ? `approver=${s.approverTitle}` : s.integration;
+      return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
+    })
+    .join("\n");
+  const base = `CURRENT STEPS:\n${steps}\n\nINSTRUCTION:\n${instruction}`;
+  if (!feedback || feedback.issues.length === 0)
+    return `${base}\n\nReturn the ordered ops as JSON.`;
+  const probs = feedback.issues.map((i) => `- ${i.message}`).join("\n");
+  return `${base}\n\nThe previous attempt left these problems — return ops that FIX them (and nothing that re-introduces them):\n${probs}\n\nReturn the corrected ops as JSON.`;
+};

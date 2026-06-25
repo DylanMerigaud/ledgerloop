@@ -26,6 +26,7 @@ import {
   type StepChange,
   humanizeCondition,
 } from "@/lib/approval-workflow";
+import type { WorkflowIssue } from "@/lib/workflow-validate";
 
 /**
  * The approval workflow as a real flow canvas (React Flow), laid out left→right by
@@ -109,11 +110,20 @@ type NodeData = {
   step: WorkflowStep;
   status?: string;
   change?: StepChange["kind"];
+  /** A validation issue flagged on this step (rings it warn/danger). */
+  issue?: "error" | "warning";
+};
+
+/** Ring/bg for a validation issue on a node (only used when there's no diff change). */
+const issueRing = (sev: "error" | "warning" | undefined): string => {
+  if (sev === "error") return "ring-danger-line bg-danger-soft/20";
+  if (sev === "warning") return "ring-warn-line bg-warn-soft/20";
+  return "ring-line";
 };
 
 /** A workflow step rendered as the app's card — used as a React Flow custom node. */
 const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
-  const { step, status, change } = data;
+  const { step, status, change, issue } = data;
   const st = statusTone(status);
   const cb = changeBadge(change);
   const isApproval = step.kind === "approval";
@@ -121,12 +131,13 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const unconditional = step.when.kind === "always";
 
   const badge = cb ?? st;
+  // Diff colours take precedence (when previewing an edit); otherwise show any
+  // validation issue ring.
+  const ring = change ? changeRing(change) : issueRing(issue);
 
   return (
     <div
-      className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ring-1 ring-inset ${changeRing(
-        change,
-      )} ${change === "removed" ? "opacity-60" : ""}`}
+      className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ring-1 ring-inset ${ring} ${change === "removed" ? "opacity-60" : ""}`}
     >
       <Handle
         type="target"
@@ -307,15 +318,27 @@ const Inner = ({
   workflow,
   statuses,
   changes,
+  issues,
 }: {
   workflow: ApprovalWorkflow;
   statuses?: StepStatuses;
   changes?: StepChange[];
+  issues?: WorkflowIssue[];
 }) => {
   const changeOf = useMemo(
     () => new Map((changes ?? []).map((c) => [c.id, c.kind])),
     [changes],
   );
+
+  // Highest-severity issue per step id (error beats warning), for the node rings.
+  const issueOf = useMemo(() => {
+    const m = new Map<string, "error" | "warning">();
+    for (const iss of issues ?? [])
+      for (const id of iss.stepIds) {
+        if (iss.severity === "error" || !m.has(id)) m.set(id, iss.severity);
+      }
+    return m;
+  }, [issues]);
 
   // Removed steps aren't in `steps` — synthesize a node from the diff so the
   // preview shows what's going away.
@@ -333,6 +356,7 @@ const Inner = ({
         step,
         status: statuses?.[step.id],
         change: changeOf.get(step.id),
+        issue: issueOf.get(step.id),
       },
     }));
     const gone = removed.map((c) => ({
@@ -353,7 +377,7 @@ const Inner = ({
       },
     }));
     return [...real, ...gone];
-  }, [workflow, statuses, changeOf, removed]);
+  }, [workflow, statuses, changeOf, removed, issueOf]);
 
   const edges = useMemo<Edge[]>(() => {
     const out: Edge[] = [];
@@ -440,6 +464,7 @@ export const WorkflowGraph = (props: {
   workflow: ApprovalWorkflow;
   statuses?: StepStatuses;
   changes?: StepChange[];
+  issues?: WorkflowIssue[];
 }) => {
   return (
     <div className="h-full min-h-[320px] w-full">

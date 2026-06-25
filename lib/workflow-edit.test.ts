@@ -169,6 +169,103 @@ test("an approval added AFTER a notification converges on the ERP post", () => {
   assert.ok(!slack.next.includes(vp.id), "slack does not point at the gate");
 });
 
+test("insert-approval-after: sits the new gate BETWEEN the anchor and what followed", () => {
+  // base: manager → {director, post}; director → post. Insert after the director.
+  const next = applyEditOp(base, {
+    op: "insert-approval-after",
+    afterStepId: "director",
+    label: "CFO review",
+    approverTitle: "CFO",
+    amountOver: null,
+    department: null,
+  });
+  const cfo = next.steps.find((s) => s.label === "CFO review");
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.ok(cfo && dir);
+  assert.deepEqual(
+    dir.next,
+    [cfo.id],
+    "director now points only at the new gate",
+  );
+  assert.deepEqual(
+    cfo.next,
+    ["post"],
+    "the new gate inherits director's old next",
+  );
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+});
+
+test("add-parallel-after: new gate waits on ALL anchors, then flows to the post", () => {
+  const next = applyEditOp(base, {
+    op: "add-parallel-after",
+    afterStepIds: ["manager", "director"],
+    label: "Final sign-off",
+    approverTitle: "Controller",
+    amountOver: null,
+    department: null,
+  });
+  const fin = next.steps.find((s) => s.label === "Final sign-off");
+  const mgr = next.steps.find((s) => s.id === "manager");
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.ok(fin && mgr && dir);
+  assert.ok(mgr.next.includes(fin.id), "manager → final");
+  assert.ok(dir.next.includes(fin.id), "director → final");
+  assert.deepEqual(fin.next, ["post"], "final → post");
+  // Anchors no longer race the post directly (manager's old direct post edge dropped).
+  assert.ok(
+    !mgr.next.includes("post"),
+    "manager no longer points straight at post",
+  );
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+});
+
+test("add-parallel-after that would cycle is rejected (workflow unchanged)", () => {
+  // a → b → post. A parallel gate after [a, post] would need post → newGate AND
+  // newGate → post (its convergence) = a cycle. The guard returns base untouched.
+  const wf: TWorkflow = {
+    name: "g",
+    roots: ["a"],
+    steps: [
+      {
+        id: "a",
+        kind: "approval",
+        label: "A",
+        when: { kind: "always" },
+        approverTitle: "A",
+        approverName: "x",
+        next: ["b"],
+      },
+      {
+        id: "b",
+        kind: "approval",
+        label: "B",
+        when: { kind: "always" },
+        approverTitle: "B",
+        approverName: "y",
+        next: ["post"],
+      },
+      {
+        id: "post",
+        kind: "integration",
+        label: "Post",
+        when: { kind: "always" },
+        integration: "netsuite",
+        next: [],
+      },
+    ],
+  };
+  const before = JSON.stringify(wf);
+  const next = applyEditOp(wf, {
+    op: "add-parallel-after",
+    afterStepIds: ["a", "post"], // post is the convergence → would loop
+    label: "Loopy",
+    approverTitle: "X",
+    amountOver: null,
+    department: null,
+  });
+  assert.equal(JSON.stringify(next), before, "cycle guard kept it unchanged");
+});
+
 test("set-threshold: changes only the targeted gate's amount", () => {
   const next = applyEditOp(base, {
     op: "set-threshold",
