@@ -68,6 +68,28 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     })
     .strict(),
   z.object({ op: z.literal("remove-step"), stepId: z.string() }).strict(),
+  z
+    .object({
+      op: z.literal("insert-approval-after"),
+      /** Insert the new gate immediately AFTER this step (on its outgoing edges). */
+      afterStepId: z.string(),
+      label: z.string(),
+      approverTitle: z.string(),
+      amountOver: z.number().nullable(),
+      department: z.string().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("add-parallel-after"),
+      /** The new gate runs only once ALL of these steps have settled (AND-join). */
+      afterStepIds: z.array(z.string()),
+      label: z.string(),
+      approverTitle: z.string(),
+      amountOver: z.number().nullable(),
+      department: z.string().nullable(),
+    })
+    .strict(),
   /** The model couldn't map the instruction to a supported edit — change nothing. */
   z.object({ op: z.literal("none"), reason: z.string() }).strict(),
 ]);
@@ -200,7 +222,73 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       next.steps.push(newStep);
       return next;
     }
+
+    case "insert-approval-after": {
+      const after = next.steps.find((s) => s.id === op.afterStepId);
+      if (!after) return next; // unknown anchor — no-op
+      const id = uniqueId(next, slug(op.label));
+      const newStep: WorkflowStep = {
+        id,
+        kind: "approval",
+        label: op.label,
+        when: conditionFor(op.amountOver, op.department),
+        approverTitle: op.approverTitle,
+        approverName: null,
+        // The new gate takes over what `after` used to point at…
+        next: [...after.next],
+      };
+      // …and `after` now points only at the new gate (true insertion).
+      after.next = [id];
+      next.steps.push(newStep);
+      return wouldCycle(next) ? wf : next; // guard: never break the DAG
+    }
+
+    case "add-parallel-after": {
+      const anchors = next.steps.filter((s) => op.afterStepIds.includes(s.id));
+      if (anchors.length === 0) return next;
+      const id = uniqueId(next, slug(op.label));
+      // The new gate runs after ALL anchors (AND-join in the engine) and then flows
+      // into the post (the common convergence point), like the other gates.
+      const post = postStepId(next);
+      const newStep: WorkflowStep = {
+        id,
+        kind: "approval",
+        label: op.label,
+        when: conditionFor(op.amountOver, op.department),
+        approverTitle: op.approverTitle,
+        approverName: null,
+        next: post ? [post] : [],
+      };
+      for (const a of anchors) {
+        // Re-point each anchor to the new gate; drop a direct anchor→post edge so
+        // the post waits for the new gate instead of racing it.
+        a.next = [...new Set([...a.next.filter((n) => n !== post), id])];
+      }
+      next.steps.push(newStep);
+      return wouldCycle(next) ? wf : next;
+    }
   }
+};
+
+/** True if the step graph contains a cycle (Kahn: not all nodes emitted). */
+const wouldCycle = (wf: TWorkflow): boolean => {
+  const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
+  for (const s of wf.steps)
+    for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
+  const queue = [...indeg.entries()]
+    .filter(([, d]) => d === 0)
+    .map(([id]) => id);
+  const byId = new Map(wf.steps.map((s) => [s.id, s]));
+  let emitted = 0;
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+    emitted++;
+    for (const n of byId.get(id)?.next ?? []) {
+      const d = (indeg.get(n) ?? 0) - 1;
+      indeg.set(n, d);
+      if (d === 0) queue.push(n);
+    }
+  }
+  return emitted !== wf.steps.length;
 };
 
 /** Replace just the amount comparison inside a condition, keeping the rest. */
@@ -270,6 +358,8 @@ export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instr
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
 - set-approver: set the person on an existing approval step (by "stepId").
 - remove-step: remove a step by "stepId".
+- insert-approval-after: insert a new approval gate IMMEDIATELY AFTER one existing step (use "afterStepId"). Use this for "add a step between X and Y" or "after the manager, add …". Same label/approverTitle/amountOver/department fields as add-approval.
+- add-parallel-after: a new approval gate that runs only once ALL of the given steps have been approved (use "afterStepIds": a list). Use this for "after the two reviews, require a final sign-off" / "a step that waits for both X and Y". Same label/approverTitle/amountOver/department fields.
 - none: if the instruction doesn't map to any of the above, or asks for something already true — give a short "reason".
 
 Pick the SINGLE op that best matches. If the instruction asks for something the workflow already does, return "none" with a reason. Return only the JSON op.`;

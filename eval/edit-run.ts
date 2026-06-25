@@ -123,6 +123,10 @@ const stubOp = (c: EditCase): WorkflowEditOp => {
       return { op: "remove-step", stepId: "it-review" };
     case "none":
       return { op: "none", reason: "stub" };
+    default:
+      // The insert/parallel ops aren't in this eval's corpus yet; fail loudly if a
+      // case ever expects one without a stub.
+      throw new Error(`no stub for expectedOp "${c.expectedOp}"`);
   }
 };
 
