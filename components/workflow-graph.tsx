@@ -290,6 +290,25 @@ const layout = (
     childrenOf.set(e.source, [...(childrenOf.get(e.source) ?? []), e.target]);
     parentsOf.set(e.target, [...(parentsOf.get(e.target) ?? []), e.source]);
   }
+
+  // SIBLING ORDER (top→bottom) follows the parent's `next` order, NOT dagre's
+  // crossing-minimisation (which can reshuffle). We keep the exact Y-slots dagre
+  // computed for a parent's children (so spacing + measured heights are respected),
+  // but RE-ASSIGN those slots to the children in `next` order. Only for siblings
+  // that belong to a single parent (true fan-out branches) — a shared join node
+  // like the post isn't reordered.
+  for (const [, children] of childrenOf) {
+    const branches = children.filter(
+      (c) => (parentsOf.get(c) ?? []).length === 1,
+    );
+    if (branches.length < 2) continue;
+    // The Y-slots these branches currently occupy, top→bottom.
+    const slots = branches.map((c) => cy.get(c) ?? 0).sort((a, b) => a - b);
+    // `branches` is already in `next` order (childrenOf is built from edge order),
+    // so assign the i-th branch to the i-th slot from the top.
+    branches.forEach((c, i) => cy.set(c, slots[i] ?? cy.get(c) ?? 0));
+  }
+
   // Parents centered on their children (right→left so children settle first).
   for (const id of [...g.nodes()].sort((a, b) => g.node(b).x - g.node(a).x)) {
     const kids = childrenOf.get(id) ?? [];

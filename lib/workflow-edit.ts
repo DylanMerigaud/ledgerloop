@@ -96,6 +96,15 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     .strict(),
   z
     .object({
+      op: z.literal("reorder-branches"),
+      /** The parent whose parallel branches to reorder, top→bottom. */
+      parentStepId: z.string(),
+      /** The branch step ids in the desired top→bottom order. */
+      order: z.array(z.string()),
+    })
+    .strict(),
+  z
+    .object({
       op: z.literal("insert-approval-after"),
       /** Insert the new gate immediately AFTER this step (on its outgoing edges). */
       afterStepId: z.string(),
@@ -241,20 +250,38 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       const anchor = next.steps.find((s) => s.id === op.afterStepId);
       if (!moved || !anchor || moved.id === anchor.id) return next;
       const movedNext = [...moved.next];
-      // 1. Unhook the moved step: its old predecessors bypass it to its successors.
+      // 1. Unhook the moved step from its old predecessors. Only BYPASS (re-point the
+      //    predecessor at the moved step's successors) when that predecessor would
+      //    otherwise be left with NO way forward — i.e. it relied solely on the moved
+      //    step (a linear chain). When the predecessor has OTHER branches (extracting
+      //    one branch out of a fan-out), drop the edge cleanly with no bypass, so
+      //    "2 parallel → sequential" yields a clean chain, not a stray edge.
       for (const s of next.steps) {
-        if (s.id === moved.id) continue;
-        if (s.next.includes(moved.id)) {
-          s.next = [
-            ...new Set([...s.next.filter((n) => n !== moved.id), ...movedNext]),
-          ];
-        }
+        if (s.id === moved.id || !s.next.includes(moved.id)) continue;
+        const withoutMoved = s.next.filter((n) => n !== moved.id);
+        s.next =
+          withoutMoved.length === 0
+            ? [...new Set(movedNext)] // sole path forward → bypass to keep flow
+            : withoutMoved; // had other branches → clean drop
       }
       next.roots = next.roots.filter((r) => r !== moved.id);
       // 2. Re-insert after the anchor: anchor → moved → anchor's old successors.
       moved.next = [...anchor.next];
       anchor.next = [moved.id];
       return wouldCycle(next) ? wf : next;
+    }
+
+    case "reorder-branches": {
+      const parent = next.steps.find((s) => s.id === op.parentStepId);
+      if (!parent) return next;
+      // Reorder `next` to match the requested top→bottom order. Keep only ids that
+      // are actually current children; append any current child the model omitted so
+      // we never silently drop an edge.
+      const current = new Set(parent.next);
+      const ordered = op.order.filter((id) => current.has(id));
+      const rest = parent.next.filter((id) => !ordered.includes(id));
+      parent.next = [...ordered, ...rest];
+      return next;
     }
 
     case "add-approval": {
@@ -436,6 +463,7 @@ export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instr
 - rename-step: change a step's title/label (by "stepId", set "label"). Use for "rename X to Y" / "call it Z".
 - duplicate-step: copy an existing step (by "stepId", set "label" for the copy). Use for "duplicate X" / "add another like X".
 - move-step: relocate an existing step to immediately AFTER another (by "stepId" + "afterStepId"). Use for "move X after Y" / "put X before the post".
+- reorder-branches: change the TOP→BOTTOM order of a parent's parallel branches (by "parentStepId" + "order": the branch step ids in the wanted order). Use for "swap the two reviews" / "put the IT review above the director review". This only changes the visual order of parallel branches, nothing structural.
 - insert-approval-after: insert a new approval gate IMMEDIATELY AFTER one existing step (use "afterStepId"). Use this for "add a step between X and Y" or "after the manager, add …". Same label/approverTitle/amountOver/department fields as add-approval.
 - add-parallel-after: a new approval gate that runs only once ALL of the given steps have been approved (use "afterStepIds": a list). Use this for "after the two reviews, require a final sign-off" / "a step that waits for both X and Y". Same label/approverTitle/amountOver/department fields.
 - none: if the instruction doesn't map to any of the above, or asks for something already true — give a short "reason".
@@ -484,6 +512,7 @@ Return { "ops": [ ... ] } where each op is one of:
 - rename-step { stepId, label }: change a step's title.
 - duplicate-step { stepId, label }: copy an existing step.
 - move-step { stepId, afterStepId }: relocate an existing step to after another.
+- reorder-branches { parentStepId, order: [..] }: set the top→bottom order of a parent's parallel branches ("swap the two reviews").
 - insert-approval-after { afterStepId, label, approverTitle, amountOver|null, department|null }: insert a gate immediately AFTER one step.
 - add-parallel-after { afterStepIds: [..], label, approverTitle, amountOver|null, department|null }: a gate that runs once ALL the listed steps are approved (use for "after X and Y, a step that waits on both").
 - none { reason }: only if NOTHING in the instruction maps to a supported edit.
