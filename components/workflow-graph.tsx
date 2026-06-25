@@ -6,6 +6,9 @@ import {
   Handle,
   Position,
   useReactFlow,
+  useNodesInitialized,
+  useNodesState,
+  useEdgesState,
   ReactFlowProvider,
   type Node,
   type Edge,
@@ -13,9 +16,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { SlackIcon, NetSuiteIcon, JiraIcon } from "@/components/ui/brand-icon";
 import {
   type ApprovalWorkflow,
   type WorkflowStep,
@@ -26,10 +30,11 @@ import {
 /**
  * The approval workflow as a real flow canvas (React Flow), laid out left→right by
  * dagre. The category convention is a node-and-edge canvas; this is that, in the
- * app's own card style. Nodes are VARIABLE height (an approval card with an
- * approver + a condition is taller than a bare integration), so we let React Flow
- * MEASURE each node first, then run dagre with the real dimensions — no guessing,
- * clean spacing whatever the content.
+ * app's own card style. Nodes are VARIABLE height (a 2-line title or a `when` chip
+ * makes a card taller), so we render them hidden first, let React Flow MEASURE each
+ * card, then run dagre with the real heights and reveal — the measured pattern from
+ * reactflow-auto-layout. Wiring `onNodesChange` (via useNodesState) is what lets the
+ * measurements flow back so `useNodesInitialized` flips and the layout runs.
  *
  * The same component renders three things off one workflow: the derived workflow
  * (onboarding), a proposed edit (diff colours via `changes`), and a live run
@@ -61,14 +66,21 @@ const statusTone = (
   }
 };
 
-const integrationGlyph = (kind: string): string =>
-  kind === "netsuite"
-    ? "NS"
-    : kind === "slack"
-      ? "#"
-      : kind === "jira"
-        ? "J"
-        : "→";
+/** The real brand mark + display name for an integration kind. */
+const integrationBrand = (
+  kind: string,
+): { Icon: (p: { size?: number }) => React.ReactNode; name: string } => {
+  switch (kind) {
+    case "slack":
+      return { Icon: SlackIcon, name: "Slack" };
+    case "netsuite":
+      return { Icon: NetSuiteIcon, name: "NetSuite" };
+    case "jira":
+      return { Icon: JiraIcon, name: "Jira" };
+    default:
+      return { Icon: () => <span className="text-faint">→</span>, name: kind };
+  }
+};
 
 const changeRing = (change: StepChange["kind"] | undefined): string => {
   switch (change) {
@@ -108,64 +120,85 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const condition = describeCondition(step.when);
   const unconditional = step.when.kind === "always";
 
+  const badge = cb ?? st;
+
   return (
     <div
-      className={`w-60 rounded-xl bg-surface px-3 py-2.5 shadow-card ring-1 ring-inset ${changeRing(
+      className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ring-1 ring-inset ${changeRing(
         change,
-      )} ${change === "removed" ? "opacity-60 line-through" : ""}`}
+      )} ${change === "removed" ? "opacity-60" : ""}`}
     >
       <Handle
         type="target"
         position={Position.Left}
         className="!size-1.5 !border-0 !bg-line-strong"
       />
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
-          {isApproval ? (
-            <span className="grid size-5 place-items-center rounded-full bg-subtle text-[10px] text-muted ring-1 ring-inset ring-line-strong">
-              ✓
-            </span>
-          ) : (
-            <span className="grid size-5 place-items-center rounded-full bg-accent/10 text-[9px] font-semibold text-accent ring-1 ring-inset ring-accent/20">
-              {integrationGlyph((step as { integration: string }).integration)}
-            </span>
-          )}
-          {step.label}
-        </span>
-        {cb ? (
-          <Badge tone={cb.tone}>{cb.label}</Badge>
-        ) : (
-          st && <Badge tone={st.tone}>{st.label}</Badge>
-        )}
+
+      {/* status / change badge on top, like the reference card */}
+      {badge && (
+        <div className="mb-1.5">
+          <Badge tone={badge.tone}>{badge.label}</Badge>
+        </div>
+      )}
+
+      {/* the step title */}
+      <div
+        className={`text-[13.5px] font-semibold leading-snug text-ink ${
+          change === "removed" ? "line-through" : ""
+        }`}
+      >
+        {step.label}
       </div>
 
-      {isApproval && (
-        <div className="mt-1.5 flex items-center gap-1.5 pl-7 text-[11px]">
+      {/* the labeled detail block: Approver (person) or Integration (logo) */}
+      {isApproval ? (
+        <div className="mt-2">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-faint">
+            Approver
+          </div>
           {step.approverName ? (
-            <>
-              <span className="grid size-4 place-items-center rounded-full bg-accent/15 text-[8px] font-semibold uppercase text-accent">
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="grid size-[18px] place-items-center rounded-full bg-accent-soft text-[8px] font-semibold uppercase text-accent">
                 {step.approverName
                   .split(" ")
                   .map((p) => p[0])
                   .slice(0, 2)
                   .join("")}
               </span>
-              <span className="text-muted">
-                {step.approverName}{" "}
-                <span className="text-muted/70">· {step.approverTitle}</span>
+              <span className="truncate text-[12px] font-medium text-ink">
+                {step.approverName}
               </span>
-            </>
+            </div>
           ) : (
-            <span className="font-medium text-warn">
-              ⚠ unresolved — {step.approverTitle}
-            </span>
+            <div className="mt-1 text-[11.5px] font-medium text-warn">
+              ⚠ unresolved · {step.approverTitle}
+            </div>
           )}
+        </div>
+      ) : (
+        <div className="mt-2">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-faint">
+            Integration
+          </div>
+          <div className="mt-1 flex items-center gap-1.5">
+            {(() => {
+              const { Icon, name } = integrationBrand(step.integration);
+              return (
+                <>
+                  <Icon size={16} />
+                  <span className="text-[12px] font-medium text-ink">
+                    {name}
+                  </span>
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
 
       {!unconditional && (
-        <div className="mt-1.5 pl-7">
-          <span className="rounded-md bg-subtle px-1.5 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line-strong">
+        <div className="mt-2">
+          <span className="inline-block rounded-md bg-subtle px-1.5 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line-strong">
             when {condition}
           </span>
         </div>
@@ -183,34 +216,59 @@ const nodeTypes = { step: StepNode };
 
 /* ── layout ────────────────────────────────────────────────────────────────── */
 
-// Fixed node box for layout. Width is fixed (`w-60` = 240px). Height is derived
-// DETERMINISTICALLY from the card's content (no measurement round-trip — that
-// timing was unreliable in React Flow): a header row, plus an approver row and/or
-// a condition chip when present. Generous enough that dagre never overlaps.
-const NODE_WIDTH = 240;
-const nodeHeight = (step: WorkflowStep): number => {
-  let h = 40; // header row + padding
-  if (step.kind === "approval") h += 22; // approver / unresolved line
-  if (step.when.kind !== "always") h += 24; // the `when …` chip
+// Card width is fixed (244px). Heights are VARIABLE (a 2-line title or a `when`
+// chip makes a card taller), and guessing them is what threw the centering off —
+// so we lay out with REAL measured heights (React Flow's ResizeObserver fills
+// `node.measured.height`). `estimateHeight` is only the pre-measurement fallback
+// for the very first paint, before measurements land.
+const NODE_WIDTH = 244;
+const estimateHeight = (data: NodeData): number => {
+  const hasBadge = data.change != null || statusTone(data.status) != null;
+  let h = 24 + 20 + 24; // padding + title + detail block
+  if (hasBadge) h += 24; // the status / change badge row + its margin
+  if (data.step.when.kind !== "always") h += 26; // the `when …` chip
   return h;
 };
 
-/** Run dagre with deterministic node sizes; return positioned nodes (LR). */
-const layout = (nodes: Node<NodeData>[], edges: Edge[]): Node<NodeData>[] => {
+const NODE_SEP = 40; // vertical gap between siblings
+const RANK_SEP = 110; // horizontal gap between columns (generous, Pivot-like)
+
+/**
+ * Lay out the graph LR with dagre. Heights are REAL measured heights (a `when` chip
+ * or a 2-line title makes a card taller — guessing that is what threw the centering
+ * off). `ranker: "tight-tree"` packs and centers the tree so a parent sits on the
+ * middle of its children — the balanced look from reactflow-auto-layout's dagre-tree
+ * algorithm, no hand-rolled centering pass needed.
+ */
+const layout = (
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+  heightOf: (n: Node<NodeData>) => number,
+): Node<NodeData>[] => {
+  const h = new Map(nodes.map((n) => [n.id, heightOf(n)]));
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "LR", nodesep: 28, ranksep: 64 });
+  g.setGraph({
+    rankdir: "LR",
+    nodesep: NODE_SEP,
+    ranksep: RANK_SEP,
+    ranker: "tight-tree",
+  });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of nodes) {
-    g.setNode(n.id, { width: NODE_WIDTH, height: nodeHeight(n.data.step) });
+    g.setNode(n.id, { width: NODE_WIDTH, height: h.get(n.id) ?? 80 });
   }
   for (const e of edges) g.setEdge(e.source, e.target);
   dagre.layout(g);
+
   return nodes.map((n) => {
     const node = g.node(n.id);
     // dagre gives the center; React Flow positions by top-left.
     return {
       ...n,
-      position: { x: node.x - node.width / 2, y: node.y - node.height / 2 },
+      position: {
+        x: node.x - node.width / 2,
+        y: node.y - node.height / 2,
+      },
     };
   });
 };
@@ -277,30 +335,67 @@ const Inner = ({
           id: `${s.id}->${n}`,
           source: s.id,
           target: n,
+          // Rounded elbow connectors (like the reference) instead of beziers.
+          type: "smoothstep",
           animated: false,
+          style: { stroke: "#CBCDD4", strokeWidth: 1.5 },
         });
     return out;
   }, [workflow]);
 
-  // Lay out deterministically (sizes derived from content) — no measurement round
-  // trip, so positions are right on the first render.
-  const laidOutNodes = useMemo(
-    () => layout(initialNodes, edges),
-    [initialNodes, edges],
-  );
   const { fitView } = useReactFlow<Node<NodeData>>();
 
-  // Fit the view whenever the laid-out graph changes (new discovery / proposal).
+  // Controlled node/edge state with React Flow's own reducers — this wires
+  // `onNodesChange`, so the ResizeObserver's measurements flow back into the store
+  // and `useNodesInitialized` actually flips to true (without onNodesChange it
+  // never does, and the layout never runs). Nodes start HIDDEN at 0,0.
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(
+    initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
+  );
+  const [rfEdges, setEdges, onEdgesChange] = useEdgesState<Edge>(edges);
+
+  // True once every current node has been measured. Resets when the set changes.
+  const initialized = useNodesInitialized();
+
+  // When the source graph changes (new discovery / edit), reset to the new nodes
+  // HIDDEN so they get re-measured, and mark that this set still needs a layout.
+  const laidOutFor = useRef<string>("");
+  const graphKey = useMemo(
+    () => initialNodes.map((n) => n.id).join("|") + "::" + edges.length,
+    [initialNodes, edges],
+  );
   useEffect(() => {
-    requestAnimationFrame(() => void fitView({ padding: 0.15, duration: 200 }));
-  }, [laidOutNodes, fitView]);
+    setNodes(
+      initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
+    );
+    setEdges(edges);
+    laidOutFor.current = ""; // force a fresh layout for the new graph
+  }, [initialNodes, edges, setNodes, setEdges]);
+
+  // Once measured, lay out with the REAL (measured) heights, reveal, and fit. The
+  // ref guard makes this run once per graph (its own setNodes re-renders but won't
+  // re-enter, since the key is already marked done).
+  useEffect(() => {
+    if (!initialized || laidOutFor.current === graphKey) return;
+    laidOutFor.current = graphKey;
+    setNodes((cur) => {
+      const measured = new Map(cur.map((n) => [n.id, n.measured?.height]));
+      return layout(
+        initialNodes,
+        edges,
+        (n) => measured.get(n.id) ?? estimateHeight(n.data),
+      ).map((n) => ({ ...n, style: { visibility: "visible" } }));
+    });
+    requestAnimationFrame(() => void fitView({ padding: 0.18, duration: 200 }));
+  }, [initialized, graphKey, initialNodes, edges, setNodes, fitView]);
 
   return (
     <ReactFlow
-      nodes={laidOutNodes}
-      edges={edges}
+      nodes={nodes}
+      edges={rfEdges}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
-      fitView
       proOptions={{ hideAttribution: true }}
       nodesDraggable={false}
       nodesConnectable={false}

@@ -3,9 +3,11 @@
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { BambooHrIcon } from "@/components/ui/brand-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
+import { WorkflowGraph } from "@/components/workflow-graph";
 import { API_ROUTES } from "@/lib/api-routes";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 
@@ -48,6 +50,8 @@ type OnboardingResponse = {
     summary: string;
   };
   issues: { employeeName: string; detail: string; note: string }[];
+  /** Up to three AI-generated next-edit suggestions for the derived workflow. */
+  suggestions: string[];
 };
 
 type State =
@@ -89,30 +93,41 @@ export const Onboarding = () => {
           )}
         </CardHeader>
         <div className="scrollbar-slim flex flex-1 flex-col gap-4 overflow-y-auto p-5">
-          <p className="text-[13.5px] leading-relaxed text-muted">
-            Point the agent at the client&apos;s HR system. It reads the org
-            chart, derives who signs off on what (resolved to real people), and
-            flags the data issues to fix before going live.
-          </p>
-          <Button
-            onClick={discover}
-            loading={state.status === "running"}
-            className="w-full"
-          >
-            {state.status === "running"
-              ? "Reading org & deriving workflow…"
-              : state.status === "done"
-                ? "Re-run discovery"
-                : "Discover from BambooHR"}
-          </Button>
+          {/* The pitch is only useful BEFORE a run — once results are in, it just
+              repeats what the panel now shows, so drop it. */}
+          {state.status !== "done" && (
+            <p className="text-[13px] leading-relaxed text-muted">
+              Point the agent at the client&apos;s HR system. It reads the org
+              chart, derives who signs off on what (resolved to real people),
+              and flags the data issues to fix before going live.
+            </p>
+          )}
+          <div>
+            <Button onClick={discover} loading={state.status === "running"}>
+              {state.status === "running" ? (
+                "Reading org…"
+              ) : state.status === "done" ? (
+                "Re-run discovery"
+              ) : (
+                <>
+                  <BambooHrIcon size={15} />
+                  Discover from BambooHR
+                </>
+              )}
+            </Button>
+          </div>
 
           {state.status === "error" && (
-            <div className="rounded-xl bg-danger-soft px-3.5 py-2.5 text-[12px] text-danger ring-1 ring-inset ring-danger-line/70">
+            <div className="rounded-lg bg-danger-soft px-3.5 py-2.5 text-[12px] text-danger ring-1 ring-inset ring-danger-line/70">
               {state.message}
             </div>
           )}
 
-          {state.status === "done" && <DiscoverySummary data={state.data} />}
+          {state.status === "done" ? (
+            <DiscoverySummary data={state.data} />
+          ) : (
+            <DiscoveryPreview running={state.status === "running"} />
+          )}
         </div>
       </Card>
 
@@ -132,6 +147,7 @@ export const Onboarding = () => {
             <WorkflowEditor
               key={state.data.workflow.name + state.data.employeeCount}
               initial={state.data.workflow}
+              suggestions={state.data.suggestions}
             />
           ) : (
             <EmptyState running={state.status === "running"} />
@@ -142,10 +158,22 @@ export const Onboarding = () => {
   );
 };
 
+/** Initials for an avatar chip ("Riley Carter" → "RC"). */
+const initials = (name: string): string =>
+  name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+
 /**
- * The org as a reporting tree (roots at top, reports nested), with people the
- * agent flagged highlighted — so a viewer can see the data issues against the real
- * chart (the junk record, the orphan with no manager) instead of just a count.
+ * The org as a reporting tree (roots at top, reports nested under a guide rail),
+ * with flagged people marked by a warn ring on their avatar — so a viewer can see
+ * the data issues against the real chart (the junk record, the orphan with no
+ * manager) instead of just a count. Scrolls inside a capped box so a real 90-person
+ * org doesn't push the rest of the panel off screen.
  */
 const OrgTree = ({
   employees,
@@ -172,82 +200,103 @@ const OrgTree = ({
     childrenOf.set(key, list);
   }
 
-  const renderNodes = (
-    parent: string | null,
-    depth: number,
-  ): React.ReactNode => {
+  const renderNodes = (parent: string | null): React.ReactNode => {
     const nodes = childrenOf.get(parent) ?? [];
-    return nodes.map((e) => (
-      <div key={e.id}>
-        <div
-          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] ${
-            flagged.has(e.id)
-              ? "bg-warn-soft/80 ring-1 ring-inset ring-warn-line/60"
-              : ""
-          }`}
-          style={{ marginLeft: depth * 14 }}
-        >
-          {depth > 0 && <span className="text-faint/60">└</span>}
-          <span className="font-medium text-ink">{e.name}</span>
-          <span className="text-faint">
-            {e.title ? `· ${e.title}` : "· (no title)"}
-          </span>
-          {flagged.has(e.id) && <span className="ml-auto text-warn">⚠</span>}
+    return nodes.map((e) => {
+      const isFlagged = flagged.has(e.id);
+      const children = renderNodes(e.id);
+      return (
+        <div key={e.id}>
+          <div className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-surface">
+            <span
+              className={`grid size-[22px] shrink-0 place-items-center rounded-full text-[9px] font-semibold ${
+                isFlagged
+                  ? "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
+                  : "bg-surface text-muted ring-1 ring-inset ring-line-strong"
+              }`}
+            >
+              {initials(e.name)}
+            </span>
+            <span className="min-w-0 flex-1 truncate">
+              <span className="text-[12px] font-medium text-ink">{e.name}</span>
+              <span className="ml-1 text-[11px] text-faint">
+                {e.title || "(no title)"}
+              </span>
+            </span>
+            {isFlagged && (
+              <span className="shrink-0 text-[11px] text-warn" title="flagged">
+                ⚠
+              </span>
+            )}
+          </div>
+          {/* reports nest under a guide rail, not ASCII connectors */}
+          {children && (
+            <div className="ml-[10px] border-l border-line pl-3">
+              {children}
+            </div>
+          )}
         </div>
-        {renderNodes(e.id, depth + 1)}
-      </div>
-    ));
+      );
+    });
   };
 
-  return <div className="space-y-0.5">{renderNodes(null, 0)}</div>;
+  return (
+    <div className="scrollbar-slim max-h-72 space-y-0.5 overflow-y-auto">
+      {renderNodes(null)}
+    </div>
+  );
 };
 
 const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
+  const resolved = data.proposal.roles.filter((r) => r.employeeName).length;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="ok">{data.employeeCount} employees read</Badge>
+        <Badge tone="ok">{data.employeeCount} employees</Badge>
+        <Badge tone="neutral">
+          {resolved}/{data.proposal.roles.length} approvers resolved
+        </Badge>
         {data.issues.length > 0 && (
-          <Badge tone="warn">{data.issues.length} issues flagged</Badge>
+          <Badge tone="warn">{data.issues.length} to fix</Badge>
         )}
       </div>
 
-      <p className="text-[13px] leading-relaxed text-ink/90">
-        {data.proposal.summary}
-      </p>
+      {/* (The agent's prose summary was dropped — it duplicated the workflow on the
+          right and the resolved-approvers + issues already shown below.) */}
 
-      {/* The org the agent read — flagged people highlighted so the issues are
-          legible against the actual chart. */}
+      {/* The org the agent read — flagged people marked against the real chart. */}
       <section className="space-y-2">
-        <Eyebrow>Org chart ({data.employees.length})</Eyebrow>
-        <div className="rounded-xl bg-subtle/70 p-2 ring-1 ring-inset ring-line">
-          <OrgTree employees={data.employees} issues={data.issues} />
-        </div>
+        <Eyebrow>Org chart · {data.employees.length} people</Eyebrow>
+        <OrgTree employees={data.employees} issues={data.issues} />
       </section>
 
-      {/* Role resolutions — the fuzzy work the agent did */}
+      {/* Role resolutions — the fuzzy work the agent did. Rationale behind a
+          per-row disclosure so the list reads cleanly by default. */}
       <section className="space-y-2">
         <Eyebrow>Approvers resolved from the org</Eyebrow>
         <div className="space-y-1.5">
           {data.proposal.roles.map((r) => (
-            <div
+            <details
               key={r.role}
-              className="rounded-xl bg-surface px-3 py-2 ring-1 ring-inset ring-line"
+              className="group rounded-lg bg-surface ring-1 ring-inset ring-line [&_summary]:list-none"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[12.5px] font-semibold capitalize text-ink">
-                  {r.role.replace("-", " ")}
+              <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <span className="text-[12.5px] font-semibold capitalize text-ink">
+                    {r.role.replace("-", " ")}
+                  </span>
+                  <Chevron />
                 </span>
                 <span className="text-[12px] font-medium text-muted">
                   {r.employeeName ?? (
                     <span className="text-warn">unresolved</span>
                   )}
                 </span>
-              </div>
-              <p className="mt-0.5 text-[11.5px] leading-snug text-faint">
+              </summary>
+              <p className="border-t border-line px-3 py-2 text-[11.5px] leading-snug text-faint">
                 {r.rationale}
               </p>
-            </div>
+            </details>
           ))}
         </div>
       </section>
@@ -260,7 +309,7 @@ const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
             {data.issues.map((iss, i) => (
               <li
                 key={i}
-                className="flex gap-2 rounded-xl bg-warn-soft/70 px-3 py-2 text-[11.5px] leading-snug text-ink ring-1 ring-inset ring-warn-line/60"
+                className="flex gap-2 rounded-lg bg-warn-soft/60 px-3 py-2 text-[11.5px] leading-snug text-ink ring-1 ring-inset ring-warn-line/50"
               >
                 <span className="mt-px shrink-0 text-warn">⚠</span>
                 <span>{iss.note}</span>
@@ -273,56 +322,155 @@ const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
   );
 };
 
+/** A small chevron that rotates when its parent <details> is open. */
+const Chevron = () => {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className="size-3 text-faint transition-transform group-open:rotate-90"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="m4.5 3 3 3-3 3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
+/**
+ * A representative workflow shown DIMMED behind the empty/running state, so the
+ * canvas is never a blank box — the viewer sees the shape of the thing discovery
+ * produces (a conditional gate DAG) before they run it. Sample data only; the real
+ * one is derived from the client's org.
+ */
+const SAMPLE_WORKFLOW: ApprovalWorkflow = {
+  name: "Sample approval workflow",
+  roots: ["manager"],
+  steps: [
+    {
+      id: "manager",
+      kind: "approval",
+      label: "Manager review",
+      when: { kind: "always" },
+      approverTitle: "Manager",
+      approverName: "Riley Carter",
+      next: ["director", "dept"],
+    },
+    {
+      id: "director",
+      kind: "approval",
+      label: "Director review",
+      when: { kind: "leaf", field: "amount", op: ">", value: 25000 },
+      approverTitle: "CFO",
+      approverName: "Cameron Diaz",
+      next: ["post"],
+    },
+    {
+      id: "dept",
+      kind: "approval",
+      label: "Department head",
+      when: { kind: "leaf", field: "department", op: "==", value: "IT" },
+      approverTitle: "COO",
+      approverName: "Jordan Ellis",
+      next: ["post"],
+    },
+    {
+      id: "post",
+      kind: "integration",
+      label: "Post to NetSuite",
+      when: { kind: "always" },
+      integration: "netsuite",
+      next: [],
+    },
+  ],
+};
+
 const EmptyState = ({ running }: { running: boolean }) => {
   return (
-    <div className="grid h-full min-h-72 place-items-center rounded-xl bg-subtle/40 px-8 text-center ring-1 ring-inset ring-line">
-      <div className="max-w-sm space-y-3">
-        {running ? (
-          <>
-            <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent-soft">
-              <Spinner large />
-            </div>
-            <p className="text-[13.5px] font-medium text-ink">
-              Reading the org and deriving the approval workflow…
-            </p>
-            <p className="text-[12px] text-faint">
-              The agent resolves each gate to a real person from the chart.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">
-              <GraphGlyph />
-            </div>
-            <p className="text-[13.5px] font-medium text-ink">
-              No workflow yet
-            </p>
-            <p className="text-[12.5px] leading-relaxed text-muted">
-              Run discovery and the agent derives a conditional approval
-              workflow from the client&apos;s org chart, ready to edit in plain
-              language.
-            </p>
-          </>
-        )}
+    <div className="relative h-full min-h-72 overflow-hidden rounded-xl bg-subtle/40 ring-1 ring-inset ring-line">
+      {/* The sample workflow, dimmed — gives the canvas real structure instead of
+          a hollow box. Non-interactive (pointer-events-none). */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.18] blur-[1px]">
+        <WorkflowGraph workflow={SAMPLE_WORKFLOW} />
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-b from-surface/40 via-transparent to-surface/40" />
+
+      {/* The caption sits over the dimmed graph. */}
+      <div className="absolute inset-0 grid place-items-center px-8 text-center">
+        <div className="max-w-sm space-y-2.5">
+          {running ? (
+            <>
+              <div className="mx-auto flex items-center justify-center gap-2 text-[13px] font-medium text-ink">
+                <Spinner /> Reading the org &amp; deriving the workflow…
+              </div>
+              <p className="text-[12px] text-muted">
+                The agent resolves each gate to a real person from the chart.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[14px] font-semibold text-ink">
+                No workflow yet
+              </p>
+              <p className="text-[12.5px] leading-relaxed text-muted">
+                Run discovery and the agent derives a conditional approval
+                workflow like this from the client&apos;s org chart, resolved to
+                real approvers and ready to edit in plain language.
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-/** A tiny node-and-edge glyph for the empty workflow canvas. */
-const GraphGlyph = () => {
+/** The at-rest left pane: a compact preview of what discovery will produce, so
+    the pane carries content before a run instead of a lone button. */
+const DiscoveryPreview = ({ running }: { running: boolean }) => {
+  const items = [
+    {
+      title: "Read the org chart",
+      body: "Pull every active employee, their title, and who they report to.",
+    },
+    {
+      title: "Resolve approvers",
+      body: "Map each approval gate to a real person, not a placeholder role.",
+    },
+    {
+      title: "Flag data issues",
+      body: "Surface orphans, missing managers, and junk records to fix first.",
+    },
+  ];
   return (
-    <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden>
-      <circle cx="5" cy="12" r="2.4" fill="currentColor" />
-      <circle cx="19" cy="6" r="2.4" fill="currentColor" opacity="0.7" />
-      <circle cx="19" cy="18" r="2.4" fill="currentColor" opacity="0.7" />
-      <path
-        d="M7 11 17 6.6M7 13l10 4.4"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
+    <div className={running ? "opacity-50" : ""}>
+      <Eyebrow className="mb-2">What discovery produces</Eyebrow>
+      <ol className="space-y-1.5">
+        {items.map((it, i) => (
+          <li
+            key={it.title}
+            className="flex gap-3 rounded-lg bg-subtle/60 px-3 py-2.5 ring-1 ring-inset ring-line"
+          >
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface text-[11px] font-semibold text-muted ring-1 ring-inset ring-line-strong">
+              {i + 1}
+            </span>
+            <span>
+              <span className="block text-[12.5px] font-semibold text-ink">
+                {it.title}
+              </span>
+              <span className="mt-0.5 block text-[11.5px] leading-snug text-muted">
+                {it.body}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 };
 

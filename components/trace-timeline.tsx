@@ -37,11 +37,7 @@ export const TraceTimeline = ({
         }
         action={
           canRun ? (
-            <Button
-              data-testid="run-btn"
-              onClick={onRun}
-              className="mt-5 animate-breath"
-            >
+            <Button data-testid="run-btn" onClick={onRun} className="mt-5">
               Run pipeline
             </Button>
           ) : null

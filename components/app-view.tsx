@@ -39,20 +39,20 @@ const Tabs = ({
   onChange: (v: View) => void;
 }) => {
   return (
-    <div className="inline-flex w-fit items-center gap-1 rounded-xl bg-subtle p-1 ring-1 ring-inset ring-line">
+    // Attio-style underline tabs: a row over a full-width hairline, the active
+    // tab carries a black underline that overlaps the line.
+    <div className="flex items-center gap-6 border-b border-line">
       <TabButton
         active={view === "onboarding"}
         onClick={() => onChange("onboarding")}
         step={1}
         label="Onboarding"
-        hint="Derive the workflow"
       />
       <TabButton
         active={view === "pipeline"}
         onClick={() => onChange("pipeline")}
         step={2}
         label="Pipeline"
-        hint="Run invoices"
       />
     </div>
   );
@@ -63,44 +63,31 @@ const TabButton = ({
   onClick,
   step,
   label,
-  hint,
 }: {
   active: boolean;
   onClick: () => void;
   step: number;
   label: string;
-  hint: string;
 }) => {
   return (
     <button
       onClick={onClick}
-      className={`group flex items-center gap-2.5 rounded-lg px-3.5 py-2 text-left transition-all ${
+      className={`group relative -mb-px flex items-center gap-2 border-b-2 pb-2.5 pt-1 text-[13px] font-medium transition-colors ${
         active
-          ? "bg-surface shadow-card ring-1 ring-inset ring-line"
-          : "hover:bg-surface/60"
+          ? "border-ink text-ink"
+          : "border-transparent text-muted hover:text-ink"
       }`}
     >
       <span
-        className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold transition-colors ${
+        className={`grid size-[18px] shrink-0 place-items-center rounded-full text-[10px] font-semibold transition-colors ${
           active
-            ? "bg-accent text-accent-fg"
-            : "bg-line-strong/60 text-muted group-hover:bg-line-strong"
+            ? "bg-ink text-white"
+            : "bg-subtle text-faint ring-1 ring-inset ring-line-strong group-hover:text-muted"
         }`}
       >
         {step}
       </span>
-      <span className="flex flex-col leading-tight">
-        <span
-          className={`text-[13px] font-semibold ${active ? "text-ink" : "text-muted"}`}
-        >
-          {label}
-        </span>
-        <span
-          className={`text-[11px] ${active ? "text-faint" : "text-faint/80"}`}
-        >
-          {hint}
-        </span>
-      </span>
+      {label}
     </button>
   );
 };

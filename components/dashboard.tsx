@@ -339,7 +339,6 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
                 data-testid="run-btn"
                 disabled={state.status === "running"}
                 onClick={() => run(selected.id)}
-                className={state.status === "idle" ? "animate-breath" : ""}
               >
                 {state.status === "running" ? (
                   <>

@@ -25,18 +25,22 @@ type Proposal = {
   changes: StepChange[];
 };
 
-const SUGGESTIONS = [
-  "Above $25k, also require CFO approval",
-  "Add a Slack notification when an invoice posts",
-  "Route Marketing purchases through a marketing lead",
-];
-
-export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
+export const WorkflowEditor = ({
+  initial,
+  suggestions = [],
+}: {
+  initial: ApprovalWorkflow;
+  /** AI-generated next-edit suggestions for the initial workflow (may be empty). */
+  suggestions?: string[];
+}) => {
   const [current, setCurrent] = useState<ApprovalWorkflow>(initial);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Suggestions are consumable: once one produces a proposal it's removed, so a
+  // chip never lingers after it's been used.
+  const [chips, setChips] = useState<string[]>(suggestions);
 
   const submit = async (text: string) => {
     const value = text.trim();
@@ -70,6 +74,8 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
       }
       setProposal(data);
       setInstruction("");
+      // Drop the chip we just used (if this came from one).
+      setChips((cs) => cs.filter((c) => c !== value));
     } catch {
       setError("Could not reach the server.");
     } finally {
@@ -131,18 +137,29 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
             {error}
           </div>
         )}
-        {!proposal && (
-          <div className="flex flex-wrap gap-1.5">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => submit(s)}
-                disabled={busy}
-                className="rounded-full bg-subtle px-3 py-1.5 text-[11.5px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/20 disabled:opacity-50"
-              >
-                {s}
-              </button>
-            ))}
+        {/* AI-suggested next edits for this workflow. Only shown before a pending
+            proposal, and only when the model returned some — no fixed chips, so a
+            suggestion is always a real, applicable next step. A used chip is
+            removed (consumed) once it produces a proposal. */}
+        {!proposal && chips.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
+              <SparkIcon />
+              Suggested edits
+            </div>
+            <div className="flex flex-col items-start gap-1.5">
+              {chips.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => submit(s)}
+                  disabled={busy}
+                  className="group inline-flex max-w-full items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-1.5 text-left text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/30 disabled:opacity-50"
+                >
+                  <span className="text-faint group-hover:text-accent">+</span>
+                  <span className="truncate">{s}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <form
@@ -169,5 +186,14 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
         </form>
       </div>
     </div>
+  );
+};
+
+/** A small four-point spark, marking the AI-generated suggestions. */
+const SparkIcon = () => {
+  return (
+    <svg viewBox="0 0 12 12" className="size-3" fill="currentColor" aria-hidden>
+      <path d="M6 0c.3 2.5 1.5 3.7 4 4-2.5.3-3.7 1.5-4 4-.3-2.5-1.5-3.7-4-4 2.5-.3 3.7-1.5 4-4Z" />
+    </svg>
   );
 };
