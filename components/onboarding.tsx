@@ -93,11 +93,15 @@ export const Onboarding = () => {
           )}
         </CardHeader>
         <div className="scrollbar-slim flex flex-1 flex-col gap-4 overflow-y-auto p-5">
-          <p className="text-[13px] leading-relaxed text-muted">
-            Point the agent at the client&apos;s HR system. It reads the org
-            chart, derives who signs off on what (resolved to real people), and
-            flags the data issues to fix before going live.
-          </p>
+          {/* The pitch is only useful BEFORE a run — once results are in, it just
+              repeats what the panel now shows, so drop it. */}
+          {state.status !== "done" && (
+            <p className="text-[13px] leading-relaxed text-muted">
+              Point the agent at the client&apos;s HR system. It reads the org
+              chart, derives who signs off on what (resolved to real people),
+              and flags the data issues to fix before going live.
+            </p>
+          )}
           <div>
             <Button onClick={discover} loading={state.status === "running"}>
               {state.status === "running" ? (
@@ -257,12 +261,8 @@ const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
         )}
       </div>
 
-      {/* The agent's plain-language read — useful but long, so it's collapsible. */}
-      <Accordion summary="Agent's read of the org" defaultOpen>
-        <p className="text-[12.5px] leading-relaxed text-muted">
-          {data.proposal.summary}
-        </p>
-      </Accordion>
+      {/* (The agent's prose summary was dropped — it duplicated the workflow on the
+          right and the resolved-approvers + issues already shown below.) */}
 
       {/* The org the agent read — flagged people marked against the real chart. */}
       <section className="space-y-2">
@@ -339,30 +339,6 @@ const Chevron = () => {
         strokeLinejoin="round"
       />
     </svg>
-  );
-};
-
-/** A native, zero-JS disclosure: a clickable summary row + collapsible body. */
-const Accordion = ({
-  summary,
-  defaultOpen = false,
-  children,
-}: {
-  summary: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) => {
-  return (
-    <details
-      open={defaultOpen}
-      className="group rounded-lg bg-subtle/60 ring-1 ring-inset ring-line [&_summary]:list-none"
-    >
-      <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
-        <Chevron />
-        {summary}
-      </summary>
-      <div className="px-3 pb-2.5">{children}</div>
-    </details>
   );
 };
 

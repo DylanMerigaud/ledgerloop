@@ -6,6 +6,9 @@ import {
   Handle,
   Position,
   useReactFlow,
+  useNodesInitialized,
+  useNodesState,
+  useEdgesState,
   ReactFlowProvider,
   type Node,
   type Edge,
@@ -13,7 +16,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { SlackIcon, NetSuiteIcon, JiraIcon } from "@/components/ui/brand-icon";
@@ -27,10 +30,11 @@ import {
 /**
  * The approval workflow as a real flow canvas (React Flow), laid out left→right by
  * dagre. The category convention is a node-and-edge canvas; this is that, in the
- * app's own card style. Nodes are VARIABLE height (a conditional approval card is
- * taller than a bare integration), so we derive each node's height DETERMINISTICALLY
- * from its content (`nodeHeight`) and feed dagre real sizes — React Flow's measure
- * round-trip fired too late to lay out on first paint, so we don't rely on it.
+ * app's own card style. Nodes are VARIABLE height (a 2-line title or a `when` chip
+ * makes a card taller), so we render them hidden first, let React Flow MEASURE each
+ * card, then run dagre with the real heights and reveal — the measured pattern from
+ * reactflow-auto-layout. Wiring `onNodesChange` (via useNodesState) is what lets the
+ * measurements flow back so `useNodesInitialized` flips and the layout runs.
  *
  * The same component renders three things off one workflow: the derived workflow
  * (onboarding), a proposed edit (diff colours via `changes`), and a live run
@@ -212,13 +216,13 @@ const nodeTypes = { step: StepNode };
 
 /* ── layout ────────────────────────────────────────────────────────────────── */
 
-// Fixed node box for layout. Width matches the card (244px). Height is derived
-// DETERMINISTICALLY from the card's content (no measurement round-trip — that
-// timing was unreliable in React Flow): badge + title + a labelled detail block,
-// plus the `when …` chip when conditional. dagre centers children on the parent's
-// vertical midline (LR), so accurate heights = clean Y-centering, no overlap.
+// Card width is fixed (244px). Heights are VARIABLE (a 2-line title or a `when`
+// chip makes a card taller), and guessing them is what threw the centering off —
+// so we lay out with REAL measured heights (React Flow's ResizeObserver fills
+// `node.measured.height`). `estimateHeight` is only the pre-measurement fallback
+// for the very first paint, before measurements land.
 const NODE_WIDTH = 244;
-const nodeHeight = (data: NodeData): number => {
+const estimateHeight = (data: NodeData): number => {
   const hasBadge = data.change != null || statusTone(data.status) != null;
   let h = 24 + 20 + 24; // padding + title + detail block
   if (hasBadge) h += 24; // the status / change badge row + its margin
@@ -226,62 +230,45 @@ const nodeHeight = (data: NodeData): number => {
   return h;
 };
 
-/** Run dagre with deterministic node sizes; return positioned nodes (LR). */
-const layout = (nodes: Node<NodeData>[], edges: Edge[]): Node<NodeData>[] => {
+const NODE_SEP = 40; // vertical gap between siblings
+const RANK_SEP = 110; // horizontal gap between columns (generous, Pivot-like)
+
+/**
+ * Lay out the graph LR with dagre. Heights are REAL measured heights (a `when` chip
+ * or a 2-line title makes a card taller — guessing that is what threw the centering
+ * off). `ranker: "tight-tree"` packs and centers the tree so a parent sits on the
+ * middle of its children — the balanced look from reactflow-auto-layout's dagre-tree
+ * algorithm, no hand-rolled centering pass needed.
+ */
+const layout = (
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+  heightOf: (n: Node<NodeData>) => number,
+): Node<NodeData>[] => {
+  const h = new Map(nodes.map((n) => [n.id, heightOf(n)]));
   const g = new dagre.graphlib.Graph();
-  // nodesep = vertical gap between siblings (LR); ranksep = horizontal gap
-  // between columns. No `align` — default dagre centers each node on the midline
-  // of its neighbours, which is the balanced look we want (parent centered on its
-  // children, the post centered on its approvers).
-  g.setGraph({ rankdir: "LR", nodesep: 36, ranksep: 96 });
+  g.setGraph({
+    rankdir: "LR",
+    nodesep: NODE_SEP,
+    ranksep: RANK_SEP,
+    ranker: "tight-tree",
+  });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of nodes) {
-    g.setNode(n.id, { width: NODE_WIDTH, height: nodeHeight(n.data) });
+    g.setNode(n.id, { width: NODE_WIDTH, height: h.get(n.id) ?? 80 });
   }
   for (const e of edges) g.setEdge(e.source, e.target);
   dagre.layout(g);
 
-  // dagre places a node at the BARYCENTER of its neighbours, which for a fan-out /
-  // fan-in (one parent → N children → one post) doesn't sit the parent on the
-  // vertical MIDDLE of its children. Re-center every node that has a single column
-  // of children on the midpoint of those children's span — the balanced look in the
-  // reference. Process right-to-left so children are settled before their parent.
-  const cy = new Map<string, number>(); // node id → center Y
-  for (const id of g.nodes()) cy.set(id, g.node(id).y);
-  const childrenOf = new Map<string, string[]>();
-  for (const e of edges) {
-    const list = childrenOf.get(e.source) ?? [];
-    list.push(e.target);
-    childrenOf.set(e.source, list);
-  }
-  const byX = [...g.nodes()].sort((a, b) => g.node(b).x - g.node(a).x); // right→left
-  for (const id of byX) {
-    const kids = childrenOf.get(id) ?? [];
-    if (kids.length < 2) continue; // a 1-child node already lines up with its child
-    const tops = kids.map((k) => cy.get(k) ?? g.node(k).y);
-    cy.set(id, (Math.min(...tops) + Math.max(...tops)) / 2);
-  }
-  // The post column has many parents and one node — center it on its parents too.
-  const parentsOf = new Map<string, string[]>();
-  for (const e of edges) {
-    const list = parentsOf.get(e.target) ?? [];
-    list.push(e.source);
-    parentsOf.set(e.target, list);
-  }
-  for (const id of [...g.nodes()].sort((a, b) => g.node(a).x - g.node(b).x)) {
-    const parents = parentsOf.get(id) ?? [];
-    if (parents.length < 2) continue;
-    const ys = parents.map((p) => cy.get(p) ?? g.node(p).y);
-    cy.set(id, (Math.min(...ys) + Math.max(...ys)) / 2);
-  }
-
   return nodes.map((n) => {
     const node = g.node(n.id);
-    const centerY = cy.get(n.id) ?? node.y;
     // dagre gives the center; React Flow positions by top-left.
     return {
       ...n,
-      position: { x: node.x - node.width / 2, y: centerY - node.height / 2 },
+      position: {
+        x: node.x - node.width / 2,
+        y: node.y - node.height / 2,
+      },
     };
   });
 };
@@ -356,25 +343,59 @@ const Inner = ({
     return out;
   }, [workflow]);
 
-  // Lay out deterministically (sizes derived from content) — no measurement round
-  // trip, so positions are right on the first render.
-  const laidOutNodes = useMemo(
-    () => layout(initialNodes, edges),
-    [initialNodes, edges],
-  );
   const { fitView } = useReactFlow<Node<NodeData>>();
 
-  // Fit the view whenever the laid-out graph changes (new discovery / proposal).
+  // Controlled node/edge state with React Flow's own reducers — this wires
+  // `onNodesChange`, so the ResizeObserver's measurements flow back into the store
+  // and `useNodesInitialized` actually flips to true (without onNodesChange it
+  // never does, and the layout never runs). Nodes start HIDDEN at 0,0.
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(
+    initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
+  );
+  const [rfEdges, setEdges, onEdgesChange] = useEdgesState<Edge>(edges);
+
+  // True once every current node has been measured. Resets when the set changes.
+  const initialized = useNodesInitialized();
+
+  // When the source graph changes (new discovery / edit), reset to the new nodes
+  // HIDDEN so they get re-measured, and mark that this set still needs a layout.
+  const laidOutFor = useRef<string>("");
+  const graphKey = useMemo(
+    () => initialNodes.map((n) => n.id).join("|") + "::" + edges.length,
+    [initialNodes, edges],
+  );
   useEffect(() => {
-    requestAnimationFrame(() => void fitView({ padding: 0.15, duration: 200 }));
-  }, [laidOutNodes, fitView]);
+    setNodes(
+      initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
+    );
+    setEdges(edges);
+    laidOutFor.current = ""; // force a fresh layout for the new graph
+  }, [initialNodes, edges, setNodes, setEdges]);
+
+  // Once measured, lay out with the REAL (measured) heights, reveal, and fit. The
+  // ref guard makes this run once per graph (its own setNodes re-renders but won't
+  // re-enter, since the key is already marked done).
+  useEffect(() => {
+    if (!initialized || laidOutFor.current === graphKey) return;
+    laidOutFor.current = graphKey;
+    setNodes((cur) => {
+      const measured = new Map(cur.map((n) => [n.id, n.measured?.height]));
+      return layout(
+        initialNodes,
+        edges,
+        (n) => measured.get(n.id) ?? estimateHeight(n.data),
+      ).map((n) => ({ ...n, style: { visibility: "visible" } }));
+    });
+    requestAnimationFrame(() => void fitView({ padding: 0.18, duration: 200 }));
+  }, [initialized, graphKey, initialNodes, edges, setNodes, fitView]);
 
   return (
     <ReactFlow
-      nodes={laidOutNodes}
-      edges={edges}
+      nodes={nodes}
+      edges={rfEdges}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
-      fitView
       proOptions={{ hideAttribution: true }}
       nodesDraggable={false}
       nodesConnectable={false}
