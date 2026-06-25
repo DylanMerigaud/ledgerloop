@@ -2,24 +2,24 @@ import { ImageResponse } from "next/og";
 
 /**
  * The social preview card (1200×630) shown when the demo link is shared in
- * Slack / email / X / LinkedIn. Rendered at build time by next/og — no external
- * service. Mirrors the in-app fintech palette (cool canvas + indigo accent) so
- * the unfurl looks like a deliberate product, not a bare title.
+ * Slack / email / X / LinkedIn. Rendered at build time by next/og (no external
+ * service). Mirrors the in-app palette (near-white canvas + indigo accent) and the
+ * "ll" loop mark so the unfurl reads as a deliberate product, not a bare title.
  */
 
 export const runtime = "nodejs";
 export const alt =
-  "ledgerloop — an agentic procure-to-pay pipeline: deterministic matching, approval, and reconciliation with an AI agent that investigates flagged exceptions";
+  "ledgerloop — an onboarding agent that reads a client's HRIS, derives their approval workflow, and runs procure-to-pay against it";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const INK = "#0A0A0A";
-const MUTED = "#6B7280";
-const ACCENT = "#4F46E5";
-const LINE = "#E5E7EB";
+const INK = "#101113";
+const MUTED = "#6B6F76";
+const ACCENT = "#5B53D6";
+const LINE = "#E8E8EC";
 
 export default function OpengraphImage() {
-  const stages = ["Intake", "Matching", "Investigate", "Approval", "Reconcile"];
+  const stages = ["Onboard", "Derive workflow", "Run pipeline", "Reconcile"];
 
   return new ImageResponse(
     <div
@@ -34,19 +34,39 @@ export default function OpengraphImage() {
         fontFamily: "sans-serif",
       }}
     >
-      {/* Top: wordmark + a small accent tag */}
+      {/* Top: the "ll" loop mark + wordmark */}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <div
           style={{
-            width: 18,
-            height: 18,
-            borderRadius: 5,
-            background: ACCENT,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: INK,
           }}
-        />
+        >
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+            <path
+              d="M12 7v12a4 4 0 0 0 4 4"
+              stroke="#fff"
+              strokeWidth="3.1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M20 7v12a4 4 0 0 0 4 4"
+              stroke={ACCENT}
+              strokeWidth="3.1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
         <div
           style={{
-            fontSize: 30,
+            fontSize: 32,
             fontWeight: 700,
             color: INK,
             letterSpacing: -0.5,
@@ -60,22 +80,22 @@ export default function OpengraphImage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         <div
           style={{
-            fontSize: 60,
+            fontSize: 58,
             fontWeight: 700,
             color: INK,
             lineHeight: 1.08,
             letterSpacing: -1.5,
-            maxWidth: 980,
+            maxWidth: 1000,
           }}
         >
-          An agentic procure-to-pay pipeline
+          An onboarding agent that derives the approval workflow
         </div>
         <div
           style={{ fontSize: 27, color: MUTED, lineHeight: 1.4, maxWidth: 940 }}
         >
-          Deterministic matching and reconciliation, with an AI agent that
-          investigates flagged exceptions — live execution trace streamed and a
-          real human-in-the-loop before anything posts.
+          It reads a client&apos;s HRIS, resolves who signs off on what to real
+          people, and runs procure-to-pay against the workflow it builds. Live
+          execution trace, with a human in the loop before anything posts.
         </div>
       </div>
 
