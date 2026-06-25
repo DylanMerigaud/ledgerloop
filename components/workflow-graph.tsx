@@ -24,7 +24,7 @@ import {
   type ApprovalWorkflow,
   type WorkflowStep,
   type StepChange,
-  describeCondition,
+  humanizeCondition,
 } from "@/lib/approval-workflow";
 
 /**
@@ -117,7 +117,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const st = statusTone(status);
   const cb = changeBadge(change);
   const isApproval = step.kind === "approval";
-  const condition = describeCondition(step.when);
+  const condition = humanizeCondition(step.when);
   const unconditional = step.when.kind === "always";
 
   const badge = cb ?? st;
@@ -198,8 +198,10 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
 
       {!unconditional && (
         <div className="mt-2">
-          <span className="inline-block rounded-md bg-subtle px-1.5 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line-strong">
-            when {condition}
+          {/* The trigger as a plain-English rule pill (not code/monospace). */}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+            <span className="size-1 rounded-full bg-accent" aria-hidden />
+            {condition}
           </span>
         </div>
       )}

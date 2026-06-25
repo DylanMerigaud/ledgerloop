@@ -126,7 +126,7 @@ test("nested combinators evaluate correctly", () => {
 test("describeCondition renders a readable string", () => {
   assert.equal(
     describeCondition({ kind: "leaf", field: "amount", op: ">", value: 5000 }),
-    "amount > 5000",
+    "amount > $5,000",
   );
   assert.equal(
     describeCondition({
@@ -136,7 +136,7 @@ test("describeCondition renders a readable string", () => {
         { kind: "leaf", field: "department", op: "==", value: "IT" },
       ],
     }),
-    "amount > 5000 and department == IT",
+    "amount > $5,000 and department == IT",
   );
 });
 

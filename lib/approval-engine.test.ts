@@ -10,8 +10,9 @@ import {
 /**
  * The engine drives payment routing, so it's tested exhaustively. The fixture is
  * the template the onboarding agent produces: manager (always) fans out to a
- * director (amount > 5000), a department review (dept == IT), and the NetSuite
- * post; the gated steps also feed the post.
+ * director (amount > 5000) and a department review (dept == IT); both gates feed
+ * the NetSuite post. There is NO direct manager→post edge — the post is reached
+ * for a small/non-IT invoice because skipped gates pass through (AND-join).
  */
 const wf: ApprovalWorkflow = {
   name: "test",
@@ -24,7 +25,7 @@ const wf: ApprovalWorkflow = {
       when: { kind: "always" },
       approverTitle: "Manager",
       approverName: "Esther Howard",
-      next: ["director", "it", "post"],
+      next: ["director", "it"],
     },
     {
       id: "director",
