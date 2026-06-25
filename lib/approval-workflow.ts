@@ -244,12 +244,74 @@ export const describeCondition = (cond: Condition): string => {
     case "always":
       return "always";
     case "leaf":
-      return `${cond.field} ${cond.op} ${cond.value}`;
+      return `${cond.field} ${cond.op} ${describeLeafValue(cond)}`;
     case "all":
       return cond.conditions.map(describeCondition).join(" and ");
     case "any":
       return cond.conditions.map(describeCondition).join(" or ");
   }
+};
+
+/**
+ * Format a leaf's value for display. The `amount` field is money, so show it as a
+ * dollar figure with thousands separators ("$25,000") — the seed amounts are USD;
+ * the threshold itself is currency-agnostic (it's compared to the invoice amount
+ * whatever its currency), but "$25,000" reads far better than a bare "25000".
+ */
+const describeLeafValue = (
+  cond: Extract<Condition, { kind: "leaf" }>,
+): string => {
+  if (cond.field === "amount" && typeof cond.value === "number") {
+    return `$${cond.value.toLocaleString("en-US")}`;
+  }
+  return String(cond.value);
+};
+
+/**
+ * Render a condition as a SHORT, plain-English phrase for the UI chip — a business
+ * rule, not code ("Over $25,000", "IT only") instead of "amount > 25000". Recursive,
+ * so nested all/any read naturally ("Exception · over $10,000 or variance ≥ 10%").
+ * `describeCondition` stays the canonical machine-ish form (prompts, diff, traces);
+ * this is display-only.
+ */
+export const humanizeCondition = (cond: Condition): string => {
+  switch (cond.kind) {
+    case "always":
+      return "Always";
+    case "leaf":
+      return humanizeLeaf(cond);
+    case "all":
+      return cond.conditions.map(humanizeCondition).join(" · ");
+    case "any":
+      return cond.conditions.map(humanizeCondition).join(" or ");
+  }
+};
+
+const money = (v: number): string => `$${v.toLocaleString("en-US")}`;
+const pct = (v: number): string => `${Math.round(v * 100)}%`;
+
+const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
+  const { field, op, value } = cond;
+  const num = typeof value === "number" ? value : 0;
+
+  if (field === "amount" || field === "exceptionAmount") {
+    const what = field === "amount" ? "" : "exception ";
+    if (op === ">" || op === ">=") return `Over ${what}${money(num)}`;
+    if (op === "<" || op === "<=") return `Under ${what}${money(num)}`;
+  }
+  if (field === "variancePct") {
+    if (op === ">" || op === ">=") return `Variance ≥ ${pct(num)}`;
+    if (op === "<" || op === "<=") return `Variance < ${pct(num)}`;
+  }
+  if (field === "department") {
+    if (op === "==") return `${String(value)} only`;
+    if (op === "!=") return `Not ${String(value)}`;
+  }
+  if (field === "verdict" && op === "==") {
+    return value === "exception" ? "Exception" : `${String(value)}`;
+  }
+  // Fallback for any op/field combo not specially phrased.
+  return `${field} ${op} ${describeLeafValue(cond)}`;
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *

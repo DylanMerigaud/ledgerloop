@@ -86,9 +86,12 @@ export const assembleWorkflow = (
       when: { kind: "always" },
       approverTitle: manager.title,
       approverName: manager.name,
-      // Fan-out: after the manager, the director gate, the department gate, and
-      // the post all branch in parallel (each runs only if its condition holds).
-      next: [STEP.director, STEP.department, STEP.post],
+      // Fan-out to the conditional gates only — NOT straight to the post (a direct
+      // manager→post edge reads as "the manager can post without the other gates").
+      // The post still runs for small/non-scoped invoices because a gate whose
+      // condition is false is a transparent pass-through in the engine (AND-join),
+      // so director+department skip → post is reached.
+      next: [STEP.director, STEP.department],
     },
     {
       id: STEP.director,

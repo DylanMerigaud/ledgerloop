@@ -91,7 +91,7 @@ test("add-approval: adds a gate, wires it, leaves every other step untouched", (
   assert.ok(cfo, "CFO gate added");
   assert.equal(
     describeCondition(cfo.when),
-    "amount > 50000",
+    "amount > $50,000",
     "condition built from the threshold",
   );
   // The director's NESTED condition is byte-for-byte intact (the old bug).
@@ -176,7 +176,7 @@ test("set-threshold: changes only the targeted gate's amount", () => {
     amountOver: 25000,
   });
   const w = whenOf(next, "director");
-  assert.match(w, /amount > 25000/);
+  assert.match(w, /amount > \$25,000/);
   assert.match(w, /verdict == exception/);
 });
 

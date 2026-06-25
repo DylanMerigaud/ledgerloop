@@ -98,15 +98,21 @@ test("assembled workflow validates and has the template shape", () => {
   ]);
 });
 
-test("manager step is unconditional and fans out to the other three", () => {
+test("manager step is unconditional and fans out to the conditional gates", () => {
   const wf = assembleWorkflow(org, proposal);
   const mgr = wf.steps.find((s) => s.id === "manager-review")!;
   assert.equal(mgr.kind, "approval");
+  // Fans out to the gates only — NOT straight to the post (that would read as the
+  // manager being able to post without the other gates). The post is reached via
+  // the gates (skipped gates pass through in the engine).
   assert.deepEqual([...mgr.next].sort(), [
     "department-review",
     "director-review",
-    "post-netsuite",
   ]);
+  assert.ok(
+    !mgr.next.includes("post-netsuite"),
+    "no direct manager → post edge",
+  );
   assert.equal(evaluateCondition(mgr.when, anyCtx()), true); // always
 });
 
