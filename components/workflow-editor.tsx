@@ -91,8 +91,10 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* The graph — proposal (with diff) when one is pending, else the current workflow */}
-      <div className="flex-1 overflow-y-auto">
+      {/* The graph — proposal (with diff) when one is pending, else the current
+          workflow. React Flow owns pan/zoom, so give it height (min-h-0) and let
+          it handle overflow rather than a scroll container. */}
+      <div className="min-h-0 flex-1 overflow-hidden rounded-lg ring-1 ring-inset ring-line">
         {proposal ? (
           <WorkflowGraph
             workflow={proposal.proposed}

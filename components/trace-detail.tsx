@@ -61,7 +61,8 @@ const WorkflowRunDetail = ({ data }: { data: WorkflowRunData }) => {
   const statuses: Record<string, string> = {};
   for (const s of data.steps) statuses[s.id] = s.status;
   return (
-    <div className="-mx-1">
+    // React Flow needs a definite height; the trace node gives it a fixed canvas.
+    <div className="h-64 w-full overflow-hidden rounded-lg ring-1 ring-inset ring-line">
       <WorkflowGraph workflow={data.workflow} statuses={statuses} />
     </div>
   );
