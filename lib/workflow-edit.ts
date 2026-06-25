@@ -70,6 +70,32 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
   z.object({ op: z.literal("remove-step"), stepId: z.string() }).strict(),
   z
     .object({
+      op: z.literal("rename-step"),
+      stepId: z.string(),
+      /** The new display label/title for the step. */
+      label: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("duplicate-step"),
+      /** The existing step to copy (its kind/condition/approver/integration). */
+      stepId: z.string(),
+      /** Label for the copy. */
+      label: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("move-step"),
+      /** The existing step to relocate. */
+      stepId: z.string(),
+      /** Place it immediately AFTER this step (re-wiring its edges). */
+      afterStepId: z.string(),
+    })
+    .strict(),
+  z
+    .object({
       op: z.literal("insert-approval-after"),
       /** Insert the new gate immediately AFTER this step (on its outgoing edges). */
       afterStepId: z.string(),
@@ -180,6 +206,55 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
         s.next = s.next.filter((n) => n !== op.stepId);
       next.roots = next.roots.filter((r) => r !== op.stepId);
       return next;
+    }
+
+    case "rename-step": {
+      const step = next.steps.find((s) => s.id === op.stepId);
+      if (step) step.label = op.label;
+      return next;
+    }
+
+    case "duplicate-step": {
+      const orig = next.steps.find((s) => s.id === op.stepId);
+      if (!orig) return next;
+      const id = uniqueId(next, slug(op.label));
+      // A parallel twin: same payload + same successors, and everyone who pointed
+      // at the original now also points at the copy (and roots, if it was a root).
+      // `orig` is already a deep clone (whole workflow was cloned above); copy its
+      // `next`/`when` so the twin doesn't share array/object refs.
+      const copy: WorkflowStep = {
+        ...orig,
+        id,
+        label: op.label,
+        next: [...orig.next],
+        when: structuredClone(orig.when),
+      };
+      for (const s of next.steps)
+        if (s.next.includes(orig.id)) s.next = [...s.next, id];
+      if (next.roots.includes(orig.id)) next.roots = [...next.roots, id];
+      next.steps.push(copy);
+      return wouldCycle(next) ? wf : next;
+    }
+
+    case "move-step": {
+      const moved = next.steps.find((s) => s.id === op.stepId);
+      const anchor = next.steps.find((s) => s.id === op.afterStepId);
+      if (!moved || !anchor || moved.id === anchor.id) return next;
+      const movedNext = [...moved.next];
+      // 1. Unhook the moved step: its old predecessors bypass it to its successors.
+      for (const s of next.steps) {
+        if (s.id === moved.id) continue;
+        if (s.next.includes(moved.id)) {
+          s.next = [
+            ...new Set([...s.next.filter((n) => n !== moved.id), ...movedNext]),
+          ];
+        }
+      }
+      next.roots = next.roots.filter((r) => r !== moved.id);
+      // 2. Re-insert after the anchor: anchor → moved → anchor's old successors.
+      moved.next = [...anchor.next];
+      anchor.next = [moved.id];
+      return wouldCycle(next) ? wf : next;
     }
 
     case "add-approval": {
@@ -358,6 +433,9 @@ export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instr
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
 - set-approver: set the person on an existing approval step (by "stepId").
 - remove-step: remove a step by "stepId".
+- rename-step: change a step's title/label (by "stepId", set "label"). Use for "rename X to Y" / "call it Z".
+- duplicate-step: copy an existing step (by "stepId", set "label" for the copy). Use for "duplicate X" / "add another like X".
+- move-step: relocate an existing step to immediately AFTER another (by "stepId" + "afterStepId"). Use for "move X after Y" / "put X before the post".
 - insert-approval-after: insert a new approval gate IMMEDIATELY AFTER one existing step (use "afterStepId"). Use this for "add a step between X and Y" or "after the manager, add …". Same label/approverTitle/amountOver/department fields as add-approval.
 - add-parallel-after: a new approval gate that runs only once ALL of the given steps have been approved (use "afterStepIds": a list). Use this for "after the two reviews, require a final sign-off" / "a step that waits for both X and Y". Same label/approverTitle/amountOver/department fields.
 - none: if the instruction doesn't map to any of the above, or asks for something already true — give a short "reason".
@@ -403,6 +481,9 @@ Return { "ops": [ ... ] } where each op is one of:
 - set-threshold { stepId, amountOver }: change an existing gate's amount threshold.
 - set-approver { stepId, approverName }: set the person on a gate.
 - remove-step { stepId }.
+- rename-step { stepId, label }: change a step's title.
+- duplicate-step { stepId, label }: copy an existing step.
+- move-step { stepId, afterStepId }: relocate an existing step to after another.
 - insert-approval-after { afterStepId, label, approverTitle, amountOver|null, department|null }: insert a gate immediately AFTER one step.
 - add-parallel-after { afterStepIds: [..], label, approverTitle, amountOver|null, department|null }: a gate that runs once ALL the listed steps are approved (use for "after X and Y, a step that waits on both").
 - none { reason }: only if NOTHING in the instruction maps to a supported edit.

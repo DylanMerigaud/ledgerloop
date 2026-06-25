@@ -266,6 +266,87 @@ test("add-parallel-after that would cycle is rejected (workflow unchanged)", () 
   assert.equal(JSON.stringify(next), before, "cycle guard kept it unchanged");
 });
 
+test("rename-step: changes only the label, nothing else", () => {
+  const next = applyEditOp(base, {
+    op: "rename-step",
+    stepId: "director",
+    label: "CFO review",
+  });
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.equal(dir?.label, "CFO review");
+  // condition + approver + edges untouched
+  assert.equal(whenOf(next, "director"), directorWhenText);
+  assert.equal(
+    dir?.kind === "approval" ? dir.approverName : null,
+    "Jordan Ellis",
+  );
+});
+
+test("duplicate-step: makes a parallel twin with the same successors", () => {
+  const next = applyEditOp(base, {
+    op: "duplicate-step",
+    stepId: "director",
+    label: "Second director review",
+  });
+  const copy = next.steps.find((s) => s.label === "Second director review");
+  const mgr = next.steps.find((s) => s.id === "manager");
+  assert.ok(copy && mgr);
+  // same payload as the original
+  assert.equal(whenOf(next, copy.id), directorWhenText);
+  // everyone who pointed at the original now also points at the copy
+  assert.ok(mgr.next.includes(copy.id), "manager → copy (parallel)");
+  assert.deepEqual(copy.next, ["post"], "copy keeps the original's successors");
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+});
+
+test("move-step: relocates a step after the anchor, predecessors bypass it", () => {
+  // base: manager → {director, post}; director → post. Move director after post?
+  // post is terminal — moving director after post: post → director → (post's old
+  // next = []). And manager bypasses director to director's old next (post).
+  const next = applyEditOp(base, {
+    op: "move-step",
+    stepId: "director",
+    afterStepId: "post",
+  });
+  const mgr = next.steps.find((s) => s.id === "manager");
+  const post = next.steps.find((s) => s.id === "post");
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.ok(mgr && post && dir);
+  assert.ok(
+    !mgr.next.includes("director"),
+    "manager no longer points at director",
+  );
+  assert.ok(
+    mgr.next.includes("post"),
+    "manager bypasses to director's old next",
+  );
+  assert.ok(post.next.includes("director"), "post → director (new position)");
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+});
+
+test("move-step keeps the graph acyclic (it unhooks before re-inserting)", () => {
+  // move-step always detaches the step (predecessors bypass it) before re-parenting
+  // it under the anchor, so it can't introduce a back-edge — the result stays a DAG
+  // whatever the source/anchor. A self-move (anchor === step) is a no-op.
+  const self = applyEditOp(base, {
+    op: "move-step",
+    stepId: "director",
+    afterStepId: "director",
+  });
+  assert.equal(
+    JSON.stringify(self),
+    JSON.stringify(base),
+    "moving a step after itself is a no-op",
+  );
+  // A real move still validates as a sound DAG (no cycle introduced).
+  const moved = applyEditOp(base, {
+    op: "move-step",
+    stepId: "director",
+    afterStepId: "manager",
+  });
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(moved));
+});
+
 test("set-threshold: changes only the targeted gate's amount", () => {
   const next = applyEditOp(base, {
     op: "set-threshold",
