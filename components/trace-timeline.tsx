@@ -2,6 +2,7 @@
 
 import { TraceDetail } from "@/components/trace-detail";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { statusDot, statusTone, stageLabel } from "@/lib/display";
 import { formatDuration, humanize } from "@/lib/format";
 import type { TraceEvent } from "@/lib/trace";
@@ -36,14 +37,13 @@ export const TraceTimeline = ({
         }
         action={
           canRun ? (
-            <button
-              type="button"
+            <Button
               data-testid="run-btn"
               onClick={onRun}
-              className="mt-4 rounded-lg bg-accent px-5 py-2.5 text-[13px] font-semibold text-accent-fg shadow-sm transition-opacity hover:opacity-90"
+              className="mt-5 animate-breath"
             >
               Run pipeline
-            </button>
+            </Button>
           ) : null
         }
       />
@@ -122,7 +122,7 @@ const TraceNode = ({
       {!isLast && (
         <span
           aria-hidden
-          className="absolute left-[7px] top-3 h-full w-px bg-line"
+          className="absolute left-[7px] top-3 h-full w-px bg-line-strong"
         />
       )}
       {/* dot */}

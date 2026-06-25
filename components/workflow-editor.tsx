@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { API_ROUTES } from "@/lib/api-routes";
 import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
@@ -94,7 +95,7 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
       {/* The graph — proposal (with diff) when one is pending, else the current
           workflow. React Flow owns pan/zoom, so give it height (min-h-0) and let
           it handle overflow rather than a scroll container. */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-lg ring-1 ring-inset ring-line">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line">
         {proposal ? (
           <WorkflowGraph
             workflow={proposal.proposed}
@@ -107,32 +108,26 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
 
       {/* Pending-edit bar: approve / revert */}
       {proposal && (
-        <div className="flex items-center justify-between gap-2 rounded-lg bg-canvas px-3 py-2 ring-1 ring-inset ring-line">
-          <span className="text-[12px] text-muted">
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-accent-soft/60 px-3.5 py-2.5 ring-1 ring-inset ring-accent/15">
+          <span className="text-[12.5px] font-medium text-ink">
             Proposed edit · {changedCount} change{changedCount === 1 ? "" : "s"}{" "}
-            <span className="text-muted/70">— not applied yet</span>
+            <span className="font-normal text-faint">not applied yet</span>
           </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={revert}
-              className="rounded-md px-2.5 py-1 text-[12px] font-medium text-muted ring-1 ring-inset ring-line transition-colors hover:text-ink"
-            >
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={revert}>
               Revert
-            </button>
-            <button
-              onClick={approve}
-              className="rounded-md bg-ink px-2.5 py-1 text-[12px] font-medium text-white transition-colors hover:bg-ink/90"
-            >
+            </Button>
+            <Button size="sm" onClick={approve}>
               Approve
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {/* Chat input */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {error && (
-          <div className="rounded-lg bg-danger-soft px-3 py-1.5 text-[12px] text-danger ring-1 ring-inset ring-danger-line">
+          <div className="rounded-xl bg-danger-soft/80 px-3.5 py-2 text-[12px] text-danger ring-1 ring-inset ring-danger-line/70">
             {error}
           </div>
         )}
@@ -143,7 +138,7 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
                 key={s}
                 onClick={() => submit(s)}
                 disabled={busy}
-                className="rounded-full bg-canvas px-2.5 py-1 text-[11px] text-muted ring-1 ring-inset ring-line transition-colors hover:text-ink disabled:opacity-50"
+                className="rounded-full bg-subtle px-3 py-1.5 text-[11.5px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/20 disabled:opacity-50"
               >
                 {s}
               </button>
@@ -162,15 +157,15 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
             onChange={(e) => setInstruction(e.target.value)}
             disabled={busy}
             placeholder="Tell the agent how to change the workflow…"
-            className="flex-1 rounded-lg bg-surface px-3 py-2 text-[13px] text-ink ring-1 ring-inset ring-line outline-none placeholder:text-muted focus:ring-accent disabled:opacity-60"
+            className="h-10 flex-1 rounded-lg bg-surface px-3.5 text-[13px] text-ink shadow-card outline-none ring-1 ring-inset ring-line-strong transition-shadow placeholder:text-faint focus:ring-2 focus:ring-accent-ring disabled:opacity-60"
           />
-          <button
+          <Button
             type="submit"
+            loading={busy}
             disabled={busy || !instruction.trim()}
-            className="rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
           >
-            {busy ? "…" : "Edit"}
-          </button>
+            {busy ? "Editing…" : "Edit"}
+          </Button>
         </form>
       </div>
     </div>

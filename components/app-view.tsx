@@ -39,19 +39,21 @@ const Tabs = ({
   onChange: (v: View) => void;
 }) => {
   return (
-    <div className="inline-flex w-fit items-center gap-0.5 rounded-lg bg-canvas p-0.5 ring-1 ring-inset ring-line">
+    <div className="inline-flex w-fit items-center gap-1 rounded-xl bg-subtle p-1 ring-1 ring-inset ring-line">
       <TabButton
         active={view === "onboarding"}
         onClick={() => onChange("onboarding")}
-      >
-        1 · Onboarding
-      </TabButton>
+        step={1}
+        label="Onboarding"
+        hint="Derive the workflow"
+      />
       <TabButton
         active={view === "pipeline"}
         onClick={() => onChange("pipeline")}
-      >
-        2 · Pipeline
-      </TabButton>
+        step={2}
+        label="Pipeline"
+        hint="Run invoices"
+      />
     </div>
   );
 };
@@ -59,20 +61,46 @@ const Tabs = ({
 const TabButton = ({
   active,
   onClick,
-  children,
+  step,
+  label,
+  hint,
 }: {
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  step: number;
+  label: string;
+  hint: string;
 }) => {
   return (
     <button
       onClick={onClick}
-      className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
-        active ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"
+      className={`group flex items-center gap-2.5 rounded-lg px-3.5 py-2 text-left transition-all ${
+        active
+          ? "bg-surface shadow-card ring-1 ring-inset ring-line"
+          : "hover:bg-surface/60"
       }`}
     >
-      {children}
+      <span
+        className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold transition-colors ${
+          active
+            ? "bg-accent text-accent-fg"
+            : "bg-line-strong/60 text-muted group-hover:bg-line-strong"
+        }`}
+      >
+        {step}
+      </span>
+      <span className="flex flex-col leading-tight">
+        <span
+          className={`text-[13px] font-semibold ${active ? "text-ink" : "text-muted"}`}
+        >
+          {label}
+        </span>
+        <span
+          className={`text-[11px] ${active ? "text-faint" : "text-faint/80"}`}
+        >
+          {hint}
+        </span>
+      </span>
     </button>
   );
 };

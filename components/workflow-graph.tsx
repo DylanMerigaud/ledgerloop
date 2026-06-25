@@ -110,15 +110,19 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
 
   return (
     <div
-      className={`w-60 rounded-lg bg-surface px-3 py-2 shadow-card ring-1 ring-inset ${changeRing(
+      className={`w-60 rounded-xl bg-surface px-3 py-2.5 shadow-card ring-1 ring-inset ${changeRing(
         change,
       )} ${change === "removed" ? "opacity-60 line-through" : ""}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-line" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!size-1.5 !border-0 !bg-line-strong"
+      />
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[13px] font-medium text-ink">
           {isApproval ? (
-            <span className="grid size-5 place-items-center rounded-full bg-canvas text-[10px] text-muted ring-1 ring-inset ring-line">
+            <span className="grid size-5 place-items-center rounded-full bg-subtle text-[10px] text-muted ring-1 ring-inset ring-line-strong">
               ✓
             </span>
           ) : (
@@ -161,12 +165,16 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
 
       {!unconditional && (
         <div className="mt-1.5 pl-7">
-          <span className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line">
+          <span className="rounded-md bg-subtle px-1.5 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line-strong">
             when {condition}
           </span>
         </div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-line" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!size-1.5 !border-0 !bg-line-strong"
+      />
     </div>
   );
 };
@@ -300,7 +308,7 @@ const Inner = ({
       minZoom={0.4}
       maxZoom={1.5}
     >
-      <Background gap={16} color="#E5E7EB" />
+      <Background gap={18} size={1.5} color="#D7DAE1" />
     </ReactFlow>
   );
 };

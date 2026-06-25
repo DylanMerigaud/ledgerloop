@@ -32,7 +32,7 @@ export default async function Page() {
     // On desktop the page is exactly viewport-tall (flex column) so there is ONE
     // scroll context — inside the queue/trace panels — not a competing page
     // scroll. On mobile it falls back to natural height + normal page scroll.
-    <main className="mx-auto flex max-w-[1200px] flex-col px-4 pb-3 pt-6 sm:px-6 sm:pt-8 lg:h-screen lg:pb-4">
+    <main className="mx-auto flex max-w-[1240px] flex-col px-4 pb-3 pt-7 sm:px-8 sm:pt-9 lg:h-screen lg:pb-5">
       <Header />
       <div className="min-h-0 flex-1">
         {dbError ? (
@@ -50,71 +50,74 @@ export default async function Page() {
 
 const Header = () => {
   return (
-    <header className="mb-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <LogoMark />
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">
+          <h1 className="text-[19px] font-semibold leading-none tracking-tight text-ink">
             ledgerloop
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted">
-            A <span className="text-ink">procure-to-pay</span> pipeline — AI
-            reads the invoice and investigates flagged exceptions, deterministic
-            code does the matching and money, a human approves before anything
-            posts.
+          <p className="mt-1.5 max-w-xl text-[13.5px] leading-snug text-muted">
+            An onboarding agent that reads a client&apos;s HRIS and{" "}
+            <span className="font-medium text-ink">
+              derives their approval workflow
+            </span>
+            , then runs procure-to-pay against it.
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-muted">
-          <FlowChip n={1} label="Intake" />
-          <Arrow />
-          <FlowChip n={2} label="Matching" />
-          <Arrow />
-          <FlowChip n={3} label="Investigate" />
-          <Arrow />
-          <FlowChip n={4} label="Approval" />
-          <Arrow />
-          <FlowChip n={5} label="Reconcile" />
-        </div>
       </div>
+      <a
+        href="https://github.com/DylanMerigaud/ledgerloop"
+        target="_blank"
+        rel="noreferrer noopener"
+        className="hidden shrink-0 items-center gap-1.5 rounded-full bg-subtle px-3 py-1.5 text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:text-ink sm:inline-flex"
+      >
+        <span className="size-1.5 rounded-full bg-ok" aria-hidden />
+        Live demo · source on GitHub
+      </a>
     </header>
   );
 };
 
-const FlowChip = ({ n, label }: { n: number; label: string }) => {
+/** A small geometric loop mark — two arcs closing into a ledger loop. */
+const LogoMark = () => {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 ring-1 ring-inset ring-line">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent">
-        {n}
-      </span>
-      {label}
-    </span>
-  );
-};
-
-const Arrow = () => {
-  return (
-    <span aria-hidden className="text-line">
-      →
-    </span>
+    <div
+      aria-hidden
+      className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent shadow-accent"
+    >
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+        <path
+          d="M7 8a5 5 0 0 1 5-5 5 5 0 0 1 5 5v8a5 5 0 0 1-5 5 5 5 0 0 1-5-5"
+          stroke="white"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
+        <circle cx="12" cy="12" r="2" fill="white" />
+      </svg>
+    </div>
   );
 };
 
 const SetupNotice = ({ detail }: { detail: string }) => {
   return (
-    <div className="rounded-xl border border-warn-line bg-warn-soft/50 px-5 py-4 text-[13px] text-ink">
-      <p className="font-medium">Almost there — the demo needs its database.</p>
-      <p className="mt-1 text-ink/80">{detail}</p>
-      <p className="mt-2 text-ink/70">
+    <div className="rounded-2xl bg-warn-soft/60 px-6 py-5 text-[13px] text-ink ring-1 ring-inset ring-warn-line/60">
+      <p className="font-semibold">
+        Almost there. The demo needs its database.
+      </p>
+      <p className="mt-1 text-muted">{detail}</p>
+      <p className="mt-2.5 text-muted">
         Set{" "}
-        <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">
+        <code className="rounded-md bg-surface px-1.5 py-0.5 font-mono text-[12px] text-ink ring-1 ring-inset ring-line">
           DATABASE_URL
         </code>{" "}
         (and{" "}
-        <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">
+        <code className="rounded-md bg-surface px-1.5 py-0.5 font-mono text-[12px] text-ink ring-1 ring-inset ring-line">
           ANTHROPIC_API_KEY
         </code>
         ) in your environment, then run{" "}
-        <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px]">
-          pnpm db:push && pnpm db:seed
+        <code className="rounded-md bg-surface px-1.5 py-0.5 font-mono text-[12px] text-ink ring-1 ring-inset ring-line">
+          pnpm db:push &amp;&amp; pnpm db:seed
         </code>
         . See the README for the full setup.
       </p>
@@ -124,15 +127,15 @@ const SetupNotice = ({ detail }: { detail: string }) => {
 
 const Footer = () => {
   return (
-    <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] text-muted">
+    <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] text-faint">
       <p>
-        Built with <span className="text-ink">Mastra</span> · investigator agent
-        on <span className="font-mono text-ink">{PIPELINE_MODEL}</span> ·
-        Next.js · Supabase · Drizzle. Runs are stateless — nothing is written
+        Built with <span className="text-muted">Mastra</span> · investigator
+        agent on <span className="font-mono text-muted">{PIPELINE_MODEL}</span>{" "}
+        · Next.js · Supabase · Drizzle. Runs are stateless; nothing is written
         back.
       </p>
       <div className="flex items-center gap-2">
-        <span className="text-ink">Dylan Mérigaud</span>
+        <span className="font-medium text-muted">Dylan Mérigaud</span>
         <SocialLinks />
       </div>
     </footer>

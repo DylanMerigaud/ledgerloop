@@ -8,6 +8,7 @@ import {
 } from "@/components/extraction-reveal";
 import { TraceTimeline } from "@/components/trace-timeline";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import type { QueueItem } from "@/db/client";
 import {
@@ -217,13 +218,19 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
                     }
                     disabled={dimmed}
                     aria-disabled={dimmed}
-                    className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                      isSelected ? "bg-accent-soft/60" : "hover:bg-canvas"
+                    className={`relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                      isSelected ? "bg-accent-soft/50" : "hover:bg-subtle/70"
                     } ${dimmed ? "cursor-not-allowed opacity-40" : ""}`}
                   >
+                    {isSelected && (
+                      <span
+                        aria-hidden
+                        className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-accent"
+                      />
+                    )}
                     <span
                       aria-hidden
-                      className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                      className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-surface"
                       style={{ backgroundColor: outcomeDot(outcome) }}
                     />
                     <span className="min-w-0 flex-1">
@@ -293,7 +300,7 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
           <div className="min-w-0">
             <CardTitle>Agent execution trace</CardTitle>
             {previewItem && (
-              <p className="mt-0.5 truncate text-[12px] text-muted">
+              <p className="mt-0.5 truncate text-[12px] text-faint">
                 {previewItem.vendor} ·{" "}
                 <span className="font-mono">{previewItem.invoiceNumber}</span>
               </p>
@@ -305,36 +312,34 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
               className="flex shrink-0 items-center gap-2"
               data-testid="approval-gate"
             >
-              <button
-                type="button"
+              <Button
+                variant="danger"
+                size="sm"
                 data-testid="reject-btn"
                 onClick={() => decide(selected.id, "reject")}
-                className="rounded-lg px-3 py-2 text-[13px] font-medium text-danger ring-1 ring-inset ring-danger-line transition-colors hover:bg-danger-soft"
               >
                 Reject
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ok"
+                size="sm"
                 data-testid="approve-btn"
                 onClick={() => decide(selected.id, "approve")}
-                className="rounded-lg bg-ok px-3.5 py-2 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-90"
               >
                 Approve
-              </button>
+              </Button>
             </div>
           ) : (
             // Run lives in the header at all times a row is selected: "Run
             // pipeline" before the first run, "Running…" while in flight, "Run
             // again" after. (Approval is the only state that swaps it for the gate.)
             selected && (
-              <button
-                type="button"
+              <Button
+                size="sm"
                 data-testid="run-btn"
                 disabled={state.status === "running"}
                 onClick={() => run(selected.id)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-accent-fg shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 ${
-                  state.status === "idle" ? "animate-breath" : ""
-                }`}
+                className={state.status === "idle" ? "animate-breath" : ""}
               >
                 {state.status === "running" ? (
                   <>
@@ -347,7 +352,7 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
                     {state.status === "idle" ? "Run pipeline" : "Run again"}
                   </>
                 )}
-              </button>
+              </Button>
             )
           )}
         </CardHeader>
