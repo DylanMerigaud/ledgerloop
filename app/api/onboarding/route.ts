@@ -2,6 +2,7 @@ import { defaultHris } from "@/lib/hris";
 import { deriveWorkflow } from "@/lib/onboarding";
 import { anthropicProposalModel } from "@/lib/onboarding-model";
 import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
+import { anthropicSuggestModel } from "@/lib/workflow-suggest-model";
 
 /**
  * POST /api/onboarding — the discovery step a forward-deployed engineer runs once
@@ -65,6 +66,11 @@ export const POST = async (request: Request): Promise<Response> => {
       anthropicProposalModel,
       org,
     );
+    // Suggested next edits are a nice-to-have: generate them for the derived
+    // workflow, but never fail the discovery over them — fall back to none.
+    const suggestions = await anthropicSuggestModel
+      .suggest(workflow)
+      .catch(() => []);
     return Response.json({
       source: org.source,
       employeeCount: org.employees.length,
@@ -72,6 +78,7 @@ export const POST = async (request: Request): Promise<Response> => {
       workflow,
       proposal,
       issues,
+      suggestions,
     });
   } catch {
     return Response.json(

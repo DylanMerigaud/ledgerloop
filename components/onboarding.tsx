@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { BambooHrIcon } from "@/components/ui/brand-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
@@ -49,6 +50,8 @@ type OnboardingResponse = {
     summary: string;
   };
   issues: { employeeName: string; detail: string; note: string }[];
+  /** Up to three AI-generated next-edit suggestions for the derived workflow. */
+  suggestions: string[];
 };
 
 type State =
@@ -97,11 +100,16 @@ export const Onboarding = () => {
           </p>
           <div>
             <Button onClick={discover} loading={state.status === "running"}>
-              {state.status === "running"
-                ? "Reading org…"
-                : state.status === "done"
-                  ? "Re-run discovery"
-                  : "Discover from BambooHR"}
+              {state.status === "running" ? (
+                "Reading org…"
+              ) : state.status === "done" ? (
+                "Re-run discovery"
+              ) : (
+                <>
+                  <BambooHrIcon size={15} />
+                  Discover from BambooHR
+                </>
+              )}
             </Button>
           </div>
 
@@ -135,6 +143,7 @@ export const Onboarding = () => {
             <WorkflowEditor
               key={state.data.workflow.name + state.data.employeeCount}
               initial={state.data.workflow}
+              suggestions={state.data.suggestions}
             />
           ) : (
             <EmptyState running={state.status === "running"} />

@@ -25,13 +25,14 @@ type Proposal = {
   changes: StepChange[];
 };
 
-const SUGGESTIONS = [
-  "Above $25k, also require CFO approval",
-  "Add a Slack notification when an invoice posts",
-  "Route Marketing purchases through a marketing lead",
-];
-
-export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
+export const WorkflowEditor = ({
+  initial,
+  suggestions = [],
+}: {
+  initial: ApprovalWorkflow;
+  /** AI-generated next-edit suggestions for the initial workflow (may be empty). */
+  suggestions?: string[];
+}) => {
   const [current, setCurrent] = useState<ApprovalWorkflow>(initial);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [instruction, setInstruction] = useState("");
@@ -131,9 +132,15 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
             {error}
           </div>
         )}
-        {!proposal && (
-          <div className="flex flex-wrap gap-1.5">
-            {SUGGESTIONS.map((s) => (
+        {/* AI-suggested next edits for this workflow. Only shown before a pending
+            proposal, and only when the model actually returned some — no fixed
+            chips, so a suggestion is always a real, applicable next step. */}
+        {!proposal && suggestions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-medium text-faint">
+              Suggested
+            </span>
+            {suggestions.map((s) => (
               <button
                 key={s}
                 onClick={() => submit(s)}
