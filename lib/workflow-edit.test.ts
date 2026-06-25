@@ -266,6 +266,29 @@ test("add-parallel-after that would cycle is rejected (workflow unchanged)", () 
   assert.equal(JSON.stringify(next), before, "cycle guard kept it unchanged");
 });
 
+test("reorder-branches: sets the parent's next order, keeps all edges", () => {
+  // base: manager → [director, post]. Reorder to [post, director].
+  const next = applyEditOp(base, {
+    op: "reorder-branches",
+    parentStepId: "manager",
+    order: ["post", "director"],
+  });
+  const mgr = next.steps.find((s) => s.id === "manager");
+  assert.deepEqual(mgr?.next, ["post", "director"], "order applied");
+});
+
+test("reorder-branches: omitted children are kept (no edge dropped)", () => {
+  const next = applyEditOp(base, {
+    op: "reorder-branches",
+    parentStepId: "manager",
+    order: ["post"], // director omitted
+  });
+  const mgr = next.steps.find((s) => s.id === "manager");
+  assert.ok(mgr?.next.includes("director"), "omitted child still present");
+  assert.ok(mgr?.next.includes("post"));
+  assert.equal(mgr?.next.length, 2, "no edge dropped or duplicated");
+});
+
 test("rename-step: changes only the label, nothing else", () => {
   const next = applyEditOp(base, {
     op: "rename-step",
@@ -299,10 +322,8 @@ test("duplicate-step: makes a parallel twin with the same successors", () => {
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
 });
 
-test("move-step: relocates a step after the anchor, predecessors bypass it", () => {
-  // base: manager → {director, post}; director → post. Move director after post?
-  // post is terminal — moving director after post: post → director → (post's old
-  // next = []). And manager bypasses director to director's old next (post).
+test("move-step: relocates a step after the anchor", () => {
+  // base: manager → {director, post}; director → post. Move director after post.
   const next = applyEditOp(base, {
     op: "move-step",
     stepId: "director",
@@ -316,11 +337,116 @@ test("move-step: relocates a step after the anchor, predecessors bypass it", () 
     !mgr.next.includes("director"),
     "manager no longer points at director",
   );
-  assert.ok(
-    mgr.next.includes("post"),
-    "manager bypasses to director's old next",
-  );
   assert.ok(post.next.includes("director"), "post → director (new position)");
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+});
+
+test("move-step: extracting a parallel branch into sequence leaves NO stray edge", () => {
+  // manager → {dir, dept} (parallel), both → post. Move dept after dir ⇒ a clean
+  // chain manager → dir → dept → post, with NO leftover manager → post bypass.
+  const wf: TWorkflow = {
+    name: "par",
+    roots: ["mgr"],
+    steps: [
+      {
+        id: "mgr",
+        kind: "approval",
+        label: "Manager",
+        when: { kind: "always" },
+        approverTitle: "M",
+        approverName: "x",
+        next: ["dir", "dept"],
+      },
+      {
+        id: "dir",
+        kind: "approval",
+        label: "Director",
+        when: { kind: "always" },
+        approverTitle: "D",
+        approverName: "y",
+        next: ["post"],
+      },
+      {
+        id: "dept",
+        kind: "approval",
+        label: "Dept",
+        when: { kind: "always" },
+        approverTitle: "H",
+        approverName: "z",
+        next: ["post"],
+      },
+      {
+        id: "post",
+        kind: "integration",
+        label: "Post",
+        when: { kind: "always" },
+        integration: "netsuite",
+        next: [],
+      },
+    ],
+  };
+  const next = applyEditOp(wf, {
+    op: "move-step",
+    stepId: "dept",
+    afterStepId: "dir",
+  });
+  const get = (id: string) => next.steps.find((s) => s.id === id);
+  assert.deepEqual(
+    get("mgr")?.next,
+    ["dir"],
+    "manager → dir only (no stray post)",
+  );
+  assert.deepEqual(get("dir")?.next, ["dept"], "dir → dept");
+  assert.deepEqual(get("dept")?.next, ["post"], "dept → post");
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+});
+
+test("move-step: a linear-chain move still bypasses (keeps flow)", () => {
+  // a → b → c. Move b after c: a had ONLY b, so a must bypass to b's old next (c).
+  const wf: TWorkflow = {
+    name: "lin",
+    roots: ["a"],
+    steps: [
+      {
+        id: "a",
+        kind: "approval",
+        label: "A",
+        when: { kind: "always" },
+        approverTitle: "A",
+        approverName: "x",
+        next: ["b"],
+      },
+      {
+        id: "b",
+        kind: "approval",
+        label: "B",
+        when: { kind: "always" },
+        approverTitle: "B",
+        approverName: "y",
+        next: ["c"],
+      },
+      {
+        id: "c",
+        kind: "integration",
+        label: "C",
+        when: { kind: "always" },
+        integration: "netsuite",
+        next: [],
+      },
+    ],
+  };
+  const next = applyEditOp(wf, {
+    op: "move-step",
+    stepId: "b",
+    afterStepId: "c",
+  });
+  const get = (id: string) => next.steps.find((s) => s.id === id);
+  assert.deepEqual(
+    get("a")?.next,
+    ["c"],
+    "a bypasses to c (would be orphaned otherwise)",
+  );
+  assert.deepEqual(get("c")?.next, ["b"], "c → b (new position)");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
 });
 
