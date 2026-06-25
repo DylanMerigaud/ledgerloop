@@ -36,6 +36,7 @@ export type SuggestModel = {
 export const WORKFLOW_SUGGEST_SYSTEM_PROMPT = `You help a finance ops user refine a procure-to-pay approval workflow by suggesting their next edit. You are shown the current workflow's steps. Propose UP TO THREE short instructions the user could click to improve it — phrased exactly as they would type them (e.g. "Above $50k, also require CFO approval", "Add a Slack notification when an invoice posts").
 
 Rules:
+- Keep each suggestion SHORT — under ~7 words, phrased like the examples above. No conditional clauses ("...if X is already required").
 - Only suggest edits that genuinely apply to THIS workflow. Do NOT suggest something it already does.
 - Supported edits: add an approval gate (optionally above an amount or for a department), add a Slack/Jira/NetSuite integration, change an existing threshold, change an approver, remove a step.
 - Prefer the most useful, realistic refinements for a workflow like this one.

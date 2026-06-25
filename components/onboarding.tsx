@@ -154,10 +154,22 @@ export const Onboarding = () => {
   );
 };
 
+/** Initials for an avatar chip ("Riley Carter" → "RC"). */
+const initials = (name: string): string =>
+  name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+
 /**
- * The org as a reporting tree (roots at top, reports nested), with people the
- * agent flagged highlighted — so a viewer can see the data issues against the real
- * chart (the junk record, the orphan with no manager) instead of just a count.
+ * The org as a reporting tree (roots at top, reports nested under a guide rail),
+ * with flagged people marked by a warn ring on their avatar — so a viewer can see
+ * the data issues against the real chart (the junk record, the orphan with no
+ * manager) instead of just a count. Scrolls inside a capped box so a real 90-person
+ * org doesn't push the rest of the panel off screen.
  */
 const OrgTree = ({
   employees,
@@ -184,82 +196,107 @@ const OrgTree = ({
     childrenOf.set(key, list);
   }
 
-  const renderNodes = (
-    parent: string | null,
-    depth: number,
-  ): React.ReactNode => {
+  const renderNodes = (parent: string | null): React.ReactNode => {
     const nodes = childrenOf.get(parent) ?? [];
-    return nodes.map((e) => (
-      <div key={e.id}>
-        <div
-          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] ${
-            flagged.has(e.id)
-              ? "bg-warn-soft/80 ring-1 ring-inset ring-warn-line/60"
-              : ""
-          }`}
-          style={{ marginLeft: depth * 14 }}
-        >
-          {depth > 0 && <span className="text-faint/60">└</span>}
-          <span className="font-medium text-ink">{e.name}</span>
-          <span className="text-faint">
-            {e.title ? `· ${e.title}` : "· (no title)"}
-          </span>
-          {flagged.has(e.id) && <span className="ml-auto text-warn">⚠</span>}
+    return nodes.map((e) => {
+      const isFlagged = flagged.has(e.id);
+      const children = renderNodes(e.id);
+      return (
+        <div key={e.id}>
+          <div className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-surface">
+            <span
+              className={`grid size-[22px] shrink-0 place-items-center rounded-full text-[9px] font-semibold ${
+                isFlagged
+                  ? "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
+                  : "bg-surface text-muted ring-1 ring-inset ring-line-strong"
+              }`}
+            >
+              {initials(e.name)}
+            </span>
+            <span className="min-w-0 flex-1 truncate">
+              <span className="text-[12px] font-medium text-ink">{e.name}</span>
+              <span className="ml-1 text-[11px] text-faint">
+                {e.title || "(no title)"}
+              </span>
+            </span>
+            {isFlagged && (
+              <span className="shrink-0 text-[11px] text-warn" title="flagged">
+                ⚠
+              </span>
+            )}
+          </div>
+          {/* reports nest under a guide rail, not ASCII connectors */}
+          {children && (
+            <div className="ml-[10px] border-l border-line pl-3">
+              {children}
+            </div>
+          )}
         </div>
-        {renderNodes(e.id, depth + 1)}
-      </div>
-    ));
+      );
+    });
   };
 
-  return <div className="space-y-0.5">{renderNodes(null, 0)}</div>;
+  return (
+    <div className="scrollbar-slim max-h-72 space-y-0.5 overflow-y-auto">
+      {renderNodes(null)}
+    </div>
+  );
 };
 
 const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
+  const resolved = data.proposal.roles.filter((r) => r.employeeName).length;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="ok">{data.employeeCount} employees read</Badge>
+        <Badge tone="ok">{data.employeeCount} employees</Badge>
+        <Badge tone="neutral">
+          {resolved}/{data.proposal.roles.length} approvers resolved
+        </Badge>
         {data.issues.length > 0 && (
-          <Badge tone="warn">{data.issues.length} issues flagged</Badge>
+          <Badge tone="warn">{data.issues.length} to fix</Badge>
         )}
       </div>
 
-      <p className="text-[13px] leading-relaxed text-ink/90">
-        {data.proposal.summary}
-      </p>
+      {/* The agent's plain-language read — useful but long, so it's collapsible. */}
+      <Accordion summary="Agent's read of the org" defaultOpen>
+        <p className="text-[12.5px] leading-relaxed text-muted">
+          {data.proposal.summary}
+        </p>
+      </Accordion>
 
-      {/* The org the agent read — flagged people highlighted so the issues are
-          legible against the actual chart. */}
+      {/* The org the agent read — flagged people marked against the real chart. */}
       <section className="space-y-2">
-        <Eyebrow>Org chart ({data.employees.length})</Eyebrow>
-        <div className="rounded-xl bg-subtle/70 p-2 ring-1 ring-inset ring-line">
-          <OrgTree employees={data.employees} issues={data.issues} />
-        </div>
+        <Eyebrow>Org chart · {data.employees.length} people</Eyebrow>
+        <OrgTree employees={data.employees} issues={data.issues} />
       </section>
 
-      {/* Role resolutions — the fuzzy work the agent did */}
+      {/* Role resolutions — the fuzzy work the agent did. Rationale behind a
+          per-row disclosure so the list reads cleanly by default. */}
       <section className="space-y-2">
         <Eyebrow>Approvers resolved from the org</Eyebrow>
         <div className="space-y-1.5">
           {data.proposal.roles.map((r) => (
-            <div
+            <details
               key={r.role}
-              className="rounded-xl bg-surface px-3 py-2 ring-1 ring-inset ring-line"
+              className="group rounded-lg bg-surface ring-1 ring-inset ring-line [&_summary]:list-none"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[12.5px] font-semibold capitalize text-ink">
-                  {r.role.replace("-", " ")}
+              <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <span className="text-[12.5px] font-semibold capitalize text-ink">
+                    {r.role.replace("-", " ")}
+                  </span>
+                  <Chevron />
                 </span>
                 <span className="text-[12px] font-medium text-muted">
                   {r.employeeName ?? (
                     <span className="text-warn">unresolved</span>
                   )}
                 </span>
-              </div>
-              <p className="mt-0.5 text-[11.5px] leading-snug text-faint">
+              </summary>
+              <p className="border-t border-line px-3 py-2 text-[11.5px] leading-snug text-faint">
                 {r.rationale}
               </p>
-            </div>
+            </details>
           ))}
         </div>
       </section>
@@ -272,7 +309,7 @@ const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
             {data.issues.map((iss, i) => (
               <li
                 key={i}
-                className="flex gap-2 rounded-xl bg-warn-soft/70 px-3 py-2 text-[11.5px] leading-snug text-ink ring-1 ring-inset ring-warn-line/60"
+                className="flex gap-2 rounded-lg bg-warn-soft/60 px-3 py-2 text-[11.5px] leading-snug text-ink ring-1 ring-inset ring-warn-line/50"
               >
                 <span className="mt-px shrink-0 text-warn">⚠</span>
                 <span>{iss.note}</span>
@@ -282,6 +319,50 @@ const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
         </section>
       )}
     </div>
+  );
+};
+
+/** A small chevron that rotates when its parent <details> is open. */
+const Chevron = () => {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className="size-3 text-faint transition-transform group-open:rotate-90"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="m4.5 3 3 3-3 3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
+/** A native, zero-JS disclosure: a clickable summary row + collapsible body. */
+const Accordion = ({
+  summary,
+  defaultOpen = false,
+  children,
+}: {
+  summary: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) => {
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-lg bg-subtle/60 ring-1 ring-inset ring-line [&_summary]:list-none"
+    >
+      <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
+        <Chevron />
+        {summary}
+      </summary>
+      <div className="px-3 pb-2.5">{children}</div>
+    </details>
   );
 };
 

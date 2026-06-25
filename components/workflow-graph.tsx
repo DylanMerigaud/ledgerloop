@@ -240,12 +240,48 @@ const layout = (nodes: Node<NodeData>[], edges: Edge[]): Node<NodeData>[] => {
   }
   for (const e of edges) g.setEdge(e.source, e.target);
   dagre.layout(g);
+
+  // dagre places a node at the BARYCENTER of its neighbours, which for a fan-out /
+  // fan-in (one parent → N children → one post) doesn't sit the parent on the
+  // vertical MIDDLE of its children. Re-center every node that has a single column
+  // of children on the midpoint of those children's span — the balanced look in the
+  // reference. Process right-to-left so children are settled before their parent.
+  const cy = new Map<string, number>(); // node id → center Y
+  for (const id of g.nodes()) cy.set(id, g.node(id).y);
+  const childrenOf = new Map<string, string[]>();
+  for (const e of edges) {
+    const list = childrenOf.get(e.source) ?? [];
+    list.push(e.target);
+    childrenOf.set(e.source, list);
+  }
+  const byX = [...g.nodes()].sort((a, b) => g.node(b).x - g.node(a).x); // right→left
+  for (const id of byX) {
+    const kids = childrenOf.get(id) ?? [];
+    if (kids.length < 2) continue; // a 1-child node already lines up with its child
+    const tops = kids.map((k) => cy.get(k) ?? g.node(k).y);
+    cy.set(id, (Math.min(...tops) + Math.max(...tops)) / 2);
+  }
+  // The post column has many parents and one node — center it on its parents too.
+  const parentsOf = new Map<string, string[]>();
+  for (const e of edges) {
+    const list = parentsOf.get(e.target) ?? [];
+    list.push(e.source);
+    parentsOf.set(e.target, list);
+  }
+  for (const id of [...g.nodes()].sort((a, b) => g.node(a).x - g.node(b).x)) {
+    const parents = parentsOf.get(id) ?? [];
+    if (parents.length < 2) continue;
+    const ys = parents.map((p) => cy.get(p) ?? g.node(p).y);
+    cy.set(id, (Math.min(...ys) + Math.max(...ys)) / 2);
+  }
+
   return nodes.map((n) => {
     const node = g.node(n.id);
+    const centerY = cy.get(n.id) ?? node.y;
     // dagre gives the center; React Flow positions by top-left.
     return {
       ...n,
-      position: { x: node.x - node.width / 2, y: node.y - node.height / 2 },
+      position: { x: node.x - node.width / 2, y: centerY - node.height / 2 },
     };
   });
 };
