@@ -62,7 +62,7 @@ const WorkflowRunDetail = ({ data }: { data: WorkflowRunData }) => {
   for (const s of data.steps) statuses[s.id] = s.status;
   return (
     // React Flow needs a definite height; the trace node gives it a fixed canvas.
-    <div className="h-64 w-full overflow-hidden rounded-lg ring-1 ring-inset ring-line">
+    <div className="h-64 w-full overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line">
       <WorkflowGraph workflow={data.workflow} statuses={statuses} />
     </div>
   );
@@ -87,7 +87,7 @@ const InvestigationDetail = ({ inv }: { inv: Investigation }) => {
           {inv.toolsUsed.map((t) => (
             <span
               key={t}
-              className="rounded-full bg-canvas px-2 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line"
+              className="rounded-full bg-subtle px-2 py-0.5 font-mono text-[10px] text-muted ring-1 ring-inset ring-line-strong"
             >
               {t}
             </span>
