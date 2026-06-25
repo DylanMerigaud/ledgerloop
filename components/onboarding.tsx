@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { BambooHrIcon } from "@/components/ui/brand-icon";
+import {
+  BambooHrIcon,
+  SlackIcon,
+  NetSuiteIcon,
+  JiraIcon,
+} from "@/components/ui/brand-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
@@ -135,11 +140,7 @@ export const Onboarding = () => {
       <Card className="flex flex-col overflow-hidden">
         <CardHeader>
           <CardTitle>Derived approval workflow</CardTitle>
-          {state.status === "done" && (
-            <span className="hidden text-[11px] text-faint sm:inline">
-              edit in plain language · approve to apply
-            </span>
-          )}
+          {state.status === "done" && <WhatCanIChange />}
         </CardHeader>
         <div className="flex-1 overflow-hidden p-5">
           {state.status === "done" ? (
@@ -154,6 +155,110 @@ export const Onboarding = () => {
           )}
         </div>
       </Card>
+    </div>
+  );
+};
+
+/**
+ * A clickable "What can I change?" helper that opens a popover listing the edits
+ * the plain-language editor actually supports — so the capabilities are
+ * discoverable without overclaiming. (The editor maps your sentence to one of
+ * these structured ops; it's natural-language editing, not an open-ended agent.)
+ */
+const EDIT_ACTIONS: {
+  icon: React.ReactNode;
+  title: string;
+  example: string;
+}[] = [
+  {
+    icon: <span className="text-[11px]">✓</span>,
+    title: "Add an approval gate",
+    example: "“Require a CFO sign-off above $50k”",
+  },
+  {
+    icon: <SlackIcon size={14} />,
+    title: "Add a Slack notification",
+    example: "“Notify on Slack when a bill posts”",
+  },
+  {
+    icon: <JiraIcon size={14} />,
+    title: "Open a Jira ticket",
+    example: "“Open a Jira ticket for IT bills”",
+  },
+  {
+    icon: <NetSuiteIcon size={14} />,
+    title: "Post to NetSuite",
+    example: "“Post approved bills to NetSuite”",
+  },
+  {
+    icon: <span className="text-[11px]">$</span>,
+    title: "Change a threshold",
+    example: "“Lower the director threshold to $10k”",
+  },
+  {
+    icon: <span className="text-[11px]">@</span>,
+    title: "Change an approver",
+    example: "“Make Jordan Ellis the director approver”",
+  },
+  {
+    icon: <span className="text-[11px]">−</span>,
+    title: "Remove a step",
+    example: "“Drop the department review”",
+  },
+];
+
+const WhatCanIChange = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as globalThis.Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1.5 rounded-full bg-subtle px-2.5 py-1 text-[11.5px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:text-ink"
+      >
+        <span className="grid size-3.5 place-items-center rounded-full bg-ink text-[9px] font-bold text-white">
+          ?
+        </span>
+        What can I change?
+      </button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl bg-surface p-2 shadow-lift ring-1 ring-inset ring-line">
+          <p className="px-2 pb-1.5 pt-1 text-[11px] leading-snug text-faint">
+            Describe a change in plain language; it proposes a rewrite and you
+            review the diff before anything applies.
+          </p>
+          <ul className="space-y-0.5">
+            {EDIT_ACTIONS.map((a) => (
+              <li
+                key={a.title}
+                className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 hover:bg-subtle"
+              >
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-subtle text-muted ring-1 ring-inset ring-line-strong">
+                  {a.icon}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-medium text-ink">
+                    {a.title}
+                  </span>
+                  <span className="block text-[11px] italic leading-snug text-faint">
+                    {a.example}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
