@@ -93,7 +93,8 @@ export const assembleWorkflow = (
     {
       id: STEP.director,
       kind: "approval",
-      label: `Director review (amount > ${proposal.directorThreshold})`,
+      // No threshold in the label — the `when amount > N` chip already shows it.
+      label: "Director review",
       when: amountOverThreshold,
       approverTitle: director.title,
       approverName: director.name,
@@ -114,7 +115,7 @@ export const assembleWorkflow = (
     {
       id: STEP.post,
       kind: "integration",
-      label: "Post to NetSuite",
+      label: "Post bill to NetSuite",
       when: { kind: "always" },
       integration: "netsuite",
       next: [],
