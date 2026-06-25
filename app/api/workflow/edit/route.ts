@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
-import { proposeEdit } from "@/lib/workflow-edit";
-import { anthropicEditModel } from "@/lib/workflow-edit-model";
+import { runEditAgent } from "@/lib/workflow-edit-agent";
+import { anthropicPlanModel } from "@/lib/workflow-edit-model";
 
 /**
  * POST /api/workflow/edit — propose a conversational edit to an approval workflow.
@@ -49,13 +49,13 @@ export const POST = async (request: Request): Promise<Response> => {
   }
 
   try {
-    const { proposed, op, changes } = await proposeEdit(
-      anthropicEditModel,
+    // The agent plans an ordered list of ops, applies them, and self-corrects
+    // against the validator until the workflow is sound (or its step budget).
+    const { proposed, changes, reason } = await runEditAgent(
+      anthropicPlanModel,
       workflow,
       instruction,
     );
-    // `op.reason` (only present on a `none`) explains why nothing changed.
-    const reason = op.op === "none" ? op.reason : null;
     return Response.json({ proposed, changes, reason });
   } catch {
     // A validation failure (the model produced an invalid graph) or a model error

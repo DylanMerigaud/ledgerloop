@@ -380,3 +380,57 @@ export const editPrompt = (current: TWorkflow, instruction: string): string => {
 /** Validate a raw model JSON value into a WorkflowEditOp (or throw). */
 export const parseEditOp = (raw: unknown): WorkflowEditOp =>
   WorkflowEditOp.parse(raw);
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ *  Multi-op planning (the agent) — an ORDERED list of ops for one instruction
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** A flat ARRAY of ops — the agent's plan. (Array, not nested, so the grammar
+    stays in-bounds; the discriminated union itself is already small + flat.) */
+export const WorkflowEditPlan = z
+  .object({ ops: z.array(WorkflowEditOp) })
+  .strict();
+export type WorkflowEditPlan = z.infer<typeof WorkflowEditPlan>;
+
+export const parseEditPlan = (raw: unknown): WorkflowEditOp[] =>
+  WorkflowEditPlan.parse(raw).ops;
+
+export const WORKFLOW_PLAN_SYSTEM_PROMPT = `You translate a plain-language instruction (which may ask for SEVERAL changes) into an ORDERED list of structured edits for a procure-to-pay approval workflow, then I apply them in order and validate the result.
+
+Return { "ops": [ ... ] } where each op is one of:
+- add-approval { label, approverTitle, amountOver|null, department|null }: a new gate after the first step. Keep "label" a short title only.
+- add-integration { label, integration: "slack"|"jira"|"netsuite" }: a system action after the bill posts.
+- set-threshold { stepId, amountOver }: change an existing gate's amount threshold.
+- set-approver { stepId, approverName }: set the person on a gate.
+- remove-step { stepId }.
+- insert-approval-after { afterStepId, label, approverTitle, amountOver|null, department|null }: insert a gate immediately AFTER one step.
+- add-parallel-after { afterStepIds: [..], label, approverTitle, amountOver|null, department|null }: a gate that runs once ALL the listed steps are approved (use for "after X and Y, a step that waits on both").
+- none { reason }: only if NOTHING in the instruction maps to a supported edit.
+
+Rules:
+- Output the ops in the order they should be applied.
+- For a multi-part instruction ("add a CFO gate over $50k AND a Slack notice"), return one op per part.
+- Don't add something the workflow already has.
+- If I send you VALIDATION ISSUES from a previous attempt, return ops that FIX them (e.g. resolve an approver, merge a duplicate, add a second approver on a high-value path).
+Return only the JSON object.`;
+
+/** Prompt body for the planner: current steps (+ conditions) + the instruction, and
+    optionally the validation feedback from a previous attempt to correct. */
+export const planPrompt = (
+  current: TWorkflow,
+  instruction: string,
+  feedback?: { issues: { message: string }[]; triedOps: WorkflowEditOp[] },
+): string => {
+  const steps = current.steps
+    .map((s) => {
+      const who =
+        s.kind === "approval" ? `approver=${s.approverTitle}` : s.integration;
+      return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
+    })
+    .join("\n");
+  const base = `CURRENT STEPS:\n${steps}\n\nINSTRUCTION:\n${instruction}`;
+  if (!feedback || feedback.issues.length === 0)
+    return `${base}\n\nReturn the ordered ops as JSON.`;
+  const probs = feedback.issues.map((i) => `- ${i.message}`).join("\n");
+  return `${base}\n\nThe previous attempt left these problems — return ops that FIX them (and nothing that re-introduces them):\n${probs}\n\nReturn the corrected ops as JSON.`;
+};
