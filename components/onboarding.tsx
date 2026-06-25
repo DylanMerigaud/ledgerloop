@@ -28,16 +28,25 @@ type RoleResolution = {
   employeeName: string | null;
   rationale: string;
 };
+type OrgEmployee = {
+  id: string;
+  name: string;
+  title: string;
+  department: string;
+  division: string;
+  managerId: string | null;
+};
 type OnboardingResponse = {
   source: string;
   employeeCount: number;
+  employees: OrgEmployee[];
   workflow: ApprovalWorkflow;
   proposal: {
     directorThreshold: number;
     roles: RoleResolution[];
     summary: string;
   };
-  issues: { detail: string; note: string }[];
+  issues: { employeeName: string; detail: string; note: string }[];
 };
 
 type State =
@@ -137,6 +146,66 @@ export const Onboarding = () => {
   );
 };
 
+/**
+ * The org as a reporting tree (roots at top, reports nested), with people the
+ * agent flagged highlighted — so a viewer can see the data issues against the real
+ * chart (the junk record, the orphan with no manager) instead of just a count.
+ */
+const OrgTree = ({
+  employees,
+  issues,
+}: {
+  employees: OrgEmployee[];
+  issues: { employeeName: string; detail: string; note: string }[];
+}) => {
+  // Flag exactly the people an issue is ABOUT (by subject name), not anyone merely
+  // mentioned in a note.
+  const flaggedNames = new Set(issues.map((i) => i.employeeName));
+  const flagged = new Set(
+    employees.filter((e) => flaggedNames.has(e.name)).map((e) => e.id),
+  );
+
+  // Build children-by-manager. Anyone whose managerId isn't a real employee (or is
+  // null) is a root — which surfaces the orphans/dangling managers visually.
+  const ids = new Set(employees.map((e) => e.id));
+  const childrenOf = new Map<string | null, OrgEmployee[]>();
+  for (const e of employees) {
+    const key = e.managerId && ids.has(e.managerId) ? e.managerId : null;
+    const list = childrenOf.get(key) ?? [];
+    list.push(e);
+    childrenOf.set(key, list);
+  }
+
+  const renderNodes = (
+    parent: string | null,
+    depth: number,
+  ): React.ReactNode => {
+    const nodes = childrenOf.get(parent) ?? [];
+    return nodes.map((e) => (
+      <div key={e.id}>
+        <div
+          className={`flex items-center gap-1.5 rounded px-1.5 py-1 text-[11px] ${
+            flagged.has(e.id)
+              ? "bg-warn-soft ring-1 ring-inset ring-warn-line"
+              : ""
+          }`}
+          style={{ marginLeft: depth * 14 }}
+        >
+          {depth > 0 && <span className="text-line">└</span>}
+          <span className="font-medium text-ink">{e.name}</span>
+          <span className="text-muted">
+            {e.title ? `· ${e.title}` : "· (no title)"}
+          </span>
+          {flagged.has(e.id) && <span className="ml-auto text-warn">⚠</span>}
+        </div>
+        {renderNodes(e.id, depth + 1)}
+      </div>
+    ));
+  };
+
+  return <div className="space-y-0.5">{renderNodes(null, 0)}</div>;
+};
+
 const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
   return (
     <div className="space-y-3">
@@ -150,6 +219,15 @@ const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
       <p className="text-[12px] leading-relaxed text-ink">
         {data.proposal.summary}
       </p>
+
+      {/* The org the agent read — flagged people highlighted so the issues are
+          legible against the actual chart. */}
+      <div>
+        <h4 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">
+          Org chart ({data.employees.length})
+        </h4>
+        <OrgTree employees={data.employees} issues={data.issues} />
+      </div>
 
       {/* Role resolutions — the fuzzy work the agent did */}
       <div>

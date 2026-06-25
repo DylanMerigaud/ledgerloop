@@ -135,8 +135,10 @@ export const assembleWorkflow = (
 export type OnboardingResult = {
   workflow: ApprovalWorkflow;
   proposal: TProposal;
-  /** The org issues paired with the model's plain-language note for each. */
-  issues: { detail: string; note: string }[];
+  /** The org issues paired with the model's plain-language note for each.
+      `employeeName` is the issue's SUBJECT (for precise UI highlighting — so the
+      tree flags the person the issue is ABOUT, not anyone merely mentioned). */
+  issues: { employeeName: string; detail: string; note: string }[];
 };
 
 /**
@@ -150,6 +152,7 @@ export const deriveWorkflow = async (
   const proposal = await model.propose(org);
   const workflow = assembleWorkflow(org, proposal);
   const issues = org.issues.map((iss, i) => ({
+    employeeName: iss.employeeName,
     detail: iss.detail,
     note: proposal.issueNotes[i] ?? iss.detail,
   }));

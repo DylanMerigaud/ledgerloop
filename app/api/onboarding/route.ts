@@ -68,6 +68,7 @@ export const POST = async (request: Request): Promise<Response> => {
     return Response.json({
       source: org.source,
       employeeCount: org.employees.length,
+      employees: org.employees,
       workflow,
       proposal,
       issues,
