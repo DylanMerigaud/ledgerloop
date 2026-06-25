@@ -22,6 +22,7 @@
     "hris:reset": "tsx scripts/seed-bamboo.ts reset",
     "sanity": "tsx src/mastra/sanity.ts",
     "eval": "tsx eval/run.ts",
+    "eval:edit": "tsx eval/edit-run.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

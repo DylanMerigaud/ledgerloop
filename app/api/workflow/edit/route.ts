@@ -49,12 +49,14 @@ export const POST = async (request: Request): Promise<Response> => {
   }
 
   try {
-    const { proposed, changes } = await proposeEdit(
+    const { proposed, op, changes } = await proposeEdit(
       anthropicEditModel,
       workflow,
       instruction,
     );
-    return Response.json({ proposed, changes });
+    // `op.reason` (only present on a `none`) explains why nothing changed.
+    const reason = op.op === "none" ? op.reason : null;
+    return Response.json({ proposed, changes, reason });
   } catch {
     // A validation failure (the model produced an invalid graph) or a model error
     // both land here — the edit is simply not offered, the current workflow stands.

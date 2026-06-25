@@ -54,3 +54,9 @@ jobs:
       # scoring offline (a perfect score is expected). Run the real eval locally.
       - name: Investigator eval (dry-run, no API calls)
         run: pnpm eval --dry-run
+
+      # The conversational-edit eval scores whether the model maps an instruction
+      # to the right WorkflowEditOp. `--dry-run` exercises the corpus + scoring
+      # offline; the live run (real model, 8/8) is local.
+      - name: Workflow-edit eval (dry-run, no API calls)
+        run: pnpm eval:edit --dry-run

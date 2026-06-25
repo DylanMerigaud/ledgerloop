@@ -56,7 +56,17 @@ export const WorkflowEditor = ({ initial }: { initial: ApprovalWorkflow }) => {
         setError(msg ?? "Edit failed.");
         return;
       }
-      const data = (await res.json()) as Proposal;
+      const data = (await res.json()) as Proposal & { reason?: string | null };
+      const realChanges = data.changes.filter((c) => c.kind !== "unchanged");
+      if (realChanges.length === 0) {
+        // The agent declined (redundant / off-topic) — say so, don't offer a no-op.
+        setError(
+          data.reason
+            ? `No change: ${data.reason}`
+            : "No change — the workflow already does that.",
+        );
+        return;
+      }
       setProposal(data);
       setInstruction("");
     } catch {
