@@ -9,25 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Modern light product palette (Linear / Stripe register): a faintly cool
-        // off-white page, pure-white surfaces that lift off it, a fuller neutral
-        // ramp (so we stop hand-mixing ink/40, muted/70 everywhere), and one
-        // confident indigo accent with a real hover + ring. Same accent family as
-        // the sibling ai-invoice-parser repo so the demos read as one product line.
-        canvas: "#FBFBFD", // page — a hair cool, lets white cards sit above it
+        // Light product palette in the Attio register: white surfaces separated by
+        // CRISP 1px borders (not soft shadows — that read "baveux"), an almost-white
+        // page, and a neutral ramp. Primary actions are INK (black), so the accent
+        // is demoted to a thin highlight (focus ring, selected state, small marks).
+        canvas: "#FCFCFC", // page — effectively white, a hair off so cards read
         surface: "#FFFFFF",
-        subtle: "#F5F6F8", // nested panels (chips, inputs) — depth without a border
-        line: "#ECEDF1", // hairline borders — lighter than before, less "grid"
-        "line-strong": "#DDDFE6", // dividers that need to read
-        ink: "#0B0D12", // near-black with a faint cool cast
-        muted: "#697586", // secondary text
-        faint: "#98A1B0", // tertiary text (timestamps, hints) — replaces muted/70
+        subtle: "#F7F7F8", // nested fills (chips, inputs, hover) — barely there
+        line: "#E8E8EC", // default hairline — VISIBLE and crisp (the Attio look)
+        "line-strong": "#DCDCE1", // dividers / input borders that must read
+        ink: "#101113", // near-black, neutral (not blue-tinted)
+        muted: "#6B6F76", // secondary text
+        faint: "#9A9DA4", // tertiary text (timestamps, hints)
         accent: {
-          DEFAULT: "#4F46E5",
-          hover: "#4338CA",
+          DEFAULT: "#5B53D6", // a calmer indigo-violet, used only as a thin accent
+          hover: "#4A43C0",
           fg: "#FFFFFF",
-          soft: "#EEF2FF",
-          ring: "#C7D2FE",
+          soft: "#EFEEFB",
+          ring: "#C9C5F0",
         },
         // Pipeline-stage colors. Each procure-to-pay stage gets a stable hue so
         // the queue (left pane) and the trace timeline (right pane) agree at a
@@ -78,16 +77,17 @@ const config: Config = {
         ],
       },
       boxShadow: {
-        // Soft, layered, low-opacity (Linear register) — visible depth, never harsh.
-        card: "0 1px 2px rgba(11, 13, 18, 0.04), 0 2px 6px rgba(11, 13, 18, 0.05)",
-        lift: "0 6px 16px rgba(11, 13, 18, 0.10), 0 2px 4px rgba(11, 13, 18, 0.06)",
-        // A focused, pressable accent button gets a faint coloured cast.
-        accent:
-          "0 1px 2px rgba(79, 70, 229, 0.30), 0 6px 16px rgba(79, 70, 229, 0.18)",
+        // Attio register: surfaces are defined by BORDERS, not shadows. `card` is a
+        // single hairline that barely lifts; `lift` is reserved for things that
+        // truly float over content (popovers, the "N more" pill).
+        card: "0 1px 2px rgba(16, 17, 19, 0.04)",
+        lift: "0 8px 24px rgba(16, 17, 19, 0.12), 0 2px 6px rgba(16, 17, 19, 0.06)",
+        // A subtle inset for the black primary button so it has a touch of depth.
+        button: "0 1px 2px rgba(16, 17, 19, 0.18)",
       },
       borderRadius: {
-        xl: "0.75rem",
-        "2xl": "1rem",
+        xl: "0.625rem",
+        "2xl": "0.75rem",
       },
       keyframes: {
         "fade-in": {

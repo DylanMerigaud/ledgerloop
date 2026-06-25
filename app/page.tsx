@@ -79,21 +79,29 @@ const Header = () => {
   );
 };
 
-/** A small geometric loop mark — two arcs closing into a ledger loop. */
+/** Logo mark: a clean closed loop (a cycle) — on the nose for "ledgerloop". */
 const LogoMark = () => {
   return (
     <div
       aria-hidden
-      className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent shadow-accent"
+      className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-ink"
     >
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+      <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" aria-hidden>
+        {/* a near-full circle with a small gap, plus an arrowhead, reads as a loop */}
         <path
-          d="M7 8a5 5 0 0 1 5-5 5 5 0 0 1 5 5v8a5 5 0 0 1-5 5 5 5 0 0 1-5-5"
+          d="M19 12a7 7 0 1 1-2.5-5.36"
           stroke="white"
-          strokeWidth="2.2"
+          strokeWidth="2.3"
           strokeLinecap="round"
         />
-        <circle cx="12" cy="12" r="2" fill="white" />
+        <path
+          d="M16.5 3.5v3.2h-3.2"
+          stroke="white"
+          strokeWidth="2.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="12" cy="12" r="2.1" className="fill-accent" />
       </svg>
     </div>
   );

@@ -16,23 +16,24 @@ type Size = "sm" | "md";
 
 const BASE =
   "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium " +
-  "transition-all duration-150 outline-none focus-visible:ring-2 " +
+  "transition-colors duration-150 outline-none focus-visible:ring-2 " +
   "focus-visible:ring-accent-ring focus-visible:ring-offset-1 " +
   "focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<Variant, string> = {
-  primary:
-    "bg-accent text-accent-fg shadow-accent hover:bg-accent-hover active:translate-y-px",
+  // Ink primary (Attio register) — compact black button, hairline shadow, no
+  // coloured halo. The accent shows up only as the focus ring.
+  primary: "bg-ink text-white shadow-button hover:bg-[#2A2C30]",
   ghost:
-    "bg-surface text-ink ring-1 ring-inset ring-line-strong hover:bg-subtle active:translate-y-px",
-  ok: "bg-ok text-white shadow-card hover:opacity-90 active:translate-y-px",
+    "bg-surface text-ink ring-1 ring-inset ring-line-strong hover:bg-subtle",
+  ok: "bg-ok text-white shadow-button hover:bg-ok/90",
   danger:
-    "bg-surface text-danger ring-1 ring-inset ring-danger-line hover:bg-danger-soft active:translate-y-px",
+    "bg-surface text-danger ring-1 ring-inset ring-danger-line hover:bg-danger-soft",
 };
 
 const SIZES: Record<Size, string> = {
   sm: "h-8 px-3 text-[13px]",
-  md: "h-10 px-4 text-sm",
+  md: "h-9 px-3.5 text-[13px]",
 };
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {

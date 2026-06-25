@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
+import { WorkflowGraph } from "@/components/workflow-graph";
 import { API_ROUTES } from "@/lib/api-routes";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 
@@ -89,30 +90,32 @@ export const Onboarding = () => {
           )}
         </CardHeader>
         <div className="scrollbar-slim flex flex-1 flex-col gap-4 overflow-y-auto p-5">
-          <p className="text-[13.5px] leading-relaxed text-muted">
+          <p className="text-[13px] leading-relaxed text-muted">
             Point the agent at the client&apos;s HR system. It reads the org
             chart, derives who signs off on what (resolved to real people), and
             flags the data issues to fix before going live.
           </p>
-          <Button
-            onClick={discover}
-            loading={state.status === "running"}
-            className="w-full"
-          >
-            {state.status === "running"
-              ? "Reading org & deriving workflow…"
-              : state.status === "done"
-                ? "Re-run discovery"
-                : "Discover from BambooHR"}
-          </Button>
+          <div>
+            <Button onClick={discover} loading={state.status === "running"}>
+              {state.status === "running"
+                ? "Reading org…"
+                : state.status === "done"
+                  ? "Re-run discovery"
+                  : "Discover from BambooHR"}
+            </Button>
+          </div>
 
           {state.status === "error" && (
-            <div className="rounded-xl bg-danger-soft px-3.5 py-2.5 text-[12px] text-danger ring-1 ring-inset ring-danger-line/70">
+            <div className="rounded-lg bg-danger-soft px-3.5 py-2.5 text-[12px] text-danger ring-1 ring-inset ring-danger-line/70">
               {state.message}
             </div>
           )}
 
-          {state.status === "done" && <DiscoverySummary data={state.data} />}
+          {state.status === "done" ? (
+            <DiscoverySummary data={state.data} />
+          ) : (
+            <DiscoveryPreview running={state.status === "running"} />
+          )}
         </div>
       </Card>
 
@@ -273,56 +276,135 @@ const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
   );
 };
 
+/**
+ * A representative workflow shown DIMMED behind the empty/running state, so the
+ * canvas is never a blank box — the viewer sees the shape of the thing discovery
+ * produces (a conditional gate DAG) before they run it. Sample data only; the real
+ * one is derived from the client's org.
+ */
+const SAMPLE_WORKFLOW: ApprovalWorkflow = {
+  name: "Sample approval workflow",
+  roots: ["manager"],
+  steps: [
+    {
+      id: "manager",
+      kind: "approval",
+      label: "Manager review",
+      when: { kind: "always" },
+      approverTitle: "Manager",
+      approverName: "Riley Carter",
+      next: ["director", "dept"],
+    },
+    {
+      id: "director",
+      kind: "approval",
+      label: "Director review",
+      when: { kind: "leaf", field: "amount", op: ">", value: 25000 },
+      approverTitle: "CFO",
+      approverName: "Cameron Diaz",
+      next: ["post"],
+    },
+    {
+      id: "dept",
+      kind: "approval",
+      label: "Department head",
+      when: { kind: "leaf", field: "department", op: "==", value: "IT" },
+      approverTitle: "COO",
+      approverName: "Jordan Ellis",
+      next: ["post"],
+    },
+    {
+      id: "post",
+      kind: "integration",
+      label: "Post to NetSuite",
+      when: { kind: "always" },
+      integration: "netsuite",
+      next: [],
+    },
+  ],
+};
+
 const EmptyState = ({ running }: { running: boolean }) => {
   return (
-    <div className="grid h-full min-h-72 place-items-center rounded-xl bg-subtle/40 px-8 text-center ring-1 ring-inset ring-line">
-      <div className="max-w-sm space-y-3">
-        {running ? (
-          <>
-            <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent-soft">
-              <Spinner large />
-            </div>
-            <p className="text-[13.5px] font-medium text-ink">
-              Reading the org and deriving the approval workflow…
-            </p>
-            <p className="text-[12px] text-faint">
-              The agent resolves each gate to a real person from the chart.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">
-              <GraphGlyph />
-            </div>
-            <p className="text-[13.5px] font-medium text-ink">
-              No workflow yet
-            </p>
-            <p className="text-[12.5px] leading-relaxed text-muted">
-              Run discovery and the agent derives a conditional approval
-              workflow from the client&apos;s org chart, ready to edit in plain
-              language.
-            </p>
-          </>
-        )}
+    <div className="relative h-full min-h-72 overflow-hidden rounded-xl bg-subtle/40 ring-1 ring-inset ring-line">
+      {/* The sample workflow, dimmed — gives the canvas real structure instead of
+          a hollow box. Non-interactive (pointer-events-none). */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.18] blur-[1px]">
+        <WorkflowGraph workflow={SAMPLE_WORKFLOW} />
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-b from-surface/40 via-transparent to-surface/40" />
+
+      {/* The caption sits over the dimmed graph. */}
+      <div className="absolute inset-0 grid place-items-center px-8 text-center">
+        <div className="max-w-sm space-y-2.5">
+          {running ? (
+            <>
+              <div className="mx-auto flex items-center justify-center gap-2 text-[13px] font-medium text-ink">
+                <Spinner /> Reading the org &amp; deriving the workflow…
+              </div>
+              <p className="text-[12px] text-muted">
+                The agent resolves each gate to a real person from the chart.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[14px] font-semibold text-ink">
+                No workflow yet
+              </p>
+              <p className="text-[12.5px] leading-relaxed text-muted">
+                Run discovery and the agent derives a conditional approval
+                workflow like this from the client&apos;s org chart, resolved to
+                real approvers and ready to edit in plain language.
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-/** A tiny node-and-edge glyph for the empty workflow canvas. */
-const GraphGlyph = () => {
+/** The at-rest left pane: a compact preview of what discovery will produce, so
+    the pane carries content before a run instead of a lone button. */
+const DiscoveryPreview = ({ running }: { running: boolean }) => {
+  const items = [
+    {
+      title: "Read the org chart",
+      body: "Pull every active employee, their title, and who they report to.",
+    },
+    {
+      title: "Resolve approvers",
+      body: "Map each approval gate to a real person, not a placeholder role.",
+    },
+    {
+      title: "Flag data issues",
+      body: "Surface orphans, missing managers, and junk records to fix first.",
+    },
+  ];
   return (
-    <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden>
-      <circle cx="5" cy="12" r="2.4" fill="currentColor" />
-      <circle cx="19" cy="6" r="2.4" fill="currentColor" opacity="0.7" />
-      <circle cx="19" cy="18" r="2.4" fill="currentColor" opacity="0.7" />
-      <path
-        d="M7 11 17 6.6M7 13l10 4.4"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
+    <div className={running ? "opacity-50" : ""}>
+      <Eyebrow className="mb-2">What discovery produces</Eyebrow>
+      <ol className="space-y-1.5">
+        {items.map((it, i) => (
+          <li
+            key={it.title}
+            className="flex gap-3 rounded-lg bg-subtle/60 px-3 py-2.5 ring-1 ring-inset ring-line"
+          >
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface text-[11px] font-semibold text-muted ring-1 ring-inset ring-line-strong">
+              {i + 1}
+            </span>
+            <span>
+              <span className="block text-[12.5px] font-semibold text-ink">
+                {it.title}
+              </span>
+              <span className="mt-0.5 block text-[11.5px] leading-snug text-muted">
+                {it.body}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 };
 
