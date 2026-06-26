@@ -86,12 +86,14 @@ export const assembleWorkflow = (
       when: { kind: "always" },
       approverTitle: manager.title,
       approverName: manager.name,
-      // Fan-out to the conditional gates only — NOT straight to the post (a direct
+      // Fan-out to the director gate — NOT straight to the post (a direct
       // manager→post edge reads as "the manager can post without the other gates").
-      // The post still runs for small/non-scoped invoices because a gate whose
-      // condition is false is a transparent pass-through in the engine (AND-join),
-      // so director+department skip → post is reached.
-      next: [STEP.director, STEP.department],
+      // The post still runs for small invoices because a gate whose condition is
+      // false is a transparent pass-through in the engine (AND-join), so director
+      // skips → post is reached. The department review is a SEPARATE root (a
+      // parallel first-line axis, not behind the manager), so when it fires it pends
+      // in the SAME wave as the manager and one approval round clears both.
+      next: [STEP.director],
     },
     {
       id: STEP.director,
@@ -107,10 +109,12 @@ export const assembleWorkflow = (
       id: STEP.department,
       kind: "approval",
       label: "Department head review",
-      // Department-specific review fires for a department the agent flagged as
-      // needing one; here we gate on the IT department as the common case (the
-      // proposal's department-head rationale explains why). Kept simple + legible.
-      when: { kind: "leaf", field: "department", op: "==", value: "IT" },
+      // A parallel first-line gate (its own root), scoped to one department's
+      // purchases. We gate on Product (a real department in the seeded org, and the
+      // one carried on a seeded PO) so it actually fires in the demo; the proposal's
+      // department-head rationale explains who signs off. When the invoice isn't that
+      // department the gate's condition is false → it skips (transparent pass-through).
+      when: { kind: "leaf", field: "department", op: "==", value: "Product" },
       approverTitle: deptHead.title,
       approverName: deptHead.name,
       next: [STEP.post],
@@ -128,7 +132,9 @@ export const assembleWorkflow = (
   return {
     name: `${org.source} approval workflow`,
     steps,
-    roots: [STEP.manager],
+    // Manager and department head are parallel first-line roots; director hangs off
+    // the manager (escalation), the post collects all paths (AND-join).
+    roots: [STEP.manager, STEP.department],
   };
 };
 
@@ -188,7 +194,7 @@ export const ONBOARDING_SYSTEM_PROMPT = `You configure procure-to-pay approval w
 1. Fill three approval roles with the right TITLE from this org, and resolve each to a real PERSON:
    - "manager": the front-line approver an invoice first goes to.
    - "director": the senior approver for larger amounts. Pick a genuinely more senior title than the manager (e.g. a VP or C-level), resolved to a real person.
-   - "department-head": who reviews department-specific (e.g. IT) purchases.
+   - "department-head": who reviews department-specific (e.g. Product) purchases.
    For each, give the title, the person's exact name from the org (or null if no one fits), and a one-line rationale. If you cannot find a sensible person, set the name to null — do not invent one.
 
 2. Propose "directorThreshold": the invoice amount above which the director must also approve. Choose a sensible round number for a company this size.

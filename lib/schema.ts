@@ -100,6 +100,13 @@ export const PurchaseOrder = z
     currency: Currency,
     lineItems: z.array(LineItem).min(1),
     total: Amount,
+    /** The BUYING department (the internal team the spend belongs to), so an
+        approval workflow can route a department-specific review. It lives on the PO,
+        not the invoice: a vendor doesn't know your cost centres — your PO does. "" =
+        no department, so a PO without one routes normally and a department-scoped
+        gate simply doesn't fire. Required (explicit "") to keep the seed + fixtures
+        unambiguous — same "no hidden defaults" discipline as the rest of the schema. */
+    department: z.string(),
   })
   .strict();
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
@@ -178,6 +185,9 @@ export const MatchResult = z
     exceptionAmount: z.number().nonnegative(),
     currency: Currency,
     invoiceTotal: Amount,
+    /** The buying department, carried from the PO so a department-scoped approval
+        gate can route on it. "" when the PO has none (or there's no PO). */
+    department: z.string(),
   })
   .strict();
 export type MatchResult = z.infer<typeof MatchResult>;

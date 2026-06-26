@@ -74,6 +74,9 @@ export const runMatch = (
     priorInvoiceNumbers = [],
   } = input;
   const currency = invoice.currency;
+  // The buying department comes from the PO (the internal team that ordered); "" when
+  // there's no PO. Carried into the result so a department-scoped approval gate routes.
+  const department = purchaseOrder?.department ?? "";
   const matchType: MatchResult["matchType"] = goodsReceipt
     ? "three_way"
     : "two_way";
@@ -102,6 +105,7 @@ export const runMatch = (
       exceptionAmount: invoice.total,
       currency,
       invoiceTotal: invoice.total,
+      department,
     };
   }
 
@@ -211,6 +215,7 @@ export const runMatch = (
     exceptionAmount,
     currency,
     invoiceTotal: invoice.total,
+    department,
   };
 };
 

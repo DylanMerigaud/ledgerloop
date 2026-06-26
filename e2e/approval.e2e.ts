@@ -29,8 +29,10 @@ const step = (page: Page, stage: string) => {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  // The dashboard must have loaded with seeded data (not the "needs its database"
-  // notice). If this fails, the backend env isn't configured.
+  // The app opens on the Onboarding tab; the pipeline lives behind the Pipeline
+  // tab. Switch to it, then the seeded queue must be visible (not the "needs its
+  // database" notice — if this fails, the backend env isn't configured).
+  await page.getByRole("button", { name: "Pipeline" }).click();
   await expect(page.getByText("Invoice queue")).toBeVisible();
 });
 

@@ -30,7 +30,7 @@ const contextFromMatch = (match: MatchResult): InvoiceContext => {
     amount: match.invoiceTotal,
     exceptionAmount: match.exceptionAmount,
     variancePct: match.maxVariancePct,
-    department: "", // department-gated steps need an enriched source; "" = no dept
+    department: match.department, // from the PO; "" = no dept → department gates skip
     verdict: match.verdict,
   };
 };

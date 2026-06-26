@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { WorkflowGraph } from "@/components/workflow-graph";
+import { useEventCallback } from "@/hooks/use-event-callback";
 import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
 import { orpc } from "@/lib/orpc/client";
 import {
@@ -36,10 +37,15 @@ type Proposal = {
 export const WorkflowEditor = ({
   initial,
   suggestions = [],
+  onCurrentChange,
 }: {
   initial: ApprovalWorkflow;
   /** AI-generated next-edit suggestions for the initial workflow (may be empty). */
   suggestions?: string[];
+  /** Called with the CURRENT (approved) workflow whenever it changes — the initial
+      one, then each kept edit. Never the pending proposal (preview-only). Lets a
+      parent (AppView) run the pipeline against exactly what's on screen here. */
+  onCurrentChange?: (workflow: ApprovalWorkflow) => void;
 }) => {
   const [current, setCurrent] = useState<ApprovalWorkflow>(initial);
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -48,6 +54,15 @@ export const WorkflowEditor = ({
   // Suggestions are consumable: once one produces a proposal it's removed, so a
   // chip never lingers after it's been used.
   const [chips, setChips] = useState<string[]>(suggestions);
+
+  // Surface the current (approved) workflow to the parent whenever it changes —
+  // the initial derived one and every kept edit, so the pipeline runs against
+  // exactly this. Stable callback (useEventCallback) so the effect keys only on
+  // `current`. The proposal never flows here: it's preview-only until approved.
+  const emitCurrent = useEventCallback((wf: ApprovalWorkflow) =>
+    onCurrentChange?.(wf),
+  );
+  useEffect(() => emitCurrent(current), [current, emitCurrent]);
 
   // The edit is a TanStack Query mutation over the typed oRPC procedure;
   // `isPending` is the busy state.

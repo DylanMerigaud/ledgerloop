@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Dashboard } from "@/components/dashboard";
 import { Onboarding } from "@/components/onboarding";
 import type { QueueItem } from "@/db/client";
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 
 /**
  * The top-level view switch. Two halves of the product, in the order a
@@ -13,19 +14,42 @@ import type { QueueItem } from "@/db/client";
  *      workflow from their org. (The differentiator.)
  *   2. Pipeline — run invoices through that workflow, live.
  *
- * Client component (holds the active-tab state); the page stays a server
- * component that reads the queue and hands it down.
+ * It also owns the ONE shared piece of state between the two tabs: the active
+ * approval workflow. Onboarding derives/edits it and pushes it up here; the
+ * Pipeline reads it and runs every invoice through it. So there's a single
+ * workflow, not a per-tab copy — edit it on the left, it's what executes on the
+ * right. It lives in client state only (the run is stateless — nothing persisted);
+ * until discovery has run it's null and the pipeline falls back to its default DAG.
+ *
+ * Both tabs stay MOUNTED — the inactive one is hidden, not unmounted — so the wow
+ * loop holds: derive + edit on the left, switch to Pipeline, run, switch back, and
+ * your discovery + edits are still there (and a run in flight isn't aborted). A
+ * conditional render would drop all of that on every tab switch.
+ *
+ * Client component (holds the active tab + the shared workflow); the page stays a
+ * server component that reads the queue and hands it down.
  */
 type View = "onboarding" | "pipeline";
 
 export const AppView = ({ queue }: { queue: QueueItem[] }) => {
   const [view, setView] = useState<View>("onboarding");
+  // The single approval workflow shared across both tabs. null until the user
+  // runs discovery; the pipeline falls back to its default DAG meanwhile.
+  const [workflow, setWorkflow] = useState<ApprovalWorkflow | null>(null);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Tabs view={view} onChange={setView} />
       <div className="min-h-0 flex-1">
-        {view === "onboarding" ? <Onboarding /> : <Dashboard queue={queue} />}
+        {/* Keep BOTH panes mounted; toggle visibility so per-tab state survives a
+            switch. `hidden` collapses the inactive pane to zero box, so the active
+            one keeps the full height (the panes use lg:h-full). */}
+        <div className={view === "onboarding" ? "h-full" : "hidden"}>
+          <Onboarding onWorkflowChange={setWorkflow} />
+        </div>
+        <div className={view === "pipeline" ? "h-full" : "hidden"}>
+          <Dashboard queue={queue} workflow={workflow} />
+        </div>
       </div>
     </div>
   );

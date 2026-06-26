@@ -196,6 +196,7 @@ const toPoShape = (r: typeof purchaseOrders.$inferSelect) => {
     currency: r.currency,
     lineItems: r.lineItems,
     total: r.total,
+    department: r.department,
   };
 };
 

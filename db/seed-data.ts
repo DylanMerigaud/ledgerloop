@@ -73,6 +73,7 @@ const clean: SeedBundle = {
     currency: "USD",
     lineItems: cleanLines,
     total: sum(cleanLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5540",
@@ -115,6 +116,7 @@ const dupOriginal: SeedBundle = {
     currency: "USD",
     lineItems: dupLines,
     total: sum(dupLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5541",
@@ -165,6 +167,7 @@ const priceMismatch: SeedBundle = {
     currency: "GBP",
     lineItems: poSteelLines,
     total: sum(poSteelLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5542",
@@ -205,6 +208,7 @@ const cleanServices: SeedBundle = {
     currency: "EUR",
     lineItems: svcLines,
     total: sum(svcLines),
+    department: "",
   },
   // no goodsReceipt → 2-way
 };
@@ -235,6 +239,9 @@ const cleanPackaging: SeedBundle = {
     currency: "USD",
     lineItems: pkgLines,
     total: sum(pkgLines),
+    // Tagged to a real org department so a derived/edited "department review" gate
+    // actually fires on this invoice — the demonstrable end of the department lever.
+    department: "Product",
   },
   goodsReceipt: {
     grNumber: "GR-5544",
@@ -285,6 +292,7 @@ const arithmetic: SeedBundle = {
     currency: "USD",
     lineItems: mathPoLines,
     total: sum(mathPoLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5545",
@@ -326,6 +334,7 @@ const offPo: SeedBundle = {
     currency: "USD",
     lineItems: offpoPoLines,
     total: sum(offpoPoLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5546",
@@ -364,6 +373,7 @@ const cleanChem: SeedBundle = {
     currency: "USD",
     lineItems: chemLines,
     total: sum(chemLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5547",
@@ -403,6 +413,7 @@ const qtyMismatch: SeedBundle = {
     currency: "USD",
     lineItems: qtyPoLines,
     total: sum(qtyPoLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5548",
@@ -439,6 +450,7 @@ const cleanOffice: SeedBundle = {
     currency: "EUR",
     lineItems: officeLines,
     total: sum(officeLines),
+    department: "",
   },
   goodsReceipt: {
     grNumber: "GR-5549",

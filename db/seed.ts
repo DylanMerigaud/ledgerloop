@@ -93,6 +93,7 @@ const main = async () => {
           currency: b.purchaseOrder.currency,
           lineItems: b.purchaseOrder.lineItems,
           total: b.purchaseOrder.total,
+          department: b.purchaseOrder.department,
         });
         seenPo.add(b.purchaseOrder.poNumber);
         poCount++;
