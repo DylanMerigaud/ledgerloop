@@ -24,6 +24,11 @@ export const env = createEnv({
     /** Anthropic key for the vision extraction + agents. Optional: absent → those
      *  paths report a clear "missing key" failure instead of crashing at import. */
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    /** Shared secret guarding the nightly reset endpoint. Vercel Cron injects it as
+     *  `Authorization: Bearer $CRON_SECRET`; the route 401s anything else, so the
+     *  truncate+reseed isn't a public button. Optional — absent → the route refuses
+     *  all callers (the cron just won't reset until it's set). */
+    CRON_SECRET: z.string().min(1).optional(),
     /** BambooHR API key. Optional — absent → the HRIS adapter replays the fixture. */
     BAMBOO_HR_API_KEY: z.string().min(1).optional(),
     /** BambooHR company subdomain (the `neige` in neige.bamboohr.com). Optional. */
@@ -54,6 +59,7 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_DATABASE_URL: process.env.DIRECT_DATABASE_URL,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    CRON_SECRET: process.env.CRON_SECRET,
     BAMBOO_HR_API_KEY: process.env.BAMBOO_HR_API_KEY,
     BAMBOO_HR_SUBDOMAIN: process.env.BAMBOO_HR_SUBDOMAIN,
     QBO_CLIENT_ID: process.env.QBO_CLIENT_ID,

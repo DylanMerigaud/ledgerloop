@@ -1,13 +1,16 @@
 import { ORPCError } from "@orpc/server";
 
 import { loadRunBundle } from "@/db/client";
+import { saveAgentRun } from "@/db/runs";
 import { type RunRequest, type StreamDone } from "@/lib/api-types";
+import { isRecord } from "@/lib/assert";
 import {
   DEFAULT_TOLERANCES,
   DEFAULT_APPROVAL_POLICY,
 } from "@/lib/client-profile";
 import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
 import { mastra } from "@/src/mastra";
+import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 /**
  * The procure-to-pay run as a reusable async generator: it yields each TraceEvent
@@ -54,6 +57,11 @@ export const runPipelineStream = async function* (
     atMs: Date.now() - startedAt,
   });
 
+  // Accumulated for the audit row written at the end of the run.
+  const collected: TraceEvent[] = [];
+  let verdict = "unknown";
+  let outcome = "unknown";
+
   try {
     const workflow = mastra.getWorkflow("p2p");
     const wfRun = await workflow.createRun();
@@ -86,19 +94,47 @@ export const runPipelineStream = async function* (
     });
 
     // Relay Mastra's native event stream, adapting each chunk to a TraceEvent;
-    // unrecognized/internal chunks map to null and are dropped.
+    // unrecognized/internal chunks map to null and are dropped. We also collect the
+    // emitted events + the final verdict/outcome so the run can be persisted as an
+    // audit row once it completes.
     const reader = result.fullStream.getReader();
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       const event = toTraceEvent(value);
-      if (event) yield stamp(event);
+      if (!event) continue;
+      const stamped = stamp(event);
+      collected.push(stamped);
+      // The matching stage's data carries the verdict; the reconciliation/approval
+      // stage carries the outcome. Capture them as they pass for the audit row.
+      if (isRecord(stamped.data)) {
+        const d = stamped.data;
+        if (typeof d["verdict"] === "string") verdict = d["verdict"];
+        if (typeof d["outcome"] === "string") outcome = d["outcome"];
+      }
+      yield stamped;
     }
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Unexpected pipeline error.";
-    yield stamp(pipelineErrorEvent(message));
+    const errEvent = stamp(pipelineErrorEvent(message));
+    collected.push(errEvent);
+    yield errEvent;
   }
 
-  yield { done: true, durationMs: Date.now() - startedAt };
+  const durationMs = Date.now() - startedAt;
+
+  // Persist the run as an append-only audit row. Best-effort (saveAgentRun never
+  // throws), never touches the document tables or the ERP/HRIS — so it can't
+  // change a future run's verdict. The nightly reset clears these.
+  await saveAgentRun({
+    invoiceNumber: bundle.invoice.invoiceNumber,
+    verdict,
+    outcome,
+    trace: collected,
+    durationMs,
+    model: PIPELINE_MODEL,
+  });
+
+  yield { done: true, durationMs };
 };

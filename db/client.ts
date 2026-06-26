@@ -29,9 +29,13 @@ import {
  * the build / Edge bundling).
  */
 
-let cached: ReturnType<typeof drizzle> | null = null;
+/** The drizzle handle type, exported so helpers (db/reset.ts, db/runs.ts) can take
+ *  a `db` parameter without re-deriving it. */
+export type Database = ReturnType<typeof drizzle>;
 
-const db = () => {
+let cached: Database | null = null;
+
+const db = (): Database => {
   if (!cached) {
     // `prepare: false` is the Supabase transaction-pooler-safe setting; one
     // connection is plenty for this read-only demo. `env.DATABASE_URL` is required
@@ -42,6 +46,10 @@ const db = () => {
   }
   return cached;
 };
+
+/** The memoized pooled connection — shared by the read layer and the reset/runs
+ *  helpers so a serverless invocation reuses one connection. */
+export const getDb = (): Database => db();
 
 /** A queue row for the dashboard's left pane — light, list-shaped. */
 export type QueueItem = {
