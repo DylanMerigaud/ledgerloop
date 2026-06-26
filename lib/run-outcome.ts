@@ -1,3 +1,4 @@
+import type { WorkflowStep } from "@/lib/approval-workflow";
 import { isRecord } from "@/lib/assert";
 import type { Outcome } from "@/lib/display";
 import type { TraceEvent } from "@/lib/trace";
@@ -46,6 +47,36 @@ export const decisionsForPending = (
   }
   return out;
 };
+
+/** One gate the run is currently waiting on — the fields the node needs to render
+    its inline approve/reject. */
+export type PendingGate = {
+  id: string;
+  label: string;
+  approverName: string | null;
+  approverTitle: string;
+};
+
+/**
+ * The approval gates waiting on a human right now: the workflow's approval steps
+ * whose live status is "pending", in workflow order. The Dashboard joins the run's
+ * per-step statuses (`graphStatuses`) with the workflow's steps so each pending node
+ * can show who it's waiting on and offer a per-gate decision. Integration steps and
+ * already-settled gates (approved/rejected/skipped/blocked) are excluded.
+ */
+export const pendingGates = (
+  statuses: Record<string, string>,
+  steps: WorkflowStep[],
+): PendingGate[] =>
+  steps
+    .filter((s) => s.kind === "approval" && statuses[s.id] === "pending")
+    .map((s) => ({
+      id: s.id,
+      label: s.label,
+      // Only approval steps reach here (filtered above); read the gate's people.
+      approverName: s.kind === "approval" ? s.approverName : null,
+      approverTitle: s.kind === "approval" ? s.approverTitle : "",
+    }));
 
 /**
  * Derive the coarse outcome from the trace so far. Order matters: the

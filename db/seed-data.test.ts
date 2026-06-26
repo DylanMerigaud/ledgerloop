@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { runApproval } from "@/lib/approval-run";
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import {
   workflowFromPolicy,
   DEFAULT_APPROVAL_POLICY,
@@ -131,6 +132,71 @@ test("a material clean invoice still needs the manager (over the floor)", () => 
       `${id} should pend the manager gate`,
     );
   }
+});
+
+// A parallel-root workflow like the one onboarding derives: manager review fires on
+// any exception, department review fires on the Product department — two ROOTS that
+// can pend at once. (The default policy workflow has a single root, so it can't
+// surface this; this mirrors the derived shape just enough to pin the data premise.)
+const PARALLEL_WORKFLOW: ApprovalWorkflow = {
+  name: "Parallel gates",
+  roots: ["manager-review", "department-review"],
+  steps: [
+    {
+      id: "manager-review",
+      kind: "approval",
+      label: "Manager review",
+      when: { kind: "leaf", field: "verdict", op: "==", value: "exception" },
+      approverTitle: "Manager",
+      approverName: "Esther Howard",
+      next: ["post"],
+    },
+    {
+      id: "department-review",
+      kind: "approval",
+      label: "Department review",
+      when: { kind: "leaf", field: "department", op: "==", value: "Product" },
+      approverTitle: "Head of Product",
+      approverName: "Sam Patel",
+      next: ["post"],
+    },
+    {
+      id: "post",
+      kind: "integration",
+      label: "Post the bill",
+      when: { kind: "always" },
+      integration: "netsuite",
+      next: [],
+    },
+  ],
+};
+
+test("INV-2051 pends BOTH parallel gates (exception + Product) in one wave", () => {
+  // The invoice that demonstrates per-gate decisions: it's an exception (manager
+  // gate) AND department Product (department gate), so both roots pend together.
+  const m = matchOf(byId("INV-2051"));
+  assert.equal(m.verdict, "exception", "INV-2051 is a price exception");
+  assert.equal(m.department, "Product", "INV-2051 is a Product PO");
+
+  const run = runApproval(PARALLEL_WORKFLOW, m);
+  assert.equal(run.outcome, "awaiting");
+  const pendingIds = run.pending.map((p) => p.id).sort();
+  assert.deepEqual(pendingIds, ["department-review", "manager-review"]);
+});
+
+test("mixed parallel decision: rejecting one gate blocks the bill", () => {
+  // Approve the department gate but reject the manager gate → the bill does NOT post
+  // (reject wins). This is the whole point of per-gate decisions.
+  const m = matchOf(byId("INV-2051"));
+  const run = runApproval(PARALLEL_WORKFLOW, m, {
+    "manager-review": "reject",
+    "department-review": "approve",
+  });
+  assert.equal(run.outcome, "rejected");
+  assert.ok(
+    !run.pending.length,
+    "no gate is left pending once both are decided",
+  );
 });
 
 test("the services invoice is a clean 2-way match (no receipt)", () => {

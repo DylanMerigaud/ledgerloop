@@ -256,6 +256,56 @@ const cleanPackaging: SeedBundle = {
   },
 };
 
+/* ── 5b. PRICE MISMATCH on a PRODUCT-owned PO ───────────────────────────────
+   A price overrun (exception) on a PO the Product team owns. On the DERIVED
+   onboarding workflow the first wave has two parallel gates — manager review
+   (fires on the exception) AND department review (fires on department ==
+   "Product") — so BOTH pend at once. This is the invoice that demonstrates
+   per-gate decisions: approve one parallel gate, reject the other. */
+const prodPoLines = [
+  line("DEV-SEAT", "IDE seat license (annual)", 40, 180),
+  line("CI-MIN-10K", "CI minutes (10k block)", 12, 95),
+];
+const prodInvLines = [
+  { ...line("DEV-SEAT", "IDE seat license (annual)", 40, 196.4) }, // 180 → 196.4 ≈ +9.1%
+  line("CI-MIN-10K", "CI minutes (10k block)", 12, 95),
+];
+const prodPriceMismatch: SeedBundle = {
+  id: "INV-2051",
+  scenario: "Price mismatch (Product)",
+  invoice: {
+    invoiceNumber: "INV-2051",
+    poNumber: "PO-7751",
+    vendor: "Forge Dev Tools",
+    issueDate: "2026-05-18",
+    currency: "USD",
+    lineItems: prodInvLines,
+    subtotal: sum(prodInvLines),
+    tax: null,
+    total: sum(prodInvLines),
+  },
+  purchaseOrder: {
+    poNumber: "PO-7751",
+    vendor: "Forge Dev Tools",
+    currency: "USD",
+    lineItems: prodPoLines,
+    total: sum(prodPoLines),
+    // Developer tooling → the Product org owns it, so the department-review gate
+    // fires alongside the manager gate (the price exception) in one parallel wave.
+    department: "Product",
+  },
+  goodsReceipt: {
+    grNumber: "GR-5551",
+    poNumber: "PO-7751",
+    receivedDate: "2026-05-20",
+    lineItems: prodPoLines.map((l) => ({
+      sku: l.sku,
+      description: l.description,
+      receivedQty: l.qty,
+    })),
+  },
+};
+
 /* ── 6. ARITHMETIC ERROR ────────────────────────────────────────────────────
    A line whose amount doesn't equal qty × unitPrice (transcription slip).
    Small variance → manager tier. */
@@ -529,6 +579,7 @@ export const SEED_BUNDLES: SeedBundle[] = [
   priceMismatch,
   cleanServices,
   cleanPackaging,
+  prodPriceMismatch,
   arithmetic,
   offPo,
   cleanChem,

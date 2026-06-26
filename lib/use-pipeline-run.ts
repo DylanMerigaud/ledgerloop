@@ -73,17 +73,19 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
   });
 
   /**
-   * Stream one run/resume. `decision` undefined = phase 1 (may pause for a
-   * human); "approve"/"reject" = phase 2 resume onto the existing trace.
+   * Stream one run/resume. `decisions` undefined = phase 1 (may pause for a
+   * human); a per-gate map = phase 2 resume onto the existing trace. The caller
+   * builds the map: the single Approve/Reject button batches every pending gate
+   * (`decide`), the per-node controls send an explicit per-gate map (`decideMany`).
    */
   const stream = useEventCallback(
-    async (id: string, decision?: "approve" | "reject") => {
+    async (id: string, decisions?: Record<string, "approve" | "reject">) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
       // Phase 1 starts a fresh trace; phase 2 keeps the existing one.
-      if (!decision) {
+      if (!decisions) {
         eventsRef.current = [];
         stepIndexRef.current = new Map();
         decisionsRef.current = {};
@@ -95,7 +97,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
         error: null,
       }));
 
-      const resuming = decision !== undefined;
+      const resuming = decisions !== undefined;
       const push = (e: TraceEvent) => {
         const events = eventsRef.current;
         const stepIndex = stepIndexRef.current;
@@ -139,22 +141,20 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
       };
 
       try {
-        // The approval workflow can have several gates pending in parallel. The
-        // single Approve/Reject button applies the reviewer's decision to ALL gates
-        // pending in THIS wave (the collect-all set). We MERGE that into the running
-        // accumulator and send the union, so an earlier wave's approvals aren't lost
-        // when a later wave is acted on (the run is stateless — it rebuilds the whole
-        // DAG from the decisions). The active workflow rides along on both phases so
-        // the run routes through exactly the one on screen; omitted when null so the
-        // server uses its default DAG.
+        // The approval workflow can have several gates pending in parallel. The caller
+        // hands us the decisions for THIS wave (the single button batches every pending
+        // gate; the per-node controls send one entry per gate). We MERGE that into the
+        // running accumulator and send the union, so an earlier wave's approvals aren't
+        // lost when a later wave is acted on (the run is stateless — it rebuilds the
+        // whole DAG from the decisions). Deciding only SOME pending gates leaves the
+        // rest unset → the engine keeps them pending and the run re-pauses on them. The
+        // active workflow rides along on both phases so the run routes through exactly
+        // the one on screen; omitted when null so the server uses its default DAG.
         const activeWorkflow = workflowRef.current ?? undefined;
-        if (decision) {
-          decisionsRef.current = {
-            ...decisionsRef.current,
-            ...decisionsForPending(eventsRef.current, decision),
-          };
+        if (decisions) {
+          decisionsRef.current = { ...decisionsRef.current, ...decisions };
         }
-        const body = decision
+        const body = decisions
           ? { id, decisions: decisionsRef.current, workflow: activeWorkflow }
           : { id, workflow: activeWorkflow };
         // The oRPC `run` procedure is an event iterator: a typed async stream of
@@ -210,8 +210,16 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
   );
 
   const run = useEventCallback((id: string) => stream(id));
+  // One decision applied to every gate pending in this wave (the header button).
   const decide = useEventCallback(
-    (id: string, decision: "approve" | "reject") => stream(id, decision),
+    (id: string, decision: "approve" | "reject") =>
+      stream(id, decisionsForPending(eventsRef.current, decision)),
+  );
+  // An explicit per-gate map (the inline node controls) — approve one, reject
+  // another in the same parallel wave.
+  const decideMany = useEventCallback(
+    (id: string, perGate: Record<string, "approve" | "reject">) =>
+      stream(id, perGate),
   );
 
   /**
@@ -238,5 +246,5 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
     });
   });
 
-  return { state, run, decide, reset, replay };
+  return { state, run, decide, decideMany, reset, replay };
 };

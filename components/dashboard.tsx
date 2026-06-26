@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkflowGraph, type StepStatuses } from "@/components/workflow-graph";
 import type { QueueItem } from "@/db/client";
+import { useEventCallback } from "@/hooks/use-event-callback";
 import { API_ROUTES } from "@/lib/api-routes";
 import {
   ApprovalWorkflow,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/display";
 import { formatMoney } from "@/lib/format";
 import { orpc } from "@/lib/orpc/client";
+import { pendingGates } from "@/lib/run-outcome";
 import type { Invoice } from "@/lib/schema";
 import type { TraceEvent } from "@/lib/trace";
 import { usePipelineRun } from "@/lib/use-pipeline-run";
@@ -179,7 +181,8 @@ export const Dashboard = ({
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
   );
-  const { state, run, decide, reset, replay } = usePipelineRun(workflow);
+  const { state, run, decide, decideMany, reset, replay } =
+    usePipelineRun(workflow);
   const queryClient = useQueryClient();
 
   // When a run reaches a terminal state (done/blocked, not a mid-run pause), a new
@@ -282,9 +285,40 @@ export const Dashboard = ({
   const graphToShow = runGraph?.workflow ?? workflow;
   const graphStatuses = runGraph?.statuses;
 
+  // The gates the paused run is waiting on (joined: live status + the workflow's
+  // people). Drives the inline per-node Approve/Reject and the submit affordance.
+  const gates =
+    state.status === "awaiting" && graphStatuses && graphToShow
+      ? pendingGates(graphStatuses, graphToShow.steps)
+      : [];
+  const pendingIds = gates.map((g) => g.id);
+
+  // Decisions staged on the parallel gates, before the reviewer submits the wave.
+  // (One gate → the header buttons resume immediately; this is for 2+ at once.)
+  const [gateChoices, setGateChoices] = useState<
+    Record<string, "approve" | "reject">
+  >({});
+  // Clear staged decisions whenever the run leaves the awaiting state (resolved,
+  // re-run, or a new wave streams in fresh) so they never leak across waves/runs.
+  const awaiting = state.status === "awaiting";
+  const wasAwaitingRef = useRef(false);
+  useEffect(() => {
+    if (wasAwaitingRef.current && !awaiting) setGateChoices({});
+    wasAwaitingRef.current = awaiting;
+  }, [awaiting]);
+
+  const setGate = useEventCallback((id: string, choice: "approve" | "reject") =>
+    setGateChoices((m) => ({ ...m, [id]: choice })),
+  );
+  const setAllGates = (choice: "approve" | "reject") =>
+    setGateChoices(Object.fromEntries(pendingIds.map((id) => [id, choice])));
+  const allDecided =
+    gates.length > 0 && pendingIds.every((id) => gateChoices[id]);
+
   const select = (id: string) => {
     if (id === selectedId || locked) return;
     setSelectedId(id);
+    setGateChoices({});
     reset();
   };
 
@@ -424,8 +458,38 @@ export const Dashboard = ({
             )}
             <RunningAgainst workflow={workflow} />
           </div>
-          {state.status === "awaiting" && selected ? (
-            // The run paused for a human decision — show the approval gate.
+          {state.status === "awaiting" && selected && gates.length >= 2 ? (
+            // Several gates pend in parallel — decide each on its node in the graph,
+            // then submit the wave. Approve/Reject all are shortcuts.
+            <div
+              className="flex shrink-0 items-center gap-2"
+              data-testid="approval-gate-multi"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAllGates("reject")}
+              >
+                Reject all
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAllGates("approve")}
+              >
+                Approve all
+              </Button>
+              <Button
+                size="sm"
+                data-testid="submit-decisions"
+                disabled={!allDecided}
+                onClick={() => decideMany(selected.id, gateChoices)}
+              >
+                Submit decisions
+              </Button>
+            </div>
+          ) : state.status === "awaiting" && selected ? (
+            // A single gate — decide it straight from the header.
             <div
               className="flex shrink-0 items-center gap-2"
               data-testid="approval-gate"
@@ -520,6 +584,14 @@ export const Dashboard = ({
                   <WorkflowGraph
                     workflow={graphToShow}
                     statuses={graphStatuses}
+                    // When >1 gate pends in parallel, each pending node gets inline
+                    // Approve/Reject (decide one, reject another). A single gate uses
+                    // the header buttons, so the graph stays read-only there.
+                    decidableIds={gates.length >= 2 ? pendingIds : undefined}
+                    decisions={gates.length >= 2 ? gateChoices : undefined}
+                    onDecide={gates.length >= 2 ? setGate : undefined}
+                    // Pan to frame the waiting gate(s) the moment the run pauses.
+                    focusIds={awaiting ? pendingIds : undefined}
                   />
                 </div>
               </div>

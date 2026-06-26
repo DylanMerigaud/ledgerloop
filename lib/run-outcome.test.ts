@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
+import type { WorkflowStep } from "@/lib/approval-workflow";
+import {
+  deriveOutcome,
+  isAwaitingApproval,
+  pendingGates,
+} from "@/lib/run-outcome";
 import type { TraceEvent } from "@/lib/trace";
 
 /**
@@ -88,4 +93,73 @@ test("mid-stream: an awaiting approval node reads as needs-approval before recon
 
 test("running with no recognizable data yet → running", () => {
   assert.equal(deriveOutcome([], false), "running");
+});
+
+/* ── pendingGates ──────────────────────────────────────────────────────────── */
+
+const gate = (id: string, approverName: string | null): WorkflowStep => ({
+  id,
+  kind: "approval",
+  label: `${id} review`,
+  when: { kind: "always" },
+  approverTitle: "Manager",
+  approverName,
+  next: [],
+});
+const post = (id: string): WorkflowStep => ({
+  id,
+  kind: "integration",
+  label: "Post the bill",
+  when: { kind: "always" },
+  integration: "netsuite",
+  next: [],
+});
+
+test("pendingGates: two pending gates → two rows in workflow order", () => {
+  const steps = [
+    gate("manager-review", "Esther Howard"),
+    gate("department-review", "Sam Patel"),
+  ];
+  const rows = pendingGates(
+    { "manager-review": "pending", "department-review": "pending" },
+    steps,
+  );
+  assert.deepEqual(
+    rows.map((r) => r.id),
+    ["manager-review", "department-review"],
+  );
+  assert.equal(rows[0]?.approverName, "Esther Howard");
+});
+
+test("pendingGates: a settled gate is excluded", () => {
+  const steps = [
+    gate("manager-review", "Esther Howard"),
+    gate("department-review", "Sam Patel"),
+  ];
+  const rows = pendingGates(
+    { "manager-review": "approved", "department-review": "pending" },
+    steps,
+  );
+  assert.deepEqual(
+    rows.map((r) => r.id),
+    ["department-review"],
+  );
+});
+
+test("pendingGates: a pending integration step is never a gate", () => {
+  const steps = [gate("manager-review", "Esther Howard"), post("post")];
+  const rows = pendingGates(
+    { "manager-review": "pending", post: "pending" },
+    steps,
+  );
+  assert.deepEqual(
+    rows.map((r) => r.id),
+    ["manager-review"],
+  );
+});
+
+test("pendingGates: nothing pending → empty", () => {
+  const steps = [gate("manager-review", "Esther Howard")];
+  assert.deepEqual(pendingGates({ "manager-review": "approved" }, steps), []);
+  assert.deepEqual(pendingGates({}, steps), []);
 });

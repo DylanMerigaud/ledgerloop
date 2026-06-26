@@ -118,6 +118,13 @@ type NodeData = {
   vertical?: boolean;
   /** This node is the one selected for editing — gets an accent halo. */
   selected?: boolean;
+  /** This pending gate accepts a human decision right now (run paused on it) —
+      renders inline Approve / Reject. */
+  decidable?: boolean;
+  /** The decision staged on this gate (before the reviewer submits the wave). */
+  choice?: "approve" | "reject";
+  /** Record the reviewer's choice for this gate. */
+  onDecide?: (choice: "approve" | "reject") => void;
 };
 
 /** Ring/bg for a validation issue on a node (only used when there's no diff change). */
@@ -129,7 +136,17 @@ const issueRing = (sev: "error" | "warning" | undefined): string => {
 
 /** A workflow step rendered as the app's card — used as a React Flow custom node. */
 const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
-  const { step, status, change, issue, vertical, selected } = data;
+  const {
+    step,
+    status,
+    change,
+    issue,
+    vertical,
+    selected,
+    decidable,
+    choice,
+    onDecide,
+  } = data;
   const st = statusTone(status);
   const cb = changeBadge(change);
   const isApproval = step.kind === "approval";
@@ -137,9 +154,15 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const unconditional = step.when.kind === "always";
 
   const badge = cb ?? st;
-  // Diff colours take precedence (when previewing an edit); otherwise show any
-  // validation issue ring.
-  const ring = change ? changeRing(change) : issueRing(issue);
+  // A staged decision tints the whole card (so the canvas shows at a glance which
+  // way each parallel gate is going); otherwise diff colours, then validation issue.
+  const choiceRing =
+    choice === "approve"
+      ? "ring-ok-line bg-ok-soft/30"
+      : choice === "reject"
+        ? "ring-danger-line bg-danger-soft/30"
+        : null;
+  const ring = choiceRing ?? (change ? changeRing(change) : issueRing(issue));
   // Edges enter the top / leave the bottom when stacked vertically, the left / right
   // when laid out horizontally — so the connectors meet the right edge of each card.
   const targetPos = vertical ? Position.Top : Position.Left;
@@ -230,6 +253,38 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
             <span className="size-1 rounded-full bg-accent" aria-hidden />
             {condition}
           </span>
+        </div>
+      )}
+
+      {/* Inline decision — only on a gate the paused run is waiting on. `nodrag
+          nopan` so the click lands on the button instead of starting a canvas pan.
+          The staged choice stays editable (flip approve↔reject before submitting). */}
+      {decidable && onDecide && (
+        <div className="mt-2.5 flex gap-1.5 border-t border-line pt-2.5">
+          <button
+            type="button"
+            data-testid={`gate-reject-${step.id}`}
+            onClick={() => onDecide("reject")}
+            className={`nodrag nopan h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
+              choice === "reject"
+                ? "bg-danger text-white ring-transparent"
+                : "bg-surface text-danger ring-danger-line hover:bg-danger-soft"
+            }`}
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            data-testid={`gate-approve-${step.id}`}
+            onClick={() => onDecide("approve")}
+            className={`nodrag nopan h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
+              choice === "approve"
+                ? "bg-ok text-white ring-transparent"
+                : "bg-surface text-ok ring-ok-line hover:bg-ok-soft"
+            }`}
+          >
+            Approve
+          </button>
         </div>
       )}
       <Handle
@@ -367,6 +422,10 @@ const Inner = ({
   issues,
   onNodeSelect,
   selectedId,
+  decisions,
+  decidableIds,
+  onDecide,
+  focusIds,
 }: WorkflowGraphProps) => {
   // Stack the DAG vertically below the `sm` breakpoint (640px), where a wide
   // left→right layout can't fit — each node then gets the full column width.
@@ -507,6 +566,58 @@ const Inner = ({
     );
   }, [selectedId, setNodes]);
 
+  // Patch the per-gate decision state (decidable + staged choice + the handler) onto
+  // live nodes — also cheap, no re-layout, so deciding a gate doesn't reflow the graph.
+  // Kept out of `initialNodes` for the same reason (its identity changing forces a
+  // re-measure). Keyed on stable strings so it only runs when the inputs change.
+  const decidableKey = (decidableIds ?? []).join("|");
+  const choiceKey = decisions
+    ? Object.entries(decisions)
+        .map(([k, v]) => `${k}:${v ?? ""}`)
+        .sort()
+        .join("|")
+    : "";
+  useEffect(() => {
+    const decidable = new Set(decidableIds ?? []);
+    setNodes((cur) =>
+      cur.map((n) => {
+        const isDecidable = decidable.has(n.id);
+        const choice = decisions?.[n.id] ?? undefined;
+        const handler =
+          isDecidable && onDecide
+            ? (c: "approve" | "reject") => onDecide(n.id, c)
+            : undefined;
+        if (
+          n.data.decidable === isDecidable &&
+          n.data.choice === choice &&
+          n.data.onDecide === handler
+        ) {
+          return n;
+        }
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            decidable: isDecidable,
+            choice: choice ?? undefined,
+            onDecide: handler,
+          },
+        };
+      }),
+    );
+  }, [decidableKey, choiceKey, decidableIds, decisions, onDecide, setNodes]);
+
+  // Smoothly frame the focused nodes (the pending group, or one on hover). Runs only
+  // AFTER the initial per-graph layout+fit (the `laidOutFor === graphKey` guard) so it
+  // never fights that one-shot fit; keyed on `focusKey` so it animates once per change.
+  const focusKey = (focusIds ?? []).join("|");
+  useEffect(() => {
+    if (!initialized || laidOutFor.current !== graphKey || focusKey === "")
+      return;
+    const ids = focusKey.split("|").map((id) => ({ id }));
+    void fitView({ nodes: ids, duration: 400, padding: 0.3 });
+  }, [focusKey, initialized, graphKey, fitView]);
+
   return (
     <ReactFlow
       nodes={nodes}
@@ -542,6 +653,15 @@ type WorkflowGraphProps = {
   issues?: WorkflowIssue[];
   onNodeSelect?: (stepId: string | null) => void;
   selectedId?: string | null;
+  /** Gates the run is waiting on, with their staged choice — renders inline
+      Approve / Reject on those nodes. Omitted everywhere except a paused run. */
+  decisions?: Record<string, "approve" | "reject" | null>;
+  /** When set, a node here accepts a decision now (a paused gate). */
+  decidableIds?: string[];
+  /** Record a per-gate decision (the inline node controls). */
+  onDecide?: (stepId: string, choice: "approve" | "reject") => void;
+  /** Smoothly pan/zoom to frame these nodes (the pending group, or one on hover). */
+  focusIds?: string[];
 };
 
 export const WorkflowGraph = (props: WorkflowGraphProps) => {
