@@ -214,5 +214,29 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
     (id: string, decision: "approve" | "reject") => stream(id, decision),
   );
 
-  return { state, run, decide, reset };
+  /**
+   * Render a STORED trace from the audit log (the history view), with no pipeline
+   * execution — just drop the persisted events into state so the existing trace +
+   * graph components re-render them exactly as they streamed. Aborts any live run
+   * first, and seeds the refs so the outcome derives the same as a fresh run.
+   */
+  const replay = useEventCallback((trace: TraceEvent[]) => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    eventsRef.current = [...trace];
+    stepIndexRef.current = new Map();
+    trace.forEach((e, i) => {
+      if (e.stepId) stepIndexRef.current.set(e.stepId, i);
+    });
+    decisionsRef.current = {};
+    setState({
+      status: "done",
+      trace: [...trace],
+      outcome: deriveOutcome(trace, true),
+      durationMs: null,
+      error: null,
+    });
+  });
+
+  return { state, run, decide, reset, replay };
 };

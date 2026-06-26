@@ -103,9 +103,13 @@ The manager gate fires on any exception **or** a clean bill over a floor ($1,000
 
 **Streaming, typed end to end.** The `run` procedure is an **oRPC event iterator** (a typed async generator of `TraceEvent | StreamDone`); the client consumes it with `for await`, no manual reader or cast. A small adapter ([`lib/trace.ts`](lib/trace.ts)) maps Mastra's raw `run.stream()` chunks to the stable `TraceEvent` vocabulary so the UI depends on ours, not Mastra's internals, and a junk chunk is dropped rather than crashing the stream.
 
-### Stateless by design
+### Bounded persistence + a nightly reset
 
-The seeded data is read-only. "Run pipeline" executes server-side, streams the trace, and **forgets** — so the 50th visitor sees the same pristine state as the 1st. (The `agent_runs` table is modelled as the canonical persisted shape of a run but intentionally left empty.)
+Every run is persisted as an append-only **audit row** ([`agent_runs`](db/schema.ts)) — its verdict, outcome, and the full trace — and the dashboard's **Recent runs** panel lists them, each one replayable (click → the stored trace re-renders with no model call, zero tokens). That's the audit trail an AP buyer asks for first.
+
+The persistence is **bounded**: a daily [Vercel Cron](vercel.json) hits [`/api/reset`](app/api/reset/route.ts) (guarded by `CRON_SECRET`), which truncates + reseeds Postgres — so the demo returns to a pristine queue each morning, the 1st visitor's view restored for the next. The reset touches **Postgres only**; it never calls the QuickBooks/BambooHR sandboxes (frozen fixtures the pipeline reads, never writes), so it can't fail on a rotated token or desync an external system.
+
+Crucially, a saved run **can't change a future run's verdict**: the app writes only `agent_runs`, never the document tables or the ERP/HRIS, so the matcher always reads the pristine seed. Persisting the audit trail and keeping every run deterministic are not in tension. The human-in-the-loop pause/resume stays **replay-based** (the run recomputes the deterministic prefix from the decisions) — persistence is for the audit log, not the resume, which keeps it off the costly Mastra-snapshot path.
 
 ### Project layout
 
@@ -177,6 +181,7 @@ pnpm dev                          # http://localhost:3000
 | `BAMBOO_HR_API_KEY` + `BAMBOO_HR_SUBDOMAIN` | optional | Live BambooHR. **Without them onboarding replays the committed real fixture** — the demo and CI work with no key. |
 | `QBO_CLIENT_ID` + `QBO_CLIENT_SECRET` + `QBO_REFRESH_TOKEN` + `QBO_REALM_ID` | optional | Live QuickBooks (ERP pull). **Without all four the pipeline replays the committed real fixture** — demo and CI work with no key. |
 | `UPSTASH_*` / `KV_REST_API_*` | optional | Per-IP rate limiting; fails open without it |
+| `CRON_SECRET` | optional | Guards the nightly `/api/reset` cron (Vercel injects it as a bearer token). Unset → the reset route refuses all callers. |
 
 > **Set a spend cap on the Anthropic key** — the deployed demo is public and the buttons call the model.
 
@@ -186,11 +191,11 @@ pnpm dev                          # http://localhost:3000
 
 ## What's next
 
-A stateless demo; the decision logic is pure, typed, and unit-tested, and the read-side integrations (HRIS, ERP pull) are already real-or-replayed. Production is additive, not a rewrite:
+The decision logic is pure, typed, and unit-tested; the read-side integrations (HRIS, ERP pull) are already real-or-replayed; and runs are persisted as an audit trail bounded by a nightly reset. Production is additive, not a rewrite:
 
 - the ERP **pull** is real (QuickBooks); swap the **post**-side stub (`fakeErp`) and the Slack/Jira integration stubs for real adapters of the same interfaces,
 - live BambooHR + QuickBooks (both adapters + captured fixtures already exist; keys unlock the live path) and a second HRIS / ERP behind the same `HrisAdapter` / `PoSourceAdapter`,
-- add persistence and an audit trail (the `agent_runs` table is shaped for it) so a workflow and a paused run survive a refresh,
+- the audit trail persists today (append-only `agent_runs`, replayable, reset nightly); drop the reset and add per-tenant scoping for a multi-client deployment, and persist the paused-run snapshot if you want resume to survive a server restart (today it's recomputed from the decisions),
 - wire real approver identity to the per-step gates,
 - accept real uploaded PDFs at intake.
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ApprovalWorkflow } from "@/lib/approval-workflow";
+import { TraceEvent } from "@/lib/trace";
 
 /**
  * Shared input/output schemas for the oRPC API contract. Defined ONCE here and used
@@ -86,4 +87,30 @@ export const EditResult = z.object({
   reason: z.string().nullable(),
   /** Set when the agent needs a clarification before editing (workflow unchanged). */
   clarify: ClarificationSchema.nullable(),
+});
+
+/* ── run history (the audit trail) ───────────────────────────────────────────── */
+
+/** One row in the "recent runs" list — light metadata, newest first. */
+const RunHistoryItem = z.object({
+  id: z.string(),
+  invoiceNumber: z.string(),
+  verdict: z.string(),
+  outcome: z.string(),
+  durationMs: z.number(),
+  createdAt: z.string(),
+});
+
+export const HistoryResult = z.object({
+  runs: z.array(RunHistoryItem),
+});
+export type HistoryResult = z.infer<typeof HistoryResult>;
+
+export const ReplayInput = z.object({ id: z.string() });
+
+/** A stored run replayed from the audit log — its exact trace, re-rendered with no
+    model call. `null` when the row is gone (e.g. cleared by the nightly reset). */
+export const ReplayResult = z.object({
+  invoiceNumber: z.string(),
+  trace: z.array(TraceEvent),
 });

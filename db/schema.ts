@@ -83,10 +83,13 @@ export const goodsReceipts = pgTable("goods_receipts", {
 });
 
 /**
- * The execution log. Each row = one full pipeline run for one invoice: its final
- * verdict/tier and the ordered trace of agent steps. Deliberately UNWRITTEN by
- * the public demo (kept stateless), but fully modelled so the schema reflects a
- * real stateful deployment and the trace has a canonical persisted shape.
+ * The execution log — the audit trail. Each row = one full pipeline run for one
+ * invoice: its final verdict/outcome and the ordered trace of steps. WRITTEN
+ * append-only at the end of every run (see db/runs.ts), read back by the "recent
+ * runs" history view, and cleared by the nightly reset (db/reset.ts) so the public
+ * demo returns to a pristine queue each day. This is the one place the app writes;
+ * it never touches the document tables or the ERP/HRIS, so a run can't change a
+ * future run's verdict.
  */
 export const agentRuns = pgTable(
   "agent_runs",

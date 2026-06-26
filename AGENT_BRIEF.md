@@ -53,8 +53,15 @@ The "complete loop" is built and on `main`. Key facts a fresh session must know:
   bounded loop (`lib/workflow-edit-agent.ts`) over the Claude SDK — NOT a Mastra
   Agent (see its header comment for why). Mastra owns the P2P pipeline
   (`src/mastra/workflows/p2p.ts`) and the exception-investigator agent.
-- **Stateless by design.** The run never writes to the DB. Keep it that way unless
-  told otherwise.
+- **Bounded persistence, not stateless.** The run writes ONE thing: an append-only
+  `agent_runs` audit row at the end (`db/runs.ts`), read back by the Recent runs
+  panel + replay. It NEVER writes the document tables or the ERP/HRIS, so a run
+  can't change a future run's verdict (the matcher always reads the pristine seed).
+  A nightly Vercel Cron (`/api/reset`, `vercel.json`) truncates+reseeds Postgres so
+  the demo stays pristine; the reset touches Postgres only, never the sandboxes.
+  HITL resume stays REPLAY-based (recompute the deterministic prefix from the
+  decisions), NOT Mastra snapshot/suspend — keep it that way (the snapshot path has
+  a known Postgres-bloat footgun). Don't reintroduce writes to the document tables.
 - **The recorded HRIS fixture is SEED-BUILT**, not a live capture
   (`scripts/build-recorded-fixture.ts` → `pnpm fixture:build`). recorded == live ==
   the 13-person "LedgerLoop Demo" org. Don't reintroduce a real-capture claim.
