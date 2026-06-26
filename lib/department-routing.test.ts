@@ -110,38 +110,36 @@ test("a PO's department flows through matching into the MatchResult", () => {
   assert.equal(none.department, "");
 });
 
-test("the derived department gate fires for its department, even on a CLEAN invoice", () => {
+test("the derived department gate fires for its department, isolating it from the amount gates", () => {
   const wf = assembleWorkflow(org, proposal);
   const match = runMatch({
-    invoice: INV,
+    invoice: INV, // $80, clean → below the manager floor, under the director threshold
     purchaseOrder: PO("Product"),
     goodsReceipt: null,
   });
-  // Department head is a parallel root, so on a Product invoice it pends in the SAME
-  // first wave as the manager — one approval round clears both (no second pause).
-  // A clean invoice does NOT straight-through when its department is gated.
+  // A small clean invoice would post straight through — but its PO is Product, so the
+  // department gate (a parallel root) fires on its own. Only that gate pends, which
+  // proves the department lever routes independently of the amount/exception gates.
   const run = runApproval(wf, match);
   assert.equal(run.outcome, "awaiting");
   const pendingIds = run.pending.map((p) => p.id).sort();
   assert.deepEqual(
     pendingIds,
-    ["department-review", "manager-review"],
-    "manager + Product department gate pend together in one wave",
+    ["department-review"],
+    "only the Product department gate pends on a small clean invoice",
   );
 });
 
-test("the same workflow skips the department gate when the PO has no department", () => {
+test("the same small clean invoice posts straight through when the PO has no department", () => {
   const wf = assembleWorkflow(org, proposal);
   const match = runMatch({
-    invoice: INV,
+    invoice: INV, // $80, clean
     purchaseOrder: PO(""),
     goodsReceipt: null,
   });
-  // No department → the gate's condition is false → it skips (a root that passes
-  // through). With the manager approved and the $80 invoice under the director
-  // threshold, every gate clears and the bill posts — so the department root isn't a
-  // phantom blocker when the PO has no department.
-  const run = runApproval(wf, match, { "manager-review": "approve" });
+  // No department + small + clean → every gate's condition is false → all skip → the
+  // bill posts with no human. The department root isn't a phantom blocker when "".
+  const run = runApproval(wf, match);
   assert.equal(run.outcome, "posted");
   const dept = run.state.steps.find((s) => s.id === "department-review");
   assert.equal(dept?.status, "skipped");

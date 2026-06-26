@@ -102,7 +102,7 @@ test("assembled workflow validates and has the template shape", () => {
   ]);
 });
 
-test("manager step is unconditional and escalates to the director only", () => {
+test("manager step fires on any exception or a clean bill over the floor", () => {
   const wf = assembleWorkflow(org, proposal);
   const mgr = wf.steps.find((s) => s.id === "manager-review")!;
   assert.equal(mgr.kind, "approval");
@@ -115,7 +115,20 @@ test("manager step is unconditional and escalates to the director only", () => {
     !mgr.next.includes("post-netsuite"),
     "no direct manager → post edge",
   );
-  assert.equal(evaluateCondition(mgr.when, anyCtx()), true); // always
+  // A small clean invoice skips the manager (straight-through); a material clean one
+  // or any exception triggers it — the standard "not every $50 bill needs a human".
+  assert.equal(
+    evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 500 })),
+    false,
+  );
+  assert.equal(
+    evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 9000 })),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(mgr.when, anyCtx({ verdict: "exception", amount: 100 })),
+    true,
+  );
 });
 
 test("director step gates on the proposed threshold", () => {

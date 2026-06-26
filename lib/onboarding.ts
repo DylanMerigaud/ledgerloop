@@ -5,6 +5,7 @@ import {
   type WorkflowStep,
   type Condition,
 } from "@/lib/approval-workflow";
+import { DEFAULT_APPROVAL_POLICY } from "@/lib/client-profile";
 import type { OrgChart } from "@/lib/schema";
 
 /**
@@ -78,12 +79,30 @@ export const assembleWorkflow = (
     value: proposal.directorThreshold,
   };
 
+  // The manager sees an invoice when it's NOT trivial: any exception, or any clean
+  // bill over a floor. So a small clean invoice posts straight through (the
+  // automation win), while anything material or flagged gets a human — the standard
+  // AP control, not "a manager clicks approve on every $50 bill". The floor is the
+  // policy default; the director threshold (scaled to the org) gates the second gate.
+  const managerReview: Condition = {
+    kind: "any",
+    conditions: [
+      { kind: "leaf", field: "verdict", op: "==", value: "exception" },
+      {
+        kind: "leaf",
+        field: "amount",
+        op: ">",
+        value: DEFAULT_APPROVAL_POLICY.manager.amount,
+      },
+    ],
+  };
+
   const steps: WorkflowStep[] = [
     {
       id: STEP.manager,
       kind: "approval",
       label: "Manager review",
-      when: { kind: "always" },
+      when: managerReview,
       approverTitle: manager.title,
       approverName: manager.name,
       // Fan-out to the director gate — NOT straight to the post (a direct

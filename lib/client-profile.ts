@@ -93,17 +93,18 @@ export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Bridge: the old flat tiering as a DAG
+ *  The default workflow: the standard two-tier policy as a DAG
  * ────────────────────────────────────────────────────────────────────────── *
  *
- * The conditional DAG is a strict superset of the two-tier policy, so we can
- * express the exact old behaviour as a workflow. This is what a profile without an
- * explicit (agent-derived) workflow runs, so the migration preserves behaviour:
+ * What a profile without an explicit (agent-derived) workflow runs — the standard
+ * AP policy expressed as the same conditional DAG the onboarding template produces,
+ * so a run behaves consistently with or without discovery:
  *
- *   • clean invoice  → both gates' conditions are false → straight to the post.
- *   • exception      → manager gate fires (verdict == exception); the director
- *                      gate additionally fires when the amount or variance clears
- *                      the director threshold (the old escalation rule).
+ *   • small clean invoice → both gates' conditions are false → straight to the post.
+ *   • clean over the manager floor → manager gate fires (a human signs a material
+ *                      bill even when it matches cleanly).
+ *   • exception      → manager gate fires; the director gate additionally fires when
+ *                      the amount or variance clears the director threshold.
  *   • duplicate      → handled as a pre-workflow control (blocked), never routed
  *                      here — a duplicate is a control failure, not an approval.
  */
@@ -116,6 +117,17 @@ export const workflowFromPolicy = (
     field: "verdict",
     op: "==",
     value: "exception",
+  };
+  // Manager sees an invoice when it's NOT trivial: any exception, or any clean bill
+  // over the manager floor. So a small clean invoice posts straight through, while
+  // anything material or flagged gets a human. Kept in step with the onboarding
+  // template (lib/onboarding.ts) so a run behaves the same with or without discovery.
+  const managerReview: WorkflowStep["when"] = {
+    kind: "any",
+    conditions: [
+      isException,
+      { kind: "leaf", field: "amount", op: ">", value: policy.manager.amount },
+    ],
   };
   // Exception AND (amount >= director.amount OR variancePct >= director.variancePct).
   const directorEscalation: WorkflowStep["when"] = {
@@ -152,7 +164,7 @@ export const workflowFromPolicy = (
       id: "manager-review",
       kind: "approval",
       label: "Manager review",
-      when: isException,
+      when: managerReview,
       approverTitle: "Manager",
       approverName: "Manager",
       next: ["director-review", "post-netsuite"],
