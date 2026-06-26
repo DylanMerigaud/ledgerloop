@@ -513,7 +513,7 @@ export const Dashboard = ({
                 <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
                   Routing through {graphToShow.name}
                 </p>
-                <div className="h-64 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line">
+                <div className="h-[440px] overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:h-64">
                   <WorkflowGraph
                     workflow={graphToShow}
                     statuses={graphStatuses}

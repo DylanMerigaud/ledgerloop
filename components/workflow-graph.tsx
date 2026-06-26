@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { SlackIcon, NetSuiteIcon, JiraIcon } from "@/components/ui/brand-icon";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   type ApprovalWorkflow,
   type WorkflowStep,
@@ -112,6 +113,9 @@ type NodeData = {
   change?: StepChange["kind"];
   /** A validation issue flagged on this step (rings it warn/danger). */
   issue?: "error" | "warning";
+  /** Stacked top→bottom (narrow screens) instead of left→right — moves the edge
+      handles to Top/Bottom so the connectors meet the cards correctly. */
+  vertical?: boolean;
 };
 
 /** Ring/bg for a validation issue on a node (only used when there's no diff change). */
@@ -123,7 +127,7 @@ const issueRing = (sev: "error" | "warning" | undefined): string => {
 
 /** A workflow step rendered as the app's card — used as a React Flow custom node. */
 const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
-  const { step, status, change, issue } = data;
+  const { step, status, change, issue, vertical } = data;
   const st = statusTone(status);
   const cb = changeBadge(change);
   const isApproval = step.kind === "approval";
@@ -134,6 +138,10 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   // Diff colours take precedence (when previewing an edit); otherwise show any
   // validation issue ring.
   const ring = change ? changeRing(change) : issueRing(issue);
+  // Edges enter the top / leave the bottom when stacked vertically, the left / right
+  // when laid out horizontally — so the connectors meet the right edge of each card.
+  const targetPos = vertical ? Position.Top : Position.Left;
+  const sourcePos = vertical ? Position.Bottom : Position.Right;
 
   return (
     <div
@@ -141,7 +149,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
     >
       <Handle
         type="target"
-        position={Position.Left}
+        position={targetPos}
         className="!size-1.5 !border-0 !bg-line-strong"
       />
 
@@ -218,7 +226,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
       )}
       <Handle
         type="source"
-        position={Position.Right}
+        position={sourcePos}
         className="!size-1.5 !border-0 !bg-line-strong"
       />
     </div>
@@ -259,11 +267,14 @@ const layout = (
   nodes: Node<NodeData>[],
   edges: Edge[],
   heightOf: (n: Node<NodeData>) => number,
+  vertical: boolean,
 ): Node<NodeData>[] => {
   const h = new Map(nodes.map((n) => [n.id, heightOf(n)]));
   const g = new dagre.graphlib.Graph();
   g.setGraph({
-    rankdir: "LR",
+    // Horizontal (LR) on desktop; vertical (TB) on a narrow screen, where a wide
+    // left-to-right DAG can't fit — stacked, each node gets the full column width.
+    rankdir: vertical ? "TB" : "LR",
     nodesep: NODE_SEP,
     ranksep: RANK_SEP,
     ranker: "tight-tree",
@@ -275,12 +286,21 @@ const layout = (
   for (const e of edges) g.setEdge(e.source, e.target);
   dagre.layout(g);
 
-  const cy = new Map<string, number>(); // node id → center Y
-  for (const id of g.nodes()) cy.set(id, g.node(id).y);
-  const halfOf = (id: string): number => (h.get(id) ?? 80) / 2;
+  // The CROSS axis is the one a parent is centered on, across its children: the
+  // vertical axis when ranks flow left→right, the horizontal axis when top→bottom.
+  // `rank` is the other axis (which column/row). We center + reorder on the cross
+  // axis, so the same logic serves both orientations by swapping which coord it reads.
+  const crossOf = (id: string): number =>
+    vertical ? g.node(id).x : g.node(id).y;
+  const crossSizeOf = (id: string): number =>
+    vertical ? NODE_WIDTH : (h.get(id) ?? 80);
+
+  const cross = new Map<string, number>(); // node id → center on the cross axis
+  for (const id of g.nodes()) cross.set(id, crossOf(id));
+  const halfOf = (id: string): number => crossSizeOf(id) / 2;
   const boxMid = (ids: string[]): number => {
-    const tops = ids.map((k) => (cy.get(k) ?? 0) - halfOf(k));
-    const bots = ids.map((k) => (cy.get(k) ?? 0) + halfOf(k));
+    const tops = ids.map((k) => (cross.get(k) ?? 0) - halfOf(k));
+    const bots = ids.map((k) => (cross.get(k) ?? 0) + halfOf(k));
     return (Math.min(...tops) + Math.max(...bots)) / 2;
   };
 
@@ -291,43 +311,42 @@ const layout = (
     parentsOf.set(e.target, [...(parentsOf.get(e.target) ?? []), e.source]);
   }
 
-  // SIBLING ORDER (top→bottom) follows the parent's `next` order, NOT dagre's
-  // crossing-minimisation (which can reshuffle). We keep the exact Y-slots dagre
-  // computed for a parent's children (so spacing + measured heights are respected),
-  // but RE-ASSIGN those slots to the children in `next` order. Only for siblings
-  // that belong to a single parent (true fan-out branches) — a shared join node
-  // like the post isn't reordered.
+  // SIBLING ORDER (along the cross axis) follows the parent's `next` order, NOT
+  // dagre's crossing-minimisation (which can reshuffle). We keep the exact slots
+  // dagre computed for a parent's children (so spacing + measured sizes are
+  // respected), but RE-ASSIGN those slots to the children in `next` order. Only for
+  // siblings that belong to a single parent (true fan-out branches) — a shared join
+  // node like the post isn't reordered.
   for (const [, children] of childrenOf) {
     const branches = children.filter(
       (c) => (parentsOf.get(c) ?? []).length === 1,
     );
     if (branches.length < 2) continue;
-    // The Y-slots these branches currently occupy, top→bottom.
-    const slots = branches.map((c) => cy.get(c) ?? 0).sort((a, b) => a - b);
-    // `branches` is already in `next` order (childrenOf is built from edge order),
-    // so assign the i-th branch to the i-th slot from the top.
-    branches.forEach((c, i) => cy.set(c, slots[i] ?? cy.get(c) ?? 0));
+    const slots = branches.map((c) => cross.get(c) ?? 0).sort((a, b) => a - b);
+    branches.forEach((c, i) => cross.set(c, slots[i] ?? cross.get(c) ?? 0));
   }
 
-  // Parents centered on their children (right→left so children settle first).
-  for (const id of [...g.nodes()].sort((a, b) => g.node(b).x - g.node(a).x)) {
+  // Parents centered on their children (deepest rank first so children settle first).
+  const rankOf = (id: string): number =>
+    vertical ? g.node(id).y : g.node(id).x;
+  for (const id of [...g.nodes()].sort((a, b) => rankOf(b) - rankOf(a))) {
     const kids = childrenOf.get(id) ?? [];
-    if (kids.length >= 2) cy.set(id, boxMid(kids));
+    if (kids.length >= 2) cross.set(id, boxMid(kids));
   }
-  // Join nodes centered on their parents (left→right).
-  for (const id of [...g.nodes()].sort((a, b) => g.node(a).x - g.node(b).x)) {
+  // Join nodes centered on their parents (shallowest rank first).
+  for (const id of [...g.nodes()].sort((a, b) => rankOf(a) - rankOf(b))) {
     const parents = parentsOf.get(id) ?? [];
-    if (parents.length >= 2) cy.set(id, boxMid(parents));
+    if (parents.length >= 2) cross.set(id, boxMid(parents));
   }
 
   return nodes.map((n) => {
     const node = g.node(n.id);
-    const centerY = cy.get(n.id) ?? node.y;
-    // dagre gives the center; React Flow positions by top-left.
-    return {
-      ...n,
-      position: { x: node.x - node.width / 2, y: centerY - halfOf(n.id) },
-    };
+    const c = cross.get(n.id) ?? crossOf(n.id);
+    // dagre gives the center; React Flow positions by top-left. Map the cross-axis
+    // center back to x (vertical) or y (horizontal); the rank axis is dagre's own.
+    const x = vertical ? c - NODE_WIDTH / 2 : node.x - node.width / 2;
+    const y = vertical ? node.y - node.height / 2 : c - halfOf(n.id);
+    return { ...n, position: { x, y } };
   });
 };
 
@@ -344,6 +363,10 @@ const Inner = ({
   changes?: StepChange[];
   issues?: WorkflowIssue[];
 }) => {
+  // Stack the DAG vertically below the `sm` breakpoint (640px), where a wide
+  // left→right layout can't fit — each node then gets the full column width.
+  const vertical = useMediaQuery("(max-width: 639px)");
+
   const changeOf = useMemo(
     () => new Map((changes ?? []).map((c) => [c.id, c.kind])),
     [changes],
@@ -376,6 +399,7 @@ const Inner = ({
         status: statuses?.[step.id],
         change: changeOf.get(step.id),
         issue: issueOf.get(step.id),
+        vertical,
       },
     }));
     const gone = removed.map((c) => ({
@@ -393,10 +417,11 @@ const Inner = ({
           next: [],
         },
         change: "removed" as const,
+        vertical,
       },
     }));
     return [...real, ...gone];
-  }, [workflow, statuses, changeOf, removed, issueOf]);
+  }, [workflow, statuses, changeOf, removed, issueOf, vertical]);
 
   const edges = useMemo<Edge[]>(() => {
     const out: Edge[] = [];
@@ -432,8 +457,12 @@ const Inner = ({
   // HIDDEN so they get re-measured, and mark that this set still needs a layout.
   const laidOutFor = useRef<string>("");
   const graphKey = useMemo(
-    () => initialNodes.map((n) => n.id).join("|") + "::" + edges.length,
-    [initialNodes, edges],
+    () =>
+      initialNodes.map((n) => n.id).join("|") +
+      "::" +
+      edges.length +
+      (vertical ? "::v" : "::h"),
+    [initialNodes, edges, vertical],
   );
   useEffect(() => {
     setNodes(
@@ -455,10 +484,11 @@ const Inner = ({
         initialNodes,
         edges,
         (n) => measured.get(n.id) ?? estimateHeight(n.data),
+        vertical,
       ).map((n) => ({ ...n, style: { visibility: "visible" } }));
     });
     requestAnimationFrame(() => void fitView({ padding: 0.18, duration: 200 }));
-  }, [initialized, graphKey, initialNodes, edges, setNodes, fitView]);
+  }, [initialized, graphKey, initialNodes, edges, setNodes, fitView, vertical]);
 
   return (
     <ReactFlow
@@ -473,6 +503,10 @@ const Inner = ({
       edgesFocusable={false}
       minZoom={0.4}
       maxZoom={1.5}
+      // On touch, don't swallow the page scroll — the graph is pan-by-drag and the
+      // page scrolls past it, so a phone user isn't trapped on the canvas. (The
+      // graph is a secondary view on mobile; the text timeline carries the detail.)
+      preventScrolling={false}
     >
       <Background gap={18} size={1.5} color="#D7DAE1" />
     </ReactFlow>
