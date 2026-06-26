@@ -1,0 +1,1071 @@
+{
+  "_meta": {
+    "source": "QuickBooks Online API — query select * from PurchaseOrder",
+    "note": "Real API response captured from the live sandbox. Replayed offline by recordedErp(). Not a mock.",
+    "capturedAt": "2026-06-26T03:36:50.259Z",
+    "realmId": "9341457351478236"
+  },
+  "QueryResponse": {
+    "PurchaseOrder": [
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "154",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:42-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:42-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7749",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Ergonomic task chair",
+            "Amount": 2880,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "37",
+                "name": "CHAIR-ERG"
+              },
+              "UnitPrice": 240,
+              "Qty": 12,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Sit-stand desk",
+            "Amount": 4920,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "38",
+                "name": "DESK-STD"
+              },
+              "UnitPrice": 410,
+              "Qty": 12,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "67",
+          "name": "LL-DEMO Forma Office"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 7800
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "153",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:40-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:40-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7748",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Cat6 cable 305m reel",
+            "Amount": 9500,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "36",
+                "name": "CAT6-305"
+              },
+              "UnitPrice": 95,
+              "Qty": 100,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "66",
+          "name": "LL-DEMO Conduit Cable Co"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 9500
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "152",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:39-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:39-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7747",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Isopropyl alcohol 99% (5L)",
+            "Amount": 660,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "34",
+                "name": "SOLV-IPA-5L"
+              },
+              "UnitPrice": 22,
+              "Qty": 30,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Nitrile gloves (box/100)",
+            "Amount": 475,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "35",
+                "name": "GLOVE-NITR"
+              },
+              "UnitPrice": 9.5,
+              "Qty": 50,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "65",
+          "name": "LL-DEMO Halcyon Lab Supplies"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 1135
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "151",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:36-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:36-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7746",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "14\" business laptop",
+            "Amount": 6400,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "33",
+                "name": "LAPTOP-14"
+              },
+              "UnitPrice": 1280,
+              "Qty": 5,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "64",
+          "name": "LL-DEMO Vertex IT Hardware"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 6400
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "150",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:35-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:35-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7745",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Cyan ink cartridge",
+            "Amount": 640,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "31",
+                "name": "INK-CYAN"
+              },
+              "UnitPrice": 64,
+              "Qty": 10,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Magenta ink cartridge",
+            "Amount": 640,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "32",
+                "name": "INK-MAG"
+              },
+              "UnitPrice": 64,
+              "Qty": 10,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "63",
+          "name": "LL-DEMO Pinpoint Print Supplies"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 1280
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "149",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:32-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:32-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7744",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "A4 shipping box (bundle/25)",
+            "Amount": 504,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "28",
+                "name": "BOX-A4"
+              },
+              "UnitPrice": 8.4,
+              "Qty": 60,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Packing tape 48mm (pack/6)",
+            "Amount": 336,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "29",
+                "name": "TAPE-48"
+              },
+              "UnitPrice": 11.2,
+              "Qty": 30,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "3",
+            "LineNum": 3,
+            "Description": "Stretch wrap 500mm",
+            "Amount": 348,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "30",
+                "name": "WRAP-500"
+              },
+              "UnitPrice": 14.5,
+              "Qty": 24,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "62",
+          "name": "LL-DEMO Meridian Packaging"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 1188
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "148",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:30-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:30-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7743",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Senior consultant (day)",
+            "Amount": 9600,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "26",
+                "name": "CONSULT-SR"
+              },
+              "UnitPrice": 1200,
+              "Qty": 8,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Project manager (day)",
+            "Amount": 3800,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "27",
+                "name": "CONSULT-PM"
+              },
+              "UnitPrice": 950,
+              "Qty": 4,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "61",
+          "name": "LL-DEMO Lumen Advisory"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 13400
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "147",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:27-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:27-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7742",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Cold-rolled steel bar 20mm (per m)",
+            "Amount": 6000,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "24",
+                "name": "STL-BAR-20"
+              },
+              "UnitPrice": 7.5,
+              "Qty": 800,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Steel sheet 2mm (per m²)",
+            "Amount": 2160,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "25",
+                "name": "STL-SHEET-2"
+              },
+              "UnitPrice": 18,
+              "Qty": 120,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "60",
+          "name": "LL-DEMO Severn Steelworks"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 8160
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "146",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:25-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:25-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7741",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "42U server rack",
+            "Amount": 2900,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "22",
+                "name": "SVR-RACK-42U"
+              },
+              "UnitPrice": 1450,
+              "Qty": 2,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "30A rack PDU",
+            "Amount": 1280,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "23",
+                "name": "PDU-30A"
+              },
+              "UnitPrice": 320,
+              "Qty": 4,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "59",
+          "name": "LL-DEMO NorthBridge Datacenter Supply"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 4180
+      },
+      {
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "145",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-06-25T20:36:22-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-06-25T20:36:22-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "PO-7740",
+        "TxnDate": "2026-06-25",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Hex bolt M8×50 (box/100)",
+            "Amount": 500,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "19",
+                "name": "BOLT-M8-50"
+              },
+              "UnitPrice": 12.5,
+              "Qty": 40,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Hex nut M8 (box/100)",
+            "Amount": 168,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "20",
+                "name": "NUT-M8"
+              },
+              "UnitPrice": 4.2,
+              "Qty": 40,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "3",
+            "LineNum": 3,
+            "Description": "Flat washer M8 (box/200)",
+            "Amount": 62,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "21",
+                "name": "WSH-M8"
+              },
+              "UnitPrice": 3.1,
+              "Qty": 20,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "58",
+          "name": "LL-DEMO Atlas Fasteners"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 730
+      },
+      {
+        "VendorAddr": {
+          "Id": "92",
+          "Line1": "Julie Norton",
+          "Line2": "Norton Lumber and Building Materials",
+          "Line3": "4528 Country Road",
+          "Line4": "Middlefield, CA  94303",
+          "Lat": "37.4530553",
+          "Long": "-122.1178261"
+        },
+        "ShipAddr": {
+          "Id": "93",
+          "Line1": "Craig's Design and Landscaping Services",
+          "Line2": "123 Sierra Way",
+          "Line3": "San Pablo, CA  87999",
+          "Lat": "INVALID",
+          "Long": "INVALID"
+        },
+        "EmailStatus": "NotSet",
+        "POStatus": "Closed",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "125",
+        "SyncToken": "1",
+        "MetaData": {
+          "CreateTime": "2026-05-29T13:10:14-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-05-29T13:10:36-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "1004",
+        "TxnDate": "2026-05-29",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [
+          {
+            "TxnId": "126",
+            "TxnType": "Bill"
+          }
+        ],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Fountain Pump",
+            "Amount": 80,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "11",
+                "name": "Pump"
+              },
+              "UnitPrice": 10,
+              "Qty": 8,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Rock Fountain",
+            "Amount": 125,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "5",
+                "name": "Rock Fountain"
+              },
+              "UnitPrice": 125,
+              "Qty": 1,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "46",
+          "name": "Norton Lumber and Building Materials"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 205
+      },
+      {
+        "VendorAddr": {
+          "Id": "89",
+          "Line1": "Geoff Hicks",
+          "Line2": "Hicks Hardware",
+          "Line3": "42 Main St.",
+          "Line4": "Middlefield, CA  94303",
+          "Lat": "37.4530553",
+          "Long": "-122.1178261"
+        },
+        "ShipAddr": {
+          "Id": "90",
+          "Line1": "Craig's Design and Landscaping Services",
+          "Line2": "123 Sierra Way",
+          "Line3": "San Pablo, CA  87999",
+          "Lat": "INVALID",
+          "Long": "INVALID"
+        },
+        "EmailStatus": "NotSet",
+        "POStatus": "Closed",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "114",
+        "SyncToken": "2",
+        "MetaData": {
+          "CreateTime": "2026-05-29T12:50:05-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-05-29T12:51:47-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "1003",
+        "TxnDate": "2026-05-29",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [
+          {
+            "TxnId": "115",
+            "TxnType": "Purchase"
+          }
+        ],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Rock Fountain",
+            "Amount": 125,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "CustomerRef": {
+                "value": "25",
+                "name": "Sushi by Katsuyuki"
+              },
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "5",
+                "name": "Rock Fountain"
+              },
+              "UnitPrice": 125,
+              "Qty": 1,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "2",
+            "LineNum": 2,
+            "Description": "Sprinkler Heads",
+            "Amount": 11.25,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "CustomerRef": {
+                "value": "25",
+                "name": "Sushi by Katsuyuki"
+              },
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "16",
+                "name": "Sprinkler Heads"
+              },
+              "UnitPrice": 0.75,
+              "Qty": 15,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "3",
+            "LineNum": 3,
+            "Description": "Sprinkler Pipes",
+            "Amount": 62.5,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "CustomerRef": {
+                "value": "25",
+                "name": "Sushi by Katsuyuki"
+              },
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "17",
+                "name": "Sprinkler Pipes"
+              },
+              "UnitPrice": 2.5,
+              "Qty": 25,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "4",
+            "LineNum": 4,
+            "Description": "Fountain Pump",
+            "Amount": 30,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "11",
+                "name": "Pump"
+              },
+              "UnitPrice": 10,
+              "Qty": 3,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "41",
+          "name": "Hicks Hardware"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 228.75
+      },
+      {
+        "VendorAddr": {
+          "Id": "63",
+          "Line1": "Tim Philip",
+          "Line2": "Tim Philip Masonry",
+          "Line3": "3948 Elm St.",
+          "Line4": "Middlefield, CA  94482",
+          "Lat": "INVALID",
+          "Long": "INVALID"
+        },
+        "ShipAddr": {
+          "Id": "64",
+          "Line1": "Craig's Design and Landscaping Services",
+          "Line2": "123 Sierra Way",
+          "Line3": "San Pablo, CA  87999",
+          "Lat": "INVALID",
+          "Long": "INVALID"
+        },
+        "EmailStatus": "NotSet",
+        "POStatus": "Open",
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "45",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-05-27T11:33:16-07:00",
+          "LastModifiedByRef": {
+            "value": "9341457351478246"
+          },
+          "LastUpdatedTime": "2026-05-27T11:33:16-07:00"
+        },
+        "CustomField": [],
+        "DocNumber": "1002",
+        "TxnDate": "2026-05-27",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "LinkedTxn": [],
+        "Line": [
+          {
+            "Id": "1",
+            "LineNum": 1,
+            "Description": "Rock Fountain",
+            "Amount": 125,
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "ItemBasedExpenseLineDetail": {
+              "BillableStatus": "NotBillable",
+              "ItemRef": {
+                "value": "5",
+                "name": "Rock Fountain"
+              },
+              "UnitPrice": 125,
+              "Qty": 1,
+              "TaxCodeRef": {
+                "value": "NON"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "VendorRef": {
+          "value": "51",
+          "name": "Tim Philip Masonry"
+        },
+        "APAccountRef": {
+          "value": "33",
+          "name": "Accounts Payable (A/P)"
+        },
+        "TotalAmt": 125
+      }
+    ],
+    "startPosition": 1,
+    "maxResults": 13,
+    "totalCount": 13
+  },
+  "time": "2026-06-25T20:36:50.127-07:00"
+}
