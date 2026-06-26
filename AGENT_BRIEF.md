@@ -69,6 +69,9 @@ pnpm typecheck && pnpm lint && pnpm knip && pnpm test && pnpm format:check && pn
   bounded agent loop, the Claude planner.
 - `lib/onboarding.ts` / `-model.ts` — derive the workflow from an org.
 - `lib/hris.ts` — BambooHR adapter (live + recorded) + the mapper.
+- `lib/erp.ts` — two seams: the reconciliation POST stub (fake-netsuite) AND the
+  PO PULL (QuickBooks live + recorded fixture, same shape as HRIS). `defaultErp()`
+  picks live/recorded by env; `loadRunBundle` matches invoices against pulled POs.
 - `src/mastra/` — the P2P pipeline + investigator agent + run-stream generator.
 - `components/` — onboarding, workflow-editor, workflow-graph (React Flow),
   dashboard, trace-timeline.

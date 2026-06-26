@@ -4,6 +4,7 @@ import postgres from "postgres";
 
 import { invoices, purchaseOrders, goodsReceipts } from "@/db/schema";
 import { env } from "@/lib/env";
+import { defaultErp, type PoSourceAdapter } from "@/lib/erp";
 import {
   Invoice,
   PurchaseOrder,
@@ -92,7 +93,13 @@ export type RunBundle = {
  * rows ("INV-2041" original + "INV-2041-RESEND"). The id is what lets us load
  * the exact row the visitor clicked and decide whether THAT row is the duplicate.
  */
-export const loadRunBundle = async (id: string): Promise<RunBundle | null> => {
+export const loadRunBundle = async (
+  id: string,
+  /* The ERP the open POs are pulled from. Defaults to `defaultErp()` (live QBO
+     when keyed, else the recorded fixture). Injectable so tests pin behaviour
+     without a network call or a key. */
+  erp: PoSourceAdapter = defaultErp(),
+): Promise<RunBundle | null> => {
   const d = db();
 
   const [invoiceRow] = await d
@@ -104,15 +111,25 @@ export const loadRunBundle = async (id: string): Promise<RunBundle | null> => {
 
   const invoice = Invoice.parse(toInvoiceShape(invoiceRow));
 
-  // Purchase order (by the invoice's poNumber, if any).
+  // Purchase order: the client's open POs are PULLED from their ERP (the
+  // procurement mirror of reading their org from BambooHR — see lib/erp.ts), and
+  // we match the invoice against THOSE. A pulled PO whose number matches the
+  // invoice's poNumber wins; we fall back to the seeded DB PO only when the ERP
+  // doesn't carry one (so the existing demo invoices still resolve). The pull is
+  // READ-ONLY and nothing is persisted — the run stays stateless.
   let purchaseOrder: TPurchaseOrder | null = null;
   if (invoice.poNumber) {
-    const [poRow] = await d
-      .select()
-      .from(purchaseOrders)
-      .where(eq(purchaseOrders.poNumber, invoice.poNumber))
-      .limit(1);
-    if (poRow) purchaseOrder = PurchaseOrder.parse(toPoShape(poRow));
+    const pulled = await pulledPoByNumber(erp, invoice.poNumber);
+    if (pulled) {
+      purchaseOrder = pulled;
+    } else {
+      const [poRow] = await d
+        .select()
+        .from(purchaseOrders)
+        .where(eq(purchaseOrders.poNumber, invoice.poNumber))
+        .limit(1);
+      if (poRow) purchaseOrder = PurchaseOrder.parse(toPoShape(poRow));
+    }
   }
 
   // Goods receipt (by the PO number, if a PO exists).
@@ -153,6 +170,25 @@ export const loadRunBundle = async (id: string): Promise<RunBundle | null> => {
     .map((r) => r.invoiceNumber);
 
   return { invoice, purchaseOrder, goodsReceipt, priorInvoiceNumbers };
+};
+
+/**
+ * Pull the client's open POs from the ERP and find the one matching this invoice's
+ * PO number. Read-only; nothing is persisted. A pull failure (a stale token, a
+ * down sandbox) must not blank the run — it degrades to `null` so the seeded PO
+ * fallback takes over, the same graceful-degradation discipline the rest of the
+ * app uses for optional integrations.
+ */
+const pulledPoByNumber = async (
+  erp: PoSourceAdapter,
+  poNumber: string,
+): Promise<TPurchaseOrder | null> => {
+  try {
+    const pos = await erp.pullPurchaseOrders();
+    return pos.find((p) => p.poNumber === poNumber) ?? null;
+  } catch {
+    return null;
+  }
 };
 
 /**

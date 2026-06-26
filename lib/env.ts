@@ -28,6 +28,15 @@ export const env = createEnv({
     BAMBOO_HR_API_KEY: z.string().min(1).optional(),
     /** BambooHR company subdomain (the `neige` in neige.bamboohr.com). Optional. */
     BAMBOO_HR_SUBDOMAIN: z.string().min(1).optional(),
+    /** QuickBooks Online OAuth2 app credentials + sandbox realm. All optional —
+     *  absent → the ERP adapter replays the recorded PO fixture (CI / no-key).
+     *  The access token is short-lived (≈1h), so we store the long-lived refresh
+     *  token and mint an access token on demand (see lib/erp.ts). */
+    QBO_CLIENT_ID: z.string().min(1).optional(),
+    QBO_CLIENT_SECRET: z.string().min(1).optional(),
+    QBO_REFRESH_TOKEN: z.string().min(1).optional(),
+    /** The sandbox company id ("realm") the PO query is scoped to. */
+    QBO_REALM_ID: z.string().min(1).optional(),
     /** Upstash Redis REST creds for rate-limiting. Optional — absent → fails open. */
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -47,6 +56,10 @@ export const env = createEnv({
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     BAMBOO_HR_API_KEY: process.env.BAMBOO_HR_API_KEY,
     BAMBOO_HR_SUBDOMAIN: process.env.BAMBOO_HR_SUBDOMAIN,
+    QBO_CLIENT_ID: process.env.QBO_CLIENT_ID,
+    QBO_CLIENT_SECRET: process.env.QBO_CLIENT_SECRET,
+    QBO_REFRESH_TOKEN: process.env.QBO_REFRESH_TOKEN,
+    QBO_REALM_ID: process.env.QBO_REALM_ID,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     KV_REST_API_URL: process.env.KV_REST_API_URL,
