@@ -3,11 +3,14 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
+import { NodeEditPanel } from "@/components/node-edit-panel";
 import { Button } from "@/components/ui/button";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
 import { orpc } from "@/lib/orpc/client";
+import type { OrgEmployee } from "@/lib/orpc/schemas";
+import { applyEditOp } from "@/lib/workflow-edit";
 import {
   validateWorkflow,
   isActivatable,
@@ -40,6 +43,7 @@ export const WorkflowEditor = ({
   departments = [],
   vendors = [],
   currencies = [],
+  people = [],
   onCurrentChange,
 }: {
   initial: ApprovalWorkflow;
@@ -52,6 +56,8 @@ export const WorkflowEditor = ({
       vendor/currency gate targets a real one (it declines an unknown value). */
   vendors?: string[];
   currencies?: string[];
+  /** The org's people — for the node panel's approver picker (click a gate to edit). */
+  people?: OrgEmployee[];
   /** Called with the CURRENT (approved) workflow whenever it changes — the initial
       one, then each kept edit. Never the pending proposal (preview-only). Lets a
       parent (AppView) run the pipeline against exactly what's on screen here. */
@@ -59,6 +65,8 @@ export const WorkflowEditor = ({
 }) => {
   const [current, setCurrent] = useState<ApprovalWorkflow>(initial);
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  // The graph node selected for editing (the side panel). Cleared on revert/reset.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [instruction, setInstruction] = useState("");
   const [error, setError] = useState<string | null>(null);
   // A pending clarification from the agent ("which department?") + the instruction
@@ -157,6 +165,7 @@ export const WorkflowEditor = ({
     setChips(suggestions);
     setError(null);
     setClarify(null);
+    setSelectedId(null);
   };
 
   const changedCount = proposal
@@ -171,15 +180,33 @@ export const WorkflowEditor = ({
       {/* The canvas fills the remaining height on desktop; on mobile the column is
           tall and `flex-1` would collapse it under the chips/input, so give it a
           real minimum so the graph stays legible (pan/zoom by touch). */}
-      <div className="min-h-[420px] flex-1 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:min-h-0">
+      <div className="relative min-h-[420px] flex-1 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:min-h-[360px]">
         {proposal ? (
+          // Previewing an edit — no node-editing while a proposal is pending (approve
+          // or revert first), so the two edit paths can't collide.
           <WorkflowGraph
             workflow={proposal.proposed}
             changes={proposal.changes}
             issues={issues}
           />
         ) : (
-          <WorkflowGraph workflow={current} issues={issues} />
+          <WorkflowGraph
+            workflow={current}
+            issues={issues}
+            onNodeSelect={setSelectedId}
+            selectedId={selectedId}
+          />
+        )}
+        {/* Click a node → edit it here (onboarding only). Direct/deterministic via
+            applyEditOp; the emitCurrent effect pushes `current` up to AppView. */}
+        {!proposal && selectedId && (
+          <NodeEditPanel
+            workflow={current}
+            stepId={selectedId}
+            people={people}
+            onApply={(op) => setCurrent((wf) => applyEditOp(wf, op))}
+            onClose={() => setSelectedId(null)}
+          />
         )}
       </div>
 

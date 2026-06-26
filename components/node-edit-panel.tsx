@@ -1,0 +1,278 @@
+"use client";
+
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import type {
+  ApprovalWorkflow,
+  Condition,
+  WorkflowStep,
+} from "@/lib/approval-workflow";
+import type { OrgEmployee } from "@/lib/orpc/schemas";
+import { applyEditOp, type WorkflowEditOp } from "@/lib/workflow-edit";
+import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
+
+/**
+ * The node editor — click a gate in the graph (onboarding only) and this side panel
+ * edits THAT step directly, the Pivot/Retool pattern. Every change is deterministic:
+ * it builds one `WorkflowEditOp` and the parent applies it with `applyEditOp`
+ * immediately (no model, no preview/approve cycle — the chat handles fuzzy intent;
+ * this handles precise, unambiguous edits like "who approves this" and "what's the
+ * threshold"). V1 fields: approver, amount threshold, label, remove.
+ */
+
+/** The amount floor a gate enforces (its `> N` amount leaf), or null. Mirrors the
+    validator's reader; kept local so the panel doesn't reach into validation. */
+const amountFloorOf = (when: Condition): number | null => {
+  const leaves = (c: Condition): Extract<Condition, { kind: "leaf" }>[] =>
+    c.kind === "leaf"
+      ? [c]
+      : c.kind === "all" || c.kind === "any"
+        ? c.conditions.flatMap(leaves)
+        : [];
+  const amt = leaves(when).find(
+    (l) => l.field === "amount" && (l.op === ">" || l.op === ">="),
+  );
+  return amt && typeof amt.value === "number" ? amt.value : null;
+};
+
+/** Order the org for the approver picker: titles closest to the gate's role first
+    (a "Director" gate surfaces VPs / C-level), then everyone else, by name. */
+const peopleFor = (people: OrgEmployee[], role: string): OrgEmployee[] => {
+  const r = role.toLowerCase();
+  const relevant = (p: OrgEmployee): boolean => {
+    const t = p.title.toLowerCase();
+    if (!t) return false;
+    // Share a word with the role, or both read as senior (VP / chief / head / director).
+    const senior = /vp|chief|head|director|officer|controller/;
+    return (
+      r.split(/\s+/).some((w) => w.length > 2 && t.includes(w)) ||
+      (senior.test(r) && senior.test(t))
+    );
+  };
+  const score = (p: OrgEmployee): number => (relevant(p) ? 0 : 1);
+  return [...people].sort(
+    (a, b) => score(a) - score(b) || a.name.localeCompare(b.name),
+  );
+};
+
+export const NodeEditPanel = ({
+  workflow,
+  stepId,
+  people,
+  onApply,
+  onClose,
+}: {
+  workflow: ApprovalWorkflow;
+  stepId: string;
+  people: OrgEmployee[];
+  onApply: (op: WorkflowEditOp) => void;
+  onClose: () => void;
+}) => {
+  const step = workflow.steps.find((s) => s.id === stepId);
+  if (!step) return null;
+  return (
+    <PanelShell title={step.label} onClose={onClose}>
+      {step.kind === "approval" ? (
+        <ApprovalFields step={step} people={people} onApply={onApply} />
+      ) : (
+        <p className="text-[12px] text-faint">
+          A system step (posts the bill / notifies). Rename or remove it below.
+        </p>
+      )}
+      <LabelField step={step} onApply={onApply} />
+      <RemoveField
+        workflow={workflow}
+        stepId={stepId}
+        onApply={onApply}
+        onClose={onClose}
+      />
+    </PanelShell>
+  );
+};
+
+const ApprovalFields = ({
+  step,
+  people,
+  onApply,
+}: {
+  step: Extract<WorkflowStep, { kind: "approval" }>;
+  people: OrgEmployee[];
+  onApply: (op: WorkflowEditOp) => void;
+}) => {
+  const floor = amountFloorOf(step.when);
+  const [amount, setAmount] = useState<string>(
+    floor != null ? String(floor) : "",
+  );
+  const ordered = peopleFor(people, step.approverTitle);
+  const unresolved = step.approverName === null;
+
+  return (
+    <>
+      <Field label={`Approver · ${step.approverTitle}`}>
+        <select
+          value={step.approverName ?? ""}
+          onChange={(e) =>
+            onApply({
+              op: "set-approver",
+              stepId: step.id,
+              approverName: e.target.value,
+            })
+          }
+          className={`h-9 w-full rounded-lg bg-surface px-2.5 text-[13px] text-ink outline-none ring-1 ring-inset transition-shadow focus:ring-2 focus:ring-accent-ring ${
+            unresolved ? "ring-warn-line" : "ring-line-strong"
+          }`}
+        >
+          <option value="" disabled>
+            {unresolved ? "⚠ Choose a person…" : "Choose a person…"}
+          </option>
+          {ordered.map((p) => (
+            <option key={p.id} value={p.name}>
+              {p.name}
+              {p.title ? ` · ${p.title}` : ""}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Triggers when amount over ($)">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const n = Number(amount);
+            if (Number.isFinite(n) && n > 0)
+              onApply({ op: "set-threshold", stepId: step.id, amountOver: n });
+          }}
+          className="flex items-center gap-1.5"
+        >
+          <input
+            type="number"
+            min={0}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="any amount"
+            className="h-9 flex-1 rounded-lg bg-surface px-2.5 text-[13px] text-ink outline-none ring-1 ring-inset ring-line-strong transition-shadow focus:ring-2 focus:ring-accent-ring"
+          />
+          <Button type="submit" size="sm" variant="ghost">
+            Set
+          </Button>
+        </form>
+      </Field>
+    </>
+  );
+};
+
+const LabelField = ({
+  step,
+  onApply,
+}: {
+  step: WorkflowStep;
+  onApply: (op: WorkflowEditOp) => void;
+}) => {
+  const [label, setLabel] = useState(step.label);
+  return (
+    <Field label="Label">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = label.trim();
+          if (v && v !== step.label)
+            onApply({ op: "rename-step", stepId: step.id, label: v });
+        }}
+        className="flex items-center gap-1.5"
+      >
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          className="h-9 flex-1 rounded-lg bg-surface px-2.5 text-[13px] text-ink outline-none ring-1 ring-inset ring-line-strong transition-shadow focus:ring-2 focus:ring-accent-ring"
+        />
+        <Button type="submit" size="sm" variant="ghost">
+          Rename
+        </Button>
+      </form>
+    </Field>
+  );
+};
+
+const RemoveField = ({
+  workflow,
+  stepId,
+  onApply,
+  onClose,
+}: {
+  workflow: ApprovalWorkflow;
+  stepId: string;
+  onApply: (op: WorkflowEditOp) => void;
+  onClose: () => void;
+}) => {
+  const [error, setError] = useState<string | null>(null);
+  const remove = () => {
+    if (!window.confirm("Remove this step from the workflow?")) return;
+    // Guard: a removal that breaks the graph (post unreachable, a dangling edge) is
+    // refused — the validator is the same one the editor blocks Approve on.
+    const after = applyEditOp(workflow, { op: "remove-step", stepId });
+    if (!isActivatable(validateWorkflow(after))) {
+      setError(
+        "Can't remove this — it would break the workflow (nothing would post).",
+      );
+      return;
+    }
+    onApply({ op: "remove-step", stepId });
+    onClose();
+  };
+  return (
+    <div className="mt-1 border-t border-line pt-3">
+      {error && (
+        <p className="mb-2 text-[11.5px] leading-snug text-danger">{error}</p>
+      )}
+      <Button variant="danger" size="sm" onClick={remove}>
+        Remove this step
+      </Button>
+    </div>
+  );
+};
+
+/* ── shell + field chrome ────────────────────────────────────────────────────── */
+
+const PanelShell = ({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) => (
+  // Overlay on the right edge of the graph; the canvas stays full width behind it.
+  // On a narrow screen it spans the bottom instead of a thin right column.
+  <div className="absolute inset-x-0 bottom-0 z-20 max-h-[70%] overflow-y-auto rounded-t-xl bg-surface p-4 shadow-lift ring-1 ring-inset ring-line sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[280px] sm:rounded-l-xl sm:rounded-tr-none">
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <span className="truncate text-[13px] font-semibold text-ink">
+        {title}
+      </span>
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="grid size-6 shrink-0 place-items-center rounded-md text-faint ring-1 ring-inset ring-line-strong transition-colors hover:text-ink"
+      >
+        ×
+      </button>
+    </div>
+    <div className="space-y-3">{children}</div>
+  </div>
+);
+
+const Field = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div>
+    <span className="mb-1 block text-[10.5px] font-medium uppercase tracking-wider text-faint">
+      {label}
+    </span>
+    {children}
+  </div>
+);

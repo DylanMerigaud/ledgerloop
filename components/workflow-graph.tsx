@@ -116,6 +116,8 @@ type NodeData = {
   /** Stacked top→bottom (narrow screens) instead of left→right — moves the edge
       handles to Top/Bottom so the connectors meet the cards correctly. */
   vertical?: boolean;
+  /** This node is the one selected for editing — gets an accent halo. */
+  selected?: boolean;
 };
 
 /** Ring/bg for a validation issue on a node (only used when there's no diff change). */
@@ -127,7 +129,7 @@ const issueRing = (sev: "error" | "warning" | undefined): string => {
 
 /** A workflow step rendered as the app's card — used as a React Flow custom node. */
 const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
-  const { step, status, change, issue, vertical } = data;
+  const { step, status, change, issue, vertical, selected } = data;
   const st = statusTone(status);
   const cb = changeBadge(change);
   const isApproval = step.kind === "approval";
@@ -143,9 +145,15 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const targetPos = vertical ? Position.Top : Position.Left;
   const sourcePos = vertical ? Position.Bottom : Position.Right;
 
+  // Selected (editing) → an accent halo that reads above the inset state/diff ring.
+  const selectedRing = selected
+    ? "ring-2 ring-accent ring-offset-2 ring-offset-subtle shadow-lift"
+    : `ring-1 ring-inset ${ring}`;
+
   return (
     <div
-      className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ring-1 ring-inset ${ring} ${change === "removed" ? "opacity-60" : ""}`}
+      data-testid={`graph-node-${step.id}`}
+      className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ${selectedRing} ${change === "removed" ? "opacity-60" : ""}`}
     >
       <Handle
         type="target"
@@ -357,12 +365,9 @@ const Inner = ({
   statuses,
   changes,
   issues,
-}: {
-  workflow: ApprovalWorkflow;
-  statuses?: StepStatuses;
-  changes?: StepChange[];
-  issues?: WorkflowIssue[];
-}) => {
+  onNodeSelect,
+  selectedId,
+}: WorkflowGraphProps) => {
   // Stack the DAG vertically below the `sm` breakpoint (640px), where a wide
   // left→right layout can't fit — each node then gets the full column width.
   const vertical = useMediaQuery("(max-width: 639px)");
@@ -490,10 +495,24 @@ const Inner = ({
     requestAnimationFrame(() => void fitView({ padding: 0.18, duration: 200 }));
   }, [initialized, graphKey, initialNodes, edges, setNodes, fitView, vertical]);
 
+  // Patch the `selected` halo on the live nodes when the selection changes — cheap,
+  // no re-layout (kept out of the layout pipeline so a click doesn't reflow the graph).
+  useEffect(() => {
+    setNodes((cur) =>
+      cur.map((n) =>
+        n.data.selected === (n.id === selectedId)
+          ? n
+          : { ...n, data: { ...n.data, selected: n.id === selectedId } },
+      ),
+    );
+  }, [selectedId, setNodes]);
+
   return (
     <ReactFlow
       nodes={nodes}
       edges={rfEdges}
+      onNodeClick={onNodeSelect ? (_, n) => onNodeSelect(n.id) : undefined}
+      onPaneClick={onNodeSelect ? () => onNodeSelect(null) : undefined}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
@@ -513,12 +532,19 @@ const Inner = ({
   );
 };
 
-export const WorkflowGraph = (props: {
+/** Public props. `onNodeSelect` (+ `selectedId`) makes the graph INTERACTIVE: a node
+    click reports its id, a pane click clears it, and the selected node gets a halo.
+    Omitted (pipeline run, diff preview) → clicks are inert, exactly as before. */
+type WorkflowGraphProps = {
   workflow: ApprovalWorkflow;
   statuses?: StepStatuses;
   changes?: StepChange[];
   issues?: WorkflowIssue[];
-}) => {
+  onNodeSelect?: (stepId: string | null) => void;
+  selectedId?: string | null;
+};
+
+export const WorkflowGraph = (props: WorkflowGraphProps) => {
   return (
     <div className="h-full min-h-[320px] w-full">
       <ReactFlowProvider>

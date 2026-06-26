@@ -14,6 +14,7 @@ import {
   type EditModel,
   type WorkflowEditOp,
 } from "@/lib/workflow-edit";
+import { validateWorkflow } from "@/lib/workflow-validate";
 
 /**
  * The edit is deterministic: the model only picks an op (tested live in the eval);
@@ -551,6 +552,35 @@ test("set-approver: sets the person on one step only", () => {
   assert.equal(dir?.kind === "approval" && dir.approverName, "Cameron Diaz");
   const mgr = next.steps.find((s) => s.id === "manager");
   assert.equal(mgr?.kind === "approval" && mgr.approverName, "Esther Howard");
+});
+
+test("set-approver: assigning a person clears the unresolved-approver warning", () => {
+  // The node panel's picker promise: a gate the onboarding model left unassigned
+  // (approverName === null) shows an `unresolved-approver` issue; choosing a person
+  // must make that issue disappear (and not invent any new one).
+  const unresolved: TWorkflow = {
+    ...base,
+    steps: base.steps.map((s) =>
+      s.id === "director" && s.kind === "approval"
+        ? { ...s, approverName: null }
+        : s,
+    ),
+  };
+  assert.ok(
+    validateWorkflow(unresolved).some(
+      (i) => i.code === "unresolved-approver" && i.stepIds.includes("director"),
+    ),
+    "the unassigned gate should report unresolved-approver",
+  );
+  const fixed = applyEditOp(unresolved, {
+    op: "set-approver",
+    stepId: "director",
+    approverName: "Cameron Diaz",
+  });
+  assert.ok(
+    !validateWorkflow(fixed).some((i) => i.code === "unresolved-approver"),
+    "assigning a person clears the warning",
+  );
 });
 
 test("remove-step: drops the step and every edge into it", () => {

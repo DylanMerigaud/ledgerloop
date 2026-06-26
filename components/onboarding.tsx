@@ -145,6 +145,7 @@ export const Onboarding = ({
               departments={departmentsOf(state.data.employees)}
               vendors={vendors}
               currencies={currencies}
+              people={state.data.employees}
               onCurrentChange={onWorkflowChange}
             />
           ) : (
