@@ -466,3 +466,20 @@ export const SEED_BUNDLES: SeedBundle[] = [
   qtyMismatch,
   cleanOffice,
 ];
+
+/**
+ * The scenario's purchase orders, de-duplicated by PO number — the SINGLE source
+ * the QuickBooks seed (`scripts/seed-quickbooks.ts`) pushes into the client's ERP
+ * and the matcher then pulls back. Derived from `SEED_BUNDLES` so the POs the
+ * pipeline matches against and the POs we seed into QBO can never drift. The
+ * duplicate pair shares one PO (PO-7741), so we collapse on poNumber.
+ */
+export const scenarioPurchaseOrders = (): PurchaseOrder[] => {
+  const byNumber = new Map<string, PurchaseOrder>();
+  for (const b of SEED_BUNDLES) {
+    if (b.purchaseOrder && !byNumber.has(b.purchaseOrder.poNumber)) {
+      byNumber.set(b.purchaseOrder.poNumber, b.purchaseOrder);
+    }
+  }
+  return [...byNumber.values()];
+};
