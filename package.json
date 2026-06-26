@@ -17,6 +17,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx db/seed.ts",
+    "fixture:build": "tsx scripts/build-recorded-fixture.ts",
     "hris:capture": "tsx scripts/capture-bamboo.ts",
     "hris:seed": "tsx scripts/seed-bamboo.ts seed",
     "hris:reset": "tsx scripts/seed-bamboo.ts reset",

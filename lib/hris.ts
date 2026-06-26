@@ -19,16 +19,20 @@ import { Employee, OrgChart, type OrgIssue } from "@/lib/schema";
  * downstream changes. This is the exact mirror of the ERP seam in `erp.ts`.
  *
  * Two implementations, both PURE (no env reads, no knowledge of each other):
- *   • `bambooHris(creds)`  — live HTTP against the real BambooHR API.
- *   • `recordedHris()`     — replays a fixture captured FROM that same live API.
+ *   • `bambooHris(creds)`  — live HTTP against the real BambooHR API, scoped to the
+ *     demo division.
+ *   • `recordedHris()`     — replays a fixture from disk through the SAME mapper and
+ *     the SAME division scope.
  *
- * "Recorded" is not a mock. The fixture in `db/fixtures/bamboohr/` is the real
- * API's real response, captured on a dated run via `scripts/capture-bamboo.ts`,
- * which is itself `bambooHris` calling the live API. Same client, same mapper —
- * the only difference is whether the bytes arrive over HTTPS now or were frozen
- * to disk earlier. That's what lets a 7-day trial key produce a demo that still
- * runs (and a CI that has no key at all) without anyone pretending it's live when
- * it isn't. The README says exactly which it is.
+ * The recorded fixture (`db/fixtures/bamboohr/report.json`) is BUILT from the seed
+ * definition (`scripts/build-recorded-fixture.ts` renders `SEED_ORG` into BambooHR's
+ * report shape) — NOT a live capture. So recorded and live read the exact same demo
+ * org: the same ~13 people, the same planted data-quality issues, the same shape,
+ * the same mapper. That's what lets the demo run without a trial key (and CI with no
+ * key at all) while staying honest — the fixture's `_meta` says it's seed-built, not
+ * captured. (`scripts/capture-bamboo.ts` still exists to snapshot a REAL scoped
+ * response if you have a key, but the committed fixture is the seed-built one so it
+ * never drifts from the seed.)
  *
  * @public
  */
@@ -261,8 +265,10 @@ const FIXTURE_PATH = path.join(
 );
 
 /**
- * Replays the captured BambooHR payload from disk through the SAME mapper the
- * live adapter uses. The fixture is real API output (see the file's `_meta`).
+ * Replays the recorded BambooHR payload from disk through the SAME mapper (and the
+ * SAME division scope) the live adapter uses, so recorded and live read the exact
+ * same demo org. The fixture is built from the seed definition (see the file's
+ * `_meta` and scripts/build-recorded-fixture.ts) — not a live capture.
  */
 export const recordedHris = (
   fixturePath: string = FIXTURE_PATH,
@@ -273,7 +279,9 @@ export const recordedHris = (
     // one does HTTP) — return a resolved promise rather than an await-less `async`.
     fetchOrg() {
       const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
-      return Promise.resolve(mapBambooReport(raw, "bamboohr (recorded)"));
+      return Promise.resolve(
+        mapBambooReport(raw, "bamboohr (recorded)", DEMO_CLIENT_DIVISION),
+      );
     },
   };
 };

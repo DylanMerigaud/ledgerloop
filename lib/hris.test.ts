@@ -166,17 +166,17 @@ test("tolerates an empty / shapeless payload without throwing", () => {
 // ── Layer 2: the real captured fixture ──────────────────────────────────────
 // Skips cleanly if the fixture hasn't been captured (e.g. a fresh checkout that
 // hasn't run the capture script), so the suite never fails for a missing file.
-test("the recorded real fixture maps to a valid OrgChart", async (t) => {
+test("the recorded fixture maps to a valid OrgChart", async (t) => {
   const adapter = recordedHris();
   // recordedHris() points at db/fixtures/bamboohr/report.json by default.
   if (!existsSync("db/fixtures/bamboohr/report.json")) {
-    t.skip("fixture not captured — run pnpm tsx scripts/capture-bamboo.ts");
+    t.skip("fixture missing — run pnpm fixture:build");
     return;
   }
   const org = await adapter.fetchOrg();
   // Valid against the schema (the real assertion — shape is correct).
   assert.doesNotThrow(() => OrgChart.parse(org));
-  // Sanity, loose: the trial has a real roster and at least one clean edge.
+  // Sanity: the seed-built demo org has its roster and at least one clean edge.
   assert.ok(org.employees.length > 10, "expected a populated org");
   assert.ok(
     org.employees.some((e) => e.managerId !== null),
