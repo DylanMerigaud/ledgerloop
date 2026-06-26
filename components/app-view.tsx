@@ -63,20 +63,28 @@ const Tabs = ({
   onChange: (v: View) => void;
 }) => {
   return (
-    // Attio-style underline tabs: a row over a full-width hairline, the active
-    // tab carries a black underline that overlaps the line.
-    <div className="flex items-center gap-6 border-b border-line">
+    // Two steps of ONE flow, not two unrelated tabs: build the workflow, then run
+    // invoices through it. The arrow + the "→ that workflow" subtitles make the link
+    // explicit (the thing you build on the left is what executes on the right).
+    // Attio-style underline tabs over a full-width hairline; the active step carries
+    // a black underline that overlaps the line.
+    <div className="flex items-center gap-3 border-b border-line sm:gap-5">
       <TabButton
         active={view === "onboarding"}
         onClick={() => onChange("onboarding")}
         step={1}
-        label="Onboarding"
+        label="Build the workflow"
+        sub="Read the HRIS, derive approvals"
       />
+      <span aria-hidden className="-mb-px pb-2.5 text-faint">
+        →
+      </span>
       <TabButton
         active={view === "pipeline"}
         onClick={() => onChange("pipeline")}
         step={2}
-        label="Pipeline"
+        label="Run it on invoices"
+        sub="Route each bill through that workflow"
       />
     </div>
   );
@@ -87,16 +95,20 @@ const TabButton = ({
   onClick,
   step,
   label,
+  sub,
 }: {
   active: boolean;
   onClick: () => void;
   step: number;
   label: string;
+  /** A one-line subtitle that spells out what this step does (and its link to the
+      other), so the sequence reads without a legend. */
+  sub: string;
 }) => {
   return (
     <button
       onClick={onClick}
-      className={`group relative -mb-px flex items-center gap-2 border-b-2 pb-2.5 pt-1 text-[13px] font-medium transition-colors ${
+      className={`group relative -mb-px flex items-center gap-2.5 border-b-2 pb-2 pt-1 text-left transition-colors ${
         active
           ? "border-ink text-ink"
           : "border-transparent text-muted hover:text-ink"
@@ -111,7 +123,16 @@ const TabButton = ({
       >
         {step}
       </span>
-      {label}
+      <span className="min-w-0">
+        <span className="block text-[13px] font-medium leading-tight">
+          {label}
+        </span>
+        {/* The subtitle is the point — keep it visible on wider screens; drop it on
+            narrow ones where it would wrap and crowd the row. */}
+        <span className="hidden text-[11px] font-normal leading-tight text-faint sm:block">
+          {sub}
+        </span>
+      </span>
     </button>
   );
 };

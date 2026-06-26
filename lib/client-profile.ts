@@ -142,6 +142,11 @@ export const workflowFromPolicy = (
     ],
   };
 
+  // The default (un-onboarded) workflow stands in for "the standard policy", so its
+  // gates are filled by ROLE, not a real person. We set approverName to the role so
+  // the canvas reads cleanly ("Manager review — Manager") instead of flagging every
+  // gate "unresolved" — that warning is for an ONBOARDED workflow the agent couldn't
+  // resolve, not for this generic fallback. (Onboarding resolves these to people.)
   const steps: WorkflowStep[] = [
     {
       id: "manager-review",
@@ -149,7 +154,7 @@ export const workflowFromPolicy = (
       label: "Manager review",
       when: isException,
       approverTitle: "Manager",
-      approverName: null,
+      approverName: "Manager",
       next: ["director-review", "post-netsuite"],
     },
     {
@@ -158,7 +163,7 @@ export const workflowFromPolicy = (
       label: "Director review",
       when: directorEscalation,
       approverTitle: "Director",
-      approverName: null,
+      approverName: "Director",
       next: ["post-netsuite"],
     },
     {
