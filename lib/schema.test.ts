@@ -74,6 +74,7 @@ test("MatchResult round-trips its own valid shape", () => {
     currency: "USD",
     invoiceTotal: 20,
     department: "",
+    vendor: "Acme",
   };
   assert.doesNotThrow(() => MatchResult.parse(m));
 });

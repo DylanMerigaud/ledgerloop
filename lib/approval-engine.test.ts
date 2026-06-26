@@ -62,6 +62,10 @@ const ctx = (over: Partial<InvoiceContext> = {}): InvoiceContext => ({
   variancePct: 0,
   department: "Finance",
   verdict: "clean",
+  vendor: "Acme",
+  currency: "USD",
+  matchType: "three_way",
+  exceptionCodes: [],
   ...over,
 });
 

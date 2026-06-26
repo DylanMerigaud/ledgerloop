@@ -89,6 +89,14 @@ const run = (over: Partial<MatchInput> = {}) => {
   });
 };
 
+test("the match result carries the invoice vendor (for vendor-scoped gates)", () => {
+  assert.equal(run().vendor, "Acme Steel");
+  assert.equal(
+    run({ invoice: invoice({ vendor: "Severn Steelworks" }) }).vendor,
+    "Severn Steelworks",
+  );
+});
+
 test("clean 3-way match → clean verdict, no exceptions", () => {
   const r = run();
   assert.equal(r.verdict, "clean");

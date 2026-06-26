@@ -32,6 +32,10 @@ const contextFromMatch = (match: MatchResult): InvoiceContext => {
     variancePct: match.maxVariancePct,
     department: match.department, // from the PO; "" = no dept → department gates skip
     verdict: match.verdict,
+    vendor: match.vendor,
+    currency: match.currency,
+    matchType: match.matchType,
+    exceptionCodes: match.exceptions.map((e) => e.code),
   };
 };
 

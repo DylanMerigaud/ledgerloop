@@ -37,6 +37,13 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
   // runs discovery; the pipeline falls back to its default DAG meanwhile.
   const [workflow, setWorkflow] = useState<ApprovalWorkflow | null>(null);
 
+  // The vendors / currencies actually present on the queued invoices — the real
+  // values a vendor/currency gate can route on. Derived from the already-loaded
+  // queue (no extra query); passed to onboarding so the editor offers + validates
+  // them, and the popover documents them.
+  const vendors = [...new Set(queue.map((q) => q.vendor))].sort();
+  const currencies = [...new Set(queue.map((q) => q.currency))].sort();
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Tabs view={view} onChange={setView} />
@@ -45,7 +52,11 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
             switch. `hidden` collapses the inactive pane to zero box, so the active
             one keeps the full height (the panes use lg:h-full). */}
         <div className={view === "onboarding" ? "h-full" : "hidden"}>
-          <Onboarding onWorkflowChange={setWorkflow} />
+          <Onboarding
+            onWorkflowChange={setWorkflow}
+            vendors={vendors}
+            currencies={currencies}
+          />
         </div>
         <div className={view === "pipeline" ? "h-full" : "hidden"}>
           <Dashboard queue={queue} workflow={workflow} />

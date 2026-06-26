@@ -3,7 +3,11 @@ import {
   diffWorkflows,
   type StepChange,
 } from "@/lib/approval-workflow";
-import { applyEditOp, type WorkflowEditOp } from "@/lib/workflow-edit";
+import {
+  applyEditOp,
+  type WorkflowEditOp,
+  type AvailableScope,
+} from "@/lib/workflow-edit";
 import {
   validateWorkflow,
   isActivatable,
@@ -45,7 +49,7 @@ export type PlanModel = {
   planOps: (args: {
     current: TWorkflow;
     instruction: string;
-    available: { departments: string[] };
+    available: AvailableScope;
     feedback?: { issues: WorkflowIssue[]; triedOps: WorkflowEditOp[] };
   }) => Promise<WorkflowEditOp[]>;
 };
@@ -94,7 +98,7 @@ export const runEditAgent = async (
   model: PlanModel,
   current: TWorkflow,
   instruction: string,
-  available: { departments: string[] },
+  available: AvailableScope,
 ): Promise<AgentEditResult> => {
   const allOps: WorkflowEditOp[] = [];
   let working = current;

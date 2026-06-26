@@ -132,6 +132,7 @@ export const runMatch = (
     currency,
     invoiceTotal: invoice.total,
     department,
+    vendor: invoice.vendor,
   });
 
   // 1a. In-run duplicate: the same invoice number was already seen earlier in the
@@ -290,6 +291,7 @@ export const runMatch = (
     currency,
     invoiceTotal: invoice.total,
     department,
+    vendor: invoice.vendor,
   };
 };
 

@@ -46,6 +46,10 @@ test("dispatches a multi-op plan in order (one round)", async () => {
           approverTitle: "CFO",
           amountOver: 50000,
           department: null,
+          vendor: null,
+          currency: null,
+          matchType: null,
+          exceptionCode: null,
         },
         {
           op: "add-integration",
@@ -58,7 +62,7 @@ test("dispatches a multi-op plan in order (one round)", async () => {
     model,
     base,
     "add a CFO gate over 50k and a Slack notice",
-    { departments: [] },
+    { departments: [], vendors: [], currencies: [] },
   );
   assert.equal(ops.length, 2, "both ops applied");
   assert.ok(proposed.steps.some((s) => s.label === "CFO review"));
@@ -86,7 +90,11 @@ test("on an erroring plan, it re-plans with the validator's errors as feedback",
       return Promise.resolve<WorkflowEditOp[]>([]); // give up on the correction
     },
   };
-  await runEditAgent(model, base, "tidy up", { departments: [] });
+  await runEditAgent(model, base, "tidy up", {
+    departments: [],
+    vendors: [],
+    currencies: [],
+  });
   assert.equal(call >= 2, true, "it ran a correction round");
   assert.equal(
     sawFeedbackError,
@@ -106,7 +114,7 @@ test("returns a reason when the plan is all no-ops (no change)", async () => {
     model,
     base,
     "do nothing useful",
-    { departments: [] },
+    { departments: [], vendors: [], currencies: [] },
   );
   assert.equal(
     changes.filter((c) => c.kind !== "unchanged").length,
@@ -131,6 +139,8 @@ test("a clarify op short-circuits: workflow unchanged, clarification surfaced", 
   };
   const result = await runEditAgent(model, base, "add a department review", {
     departments: ["Finance", "Product"],
+    vendors: [],
+    currencies: [],
   });
   assert.deepEqual(
     result.clarify,
@@ -155,11 +165,17 @@ test("a complete instruction applies normally (clarify stays null)", async () =>
           approverTitle: "Finance",
           amountOver: null,
           department: "Finance",
+          vendor: null,
+          currency: null,
+          matchType: null,
+          exceptionCode: null,
         },
       ]),
   };
   const result = await runEditAgent(model, base, "add a Finance review", {
     departments: ["Finance"],
+    vendors: [],
+    currencies: [],
   });
   assert.equal(result.clarify, null, "no clarification needed");
   assert.ok(result.proposed.steps.some((s) => s.label === "Finance review"));
@@ -179,6 +195,8 @@ test("stops at the step budget on a stubborn error (doesn't hang)", async () => 
   };
   const { issues } = await runEditAgent(model, base, "break it", {
     departments: [],
+    vendors: [],
+    currencies: [],
   });
   assert.ok(calls <= 4, "bounded to the step budget");
   // It returns (doesn't hang); the remaining error is surfaced.

@@ -43,6 +43,16 @@ const ConditionField = z.enum([
   "department",
   /** matching verdict: "clean" | "exception" | "duplicate". */
   "verdict",
+  /** The billing vendor, e.g. "Severn Steelworks". Routes a vendor-specific review. */
+  "vendor",
+  /** The invoice currency, e.g. "USD" | "EUR" | "GBP". Routes an FX review. */
+  "currency",
+  /** "two_way" (no goods receipt, e.g. services) | "three_way". */
+  "matchType",
+  /** A matching exception code the invoice raised, e.g. "vendor_inactive",
+      "price_variance". Tested as MEMBERSHIP: `== code` means "the invoice has this
+      flag", `!= code` means "it doesn't". */
+  "exceptionCode",
 ]);
 type ConditionField = z.infer<typeof ConditionField>;
 
@@ -164,10 +174,18 @@ export type InvoiceContext = {
   variancePct: number;
   department: string;
   verdict: "clean" | "exception" | "duplicate";
+  vendor: string;
+  currency: string;
+  matchType: "two_way" | "three_way";
+  /** Every matching exception code the invoice raised (a `== code` leaf tests
+      membership in this list, not equality with a single value). */
+  exceptionCodes: string[];
 };
 
+/** The scalar value of a comparable field. `exceptionCode` is NOT here — it's a list
+    (set membership), handled directly in `evaluateCondition`. */
 const valueFor = (
-  field: ConditionField,
+  field: Exclude<ConditionField, "exceptionCode">,
   ctx: InvoiceContext,
 ): string | number => {
   switch (field) {
@@ -181,6 +199,12 @@ const valueFor = (
       return ctx.department;
     case "verdict":
       return ctx.verdict;
+    case "vendor":
+      return ctx.vendor;
+    case "currency":
+      return ctx.currency;
+    case "matchType":
+      return ctx.matchType;
   }
 };
 
@@ -230,6 +254,14 @@ export const evaluateCondition = (
     case "always":
       return true;
     case "leaf":
+      // exceptionCode is set-membership, not a scalar compare: `== code` is "the
+      // invoice raised this flag", `!= code` is "it didn't"; other ops are meaningless.
+      if (cond.field === "exceptionCode") {
+        const has = ctx.exceptionCodes.includes(String(cond.value));
+        if (cond.op === "==") return has;
+        if (cond.op === "!=") return !has;
+        return false;
+      }
       return compare(valueFor(cond.field, ctx), cond.op, cond.value);
     case "all":
       return cond.conditions.every((c) => evaluateCondition(c, ctx));
@@ -309,6 +341,23 @@ const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   }
   if (field === "verdict" && op === "==") {
     return value === "exception" ? "Exception" : `${String(value)}`;
+  }
+  if (field === "vendor") {
+    if (op === "==") return `Vendor: ${String(value)}`;
+    if (op === "!=") return `Not ${String(value)}`;
+  }
+  if (field === "currency") {
+    if (op === "==") return `${String(value)} only`;
+    if (op === "!=") return `Not ${String(value)}`;
+  }
+  if (field === "matchType" && op === "==") {
+    return value === "two_way" ? "2-way match" : "3-way match";
+  }
+  if (field === "exceptionCode") {
+    // Codes read better with spaces: "vendor_inactive" → "vendor inactive".
+    const label = String(value).replace(/_/g, " ");
+    if (op === "==") return `Has ${label} flag`;
+    if (op === "!=") return `No ${label} flag`;
   }
   // Fallback for any op/field combo not specially phrased.
   return `${field} ${op} ${describeLeafValue(cond)}`;

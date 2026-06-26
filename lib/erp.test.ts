@@ -30,6 +30,7 @@ const match = (over: Partial<MatchResult> = {}): MatchResult => {
     currency: "GBP",
     invoiceTotal: 8704,
     department: "",
+    vendor: "Acme",
     ...over,
   };
 };

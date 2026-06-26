@@ -43,6 +43,14 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       amountOver: z.number().nullable(),
       /** A department it's scoped to (e.g. "Product"); null = any department. */
       department: z.string().nullable(),
+      /** A vendor it's scoped to (e.g. "Severn Steelworks"); null = any vendor. */
+      vendor: z.string().nullable().default(null),
+      /** A currency it's scoped to (e.g. "EUR"); null = any currency. */
+      currency: z.string().nullable().default(null),
+      /** A match type it's scoped to; null = any. */
+      matchType: z.enum(["two_way", "three_way"]).nullable().default(null),
+      /** An exception code it fires on (e.g. "vendor_inactive"); null = any. */
+      exceptionCode: z.string().nullable().default(null),
     })
     .strict(),
   z
@@ -112,6 +120,10 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       approverTitle: z.string(),
       amountOver: z.number().nullable(),
       department: z.string().nullable(),
+      vendor: z.string().nullable().default(null),
+      currency: z.string().nullable().default(null),
+      matchType: z.enum(["two_way", "three_way"]).nullable().default(null),
+      exceptionCode: z.string().nullable().default(null),
     })
     .strict(),
   z
@@ -123,6 +135,10 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       approverTitle: z.string(),
       amountOver: z.number().nullable(),
       department: z.string().nullable(),
+      vendor: z.string().nullable().default(null),
+      currency: z.string().nullable().default(null),
+      matchType: z.enum(["two_way", "three_way"]).nullable().default(null),
+      exceptionCode: z.string().nullable().default(null),
     })
     .strict(),
   /** The model couldn't map the instruction to a supported edit — change nothing. */
@@ -154,20 +170,62 @@ const slug = (label: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "step";
 
-/** A condition from an amount/department scope (mirrors the onboarding template). */
-const conditionFor = (
-  amountOver: number | null,
-  department: string | null,
-): Condition => {
+/** The scope fields a gate-creating op can carry — every lever a `when` is built
+    from. All null = an unconditional gate. */
+type GateScope = {
+  amountOver: number | null;
+  department: string | null;
+  vendor?: string | null;
+  currency?: string | null;
+  matchType?: "two_way" | "three_way" | null;
+  exceptionCode?: string | null;
+};
+
+/** A condition from a gate's scope (mirrors the onboarding template). Each non-null
+    lever becomes a leaf; several are AND-joined. */
+const conditionFor = (scope: GateScope): Condition => {
   const leaves: Condition[] = [];
-  if (amountOver !== null)
-    leaves.push({ kind: "leaf", field: "amount", op: ">", value: amountOver });
-  if (department !== null)
+  if (scope.amountOver !== null)
+    leaves.push({
+      kind: "leaf",
+      field: "amount",
+      op: ">",
+      value: scope.amountOver,
+    });
+  if (scope.department !== null)
     leaves.push({
       kind: "leaf",
       field: "department",
       op: "==",
-      value: department,
+      value: scope.department,
+    });
+  if (scope.vendor != null)
+    leaves.push({
+      kind: "leaf",
+      field: "vendor",
+      op: "==",
+      value: scope.vendor,
+    });
+  if (scope.currency != null)
+    leaves.push({
+      kind: "leaf",
+      field: "currency",
+      op: "==",
+      value: scope.currency,
+    });
+  if (scope.matchType != null)
+    leaves.push({
+      kind: "leaf",
+      field: "matchType",
+      op: "==",
+      value: scope.matchType,
+    });
+  if (scope.exceptionCode != null)
+    leaves.push({
+      kind: "leaf",
+      field: "exceptionCode",
+      op: "==",
+      value: scope.exceptionCode,
     });
   if (leaves.length === 0) return { kind: "always" };
   if (leaves.length === 1)
@@ -307,7 +365,7 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
         id,
         kind: "approval",
         label: op.label,
-        when: conditionFor(op.amountOver, op.department),
+        when: conditionFor(op),
         approverTitle: op.approverTitle,
         approverName: null, // a human resolves the person at validation
         next: post ? [post] : [],
@@ -349,7 +407,7 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
         id,
         kind: "approval",
         label: op.label,
-        when: conditionFor(op.amountOver, op.department),
+        when: conditionFor(op),
         approverTitle: op.approverTitle,
         approverName: null,
         // The new gate takes over what `after` used to point at…
@@ -372,7 +430,7 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
         id,
         kind: "approval",
         label: op.label,
-        when: conditionFor(op.amountOver, op.department),
+        when: conditionFor(op),
         approverTitle: op.approverTitle,
         approverName: null,
         next: post ? [post] : [],
@@ -525,7 +583,7 @@ export const parseEditPlan = (raw: unknown): WorkflowEditOp[] =>
 export const WORKFLOW_PLAN_SYSTEM_PROMPT = `You translate a plain-language instruction (which may ask for SEVERAL changes) into an ORDERED list of structured edits for a procure-to-pay approval workflow, then I apply them in order and validate the result.
 
 Return { "ops": [ ... ] } where each op is one of:
-- add-approval { label, approverTitle, amountOver|null, department|null }: a new gate after the first step. Keep "label" a short title only.
+- add-approval { label, approverTitle, amountOver|null, department|null, vendor|null, currency|null, matchType|null, exceptionCode|null }: a new gate after the first step. Keep "label" a short title only. Set as many scope fields as the instruction names (they AND together); leave the rest null.
 - add-integration { label, integration: "slack"|"jira"|"netsuite" }: a system action after the bill posts.
 - set-threshold { stepId, amountOver }: change an existing gate's amount threshold.
 - set-approver { stepId, approverName }: set the person on a gate.
@@ -534,8 +592,8 @@ Return { "ops": [ ... ] } where each op is one of:
 - duplicate-step { stepId, label }: copy an existing step.
 - move-step { stepId, afterStepId }: relocate an existing step to after another.
 - reorder-branches { parentStepId, order: [..] }: set the top→bottom order of a parent's parallel branches ("swap the two reviews").
-- insert-approval-after { afterStepId, label, approverTitle, amountOver|null, department|null }: insert a gate immediately AFTER one step.
-- add-parallel-after { afterStepIds: [..], label, approverTitle, amountOver|null, department|null }: a gate that runs once ALL the listed steps are approved (use for "after X and Y, a step that waits on both").
+- insert-approval-after { afterStepId, label, approverTitle, amountOver|null, department|null, vendor|null, currency|null, matchType|null, exceptionCode|null }: insert a gate immediately AFTER one step.
+- add-parallel-after { afterStepIds: [..], label, approverTitle, amountOver|null, department|null, vendor|null, currency|null, matchType|null, exceptionCode|null }: a gate that runs once ALL the listed steps are approved (use for "after X and Y, a step that waits on both").
 - none { reason }: only if NOTHING in the instruction maps to a supported edit.
 - clarify { question, options }: ask the user for a missing piece you must not guess (see the department rule). Return EXACTLY this one op when you need it; "options" are the choices to offer.
 
@@ -544,16 +602,28 @@ Rules:
 - For a multi-part instruction ("add a CFO gate over $50k AND a Slack notice"), return one op per part.
 - Don't add something the workflow already has.
 - DEPARTMENTS: a department gate may only target a department that EXISTS in this org (I list them below as AVAILABLE DEPARTMENTS). If the instruction asks to route by department but names NONE, or names one NOT in the list, do NOT guess and do NOT invent one — return a single clarify op whose options are the available departments. If it names a valid one, use it directly.
+- VENDOR / CURRENCY: set "vendor" / "currency" only to a value that appears in AVAILABLE VENDORS / AVAILABLE CURRENCIES below (match a partial name, e.g. "Severn" → the full "Severn Steelworks"). If the instruction names a vendor or currency that is NOT in the list, do NOT invent it — return a single "none" op explaining it isn't a known vendor/currency. (Do NOT clarify for vendor/currency, only for department.)
+- MATCH TYPE: "matchType" is "two_way" (services / no goods receipt) or "three_way" only.
+- EXCEPTION CODE: "exceptionCode" is one of: price_variance, qty_variance_po, qty_variance_receipt, unit_price_x_qty, no_po_line, no_receipt_line, duplicate, duplicate_in_erp, vendor_inactive, sku_not_in_catalog. Use it for "send <flag> invoices to ..." style rules.
 - If I send you VALIDATION ISSUES from a previous attempt, return ops that FIX them (e.g. resolve an approver, merge a duplicate, add a second approver on a high-value path).
 Return only the JSON object.`;
 
-/** Prompt body for the planner: current steps (+ conditions), the available
-    departments (so a department gate can only target a real one), the instruction,
-    and optionally the validation feedback from a previous attempt to correct. */
+/** The real scope values a gate can target — the org's departments, and the vendors
+    + currencies present on the invoices/POs — so the model only ever proposes a real
+    one (and clarifies / declines otherwise). */
+export type AvailableScope = {
+  departments: string[];
+  vendors: string[];
+  currencies: string[];
+};
+
+/** Prompt body for the planner: current steps (+ conditions), the available scope
+    values (departments / vendors / currencies, so a gate can only target a real one),
+    the instruction, and optionally the validation feedback from a previous attempt. */
 export const planPrompt = (
   current: TWorkflow,
   instruction: string,
-  available: { departments: string[] },
+  available: AvailableScope,
   feedback?: { issues: { message: string }[]; triedOps: WorkflowEditOp[] },
 ): string => {
   const steps = current.steps
@@ -563,11 +633,13 @@ export const planPrompt = (
       return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
     })
     .join("\n");
-  const depts =
-    available.departments.length > 0
-      ? available.departments.join(", ")
-      : "(none in this org)";
-  const base = `CURRENT STEPS:\n${steps}\n\nAVAILABLE DEPARTMENTS: ${depts}\n\nINSTRUCTION:\n${instruction}`;
+  const list = (xs: string[]): string =>
+    xs.length > 0 ? xs.join(", ") : "(none)";
+  const scope =
+    `AVAILABLE DEPARTMENTS: ${list(available.departments)}\n` +
+    `AVAILABLE VENDORS: ${list(available.vendors)}\n` +
+    `AVAILABLE CURRENCIES: ${list(available.currencies)}`;
+  const base = `CURRENT STEPS:\n${steps}\n\n${scope}\n\nINSTRUCTION:\n${instruction}`;
   if (!feedback || feedback.issues.length === 0)
     return `${base}\n\nReturn the ordered ops as JSON.`;
   const probs = feedback.issues.map((i) => `- ${i.message}`).join("\n");

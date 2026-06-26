@@ -72,6 +72,11 @@ export const EditInput = z.object({
       target a real one (the agent returns a clarify when it can't). Optional —
       defaults to none, in which case any department instruction is clarified. */
   departments: z.array(z.string()).default([]),
+  /** The vendors present on the invoices/POs, so a vendor gate targets a real one
+      (the agent declines an unknown vendor). */
+  vendors: z.array(z.string()).default([]),
+  /** The currencies present on the invoices, for the same reason. */
+  currencies: z.array(z.string()).default([]),
 });
 
 /** The agent asks for a missing piece (e.g. which department) — the UI shows the

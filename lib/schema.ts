@@ -193,6 +193,8 @@ export const MatchResult = z
     /** The buying department, carried from the PO so a department-scoped approval
         gate can route on it. "" when the PO has none (or there's no PO). */
     department: z.string(),
+    /** The billing vendor, carried so a vendor-scoped approval gate can route on it. */
+    vendor: z.string(),
   })
   .strict();
 export type MatchResult = z.infer<typeof MatchResult>;

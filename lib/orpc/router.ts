@@ -100,7 +100,11 @@ const editWorkflow = rateLimited
         anthropicPlanModel,
         input.workflow,
         input.instruction,
-        { departments: input.departments },
+        {
+          departments: input.departments,
+          vendors: input.vendors,
+          currencies: input.currencies,
+        },
       );
       return { proposed, changes, reason, clarify };
     } catch {

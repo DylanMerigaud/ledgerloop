@@ -6,6 +6,7 @@ import {
   type Condition,
   evaluateCondition,
   describeCondition,
+  humanizeCondition,
   type InvoiceContext,
 } from "@/lib/approval-workflow";
 
@@ -21,6 +22,10 @@ const ctx = (over: Partial<InvoiceContext> = {}): InvoiceContext => ({
   variancePct: 0,
   department: "Finance",
   verdict: "clean",
+  vendor: "Acme",
+  currency: "USD",
+  matchType: "three_way",
+  exceptionCodes: [],
   ...over,
 });
 
@@ -49,6 +54,93 @@ test("string leaf: department == IT (equality only)", () => {
   };
   assert.equal(evaluateCondition(cond, ctx({ department: "IT" })), true);
   assert.equal(evaluateCondition(cond, ctx({ department: "Finance" })), false);
+});
+
+test("vendor / currency / matchType leaves match on equality", () => {
+  const vendor: Condition = {
+    kind: "leaf",
+    field: "vendor",
+    op: "==",
+    value: "Severn Steelworks",
+  };
+  assert.equal(
+    evaluateCondition(vendor, ctx({ vendor: "Severn Steelworks" })),
+    true,
+  );
+  assert.equal(evaluateCondition(vendor, ctx({ vendor: "Atlas" })), false);
+
+  const cur: Condition = {
+    kind: "leaf",
+    field: "currency",
+    op: "==",
+    value: "EUR",
+  };
+  assert.equal(evaluateCondition(cur, ctx({ currency: "EUR" })), true);
+  assert.equal(evaluateCondition(cur, ctx({ currency: "USD" })), false);
+
+  const mt: Condition = {
+    kind: "leaf",
+    field: "matchType",
+    op: "==",
+    value: "two_way",
+  };
+  assert.equal(evaluateCondition(mt, ctx({ matchType: "two_way" })), true);
+  assert.equal(evaluateCondition(mt, ctx({ matchType: "three_way" })), false);
+});
+
+test("exceptionCode is set membership: == has the flag, != lacks it", () => {
+  const has: Condition = {
+    kind: "leaf",
+    field: "exceptionCode",
+    op: "==",
+    value: "vendor_inactive",
+  };
+  assert.equal(
+    evaluateCondition(has, ctx({ exceptionCodes: ["vendor_inactive"] })),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(has, ctx({ exceptionCodes: ["price_variance"] })),
+    false,
+  );
+  assert.equal(evaluateCondition(has, ctx({ exceptionCodes: [] })), false);
+
+  const lacks: Condition = {
+    kind: "leaf",
+    field: "exceptionCode",
+    op: "!=",
+    value: "vendor_inactive",
+  };
+  assert.equal(evaluateCondition(lacks, ctx({ exceptionCodes: [] })), true);
+  assert.equal(
+    evaluateCondition(lacks, ctx({ exceptionCodes: ["vendor_inactive"] })),
+    false,
+  );
+});
+
+test("humanizeCondition reads the new levers plainly", () => {
+  const h = (c: Condition) => humanizeCondition(c);
+  assert.equal(
+    h({ kind: "leaf", field: "vendor", op: "==", value: "Severn Steelworks" }),
+    "Vendor: Severn Steelworks",
+  );
+  assert.equal(
+    h({ kind: "leaf", field: "currency", op: "==", value: "EUR" }),
+    "EUR only",
+  );
+  assert.equal(
+    h({ kind: "leaf", field: "matchType", op: "==", value: "two_way" }),
+    "2-way match",
+  );
+  assert.equal(
+    h({
+      kind: "leaf",
+      field: "exceptionCode",
+      op: "==",
+      value: "vendor_inactive",
+    }),
+    "Has vendor inactive flag",
+  );
 });
 
 test("ordering ops on a string are false, not a surprise sort", () => {

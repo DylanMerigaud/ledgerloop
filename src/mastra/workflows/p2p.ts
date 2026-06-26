@@ -140,7 +140,6 @@ const Decisions = z.object({
   decisions: z.record(z.string(), z.enum(["approve", "reject"])),
 });
 const MatchStepOut = MatchResult.merge(Narrated)
-  .merge(z.object({ vendor: z.string() }))
   .merge(Decisions)
   // Carry the profile forward so the approval step can run the client's workflow.
   .merge(z.object({ profile: ClientProfile.optional() }));
@@ -162,8 +161,7 @@ const matchingStep = createStep({
       inputData.profile?.tolerances ?? DEFAULT_TOLERANCES,
     );
     return {
-      ...match,
-      vendor: inputData.invoice.vendor,
+      ...match, // includes `vendor` (part of MatchResult now)
       decisions: inputData.decisions,
       profile: inputData.profile,
       narration: matchLine(match),
@@ -272,15 +270,14 @@ const investigateAndRouteStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData, mastra, writer }) => {
-    const {
-      vendor,
-      decisions,
-      profile,
-      narration: _prior,
-      ...match
-    } = inputData;
+    const { decisions, profile, narration: _prior, ...match } = inputData;
 
-    const investigation = await investigate(mastra, writer, match, vendor);
+    const investigation = await investigate(
+      mastra,
+      writer,
+      match,
+      match.vendor,
+    );
     if (investigation) {
       try {
         await writer.write({
@@ -300,7 +297,7 @@ const investigateAndRouteStep = createStep({
     return {
       approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
       match,
-      vendor,
+      vendor: match.vendor,
       narration: run.narration,
     };
   },
@@ -314,7 +311,6 @@ const blockStep = createStep({
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData }) => {
     const {
-      vendor,
       decisions: _decisions,
       profile: _profile,
       narration: _prior,
@@ -323,7 +319,7 @@ const blockStep = createStep({
     return {
       approval: { outcome: "blocked" as const, steps: [] },
       match,
-      vendor,
+      vendor: match.vendor,
       narration: `Blocked: ${match.invoiceNumber} is a duplicate of an already-processed invoice. Held for AP review — not routed for approval.`,
     };
   },
@@ -337,13 +333,7 @@ const autoApproveStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData }) => {
-    const {
-      vendor,
-      decisions,
-      profile,
-      narration: _prior,
-      ...match
-    } = inputData;
+    const { decisions, profile, narration: _prior, ...match } = inputData;
     const workflow = workflowFor(
       profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
     );
@@ -351,7 +341,7 @@ const autoApproveStep = createStep({
     return {
       approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
       match,
-      vendor,
+      vendor: match.vendor,
       narration: run.narration,
     };
   },

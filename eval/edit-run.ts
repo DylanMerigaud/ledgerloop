@@ -100,6 +100,10 @@ const stubOp = (c: EditCase): WorkflowEditOp => {
         approverTitle: c.id.includes("cfo") ? "CFO" : "Approver",
         amountOver: c.id.includes("cfo") ? 50000 : null,
         department: null,
+        vendor: null,
+        currency: null,
+        matchType: null,
+        exceptionCode: null,
       };
     case "add-integration":
       return {

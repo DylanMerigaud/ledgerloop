@@ -38,6 +38,8 @@ export const WorkflowEditor = ({
   initial,
   suggestions = [],
   departments = [],
+  vendors = [],
+  currencies = [],
   onCurrentChange,
 }: {
   initial: ApprovalWorkflow;
@@ -46,6 +48,10 @@ export const WorkflowEditor = ({
   /** The departments that exist in the org — shown as chips you can route on, and
       sent to the edit agent so it only ever proposes a real one. */
   departments?: string[];
+  /** The vendors / currencies present on the invoices — sent to the edit agent so a
+      vendor/currency gate targets a real one (it declines an unknown value). */
+  vendors?: string[];
+  currencies?: string[];
   /** Called with the CURRENT (approved) workflow whenever it changes — the initial
       one, then each kept edit. Never the pending proposal (preview-only). Lets a
       parent (AppView) run the pipeline against exactly what's on screen here. */
@@ -89,6 +95,8 @@ export const WorkflowEditor = ({
         workflow: current,
         instruction: value,
         departments,
+        vendors,
+        currencies,
       });
       // The agent needs a missing piece (e.g. which department) — offer the options
       // instead of an edit. Remember the instruction so a pick can complete it.

@@ -84,6 +84,10 @@ test("add-approval: adds a gate, wires it, leaves every other step untouched", (
     approverTitle: "CFO",
     amountOver: 50000,
     department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
   };
   const next = applyEditOp(base, op);
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
@@ -102,6 +106,42 @@ test("add-approval: adds a gate, wires it, leaves every other step untouched", (
     changes.find((c) => c.id === "director")?.kind,
     "unchanged",
     "director must not be touched",
+  );
+});
+
+test("add-approval: builds a vendor / currency / matchType / exceptionCode condition", () => {
+  const next = applyEditOp(base, {
+    op: "add-approval",
+    label: "Vendor review",
+    approverTitle: "Buyer",
+    amountOver: null,
+    department: null,
+    vendor: "Severn Steelworks",
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
+  });
+  const gate = next.steps.find((s) => s.label === "Vendor review");
+  assert.ok(gate);
+  assert.equal(describeCondition(gate.when), "vendor == Severn Steelworks");
+
+  // Several scope fields AND together into one condition.
+  const multi = applyEditOp(base, {
+    op: "add-approval",
+    label: "FX exception review",
+    approverTitle: "Controller",
+    amountOver: null,
+    department: null,
+    vendor: null,
+    currency: "EUR",
+    matchType: null,
+    exceptionCode: "vendor_inactive",
+  });
+  const fx = multi.steps.find((s) => s.label === "FX exception review");
+  assert.ok(fx);
+  assert.equal(
+    describeCondition(fx.when),
+    "currency == EUR and exceptionCode == vendor_inactive",
   );
 });
 
@@ -161,6 +201,10 @@ test("an approval added AFTER a notification converges on the ERP post", () => {
     approverTitle: "VP",
     amountOver: 100000,
     department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
   });
   const vp = next.steps.find((s) => s.label === "VP sign-off");
   const slack = next.steps.find((s) => s.label === "Slack notify");
@@ -179,6 +223,10 @@ test("insert-approval-after: sits the new gate BETWEEN the anchor and what follo
     approverTitle: "CFO",
     amountOver: null,
     department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
   });
   const cfo = next.steps.find((s) => s.label === "CFO review");
   const dir = next.steps.find((s) => s.id === "director");
@@ -204,6 +252,10 @@ test("add-parallel-after: new gate waits on ALL anchors, then flows to the post"
     approverTitle: "Controller",
     amountOver: null,
     department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
   });
   const fin = next.steps.find((s) => s.label === "Final sign-off");
   const mgr = next.steps.find((s) => s.id === "manager");
@@ -263,6 +315,10 @@ test("add-parallel-after that would cycle is rejected (workflow unchanged)", () 
     approverTitle: "X",
     amountOver: null,
     department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
   });
   assert.equal(JSON.stringify(next), before, "cycle guard kept it unchanged");
 });
@@ -517,6 +573,10 @@ test("applyEditOp never mutates the input workflow", () => {
     approverTitle: "X",
     amountOver: 1,
     department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
   });
   assert.equal(JSON.stringify(base), before);
 });
@@ -530,6 +590,10 @@ test("proposeEdit runs the model -> op -> apply -> diff", async () => {
         approverTitle: "CFO",
         amountOver: 50000,
         department: null,
+        vendor: null,
+        currency: null,
+        matchType: null,
+        exceptionCode: null,
       }),
   };
   const { proposed, op, changes } = await proposeEdit(

@@ -43,10 +43,16 @@ type State =
 
 export const Onboarding = ({
   onWorkflowChange,
+  vendors = [],
+  currencies = [],
 }: {
   /** Push the active workflow up to AppView so the Pipeline tab runs against it:
       the derived one on discovery, then each approved edit from the editor. */
   onWorkflowChange: (workflow: ApprovalWorkflow) => void;
+  /** The vendors / currencies present on the invoices — the real values a gate can
+      route on. Passed to the editor (offer + validate) and shown in the doc. */
+  vendors?: string[];
+  currencies?: string[];
 }) => {
   // Discovery is a TanStack Query mutation over the typed oRPC procedure. We map its
   // lifecycle to the screen's State machine so the rest of the JSX is unchanged.
@@ -121,7 +127,13 @@ export const Onboarding = ({
       <Card className="flex flex-col overflow-hidden">
         <CardHeader>
           <CardTitle>Derived approval workflow</CardTitle>
-          {state.status === "done" && <WhatCanIChange />}
+          {state.status === "done" && (
+            <WhatCanIChange
+              departments={departmentsOf(state.data.employees)}
+              vendors={vendors}
+              currencies={currencies}
+            />
+          )}
         </CardHeader>
         <div className="flex-1 overflow-hidden p-5">
           {state.status === "done" ? (
@@ -131,6 +143,8 @@ export const Onboarding = ({
               initial={state.data.workflow}
               suggestions={state.data.suggestions}
               departments={departmentsOf(state.data.employees)}
+              vendors={vendors}
+              currencies={currencies}
               onCurrentChange={onWorkflowChange}
             />
           ) : (
@@ -190,7 +204,15 @@ const EDIT_ACTIONS: {
   },
 ];
 
-const WhatCanIChange = () => {
+const WhatCanIChange = ({
+  departments,
+  vendors,
+  currencies,
+}: {
+  departments: string[];
+  vendors: string[];
+  currencies: string[];
+}) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -245,19 +267,49 @@ const WhatCanIChange = () => {
               </li>
             ))}
           </ul>
-          {/* The levers a gate's condition can route on — so "what can I gate on?" is
-              answerable, not guesswork. Values come from the invoice in flight. */}
-          <div className="mt-1 border-t border-line px-2 pb-1 pt-2">
+          {/* The levers a gate can route on — and, for the ones with a fixed set of
+              values, the REAL values present (departments from the org, vendors +
+              currencies from the invoices). So "what can I gate on?" is answerable,
+              with the actual options, not guesswork. */}
+          <div className="mt-1 space-y-1.5 border-t border-line px-2 pb-1 pt-2">
             <span className="block text-[10px] font-medium uppercase tracking-wider text-faint">
-              Conditions you can route on
+              Route on any of these
             </span>
-            <span className="mt-1 block font-mono text-[10.5px] leading-relaxed text-muted">
-              amount &gt; $ · department == · variance ≥ % · verdict
-              (clean/exception)
-            </span>
+            <Lever name="amount" hint="e.g. over $25,000" />
+            <Lever name="variance" hint="e.g. ≥ 10%" />
+            <Lever name="verdict" hint="clean · exception · duplicate" />
+            <Lever name="match type" hint="2-way · 3-way" />
+            <Lever name="department" values={departments} />
+            <Lever name="vendor" values={vendors} />
+            <Lever name="currency" values={currencies} />
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+/** One routing lever in the "what can I change" doc: its name plus either a hint or
+    the real values present (the latter truncated so a long vendor list stays tidy). */
+const Lever = ({
+  name,
+  hint,
+  values,
+}: {
+  name: string;
+  hint?: string;
+  values?: string[];
+}) => {
+  const shown = values
+    ? values.length === 0
+      ? "(none)"
+      : values.slice(0, 4).join(", ") +
+        (values.length > 4 ? `, +${values.length - 4}` : "")
+    : (hint ?? "");
+  return (
+    <div className="flex gap-2 text-[10.5px] leading-snug">
+      <span className="shrink-0 font-mono font-medium text-ink">{name}</span>
+      <span className="min-w-0 text-faint">{shown}</span>
     </div>
   );
 };

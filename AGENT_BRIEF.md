@@ -24,6 +24,12 @@ The "complete loop" is built and on `main`. Key facts a fresh session must know:
   (`lib/approval-run.ts` reads `match.department`). The derived "department review" gate is
   a parallel ROOT scoped to `department == "Product"`; PO-7744 (INV-2044) is the seeded
   Product PO. A pulled (QBO) PO has dept ""; `loadRunBundle` overlays the seeded dept.
+- **Condition levers** (`ConditionField`): amount, exceptionAmount, variancePct, department,
+  verdict, vendor, currency, matchType, exceptionCode. `exceptionCode` is SET-MEMBERSHIP
+  (`== code` = "the invoice raised this flag"), handled in `evaluateCondition`, not via the
+  scalar `valueFor`. The editor gets the real `departments`/`vendors`/`currencies` (vendors +
+  currencies derived from the queue in `AppView`) so it only builds a gate that can fire; the
+  "What can I change?" popover lists the levers + values.
 - **Multi-wave HITL**: `usePipelineRun` accumulates decisions and the resume sends their
   UNION (the stateless run rebuilds the DAG), and it re-detects `awaiting` on a resume, so
   a gate behind another gate re-pauses instead of posting.

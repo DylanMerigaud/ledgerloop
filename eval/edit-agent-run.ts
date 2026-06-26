@@ -95,6 +95,8 @@ const main = async (): Promise<void> => {
     const model = dryRun ? stubModel(c) : (liveModel ?? stubModel(c));
     const result = await runEditAgent(model, EDIT_FIXTURE, c.instruction, {
       departments: EVAL_DEPARTMENTS,
+      vendors: [],
+      currencies: [],
     });
     const row = score(c, result);
     rows.push(row);
