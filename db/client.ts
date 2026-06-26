@@ -127,16 +127,26 @@ export const loadRunBundle = async (
   // READ-ONLY and nothing is persisted — the run stays stateless.
   let purchaseOrder: TPurchaseOrder | null = null;
   if (invoice.poNumber) {
+    const [poRow] = await d
+      .select()
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.poNumber, invoice.poNumber))
+      .limit(1);
+    const seeded = poRow ? PurchaseOrder.parse(toPoShape(poRow)) : null;
+
     const pulled = await pulledPoByNumber(erp, invoice.poNumber);
     if (pulled) {
-      purchaseOrder = pulled;
+      // The ERP owns the line/price truth, but it doesn't know our INTERNAL buying
+      // department (a cost-centre, not a vendor-facing field), so the ERP PO carries
+      // "". Overlay the department from the seeded PO when the pull has none, so a
+      // department-scoped approval gate still routes. Same split everywhere: the ERP
+      // is the source for what was ordered; the department is our own overlay.
+      purchaseOrder =
+        pulled.department === "" && seeded
+          ? { ...pulled, department: seeded.department }
+          : pulled;
     } else {
-      const [poRow] = await d
-        .select()
-        .from(purchaseOrders)
-        .where(eq(purchaseOrders.poNumber, invoice.poNumber))
-        .limit(1);
-      if (poRow) purchaseOrder = PurchaseOrder.parse(toPoShape(poRow));
+      purchaseOrder = seeded;
     }
   }
 
@@ -281,6 +291,7 @@ const toPoShape = (r: typeof purchaseOrders.$inferSelect) => {
     currency: r.currency,
     lineItems: r.lineItems,
     total: r.total,
+    department: r.department,
   };
 };
 

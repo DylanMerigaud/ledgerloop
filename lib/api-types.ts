@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { TraceEvent } from "@/lib/trace";
 
 /**
@@ -30,10 +31,12 @@ export const RunRequest = z.object({
   id: z.string().min(1, "an invoice id is required"),
   /** Reviewer decisions keyed by workflow step id. Omitted on the first run. */
   decisions: z.record(z.string(), StepDecision).optional(),
-  /** Which client profile to run under (tolerances + approval workflow). Optional —
-      defaults to the standard profile. This is how the same invoice routes
-      differently per onboarded client. */
-  profileId: z.string().optional(),
+  /** The approval workflow this run executes — the one the onboarding agent
+      derived and the user edited, passed in (never persisted: the run stays
+      stateless). Optional: when absent the run falls back to the default DAG, so a
+      visitor who hasn't run discovery still gets a working pipeline. On a phase-2
+      resume the SAME workflow must be sent so the re-walked gates match phase 1. */
+  workflow: ApprovalWorkflow.optional(),
 });
 export type RunRequest = z.infer<typeof RunRequest>;
 

@@ -62,6 +62,7 @@ const po = (over: Partial<PurchaseOrder> = {}): PurchaseOrder => {
       },
     ],
     total: 300,
+    department: "",
     ...over,
   };
 };

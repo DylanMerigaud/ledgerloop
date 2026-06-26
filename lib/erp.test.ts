@@ -29,6 +29,7 @@ const match = (over: Partial<MatchResult> = {}): MatchResult => {
     exceptionAmount: 6544,
     currency: "GBP",
     invoiceTotal: 8704,
+    department: "",
     ...over,
   };
 };

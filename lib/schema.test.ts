@@ -73,6 +73,7 @@ test("MatchResult round-trips its own valid shape", () => {
     exceptionAmount: 0,
     currency: "USD",
     invoiceTotal: 20,
+    department: "",
   };
   assert.doesNotThrow(() => MatchResult.parse(m));
 });

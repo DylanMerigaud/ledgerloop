@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { isStreamDone } from "@/lib/api-types";
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import type { Outcome } from "@/lib/display";
 import { client } from "@/lib/orpc/client";
 import {
@@ -40,20 +41,34 @@ const IDLE: PipelineRunState = {
   error: null,
 };
 
-export const usePipelineRun = () => {
+export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
   const [state, setState] = useState<PipelineRunState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
+  // The active workflow the run executes against, kept in a ref so the stable
+  // `stream` callback always reads the latest without re-creating. null → the
+  // server falls back to its default DAG. The phase-2 resume sends the SAME
+  // workflow as phase 1 so the re-walked gates match (the run is stateless: the
+  // workflow is re-sent, not stored).
+  const workflowRef = useRef<ApprovalWorkflow | null>(workflow);
+  workflowRef.current = workflow;
   // The trace + step index persist ACROSS phases so a phase-2 approve/reject
   // continues the existing timeline (re-streamed intake/matching/approval nodes
   // upsert in place by stepId; reconciliation transitions awaiting → posted).
   const eventsRef = useRef<TraceEvent[]>([]);
   const stepIndexRef = useRef<Map<string, number>>(new Map());
+  // Decisions ACCUMULATE across approval waves. The run is stateless — it recomputes
+  // the whole DAG from the decisions each call — so a workflow with gates behind
+  // other gates (a later wave reached only once an earlier one is approved) needs the
+  // UNION of every decision so far, not just the wave just acted on. Without this, an
+  // earlier wave's approval would be lost on the next resume and the bill never posts.
+  const decisionsRef = useRef<Record<string, "approve" | "reject">>({});
 
   const reset = useEventCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     eventsRef.current = [];
     stepIndexRef.current = new Map();
+    decisionsRef.current = {};
     setState(IDLE);
   });
 
@@ -71,6 +86,7 @@ export const usePipelineRun = () => {
       if (!decision) {
         eventsRef.current = [];
         stepIndexRef.current = new Map();
+        decisionsRef.current = {};
       }
       setState((s) => ({
         ...s,
@@ -85,11 +101,21 @@ export const usePipelineRun = () => {
         const stepIndex = stepIndexRef.current;
 
         // On a phase-2 RESUME the workflow re-runs end-to-end, so it re-emits the
-        // whole front of the pipeline. We've already shown those nodes — surface
-        // ONLY the reconciliation stage (the part that actually advances) and drop
-        // the replayed run markers / earlier stages, so there's no second
-        // "Pipeline started" or duplicated upstream steps.
-        if (resuming && e.stage !== "reconciliation") return;
+        // whole front of the pipeline. We've already shown the upstream nodes
+        // (intake/matching/investigation) and they don't advance — drop them and the
+        // replayed run markers so there's no second "Pipeline started" or duplicated
+        // upstream steps. But KEEP approval + reconciliation: those DO advance (the
+        // approval node updates its per-step states — a just-approved gate, and a
+        // NEXT gate that a wave reached now pends), upserting in place by stepId. This
+        // is what lets a multi-wave workflow re-pause instead of silently posting.
+        if (
+          resuming &&
+          e.stage !== "approval" &&
+          e.stage !== "reconciliation"
+        ) {
+          return;
+        }
+        if (resuming && e.kind === "run") return; // never replay run markers
 
         // UPSERT anything with a stepId (steps AND tool nodes carry stable ids) so a
         // stage is a single node that transitions running → done, and across phases
@@ -114,12 +140,23 @@ export const usePipelineRun = () => {
 
       try {
         // The approval workflow can have several gates pending in parallel. The
-        // single Approve/Reject button applies the reviewer's decision to ALL of
-        // them (the collect-all set), sent as the per-step `decisions` map. (A
-        // richer per-gate UI can send a subset.)
+        // single Approve/Reject button applies the reviewer's decision to ALL gates
+        // pending in THIS wave (the collect-all set). We MERGE that into the running
+        // accumulator and send the union, so an earlier wave's approvals aren't lost
+        // when a later wave is acted on (the run is stateless — it rebuilds the whole
+        // DAG from the decisions). The active workflow rides along on both phases so
+        // the run routes through exactly the one on screen; omitted when null so the
+        // server uses its default DAG.
+        const activeWorkflow = workflowRef.current ?? undefined;
+        if (decision) {
+          decisionsRef.current = {
+            ...decisionsRef.current,
+            ...decisionsForPending(eventsRef.current, decision),
+          };
+        }
         const body = decision
-          ? { id, decisions: decisionsForPending(eventsRef.current, decision) }
-          : { id };
+          ? { id, decisions: decisionsRef.current, workflow: activeWorkflow }
+          : { id, workflow: activeWorkflow };
         // The oRPC `run` procedure is an event iterator: a typed async stream of
         // TraceEvent | StreamDone. No manual reader / NDJSON parse / cast — just
         // iterate, fully typed end-to-end.
@@ -131,8 +168,11 @@ export const usePipelineRun = () => {
         }
 
         // If the run paused for a human decision, surface that as `awaiting` (not
-        // `done`) so the UI shows Approve / Reject instead of "Run again".
-        const awaiting = !decision && isAwaitingApproval(eventsRef.current);
+        // `done`) so the UI shows Approve / Reject instead of "Run again". Detected
+        // after EVERY phase, resume included: approving one wave can reach a NEXT gate
+        // that pends, so a resume must be able to re-pause rather than assume it
+        // always completes.
+        const awaiting = isAwaitingApproval(eventsRef.current);
 
         // The workflow runs to completion even when reconciliation is HELD, so it
         // emits a "Pipeline complete" run marker — misleading while paused. Drop the

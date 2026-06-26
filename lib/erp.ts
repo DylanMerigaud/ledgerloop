@@ -335,7 +335,17 @@ export const mapQboPurchaseOrders = (raw: unknown): TPurchaseOrder[] => {
     const total =
       po.TotalAmt ?? round2(lineItems.reduce((s, l) => s + l.amount, 0));
 
-    const candidate = { poNumber, vendor, currency, lineItems, total };
+    // QBO doesn't carry our internal buying department on a PO, so it's "" (no
+    // department → the invoice routes normally; a department-scoped gate just
+    // doesn't fire). The seeded POs set it where the demo needs the gate to fire.
+    const candidate = {
+      poNumber,
+      vendor,
+      currency,
+      lineItems,
+      total,
+      department: "",
+    };
     const result = PurchaseOrder.safeParse(candidate);
     if (result.success) out.push(result.data);
   }

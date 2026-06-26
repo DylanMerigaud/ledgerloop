@@ -29,8 +29,10 @@ const step = (page: Page, stage: string) => {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  // The dashboard must have loaded with seeded data (not the "needs its database"
-  // notice). If this fails, the backend env isn't configured.
+  // The app opens on the "Build the workflow" tab; the pipeline lives behind the
+  // "Run it on invoices" tab. Switch to it, then the seeded queue must be visible
+  // (not the "needs its database" notice — if this fails, the backend env isn't set).
+  await page.getByRole("button", { name: /Run it on invoices/ }).click();
   await expect(page.getByText("Invoice queue")).toBeVisible();
 });
 

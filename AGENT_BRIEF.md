@@ -7,6 +7,32 @@ through that workflow. This file is the context a fresh session needs so it does
 re-derive or break conventions. (`.product/*.md` has deeper strategy notes but is
 gitignored, so it may be absent in a worktree — this committed brief is the source.)
 
+## Current state (the two surfaces are LINKED — done, don't re-derive)
+
+The "complete loop" is built and on `main`. Key facts a fresh session must know:
+
+- **The derived workflow drives the run.** `AppView` holds the active `ApprovalWorkflow`
+  in client state; onboarding pushes it up (discovery + each approved edit), the
+  Dashboard reads it and `usePipelineRun` sends it in the oRPC `run` body. Absent (cold
+  visit) → the default DAG from `lib/client-profile.ts` (`workflowFromPolicy`) stands in.
+  Both tabs stay MOUNTED (hidden, not unmounted) so state survives a tab switch.
+- **Manager gate is amount-conditional**, not `always`: fires on any exception OR a clean
+  bill over the manager floor ($1,000). Aligned in BOTH `lib/onboarding.ts` (derived) and
+  `workflowFromPolicy` (default). So small clean → straight-through, material/flagged →
+  human.
+- **Department lives on the PurchaseOrder**, carried through `MatchResult` into the engine
+  (`lib/approval-run.ts` reads `match.department`). The derived "department review" gate is
+  a parallel ROOT scoped to `department == "Product"`; PO-7744 (INV-2044) is the seeded
+  Product PO. A pulled (QBO) PO has dept ""; `loadRunBundle` overlays the seeded dept.
+- **Multi-wave HITL**: `usePipelineRun` accumulates decisions and the resume sends their
+  UNION (the stateless run rebuilds the DAG), and it re-detects `awaiting` on a resume, so
+  a gate behind another gate re-pauses instead of posting.
+- **Live workflow graph** in the Dashboard: the same `WorkflowGraph` onboarding draws,
+  lit by the run's per-step statuses (`readRunGraph` pulls `approval.workflow` + steps from
+  the trace), shown between the document scan and the text timeline.
+- **e2e** (`pnpm e2e`, local-only, needs keys): `approval.e2e.ts` (HITL on the default) +
+  `onboarding-to-pipeline.e2e.ts` (the flagship loop: discover → dept gate → post).
+
 ## Hard conventions (non-negotiable — the user is strict about these)
 
 - **No `as` casts.** ESLint `@typescript-eslint/no-unsafe-type-assertion` is ON.
@@ -78,4 +104,6 @@ pnpm typecheck && pnpm lint && pnpm knip && pnpm test && pnpm format:check && pn
 
 ## Your task
 
-See the task brief in this same folder (`TASK.md`), written for this branch.
+Ask the user — the link-workflow / department / live-graph work (see "Current state"
+above) is done and merged. There may be a `TASK.md` in this folder from a past branch;
+treat it as scaffolding, not a live instruction, unless the user points you at it.

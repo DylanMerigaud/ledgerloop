@@ -63,6 +63,9 @@ export const purchaseOrders = pgTable("purchase_orders", {
   currency: text("currency").notNull(),
   lineItems: jsonb("line_items").$type<LineItem[]>().notNull(),
   total: numeric("total", { mode: "number" }).notNull(),
+  /** The buying department, so the approval workflow can route a department review.
+      Defaults to '' (no department) — a PO without one routes normally. */
+  department: text("department").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -41,14 +41,24 @@ type State =
   | { status: "error"; message: string }
   | { status: "done"; data: OnboardingResult };
 
-export const Onboarding = () => {
+export const Onboarding = ({
+  onWorkflowChange,
+}: {
+  /** Push the active workflow up to AppView so the Pipeline tab runs against it:
+      the derived one on discovery, then each approved edit from the editor. */
+  onWorkflowChange: (workflow: ApprovalWorkflow) => void;
+}) => {
   // Discovery is a TanStack Query mutation over the typed oRPC procedure. We map its
   // lifecycle to the screen's State machine so the rest of the JSX is unchanged.
   const [state, setState] = useState<State>({ status: "idle" });
   const discovery = useMutation(
     orpc.onboarding.mutationOptions({
       onMutate: () => setState({ status: "running" }),
-      onSuccess: (data) => setState({ status: "done", data }),
+      onSuccess: (data) => {
+        setState({ status: "done", data });
+        // The freshly derived workflow becomes the active one for the pipeline.
+        onWorkflowChange(data.workflow);
+      },
       onError: (err) =>
         setState({
           status: "error",
@@ -120,6 +130,7 @@ export const Onboarding = () => {
               key={state.data.workflow.name + state.data.employeeCount}
               initial={state.data.workflow}
               suggestions={state.data.suggestions}
+              onCurrentChange={onWorkflowChange}
             />
           ) : (
             <EmptyState running={state.status === "running"} />
@@ -154,7 +165,7 @@ const EDIT_ACTIONS: {
   {
     icon: <JiraIcon size={14} />,
     title: "Open a Jira ticket",
-    example: "“Open a Jira ticket for IT bills”",
+    example: "“Open a Jira ticket for Product bills”",
   },
   {
     icon: <NetSuiteIcon size={14} />,
@@ -455,9 +466,9 @@ const SAMPLE_WORKFLOW: ApprovalWorkflow = {
       id: "dept",
       kind: "approval",
       label: "Department head",
-      when: { kind: "leaf", field: "department", op: "==", value: "IT" },
-      approverTitle: "COO",
-      approverName: "Jordan Ellis",
+      when: { kind: "leaf", field: "department", op: "==", value: "Product" },
+      approverTitle: "VP of Product",
+      approverName: "Sam Patel",
       next: ["post"],
     },
     {

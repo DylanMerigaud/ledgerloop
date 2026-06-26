@@ -1,0 +1,1 @@
+ALTER TABLE "purchase_orders" ADD COLUMN "department" text DEFAULT '' NOT NULL;

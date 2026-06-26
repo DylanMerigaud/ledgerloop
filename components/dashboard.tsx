@@ -10,8 +10,14 @@ import { TraceTimeline } from "@/components/trace-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { WorkflowGraph, type StepStatuses } from "@/components/workflow-graph";
 import type { QueueItem } from "@/db/client";
 import { API_ROUTES } from "@/lib/api-routes";
+import {
+  ApprovalWorkflow,
+  type ApprovalWorkflow as TApprovalWorkflow,
+} from "@/lib/approval-workflow";
+import { isRecord } from "@/lib/assert";
 import {
   outcomeDot,
   outcomeLabel,
@@ -60,6 +66,40 @@ const readIntake = (
   };
 };
 
+/**
+ * Pull the approval workflow + each step's live status out of the trace, so the
+ * Pipeline can render the SAME graph the onboarding screen draws — lit up by this
+ * invoice's path (a gate "In review", "Approved", "Skipped"). The approval node
+ * carries `{ workflow, steps: [{id, status}] }`; we validate the workflow off the
+ * trace (no cast) and map the step statuses into the shape WorkflowGraph wants.
+ * Returns null until the run has produced an approval node (intake/matching first).
+ */
+const readRunGraph = (
+  trace: TraceEvent[],
+): { workflow: TApprovalWorkflow; statuses: StepStatuses } | null => {
+  const approval = trace.find(
+    (e) => e.stage === "approval" && e.kind === "step",
+  );
+  if (!approval || !isRecord(approval.data)) return null;
+  const parsed = ApprovalWorkflow.safeParse(approval.data["workflow"]);
+  if (!parsed.success) return null;
+
+  const statuses: StepStatuses = {};
+  const steps = approval.data["steps"];
+  if (Array.isArray(steps)) {
+    for (const s of steps) {
+      if (
+        isRecord(s) &&
+        typeof s["id"] === "string" &&
+        typeof s["status"] === "string"
+      ) {
+        statuses[s["id"]] = s["status"];
+      }
+    }
+  }
+  return { workflow: parsed.data, statuses };
+};
+
 /** Solid play triangle for the Run button. */
 const PlayIcon = () => {
   return (
@@ -93,11 +133,49 @@ const Spinner = () => {
   );
 };
 
-export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
+/**
+ * "Running against: <workflow>" — the line that makes the link to onboarding
+ * visible: the pipeline routes every invoice through this exact workflow. Shows
+ * the active workflow's name once discovery/edits have produced one; otherwise a
+ * quiet note that the default DAG is in use until the user derives theirs.
+ */
+const RunningAgainst = ({
+  workflow,
+}: {
+  workflow: TApprovalWorkflow | null;
+}) => {
+  if (!workflow) {
+    return (
+      <p className="mt-1 text-[11px] text-faint">
+        Default workflow — run discovery to route against your own.
+      </p>
+    );
+  }
+  return (
+    <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted">
+      <span aria-hidden className="text-faint">
+        ↳
+      </span>
+      Running against{" "}
+      <span className="truncate font-medium text-ink">{workflow.name}</span>
+    </p>
+  );
+};
+
+export const Dashboard = ({
+  queue,
+  workflow,
+}: {
+  queue: QueueItem[];
+  /** The active approval workflow this pipeline runs against (lifted from
+      onboarding via AppView). null until discovery has run — the server then falls
+      back to its default DAG. */
+  workflow: TApprovalWorkflow | null;
+}) => {
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
   );
-  const { state, run, decide, reset } = usePipelineRun();
+  const { state, run, decide, reset } = usePipelineRun(workflow);
 
   // Queue scroll affordance: macOS hides overlay scrollbars, so we show an
   // explicit "N more" pill + fade until the list is scrolled to the bottom.
@@ -170,6 +248,14 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
   // The trace-pane title follows whatever document is shown (hover preview or the
   // selected/running invoice) so the header never contradicts the PDF on screen.
   const previewItem = queue.find((q) => q.id === previewId) ?? selected;
+
+  // The live run graph: once the run reaches approval it carries the workflow +
+  // each step's status, so we light up the SAME canvas onboarding draws. Before
+  // that (or on a run with no active workflow) we draw the active workflow idle, so
+  // the user sees their workflow waiting to route. Null when there's nothing to draw.
+  const runGraph = readRunGraph(state.trace);
+  const graphToShow = runGraph?.workflow ?? workflow;
+  const graphStatuses = runGraph?.statuses;
 
   const select = (id: string) => {
     if (id === selectedId || locked) return;
@@ -306,6 +392,7 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
                 <span className="font-mono">{previewItem.invoiceNumber}</span>
               </p>
             )}
+            <RunningAgainst workflow={workflow} />
           </div>
           {state.status === "awaiting" && selected ? (
             // The run paused for a human decision — show the approval gate.
@@ -384,6 +471,24 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
                   }
                   extractedInvoice={readIntake(state.trace)?.document ?? null}
                 />
+              </div>
+            )}
+            {/* The live workflow graph — the SAME canvas onboarding draws, lit up
+            by this invoice's path (a gate "In review" / "Approved" / "Skipped").
+            This is the loop made visible: the workflow you built on the left is
+            exactly what routes the invoice here. Shown once a run is underway, above
+            the detailed text timeline. */}
+            {state.status !== "idle" && graphToShow && (
+              <div className="mb-4">
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
+                  Routing through {graphToShow.name}
+                </p>
+                <div className="h-64 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line">
+                  <WorkflowGraph
+                    workflow={graphToShow}
+                    statuses={graphStatuses}
+                  />
+                </div>
               </div>
             )}
             {state.status !== "idle" && (

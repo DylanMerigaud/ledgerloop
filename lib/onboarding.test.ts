@@ -76,19 +76,23 @@ const proposal: OnboardingProposal = {
     },
     {
       role: "department-head",
-      title: "VP of IT",
+      title: "VP of Product",
       employeeName: null,
-      rationale: "no IT lead in org",
+      rationale: "no Product lead resolved in this org",
     },
   ],
   issueNotes: ["Dana Vance looks like a junk record — confirm and remove."],
-  summary: "Manager → director over $5k → IT review → post.",
+  summary: "Manager → director over $5k → Product review → post.",
 };
 
 test("assembled workflow validates and has the template shape", () => {
   const wf = assembleWorkflow(org, proposal);
   assert.doesNotThrow(() => ApprovalWorkflow.parse(wf));
-  assert.deepEqual(wf.roots, ["manager-review"]);
+  // Manager and department head are parallel first-line roots.
+  assert.deepEqual([...wf.roots].sort(), [
+    "department-review",
+    "manager-review",
+  ]);
   const ids = wf.steps.map((s) => s.id).sort();
   assert.deepEqual(ids, [
     "department-review",
@@ -98,22 +102,33 @@ test("assembled workflow validates and has the template shape", () => {
   ]);
 });
 
-test("manager step is unconditional and fans out to the conditional gates", () => {
+test("manager step fires on any exception or a clean bill over the floor", () => {
   const wf = assembleWorkflow(org, proposal);
   const mgr = wf.steps.find((s) => s.id === "manager-review")!;
   assert.equal(mgr.kind, "approval");
-  // Fans out to the gates only — NOT straight to the post (that would read as the
-  // manager being able to post without the other gates). The post is reached via
-  // the gates (skipped gates pass through in the engine).
-  assert.deepEqual([...mgr.next].sort(), [
-    "department-review",
-    "director-review",
-  ]);
+  // Fans out to the director gate only — NOT straight to the post (that would read
+  // as the manager being able to post without the escalation). The department review
+  // is a separate root, not behind the manager. The post is reached via the gates
+  // (skipped gates pass through in the engine).
+  assert.deepEqual(mgr.next, ["director-review"]);
   assert.ok(
     !mgr.next.includes("post-netsuite"),
     "no direct manager → post edge",
   );
-  assert.equal(evaluateCondition(mgr.when, anyCtx()), true); // always
+  // A small clean invoice skips the manager (straight-through); a material clean one
+  // or any exception triggers it — the standard "not every $50 bill needs a human".
+  assert.equal(
+    evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 500 })),
+    false,
+  );
+  assert.equal(
+    evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 9000 })),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(mgr.when, anyCtx({ verdict: "exception", amount: 100 })),
+    true,
+  );
 });
 
 test("director step gates on the proposed threshold", () => {
@@ -121,6 +136,22 @@ test("director step gates on the proposed threshold", () => {
   const dir = wf.steps.find((s) => s.id === "director-review")!;
   assert.equal(evaluateCondition(dir.when, anyCtx({ amount: 6000 })), true);
   assert.equal(evaluateCondition(dir.when, anyCtx({ amount: 4000 })), false);
+});
+
+test("department step gates on the buying department", () => {
+  const wf = assembleWorkflow(org, proposal);
+  const dept = wf.steps.find((s) => s.id === "department-review")!;
+  // Fires for the gated department, skips for any other (or none) — so the gate is
+  // real, not dead: an invoice whose PO is that department routes through it.
+  assert.equal(
+    evaluateCondition(dept.when, anyCtx({ department: "Product" })),
+    true,
+  );
+  assert.equal(
+    evaluateCondition(dept.when, anyCtx({ department: "Finance" })),
+    false,
+  );
+  assert.equal(evaluateCondition(dept.when, anyCtx({ department: "" })), false);
 });
 
 test("resolved approver names flow from the proposal; unresolved stays null", () => {

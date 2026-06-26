@@ -1,8 +1,11 @@
 import { ORPCError } from "@orpc/server";
 
 import { loadRunBundle } from "@/db/client";
-import { profileById } from "@/db/client-profiles";
 import { type RunRequest, type StreamDone } from "@/lib/api-types";
+import {
+  DEFAULT_TOLERANCES,
+  DEFAULT_APPROVAL_POLICY,
+} from "@/lib/client-profile";
 import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
 import { mastra } from "@/src/mastra";
 
@@ -65,7 +68,20 @@ export const runPipelineStream = async function* (
         catalogSkus: bundle.catalogSkus,
         decisions,
         skipExtraction: hasDecisions,
-        profile: profileById(input.profileId),
+        // The activated workflow IS what the pipeline routes through — this is the
+        // link between onboarding (where it's derived/edited) and the run. It's
+        // passed in, never persisted (the run stays stateless). Tolerances stay at
+        // the defaults; the workflow is the per-client lever the demo turns. When
+        // `input.workflow` is undefined the pipeline's `workflowFor` falls back to
+        // the policy-derived default DAG, so a run without a workflow behaves as
+        // before.
+        profile: {
+          id: "active",
+          name: input.workflow?.name ?? "Default workflow",
+          tolerances: DEFAULT_TOLERANCES,
+          approvalPolicy: DEFAULT_APPROVAL_POLICY,
+          workflow: input.workflow,
+        },
       },
     });
 

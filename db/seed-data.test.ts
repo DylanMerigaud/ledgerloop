@@ -101,17 +101,25 @@ test("the original of the duplicate pair is itself clean", () => {
   assert.equal(matchOf(byId("INV-2041")).verdict, "clean");
 });
 
-test("clean bundles route straight through (no gate, posts)", () => {
-  for (const id of [
-    "INV-2040",
-    "INV-2044",
-    "INV-2047",
-    "INV-2049",
-    "INV-2043",
-  ]) {
+test("a small clean invoice routes straight through (under the manager floor)", () => {
+  // INV-2040 is a $730 clean 3-way match — below the $1,000 manager floor, so no
+  // gate fires and it posts with no human (the straight-through automation win).
+  const run = runApproval(WORKFLOW, matchOf(byId("INV-2040")));
+  assert.equal(run.outcome, "posted");
+  assert.equal(run.pending.length, 0);
+});
+
+test("a material clean invoice still needs the manager (over the floor)", () => {
+  // Clean but over $1,000 → a human signs a material bill even on a perfect match,
+  // the standard AP control. (INV-2049 $9,360, INV-2043 $16,080, etc.)
+  for (const id of ["INV-2044", "INV-2047", "INV-2049", "INV-2043"]) {
     const run = runApproval(WORKFLOW, matchOf(byId(id)));
-    assert.equal(run.outcome, "posted", `${id} should be straight-through`);
-    assert.equal(run.pending.length, 0, `${id} should need no approval`);
+    assert.equal(matchOf(byId(id)).verdict, "clean", `${id} is clean`);
+    assert.equal(run.outcome, "awaiting", `${id} should need approval`);
+    assert.ok(
+      run.pending.some((p) => p.id === "manager-review"),
+      `${id} should pend the manager gate`,
+    );
   }
 });
 
