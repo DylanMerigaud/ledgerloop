@@ -88,6 +88,9 @@ export default tseslint.config(
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-non-null-assertion": "error",
+      // No `x as T` assertions — narrow with a guard, validate with a schema, or use
+      // `satisfies`. (Const assertions `as const` are still allowed.)
+      "@typescript-eslint/no-unsafe-type-assertion": "error",
       "@typescript-eslint/no-unnecessary-condition": "error",
 
       // ── Type style ──────────────────────────────────────────────────────────

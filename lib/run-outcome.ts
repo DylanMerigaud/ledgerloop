@@ -1,3 +1,4 @@
+import { isRecord } from "@/lib/assert";
 import type { Outcome } from "@/lib/display";
 import type { TraceEvent } from "@/lib/trace";
 
@@ -11,18 +12,12 @@ import type { TraceEvent } from "@/lib/trace";
 type StageData = Record<string, unknown> | undefined;
 
 const dataOf = (e: TraceEvent): StageData => {
-  return e.data as StageData;
+  return isRecord(e.data) ? e.data : undefined;
 };
 
 /** True if the trace paused awaiting a human decision (a gate or recon awaiting). */
 export const isAwaitingApproval = (trace: TraceEvent[]): boolean => {
   return trace.some((e) => dataOf(e)?.["outcome"] === "awaiting");
-};
-
-/** One pending approval step on the approval node's data. */
-type PendingStep = {
-  id: string;
-  status: string;
 };
 
 /**
@@ -39,9 +34,13 @@ export const decisionsForPending = (
     const steps = dataOf(e)?.["steps"];
     if (!Array.isArray(steps)) continue;
     for (const raw of steps) {
-      const s = raw as PendingStep;
-      if (s.status === "pending" && typeof s.id === "string") {
-        out[s.id] = decision;
+      // Guard the shape instead of asserting it (raw is unknown from the trace).
+      if (
+        isRecord(raw) &&
+        raw["status"] === "pending" &&
+        typeof raw["id"] === "string"
+      ) {
+        out[raw["id"]] = decision;
       }
     }
   }

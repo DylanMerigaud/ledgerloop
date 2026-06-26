@@ -9,7 +9,7 @@ import {
   describeCondition,
   type StepChange,
 } from "@/lib/approval-workflow";
-import { nonNull } from "@/lib/assert";
+import { nonNull, assertUnreachable } from "@/lib/assert";
 
 /**
  * Conversational workflow editing — turn a plain-language instruction into a
@@ -189,7 +189,7 @@ const postStepId = (wf: TWorkflow): string | null => {
  */
 export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
   // Deep clone so we never mutate the caller's current workflow.
-  const next: TWorkflow = JSON.parse(JSON.stringify(wf)) as TWorkflow;
+  const next: TWorkflow = structuredClone(wf);
 
   switch (op.op) {
     case "none":
@@ -369,6 +369,11 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       next.steps.push(newStep);
       return wouldCycle(next) ? wf : next;
     }
+
+    default:
+      // Exhaustiveness: if a new op kind is added without a case, this fails the
+      // type check (op is `never` here only when every variant is handled).
+      return assertUnreachable(op);
   }
 };
 

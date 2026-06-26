@@ -5,6 +5,7 @@ import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
 
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
+import { isRecord } from "@/lib/assert";
 import { toTraceEvent, type TraceEvent } from "@/lib/trace";
 import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
 import {
@@ -125,8 +126,9 @@ test("an exception invokes the investigator agent's real tool, reaching the trac
     (e) => e.kind === "finding" && e.stage === "investigation",
   );
   assert.ok(investigation, "an investigation node should be surfaced");
+  assert.ok(isRecord(investigation.data), "investigation carries data");
   assert.equal(
-    (investigation.data as { recommendation?: string })?.recommendation,
+    investigation.data["recommendation"],
     "likely_legitimate",
     "the agent's prose should classify to likely_legitimate",
   );

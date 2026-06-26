@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TraceEvent } from "@/lib/trace";
+
 /**
  * The typed wire contract for the streaming run endpoint, imported by BOTH the
  * route and the client so a shape change is a compile error on both sides (the
@@ -44,9 +46,21 @@ export type RunRequest = z.infer<typeof RunRequest>;
  */
 export const STREAM_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";
 
-/** Terminal marker appended after the last trace event. */
-export type StreamDone = {
-  done: true;
+/** Terminal marker appended after the last trace event. A Zod schema so the client
+    validates it off the wire (no cast) the same way it parses each TraceEvent. */
+export const StreamDone = z.object({
+  done: z.literal(true),
   /** Total wall-clock duration of the run, ms. */
-  durationMs: number;
-};
+  durationMs: z.number(),
+});
+export type StreamDone = z.infer<typeof StreamDone>;
+
+/**
+ * One line of the NDJSON stream: either a trace event or the terminal done marker.
+ * One schema, parsed once; `isStreamDone` discriminates which arrived.
+ */
+export const StreamLine = z.union([TraceEvent, StreamDone]);
+export type StreamLine = z.infer<typeof StreamLine>;
+
+export const isStreamDone = (line: StreamLine): line is StreamDone =>
+  "done" in line;

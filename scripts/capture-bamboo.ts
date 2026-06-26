@@ -18,6 +18,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { isRecord } from "@/lib/assert";
 import { fetchBambooReport, mapBambooReport } from "@/lib/hris";
 
 /** Same env loading as eval/run.ts — native, no dotenv dep. */
@@ -61,7 +62,7 @@ const main = async (): Promise<void> => {
       note: "Real API response captured from the live trial. Replayed offline by recordedHris(). Not a mock.",
       capturedAt: new Date().toISOString(),
     },
-    ...(raw as Record<string, unknown>),
+    ...(isRecord(raw) ? raw : {}),
   };
 
   const outDir = path.join(process.cwd(), "db", "fixtures", "bamboohr");

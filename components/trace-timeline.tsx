@@ -1,5 +1,7 @@
 "use client";
 
+import { z } from "zod";
+
 import { TraceDetail } from "@/components/trace-detail";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,14 +165,23 @@ const TraceNode = ({
   );
 };
 
+/** The few summary fields a stage may carry on `data`, for the chip. Validated with
+    Zod (data is `unknown` on the trace) so we read TYPED fields, not `d["verdict"]`. */
+const ChipFields = z.object({
+  verdict: z.string().optional(),
+  tier: z.string().optional(),
+  outcome: z.string().optional(), // posted / awaiting / rejected / blocked
+  posted: z.boolean().optional(),
+});
+
 /** Short chip text summarizing a step's outcome (verdict / tier / posted). */
 const verdictChip = (event: TraceEvent): string => {
-  const d = event.data as Record<string, unknown> | undefined;
+  const d = ChipFields.safeParse(event.data).data;
   if (d) {
-    if (typeof d["verdict"] === "string") return humanize(d["verdict"]);
-    if (typeof d["tier"] === "string") return humanize(d["tier"]);
-    if (typeof d["outcome"] === "string") return humanize(d["outcome"]); // posted/awaiting/rejected/blocked
-    if ("posted" in d) return d["posted"] ? "Posted" : "Not posted";
+    if (d.verdict) return humanize(d.verdict);
+    if (d.tier) return humanize(d.tier);
+    if (d.outcome) return humanize(d.outcome);
+    if (d.posted !== undefined) return d.posted ? "Posted" : "Not posted";
   }
   if (event.status === "running") return "Running";
   return stageLabel(event.stage);

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+import { isRecord } from "@/lib/assert";
+
 /**
  * The Zod schemas in this file are the SINGLE SOURCE OF TRUTH for the whole
  * pipeline, the same discipline as the sibling ai-invoice-parser repo:
@@ -350,10 +352,9 @@ const stripUnsupported = (node: unknown): void => {
     for (const item of node) stripUnsupported(item);
     return;
   }
-  if (node && typeof node === "object") {
-    const obj = node as Record<string, unknown>;
-    for (const key of UNSUPPORTED_SCHEMA_KEYS) delete obj[key];
-    for (const value of Object.values(obj)) stripUnsupported(value);
+  if (isRecord(node)) {
+    for (const key of UNSUPPORTED_SCHEMA_KEYS) delete node[key];
+    for (const value of Object.values(node)) stripUnsupported(value);
   }
 };
 

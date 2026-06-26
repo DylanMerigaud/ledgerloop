@@ -32,6 +32,8 @@
  */
 import path from "node:path";
 
+import { z } from "zod";
+
 import {
   SEED_ORG,
   SEED_DIVISION,
@@ -73,11 +75,21 @@ const authHeader = (c: Creds): string => {
   return `Basic ${Buffer.from(`${c.key}:x`).toString("base64")}`;
 };
 
-type ListOption = {
-  id: number;
-  name: string | null;
-  archived: "yes" | "no";
-};
+const ListOption = z.object({
+  id: z.number(),
+  name: z.string().nullable(),
+  archived: z.enum(["yes", "no"]),
+});
+type ListOption = z.infer<typeof ListOption>;
+
+/** Shape of GET /meta/lists we rely on (extra fields ignored). */
+const MetaLists = z.array(
+  z.object({
+    alias: z.string(),
+    fieldId: z.number(),
+    options: z.array(ListOption),
+  }),
+);
 
 /**
  * Make sure the SEED_DIVISION exists as a Division option, creating it if needed.
@@ -90,11 +102,7 @@ const ensureDivision = async (c: Creds): Promise<void> => {
     headers: { authorization: authHeader(c), accept: "application/json" },
   });
   if (!res.ok) throw new Error(`meta/lists failed: HTTP ${res.status}`);
-  const lists = (await res.json()) as {
-    alias: string;
-    fieldId: number;
-    options: ListOption[];
-  }[];
+  const lists = MetaLists.parse(await res.json());
   const division = lists.find((l) => l.alias === "division");
   if (!division) throw new Error("no 'division' list field on this account");
 
@@ -194,9 +202,17 @@ const seededEmployees = async (
     }),
   });
   if (!res.ok) throw new Error(`scope report failed: HTTP ${res.status}`);
-  const data = (await res.json()) as {
-    employees: { id: string; displayName?: string; division?: string }[];
-  };
+  const data = z
+    .object({
+      employees: z.array(
+        z.object({
+          id: z.string(),
+          displayName: z.string().optional(),
+          division: z.string().optional(),
+        }),
+      ),
+    })
+    .parse(await res.json());
   return data.employees
     .filter((e) => e.division === SEED_DIVISION)
     .map((e) => ({ id: String(e.id), name: e.displayName ?? `id ${e.id}` }));
