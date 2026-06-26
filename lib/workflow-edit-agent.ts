@@ -23,6 +23,15 @@ import {
  *
  * Pure orchestration: the model is injected (so it's testable with a fake), and the
  * result is still a PROPOSAL — nothing is applied until the human approves the diff.
+ *
+ * Why this loop is hand-written (not a Mastra Agent): Mastra owns the parts that
+ * need open-ended orchestration — the P2P pipeline (createWorkflow) and the
+ * exception investigator (an Agent that freely chooses its tools). This edit loop is
+ * the opposite: a BOUNDED, deterministic cycle where the validator MUST run after
+ * every plan (a pure function we call, not a tool the model may skip), and the model
+ * does strict structured output only. Keeping it as a plain loop over an injected
+ * `PlanModel` guarantees that determinism and sidesteps Mastra's documented
+ * structured-output-vs-tools exclusivity. "AI at the edge, deterministic core."
  */
 
 /** Anything that can plan an ordered list of ops from an instruction + feedback. */
