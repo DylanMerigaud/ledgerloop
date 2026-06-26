@@ -1,10 +1,18 @@
 import { ORPCError, os } from "@orpc/server";
 
+import { listRecentRuns, loadAgentRun } from "@/db/runs";
 import { RunRequest, type StreamDone } from "@/lib/api-types";
 import { defaultHris } from "@/lib/hris";
 import { deriveWorkflow } from "@/lib/onboarding";
 import { anthropicProposalModel } from "@/lib/onboarding-model";
-import { EditInput, EditResult, OnboardingResult } from "@/lib/orpc/schemas";
+import {
+  EditInput,
+  EditResult,
+  HistoryResult,
+  OnboardingResult,
+  ReplayInput,
+  ReplayResult,
+} from "@/lib/orpc/schemas";
 import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
 import { type TraceEvent } from "@/lib/trace";
 import { runEditAgent } from "@/lib/workflow-edit-agent";
@@ -111,5 +119,32 @@ const run = rateLimited.input(RunRequest).handler(async function* ({
   yield* runPipelineStream(input);
 });
 
-export const router = { onboarding, editWorkflow, run };
+/* ── run history (the audit trail) ───────────────────────────────────────────────
+   Read-only, no model tokens, so NOT rate-limited. `history` lists the recent runs
+   the dashboard shows; `replayRun` returns one stored trace the UI re-renders with
+   no pipeline execution. Both degrade to empty/NOT_FOUND rather than throwing. */
+
+const history = base.output(HistoryResult).handler(async () => {
+  try {
+    return { runs: await listRecentRuns() };
+  } catch {
+    // A missing/empty audit table shouldn't break the dashboard — show no history.
+    return { runs: [] };
+  }
+});
+
+const replayRun = base
+  .input(ReplayInput)
+  .output(ReplayResult)
+  .handler(async ({ input }) => {
+    const stored = await loadAgentRun(input.id).catch(() => null);
+    if (!stored) {
+      throw new ORPCError("NOT_FOUND", {
+        message: "That run is no longer available (the demo resets daily).",
+      });
+    }
+    return stored;
+  });
+
+export const router = { onboarding, editWorkflow, run, history, replayRun };
 export type Router = typeof router;

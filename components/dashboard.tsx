@@ -1,11 +1,13 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import {
   ExtractionReveal,
   type ExtractionState,
 } from "@/components/extraction-reveal";
+import { RecentRuns } from "@/components/recent-runs";
 import { TraceTimeline } from "@/components/trace-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ import {
   type Outcome,
 } from "@/lib/display";
 import { formatMoney } from "@/lib/format";
+import { orpc } from "@/lib/orpc/client";
 import type { Invoice } from "@/lib/schema";
 import type { TraceEvent } from "@/lib/trace";
 import { usePipelineRun } from "@/lib/use-pipeline-run";
@@ -34,9 +37,10 @@ import { usePipelineRun } from "@/lib/use-pipeline-run";
  *   LEFT  — the invoice queue, each row a seeded invoice with a status pill.
  *   RIGHT — the live agent execution trace for the selected invoice.
  *
- * Selecting a row resets the trace; "Run pipeline" streams a fresh run. State is
- * per-visitor and ephemeral — nothing is written back (the run route is
- * stateless), so every visitor starts from the same pristine queue.
+ * Selecting a row resets the trace; "Run pipeline" streams a fresh run. The live
+ * trace state is per-visitor and ephemeral, but each completed run is persisted as
+ * an append-only audit row (the Recent runs panel below the queue lists them,
+ * replayable). A nightly reset clears those, so every morning starts pristine.
  */
 /**
  * Pull the intake (extraction) node out of the trace and shape it for the reveal.
@@ -175,7 +179,28 @@ export const Dashboard = ({
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
   );
-  const { state, run, decide, reset } = usePipelineRun(workflow);
+  const { state, run, decide, reset, replay } = usePipelineRun(workflow);
+  const queryClient = useQueryClient();
+
+  // When a run reaches a terminal state (done/blocked, not a mid-run pause), a new
+  // audit row exists — refresh the Recent runs list so it shows up. Keyed off the
+  // status transition so we invalidate once per completion, not on every event.
+  const lastStatusRef = useRef(state.status);
+  useEffect(() => {
+    const prev = lastStatusRef.current;
+    lastStatusRef.current = state.status;
+    if (prev !== state.status && state.status === "done") {
+      void queryClient.invalidateQueries({ queryKey: orpc.history.key() });
+    }
+  }, [state.status, queryClient]);
+
+  // Replaying a stored run drops its trace into the pane AND selects its invoice,
+  // so the header/PDF match what's shown. Ignored while a live run is locked.
+  const replayRun = (invoiceNumber: string, trace: TraceEvent[]) => {
+    const row = queue.find((q) => q.invoiceNumber === invoiceNumber);
+    if (row) setSelectedId(row.id);
+    replay(trace);
+  };
 
   // Queue scroll affordance: macOS hides overlay scrollbars, so we show an
   // explicit "N more" pill + fade until the list is scrolled to the bottom.
@@ -268,118 +293,123 @@ export const Dashboard = ({
     // two panes sit side by side and scroll INTERNALLY — no competing page
     // scroll. Mobile: stack at natural height.
     <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,380px)_1fr]">
-      {/* LEFT — queue */}
-      <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:max-h-none">
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>Invoice queue</CardTitle>
-          <span className="text-[11px] text-muted tnum">
-            {queue.length} invoices
-          </span>
-        </CardHeader>
-        {/* relative wrapper so the fade + "N more" pill can overlay the scroll
+      {/* LEFT — queue (fills the column) + the Recent runs audit panel below it. */}
+      <div className="flex min-h-0 flex-col gap-4 lg:h-full">
+        <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:min-h-0 lg:max-h-none lg:flex-1">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle>Invoice queue</CardTitle>
+            <span className="text-[11px] text-muted tnum">
+              {queue.length} invoices
+            </span>
+          </CardHeader>
+          {/* relative wrapper so the fade + "N more" pill can overlay the scroll
         area — on macOS the overlay scrollbar is hidden, so these are the cue
         that the list continues below. Both hide once scrolled to the end. */}
-        <div className="relative min-h-0 flex-1">
-          <ul
-            ref={listRef}
-            onScroll={measureScroll}
-            className="scrollbar-slim h-full divide-y divide-line overflow-y-auto"
-          >
-            {queue.map((item) => {
-              const isSelected = item.id === selectedId;
-              // The pill reflects the live run only for the selected row; others
-              // show their seeded scenario hint as a neutral label.
-              const outcome: Outcome = isSelected ? state.outcome : "pending";
-              // While a run is in flight the queue is locked: the active row stays
-              // highlighted, the others dim and stop responding to clicks.
-              const dimmed = locked && !isSelected;
-              return (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    data-testid={`queue-row-${item.id}`}
-                    onClick={() => select(item.id)}
-                    onMouseEnter={() => setHoveredId(item.id)}
-                    onMouseLeave={() =>
-                      setHoveredId((h) => (h === item.id ? null : h))
-                    }
-                    disabled={dimmed}
-                    aria-disabled={dimmed}
-                    className={`relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-                      isSelected ? "bg-accent-soft/50" : "hover:bg-subtle/70"
-                    } ${dimmed ? "cursor-not-allowed opacity-40" : ""}`}
-                  >
-                    {isSelected && (
+          <div className="relative min-h-0 flex-1">
+            <ul
+              ref={listRef}
+              onScroll={measureScroll}
+              className="scrollbar-slim h-full divide-y divide-line overflow-y-auto"
+            >
+              {queue.map((item) => {
+                const isSelected = item.id === selectedId;
+                // The pill reflects the live run only for the selected row; others
+                // show their seeded scenario hint as a neutral label.
+                const outcome: Outcome = isSelected ? state.outcome : "pending";
+                // While a run is in flight the queue is locked: the active row stays
+                // highlighted, the others dim and stop responding to clicks.
+                const dimmed = locked && !isSelected;
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      data-testid={`queue-row-${item.id}`}
+                      onClick={() => select(item.id)}
+                      onMouseEnter={() => setHoveredId(item.id)}
+                      onMouseLeave={() =>
+                        setHoveredId((h) => (h === item.id ? null : h))
+                      }
+                      disabled={dimmed}
+                      aria-disabled={dimmed}
+                      className={`relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                        isSelected ? "bg-accent-soft/50" : "hover:bg-subtle/70"
+                      } ${dimmed ? "cursor-not-allowed opacity-40" : ""}`}
+                    >
+                      {isSelected && (
+                        <span
+                          aria-hidden
+                          className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-accent"
+                        />
+                      )}
                       <span
                         aria-hidden
-                        className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-accent"
+                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-surface"
+                        style={{ backgroundColor: outcomeDot(outcome) }}
                       />
-                    )}
-                    <span
-                      aria-hidden
-                      className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-surface"
-                      style={{ backgroundColor: outcomeDot(outcome) }}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-[13px] font-medium text-ink">
-                          {item.vendor}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="truncate text-[13px] font-medium text-ink">
+                            {item.vendor}
+                          </span>
+                          <span className="shrink-0 text-[12px] tabular-nums text-ink">
+                            {formatMoney(item.total, item.currency)}
+                          </span>
                         </span>
-                        <span className="shrink-0 text-[12px] tabular-nums text-ink">
-                          {formatMoney(item.total, item.currency)}
-                        </span>
-                      </span>
-                      <span className="mt-0.5 flex items-center justify-between gap-2">
-                        <span className="truncate font-mono text-[11px] text-muted">
-                          {item.invoiceNumber}
-                          {item.poNumber ? ` · ${item.poNumber}` : ""}
-                        </span>
-                        {/* Once a run is active for the selected row, show its live
+                        <span className="mt-0.5 flex items-center justify-between gap-2">
+                          <span className="truncate font-mono text-[11px] text-muted">
+                            {item.invoiceNumber}
+                            {item.poNumber ? ` · ${item.poNumber}` : ""}
+                          </span>
+                          {/* Once a run is active for the selected row, show its live
                       outcome badge; otherwise always show the seeded scenario
                       hint (so selecting a row never blanks the label). */}
-                        {isSelected && state.status !== "idle" ? (
-                          <Badge tone={outcomeTone(outcome)}>
-                            {outcomeLabel(outcome)}
-                          </Badge>
-                        ) : (
-                          item.scenario && (
-                            <span className="shrink-0 text-[10px] text-muted/80">
-                              {item.scenario}
-                            </span>
-                          )
-                        )}
+                          {isSelected && state.status !== "idle" ? (
+                            <Badge tone={outcomeTone(outcome)}>
+                              {outcomeLabel(outcome)}
+                            </Badge>
+                          ) : (
+                            item.scenario && (
+                              <span className="shrink-0 text-[10px] text-muted/80">
+                                {item.scenario}
+                              </span>
+                            )
+                          )}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {/* "N more" scroll affordance: a fade + a pill that scrolls the list
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {/* "N more" scroll affordance: a fade + a pill that scrolls the list
           when clicked. Hidden once the list is at the bottom. */}
-          {moreCount > 0 && (
-            <>
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface via-surface/80 to-transparent"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  listRef.current?.scrollBy({
-                    top: listRef.current.clientHeight * 0.8,
-                    behavior: "smooth",
-                  })
-                }
-                className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
-              >
-                {moreCount} more
-                <span aria-hidden>↓</span>
-              </button>
-            </>
-          )}
-        </div>
-      </Card>
+            {moreCount > 0 && (
+              <>
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface via-surface/80 to-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    listRef.current?.scrollBy({
+                      top: listRef.current.clientHeight * 0.8,
+                      behavior: "smooth",
+                    })
+                  }
+                  className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
+                >
+                  {moreCount} more
+                  <span aria-hidden>↓</span>
+                </button>
+              </>
+            )}
+          </div>
+        </Card>
+
+        {/* The audit trail: recent runs, each replayable into the trace pane. */}
+        <RecentRuns onReplay={replayRun} disabled={locked} />
+      </div>
 
       {/* RIGHT — trace */}
       <Card className="flex flex-col overflow-hidden">
