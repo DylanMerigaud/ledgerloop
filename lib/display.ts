@@ -63,6 +63,47 @@ export const outcomeDot = (outcome: Outcome): string => {
   }
 };
 
+/**
+ * How a SEEDED scenario should be signposted in the queue BEFORE it's run — so a
+ * first-time visitor's eye goes straight to the interesting cases instead of a
+ * flat list. Derived from the scenario label (already on every QueueItem), not a
+ * new query. Three kinds, deliberately coarse:
+ *   • "exception" — a flagged invoice (variance / control) that routes to a human
+ *   • "blocked"   — a duplicate that's stopped before approval
+ *   • "clean"     — a straight-through match (gets NO badge; only the noteworthy
+ *                   rows are marked, so the marks mean something)
+ */
+export type ScenarioKind = "exception" | "blocked" | "clean";
+
+export const scenarioKind = (scenario: string | null): ScenarioKind => {
+  const s = (scenario ?? "").toLowerCase();
+  if (s.includes("duplicate") || s.includes("already paid")) return "blocked";
+  if (
+    s.includes("mismatch") ||
+    s.includes("error") ||
+    s.includes("not on po") ||
+    s.includes("inactive")
+  ) {
+    return "exception";
+  }
+  return "clean";
+};
+
+/** The badge tone + short label for a signposted scenario kind (queue, pre-run).
+ *  `clean` returns null — clean rows stay unmarked so the marks draw the eye. */
+export const scenarioBadge = (
+  kind: ScenarioKind,
+): { tone: BadgeTone; label: string } | null => {
+  switch (kind) {
+    case "exception":
+      return { tone: "warn", label: "exception" };
+    case "blocked":
+      return { tone: "danger", label: "blocked" };
+    case "clean":
+      return null;
+  }
+};
+
 /** Map a trace step's status to a badge tone (for the timeline). */
 export const statusTone = (status: TraceStatus): BadgeTone => {
   switch (status) {

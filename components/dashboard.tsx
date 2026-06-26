@@ -25,6 +25,8 @@ import {
   outcomeDot,
   outcomeLabel,
   outcomeTone,
+  scenarioBadge,
+  scenarioKind,
   type Outcome,
 } from "@/lib/display";
 import { formatMoney } from "@/lib/format";
@@ -112,6 +114,33 @@ const PlayIcon = () => {
     <svg aria-hidden viewBox="0 0 12 12" className="h-3 w-3 fill-current">
       <path d="M3 1.8v8.4a.6.6 0 0 0 .92.5l6.4-4.2a.6.6 0 0 0 0-1L3.92 1.3A.6.6 0 0 0 3 1.8Z" />
     </svg>
+  );
+};
+
+/**
+ * The pre-run hint on a queue row: a "Start here" chip on the showcase invoice,
+ * and a coloured badge ONLY for exception/blocked scenarios (clean rows stay
+ * unmarked, so the marks draw the eye to the cases worth running). Renders nothing
+ * for an unmarked clean row.
+ */
+const QueueHint = ({
+  scenario,
+  startHere,
+}: {
+  scenario: string | null;
+  startHere: boolean;
+}) => {
+  const badge = scenarioBadge(scenarioKind(scenario));
+  if (!startHere && !badge) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      {startHere && (
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent ring-1 ring-inset ring-accent/20">
+          <span aria-hidden>⚡</span> Start here
+        </span>
+      )}
+      {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
+    </span>
   );
 };
 
@@ -395,18 +424,20 @@ export const Dashboard = ({
                             {item.poNumber ? ` · ${item.poNumber}` : ""}
                           </span>
                           {/* Once a run is active for the selected row, show its live
-                      outcome badge; otherwise always show the seeded scenario
-                      hint (so selecting a row never blanks the label). */}
+                      outcome badge; otherwise signpost the seeded scenario so the
+                      eye goes to the interesting cases. Only exception/blocked rows
+                      get a coloured badge — clean rows stay unmarked, so the marks
+                      mean something. INV-2042 (price mismatch → investigator +
+                      pause: the full wow) also gets a single "Start here" chip. */}
                           {isSelected && state.status !== "idle" ? (
                             <Badge tone={outcomeTone(outcome)}>
                               {outcomeLabel(outcome)}
                             </Badge>
                           ) : (
-                            item.scenario && (
-                              <span className="shrink-0 text-[10px] text-muted/80">
-                                {item.scenario}
-                              </span>
-                            )
+                            <QueueHint
+                              scenario={item.scenario}
+                              startHere={item.id === "INV-2042"}
+                            />
                           )}
                         </span>
                       </span>
@@ -457,6 +488,16 @@ export const Dashboard = ({
               </p>
             )}
             <RunningAgainst workflow={workflow} />
+            {/* Idle: a one-line "what to do" at the top of the pane (where the eye
+            lands), pointing at the showcase invoice. The queue's "Start here" chip
+            is the other half of the cue. */}
+            {state.status === "idle" && (
+              <p className="mt-1.5 max-w-md text-[11.5px] leading-snug text-muted">
+                {selected?.id === "INV-2042"
+                  ? "Hit Run pipeline — the agent investigates the price variance, then pauses for your approval."
+                  : "New here? Run INV-2042 (the “Start here” row) to see the agent investigate a variance and pause for approval. Clean invoices post straight through."}
+              </p>
+            )}
           </div>
           {state.status === "awaiting" && selected && gates.length >= 2 ? (
             // Several gates pend in parallel — decide each on its node in the graph,
@@ -519,6 +560,7 @@ export const Dashboard = ({
               <Button
                 size="sm"
                 data-testid="run-btn"
+                className="shrink-0 whitespace-nowrap"
                 disabled={state.status === "running"}
                 onClick={() => run(selected.id)}
               >
