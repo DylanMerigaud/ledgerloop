@@ -62,7 +62,7 @@ flowchart LR
 - **Matching** — a 2-way (invoice ↔ PO) or 3-way (invoice ↔ PO ↔ goods receipt) match, returning `clean`, `exception`, or `duplicate`. The PO is **pulled from the client's ERP** (QuickBooks Online, [`lib/erp.ts`](lib/erp.ts)) — the procurement mirror of reading their org from BambooHR — so an incoming invoice is matched against their real open POs (read-only; nothing is persisted). The matcher also checks the invoice against the ERP's master data: a vendor the ERP marks **inactive**, a SKU **not in the catalog**, and a bill **already posted** in the ERP (the historical "already paid" duplicate, distinct from a re-send in the queue).
 - **Investigation** — runs only on an exception, and the one open-ended agent in the operational path. A number ("9% over the PO") doesn't tell a reviewer whether it's a legitimate price increase or an overcharge; that lives in unstructured records, and which records matter depends on what you find. The agent **chooses** which tools to call, reads them, and recommends. It decides nothing about the money.
 - **Approval workflow engine** — the invoice runs through the client's derived DAG ([`lib/approval-engine.ts`](lib/approval-engine.ts)): each gate's condition is evaluated, the active gates **pause for a human** (several can be pending in parallel — a fan-out), and the bill posts only once **every** active gate is approved. One rejection blocks everything downstream. A clean invoice trips no gate and goes straight through.
-- **Reconciliation** — posts the vendor bill and double-entry GL to the ERP, only once cleared.
+- **Reconciliation** — once cleared, it shows the **vendor bill it would post** to the ERP (a dry-run: the exact QuickBooks bill payload + the double-entry GL), never actually sent. Pulling the client's data is the real integration; pushing a bill back is a stub, surfaced honestly as the concrete artifact a real write-back would create.
 
 The split-view dashboard shows the **invoice queue** (color-coded by outcome) and the **live execution trace** — each step, the agent's tool calls and recommendation, and the workflow graph coloured by the path this invoice took (approved / pending / skipped / blocked).
 
@@ -141,7 +141,7 @@ db/
 config/eslint-rules/        custom lint rules (no-console, api-routes, …)
 ```
 
-> **The ERP read path is real; the write-back is a stub** ([`lib/erp.ts`](lib/erp.ts)). The **pull** (purchase orders + vendor/item/bill master data) is a real QuickBooks Online adapter with a captured fixture — see "How it's built". The **reconciliation post** (vendor bill + GL) is still an honest stub behind the same `ErpAdapter` interface: swap `fakeErp` for a real post and the rest is unchanged. Pushing a bill back is the invisible half; importing the client's existing data is the interesting one. The integration steps (Slack/Jira) are likewise honest stubs.
+> **The ERP read path is real; the write-back is a dry-run stub** ([`lib/erp.ts`](lib/erp.ts)). The **pull** (purchase orders + vendor/item/bill master data) is a real QuickBooks Online adapter with a captured fixture — see "How it's built". The **reconciliation post** builds the exact vendor-bill payload a real write-back would send (`buildVendorBill`, mirroring the bill the seed script actually posts) and shows it on the trace as a **dry-run — never sent**: swap `fakeErp` for a real post and the rest is unchanged. Pushing a bill back is the invisible half; importing the client's existing data is the interesting one. The integration steps (Slack/Jira) are likewise honest stubs.
 
 ---
 

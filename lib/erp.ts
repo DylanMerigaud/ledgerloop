@@ -9,6 +9,7 @@ import {
   type MatchResult,
   type ReconResult,
   type GlEntry,
+  type VendorBill,
   type PurchaseOrder as TPurchaseOrder,
 } from "@/lib/schema";
 
@@ -50,13 +51,40 @@ export type ErpPostingResult = {
   glEntries: GlEntry[];
 };
 
+/** The GL accounts the AP double-entry books to (and the bill's expense line). */
+const EXPENSE_ACCOUNT = "5000 · Cost of Goods / Expense";
+const AP_ACCOUNT = "2000 · Accounts Payable";
+
 /** Standard AP double-entry: debit the expense/GR-clearing, credit AP. */
 const buildGlEntries = (amount: number): GlEntry[] => {
   const rounded = Math.round((amount + Number.EPSILON) * 100) / 100;
   return [
-    { account: "5000 · Cost of Goods / Expense", debit: rounded, credit: 0 },
-    { account: "2000 · Accounts Payable", debit: 0, credit: rounded },
+    { account: EXPENSE_ACCOUNT, debit: rounded, credit: 0 },
+    { account: AP_ACCOUNT, debit: 0, credit: rounded },
   ];
+};
+
+/**
+ * Build the vendor-bill payload the ERP write-back WOULD post once an invoice
+ * clears — pure, no network, no side effect. It mirrors the real QuickBooks bill
+ * the seed posts (DocNumber + vendor + a single account-based expense line for the
+ * total). Shown on the reconciliation trace as a DRY-RUN: the concrete artifact a
+ * real post would create, never actually sent (the write-back is a stub).
+ *
+ * @public — part of the ERP seam: a real adapter would send exactly this.
+ */
+export const buildVendorBill = (
+  match: MatchResult,
+  vendor: string,
+): VendorBill => {
+  return {
+    docNumber: match.invoiceNumber,
+    vendor,
+    poNumber: match.poNumber,
+    currency: match.currency,
+    expenseAccount: EXPENSE_ACCOUNT,
+    total: match.invoiceTotal,
+  };
 };
 
 /** Deterministic pseudo-id from the invoice number, so the demo is reproducible. */
@@ -120,6 +148,7 @@ export const reconcileFromOutcome = async (
       erpRef: null,
       glEntries: [],
       note: "Not posted — invoice is blocked (duplicate). Held for AP review.",
+      vendorBill: null,
     };
   }
 
@@ -131,6 +160,7 @@ export const reconcileFromOutcome = async (
       erpRef: null,
       glEntries: [],
       note: "Awaiting approval before posting — paused for the pending reviewer(s).",
+      vendorBill: null,
     };
   }
 
@@ -142,6 +172,7 @@ export const reconcileFromOutcome = async (
       erpRef: null,
       glEntries: [],
       note: "Rejected by an approver — not posted. Returned to the vendor for correction.",
+      vendorBill: null,
     };
   }
 
@@ -160,7 +191,10 @@ export const reconcileFromOutcome = async (
     posted: true,
     erpRef,
     glEntries,
-    note: `Posted to ${adapter.name} as ${erpRef}.`,
+    note: `Cleared to post as ${erpRef} (write-back is a dry-run — the bill below is what we'd send).`,
+    // The dry-run payload: the exact bill a real write-back would POST. Built
+    // deterministically here; never sent (the write-back is a stub).
+    vendorBill: buildVendorBill(match, vendor),
   };
 };
 

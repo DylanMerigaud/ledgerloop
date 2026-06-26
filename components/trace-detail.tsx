@@ -220,6 +220,44 @@ const ReconDetail = ({ recon }: { recon: ReconResult }) => {
           </table>
         </div>
       )}
+      {recon.vendorBill && (
+        <div
+          className="mt-2 rounded-lg bg-subtle/40 p-2.5 ring-1 ring-inset ring-line"
+          data-testid="vendor-bill-dryrun"
+        >
+          {/* The bill we'd POST to the ERP — shown, never sent (the write-back is a
+              stub). Labelled as a dry-run so it can't be mistaken for a real post. */}
+          <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-ink">
+            Bill ready to post → QuickBooks
+            <Badge tone="neutral">dry-run</Badge>
+          </p>
+          <Row label="Doc number">
+            <span className="font-mono text-[11px]">
+              {recon.vendorBill.docNumber}
+            </span>
+          </Row>
+          <Row label="Vendor">
+            <span className="text-[11px]">{recon.vendorBill.vendor}</span>
+          </Row>
+          {recon.vendorBill.poNumber && (
+            <Row label="PO">
+              <span className="font-mono text-[11px]">
+                {recon.vendorBill.poNumber}
+              </span>
+            </Row>
+          )}
+          <Row label="Expense account">
+            <span className="text-[11px]">
+              {recon.vendorBill.expenseAccount}
+            </span>
+          </Row>
+          <Row label="Amount">
+            <span className="tnum text-[11px]">
+              {formatMoney(recon.vendorBill.total, recon.vendorBill.currency)}
+            </span>
+          </Row>
+        </div>
+      )}
     </div>
   );
 };

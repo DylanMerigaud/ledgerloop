@@ -4,13 +4,14 @@ import { test } from "node:test";
 
 import {
   reconcileFromOutcome,
+  buildVendorBill,
   mapQboPurchaseOrders,
   mapQboVendors,
   mapQboItems,
   mapQboPostedBills,
   recordedErp,
 } from "@/lib/erp";
-import { PurchaseOrder, type MatchResult } from "@/lib/schema";
+import { PurchaseOrder, VendorBill, type MatchResult } from "@/lib/schema";
 
 /**
  * Unit tests for reconciliation — the step that posts to the (fake) ERP, driven
@@ -45,6 +46,41 @@ test("posted outcome → books to the ERP", async () => {
   assert.equal(r.posted, true);
   assert.match(r.erpRef ?? "", /NETSUITE-BILL-/);
   assert.equal(r.glEntries.length, 2);
+});
+
+test("posted outcome carries the dry-run vendor bill (the bill we'd POST)", async () => {
+  const r = await reconcileFromOutcome(
+    "posted",
+    match({ verdict: "clean", invoiceNumber: "INV-9", poNumber: "PO-9" }),
+    "Acme",
+  );
+  assert.ok(r.vendorBill, "expected a dry-run bill on the posted path");
+  assert.equal(r.vendorBill.docNumber, "INV-9");
+  assert.equal(r.vendorBill.vendor, "Acme");
+  assert.equal(r.vendorBill.poNumber, "PO-9");
+  assert.equal(r.vendorBill.total, 8704);
+  // It's a valid VendorBill (the shape a real write-back would send).
+  assert.doesNotThrow(() => VendorBill.parse(r.vendorBill));
+});
+
+test("non-posted outcomes carry NO vendor bill (nothing would be sent)", async () => {
+  for (const outcome of ["blocked", "awaiting", "rejected"] as const) {
+    const r = await reconcileFromOutcome(outcome, match(), "Acme");
+    assert.equal(r.vendorBill, null, `${outcome} should have no bill`);
+  }
+});
+
+test("buildVendorBill mirrors the real QBO bill shape from the match", () => {
+  const bill = buildVendorBill(
+    match({ invoiceNumber: "INV-2042", poNumber: "PO-7742", currency: "GBP" }),
+    "Severn Steelworks",
+  );
+  assert.equal(bill.docNumber, "INV-2042");
+  assert.equal(bill.vendor, "Severn Steelworks");
+  assert.equal(bill.poNumber, "PO-7742");
+  assert.equal(bill.currency, "GBP");
+  // The expense line books to the same account the GL entries debit.
+  assert.match(bill.expenseAccount, /Expense/);
 });
 
 test("blocked outcome (duplicate) → never posted", async () => {
