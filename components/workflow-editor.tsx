@@ -160,7 +160,10 @@ export const WorkflowEditor = ({
       {/* The graph — proposal (with diff) when one is pending, else the current
           workflow. React Flow owns pan/zoom, so give it height (min-h-0) and let
           it handle overflow rather than a scroll container. */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line">
+      {/* The canvas fills the remaining height on desktop; on mobile the column is
+          tall and `flex-1` would collapse it under the chips/input, so give it a
+          real minimum so the graph stays legible (pan/zoom by touch). */}
+      <div className="min-h-[420px] flex-1 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:min-h-0">
         {proposal ? (
           <WorkflowGraph
             workflow={proposal.proposed}
