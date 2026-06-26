@@ -17,8 +17,13 @@ export const useEventCallback = <
     ref.current = fn;
   });
 
-  return useRef<T>(
-    ((...args: Parameters<T>): ReturnType<T> =>
-      ref.current(...args) as ReturnType<T>) as T,
-  ).current;
+  // The wrapper has T's exact call signature but TS can't infer it's assignable to
+  // the generic T itself — the one boundary assertion unavoidable in this utility.
+  // The return is `any` only because T's return is `any` (same generic-callback
+  // reason as the disable above); args/return are typed via Parameters/ReturnType.
+  const stable = (...args: Parameters<T>): ReturnType<T> =>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- T's return is `any` by the generic constraint above
+    ref.current(...args);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- generic wrapper → T: the call signature matches; T just can't be proven assignable
+  return useRef<T>(stable as T).current;
 };

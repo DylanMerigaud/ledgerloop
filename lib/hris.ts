@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { z } from "zod";
+
 import { nonNull } from "@/lib/assert";
 import { env } from "@/lib/env";
 import { Employee, OrgChart, type OrgIssue } from "@/lib/schema";
@@ -41,28 +43,31 @@ export type HrisAdapter = {
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * What BambooHR's `POST /reports/custom` returns for the fields we request. One
- * call yields the whole org with ID-based reporting edges. Fields are stringly
- * (BambooHR returns numbers as strings) and absent values come back as "" or are
- * omitted, so every field is optional/loose here and tightened by the mapper.
+ * What BambooHR's `POST /reports/custom` returns for the fields we request — one
+ * call yields the whole org with ID-based reporting edges. Validated with Zod (the
+ * payload is parsed JSON) so the mapper reads it without an `as` cast. BambooHR
+ * returns numbers as strings and empty values as `null` (not absent), so every
+ * field is nullish; the mapper reads them defensively (`?? ""`, optional chaining).
+ * Unknown extra fields are ignored.
  */
-type BambooReportRow = {
-  id?: string;
-  firstName?: string;
-  lastName?: string;
-  displayName?: string;
-  jobTitle?: string;
-  department?: string;
-  division?: string;
-  supervisorEId?: string;
-  supervisorEmail?: string;
+const nullishStr = z.string().nullish();
+const BambooReportRow = z.object({
+  id: nullishStr,
+  firstName: nullishStr,
+  lastName: nullishStr,
+  displayName: nullishStr,
+  jobTitle: nullishStr,
+  department: nullishStr,
+  division: nullishStr,
+  supervisorEId: nullishStr,
+  supervisorEmail: nullishStr,
   /** "Active" | "Inactive" — terminated staff would pollute the hierarchy. */
-  status?: string;
-};
+  status: nullishStr,
+});
 
-type BambooReport = {
-  employees?: BambooReportRow[];
-};
+const BambooReport = z.object({
+  employees: z.array(BambooReportRow).optional(),
+});
 
 /** The exact fields the report request asks BambooHR for. */
 const BAMBOO_REPORT_FIELDS = [
@@ -102,12 +107,10 @@ export const mapBambooReport = (
   source: string,
   division?: string,
 ): OrgChart => {
-  // `raw` is unknown (a parsed JSON payload) — read `employees` defensively without
-  // a cast that would assert non-null and make the guard look redundant.
-  const rows =
-    typeof raw === "object" && raw !== null && "employees" in raw
-      ? ((raw as BambooReport).employees ?? [])
-      : [];
+  // `raw` is unknown (a parsed JSON payload) — validate with Zod so we read
+  // `employees` without a cast (a malformed payload yields no rows, not a throw).
+  const parsed = BambooReport.safeParse(raw);
+  const rows = parsed.success ? (parsed.data.employees ?? []) : [];
 
   // 1. Keep active rows that have an id; normalise each field. When a division
   //    scope is given, keep only that division — this is how one client's org is

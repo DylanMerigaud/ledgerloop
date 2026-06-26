@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isRecord } from "@/lib/assert";
+
 /**
  * The trace model — the wire contract between the streaming route and the
  * timeline UI. It's how the pipeline shows its work: deterministic steps, the
@@ -112,11 +114,8 @@ export type TraceEvent = z.infer<typeof TraceEvent>;
  *  Adapter: raw Mastra chunk → TraceEvent (or null to drop)
  * ────────────────────────────────────────────────────────────────────────── */
 
-const asRecord = (v: unknown): Record<string, unknown> | undefined => {
-  return typeof v === "object" && v !== null
-    ? (v as Record<string, unknown>)
-    : undefined;
-};
+const asRecord = (v: unknown): Record<string, unknown> | undefined =>
+  isRecord(v) ? v : undefined;
 
 /** Friendly stage label for a step id. Deterministic stages say "step"; the one
     agentic stage (investigation) says "agent". */

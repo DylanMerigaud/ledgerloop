@@ -22,7 +22,7 @@ import {
   type Investigation,
   ReconResult,
 } from "@/lib/schema";
-import { CTX } from "@/src/mastra/tools/context";
+import { CTX, type ToolContext } from "@/src/mastra/tools/context";
 
 /**
  * The procure-to-pay workflow — the showcase.
@@ -198,7 +198,11 @@ const investigate = async (
     if (!agent) return null;
 
     const requestContext = new RequestContext();
-    requestContext.set(CTX.investigation, { vendor });
+    // `satisfies` ties the value to the shared contract the tools read back, so a
+    // shape drift is a compile error on both ends.
+    requestContext.set(CTX.investigation, {
+      vendor,
+    } satisfies ToolContext["investigation"]);
 
     const out = await runInvestigation(agent, match, vendor, requestContext);
     if (!out) return null;

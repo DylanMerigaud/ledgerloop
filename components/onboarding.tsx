@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,7 +15,8 @@ import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { API_ROUTES } from "@/lib/api-routes";
-import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+import { ApprovalWorkflow } from "@/lib/approval-workflow";
+import { postJson, FetchJsonError } from "@/lib/fetch-json";
 
 /**
  * The onboarding discovery screen — the forward-deployed-engineer step.
@@ -30,34 +32,46 @@ import type { ApprovalWorkflow } from "@/lib/approval-workflow";
  * issues before it goes live. (Conversational edits are the next layer.)
  */
 
-type RoleResolution = {
-  role: string;
-  title: string;
-  employeeName: string | null;
-  rationale: string;
-};
-type OrgEmployee = {
-  id: string;
-  name: string;
-  title: string;
-  department: string;
-  division: string;
-  managerId: string | null;
-};
-type OnboardingResponse = {
-  source: string;
-  employeeCount: number;
-  employees: OrgEmployee[];
-  workflow: ApprovalWorkflow;
-  proposal: {
-    directorThreshold: number;
-    roles: RoleResolution[];
-    summary: string;
-  };
-  issues: { employeeName: string; detail: string; note: string }[];
+// The /api/onboarding response, as a Zod schema so we VALIDATE it at the fetch
+// boundary (no `res.json() as T`). Types are derived from the schemas.
+const OrgEmployee = z.object({
+  id: z.string(),
+  name: z.string(),
+  title: z.string(),
+  department: z.string(),
+  division: z.string(),
+  managerId: z.string().nullable(),
+});
+type OrgEmployee = z.infer<typeof OrgEmployee>;
+
+const RoleResolution = z.object({
+  role: z.string(),
+  title: z.string(),
+  employeeName: z.string().nullable(),
+  rationale: z.string(),
+});
+
+const OnboardingResponse = z.object({
+  source: z.string(),
+  employeeCount: z.number(),
+  employees: z.array(OrgEmployee),
+  workflow: ApprovalWorkflow,
+  proposal: z.object({
+    directorThreshold: z.number(),
+    roles: z.array(RoleResolution),
+    summary: z.string(),
+  }),
+  issues: z.array(
+    z.object({
+      employeeName: z.string(),
+      detail: z.string(),
+      note: z.string(),
+    }),
+  ),
   /** Up to three AI-generated next-edit suggestions for the derived workflow. */
-  suggestions: string[];
-};
+  suggestions: z.array(z.string()),
+});
+type OnboardingResponse = z.infer<typeof OnboardingResponse>;
 
 type State =
   | { status: "idle" }
@@ -71,19 +85,14 @@ export const Onboarding = () => {
   const discover = async () => {
     setState({ status: "running" });
     try {
-      const res = await fetch(API_ROUTES.onboarding, { method: "POST" });
-      if (!res.ok) {
-        const msg = await res
-          .json()
-          .then((j: { error?: string }) => j.error)
-          .catch(() => null);
-        setState({ status: "error", message: msg ?? "Discovery failed." });
-        return;
-      }
-      const data = (await res.json()) as OnboardingResponse;
+      const data = await postJson(API_ROUTES.onboarding, OnboardingResponse);
       setState({ status: "done", data });
-    } catch {
-      setState({ status: "error", message: "Could not reach the server." });
+    } catch (err) {
+      setState({
+        status: "error",
+        message:
+          err instanceof FetchJsonError ? err.message : "Discovery failed.",
+      });
     }
   };
 
@@ -213,7 +222,12 @@ const WhatCanIChange = () => {
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as globalThis.Node))
+      const target = e.target;
+      if (
+        target instanceof Node &&
+        ref.current &&
+        !ref.current.contains(target)
+      )
         setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);

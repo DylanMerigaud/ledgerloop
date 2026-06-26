@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { isRecord } from "@/lib/assert";
 import {
   toTraceEvent,
   stageForStep,
@@ -266,9 +267,9 @@ test("approval step output is unwrapped: nested approval summary drives status +
   });
   assert.ok(e);
   assert.equal(e.status, "waiting", "awaiting outcome → amber/pause");
-  const data = e.data as Record<string, unknown>;
+  assert.ok(isRecord(e.data), "event data is an object");
   assert.equal(
-    data["outcome"],
+    e.data["outcome"],
     "awaiting",
     "data is the unwrapped approval summary",
   );

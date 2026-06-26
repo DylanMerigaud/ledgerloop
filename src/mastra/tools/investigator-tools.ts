@@ -1,12 +1,13 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
+import { isRecord } from "@/lib/assert";
 import {
   vendorPriceHistory,
   vendorPoNotes,
   vendorReceiptNotes,
 } from "@/lib/vendor-context";
-import { CTX, type ToolContext } from "@/src/mastra/tools/context";
+import { CTX } from "@/src/mastra/tools/context";
 
 /**
  * Tools for the EXCEPTION INVESTIGATOR agent.
@@ -25,18 +26,25 @@ import { CTX, type ToolContext } from "@/src/mastra/tools/context";
  * RECOMMENDATION shown to the human before they approve or reject; the money
  * decision stays with the reviewer, and the routing stays deterministic.
  */
+/** A getter is a function taking a string key and returning unknown. */
+const isGetter = (v: unknown): v is (k: string) => unknown =>
+  typeof v === "function";
+
 const vendorFromContext = (context: unknown): string => {
-  const ctx = context as
-    | { requestContext?: { get: (k: string) => unknown } }
-    | undefined;
-  const vendor = ctx?.requestContext?.get(CTX.investigation) as
-    | ToolContext["investigation"]
-    | undefined;
-  if (!vendor) {
-    throw new Error("investigator tool: no investigation context set");
-  }
-  return vendor.vendor;
+  // `context` is Mastra's tool context (typed loosely as unknown here); read the
+  // server-injected investigation record off requestContext WITHOUT casting — guard
+  // each hop and validate the payload shape.
+  if (!isRecord(context)) throw noContext();
+  const rc = context["requestContext"];
+  if (!isRecord(rc) || !isGetter(rc["get"])) throw noContext();
+  const value: unknown = rc["get"](CTX.investigation);
+  if (!isRecord(value) || typeof value["vendor"] !== "string")
+    throw noContext();
+  return value["vendor"];
 };
+
+const noContext = (): Error =>
+  new Error("investigator tool: no investigation context set");
 
 export const priceHistoryTool = createTool({
   id: "get-vendor-price-history",

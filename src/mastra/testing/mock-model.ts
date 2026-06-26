@@ -64,6 +64,6 @@ export const mockToolCallingModel = (opts: {
     },
   };
 
-  // eslint-disable-next-line no-restricted-syntax -- boundary cast: the mock implements only the slice of Mastra's LanguageModel the tests drive; the full type is large and provider-shaped
+  // eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-unsafe-type-assertion -- boundary cast: the mock implements only the slice of Mastra's LanguageModel the tests drive; the full type is large and provider-shaped
   return model as unknown as LanguageModel;
 };

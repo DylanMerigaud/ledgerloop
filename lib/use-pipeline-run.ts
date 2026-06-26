@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { API_ROUTES } from "@/lib/api-routes";
-import { type StreamDone } from "@/lib/api-types";
+import { StreamLine, isStreamDone } from "@/lib/api-types";
 import type { Outcome } from "@/lib/display";
 import { NdjsonBuffer } from "@/lib/ndjson";
 import {
@@ -12,7 +12,7 @@ import {
   isAwaitingApproval,
   decisionsForPending,
 } from "@/lib/run-outcome";
-import { TraceEvent } from "@/lib/trace";
+import type { TraceEvent } from "@/lib/trace";
 
 /**
  * Client hook that runs the pipeline for an invoice and exposes the live trace.
@@ -159,12 +159,11 @@ export const usePipelineRun = () => {
             } catch {
               continue;
             }
-            if (parsed && typeof parsed === "object" && "done" in parsed) {
-              durationMs = (parsed as StreamDone).durationMs;
-              continue;
-            }
-            const result = TraceEvent.safeParse(parsed);
-            if (result.success) push(result.data);
+            // One schema for both line kinds; discriminate on the result.
+            const line = StreamLine.safeParse(parsed);
+            if (!line.success) continue;
+            if (isStreamDone(line.data)) durationMs = line.data.durationMs;
+            else push(line.data);
           }
         }
 
