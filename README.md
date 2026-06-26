@@ -2,6 +2,8 @@
 
 A **procure-to-pay** product in two halves. **Onboarding**: connect a client's HRIS and an agent derives their approval workflow — who signs off on what — resolved to real people from the org chart, with the data-quality problems flagged for a human to fix. **Operations**: a vendor PDF comes in, gets extracted, matched, and run through that workflow, with a live execution trace you watch as it happens.
 
+The two halves are one loop: the workflow you derive and edit on the left is **exactly** what routes the invoice on the right. Edit a gate in plain language, switch to the pipeline, run a bill — it pauses on the approvers and conditions you just defined, and the same graph you built lights up as the run walks it.
+
 AI is used in the places it earns its keep, and nowhere else. **Extraction** reads the messy vendor PDF into structured data (vision). **Onboarding discovery** maps an org's titles to approval authority (genuinely fuzzy judgement). **Investigation** judges a flagged exception against unstructured records and recommends. Everything else — matching, the workflow engine, reconciliation — is deterministic code, because a payment decision must be exact and repeatable, never a model's guess. Nothing posts until a human approves. Built with [Mastra](https://mastra.ai).
 
 The differentiator vs the workflow builders (Ramp, Zip, Pivot): you don't draw the approval graph on a canvas by hand. **The agent derives it from the HRIS, and you maintain it in plain language** — "above $25k also require CFO approval" — with a preview you approve or revert.
@@ -27,7 +29,7 @@ The result is a **proposal**: you review the resolved approvers and the flagged 
 **Conversational editing, with preview → approve / revert.** Tell the agent what you want and it proposes a rewrite; the graph shows the diff (added / changed / removed gates) and **nothing is applied until you approve** — the pipeline only ever runs the workflow you've approved.
 
 - The DAG **structure** is a deterministic template; the agent only makes the fuzzy calls (which title fills which approval level → which person, what threshold, plain-language issue notes). Code assembles those into a Zod-validated `ApprovalWorkflow`. An edit that would produce an invalid graph is rejected, never applied.
-- `lib/onboarding.ts` (derive + assemble), `lib/onboarding-model.ts` (the structured-output call), `lib/workflow-edit.ts` (conversational edits + diff), `app/api/onboarding`, `app/api/workflow/edit`.
+- `lib/onboarding.ts` (derive + assemble), `lib/onboarding-model.ts` (the structured-output call), `lib/workflow-edit.ts` (conversational edits + diff). The API is one typed **oRPC** contract ([`lib/orpc/`](lib/orpc/)) — `onboarding` and `editWorkflow` are procedures on it, not hand-rolled routes, so a response-shape change is a compile error on both client and server.
 
 ---
 
@@ -57,7 +59,7 @@ flowchart LR
 ```
 
 - **Extraction (AI)** — the vendor's invoice PDF is read by a vision model into a schema-validated `Invoice`. The extracted invoice is what the rest of the pipeline runs on — matching joins the extracted lines against the PO, like production.
-- **Matching** — a 2-way (invoice ↔ PO) or 3-way (invoice ↔ PO ↔ goods receipt) match, returning `clean`, `exception`, or `duplicate`.
+- **Matching** — a 2-way (invoice ↔ PO) or 3-way (invoice ↔ PO ↔ goods receipt) match, returning `clean`, `exception`, or `duplicate`. The PO is **pulled from the client's ERP** (QuickBooks Online, [`lib/erp.ts`](lib/erp.ts)) — the procurement mirror of reading their org from BambooHR — so an incoming invoice is matched against their real open POs. Read-only; nothing is persisted.
 - **Investigation** — runs only on an exception, and the one open-ended agent in the operational path. A number ("9% over the PO") doesn't tell a reviewer whether it's a legitimate price increase or an overcharge; that lives in unstructured records, and which records matter depends on what you find. The agent **chooses** which tools to call, reads them, and recommends. It decides nothing about the money.
 - **Approval workflow engine** — the invoice runs through the client's derived DAG ([`lib/approval-engine.ts`](lib/approval-engine.ts)): each gate's condition is evaluated, the active gates **pause for a human** (several can be pending in parallel — a fan-out), and the bill posts only once **every** active gate is approved. One rejection blocks everything downstream. A clean invoice trips no gate and goes straight through.
 - **Reconciliation** — posts the vendor bill and double-entry GL to the ERP, only once cleared.
@@ -66,14 +68,18 @@ The split-view dashboard shows the **invoice queue** (color-coded by outcome) an
 
 ### Seeded scenarios
 
-~10 realistic invoices, including three deliberate edge cases:
+~10 realistic invoices, covering the edge cases and the routing levers:
 
 | Invoice | Scenario | Outcome |
 | --- | --- | --- |
-| `INV-2042` | Price mismatch — steel bar invoiced ~9% over the PO | `price_variance` → manager gate → **pauses for your decision** |
+| `INV-2042` | Price mismatch — steel bar invoiced ~9% over the PO | `price_variance` → investigator → manager gate → **pauses for your decision** |
 | `INV-2048` | Quantity mismatch — invoiced 100 units, only 80 received | 3-way receipt check → manager gate → **pauses for your decision** |
 | `INV-2041` (re-send) | Duplicate — same invoice number twice | `duplicate` → **blocked**, not posted |
-| 6 × clean | Clean 2/3-way matches | no gate → straight-through |
+| `INV-2044` | Clean, but the PO belongs to **Product** | clean match, yet the **department review** gate fires → pauses for the Product head, in parallel with the manager |
+| `INV-2040` | Clean, $730 | under the manager floor → **straight-through**, no human |
+| larger clean (e.g. `INV-2049` $9,360) | Clean 2/3-way match over the floor | a human still signs a **material** bill → manager gate |
+
+The manager gate fires on any exception **or** a clean bill over a floor ($1,000), so small clean invoices post straight through while material or flagged ones get a human — the standard AP control, and the same behaviour whether or not you've run discovery (the un-onboarded default reproduces it). The department gate is the differentiator: a buying department lives on the PO (pulled from the ERP), and a workflow can route a department-specific review on it.
 
 ---
 
@@ -81,17 +87,19 @@ The split-view dashboard shows the **invoice queue** (color-coded by outcome) an
 
 **AI at the edges, deterministic code in the core.** The ends are language/perception/judgement problems — reading a PDF, mapping titles to approval authority, judging a fuzzy exception — so they use a model. The middle (is this a 9%-over variance? which gates apply? did every gate approve?) is arithmetic and graph logic, so it's pure, unit-tested functions ([`lib/matching.ts`](lib/matching.ts), [`lib/approval-workflow.ts`](lib/approval-workflow.ts), [`lib/approval-engine.ts`](lib/approval-engine.ts), [`lib/erp.ts`](lib/erp.ts)): exact, auditable, identical on every run. An LLM never decides a payment amount.
 
-**The conditional approval workflow.** Approval isn't a single tier — it's a DAG of conditional gates ([`lib/approval-workflow.ts`](lib/approval-workflow.ts)): each step carries a `when` condition (amount / variance / department / verdict, combinable with all/any) and parallel `next` edges. The engine ([`lib/approval-engine.ts`](lib/approval-engine.ts)) walks it per invoice with collect-all semantics: a skipped gate is a transparent pass-through, several gates can pend at once, one rejection blocks downstream. The per-client config lives in a `ClientProfile` ([`lib/client-profile.ts`](lib/client-profile.ts)); an un-onboarded profile derives a behaviour-equivalent DAG from simple thresholds, so the old flat tiering is a strict subset.
+**The conditional approval workflow.** Approval isn't a single tier — it's a DAG of conditional gates ([`lib/approval-workflow.ts`](lib/approval-workflow.ts)): each step carries a `when` condition (amount / variance / department / verdict, combinable with all/any) and parallel `next` edges. The engine ([`lib/approval-engine.ts`](lib/approval-engine.ts)) walks it per invoice with collect-all semantics: a skipped gate is a transparent pass-through, several gates can pend at once, one rejection blocks downstream. **The workflow the onboarding agent derived is what the run executes** — it's passed into the run as input (held in client state, never persisted, so the run stays stateless), and the pipeline routes through it. When no workflow has been derived yet, a default DAG ([`lib/client-profile.ts`](lib/client-profile.ts)) built from simple thresholds stands in, so the pipeline works on a cold visit and behaves the same as a derived one.
 
 **The HRIS adapter is real, captured, replayed.** [`lib/hris.ts`](lib/hris.ts) reads BambooHR (`bambooHris`, live HTTP) or replays a fixture captured from that same API (`recordedHris`); one `defaultHris()` factory picks live-vs-recorded — the only place that branch exists. The committed fixture in [`db/fixtures/bamboohr/`](db/fixtures/bamboohr/) is **real BambooHR output**, captured on a dated run via `pnpm hris:capture` — not a mock — so the demo (and CI, which has no key) runs on real data and survives the trial key expiring. `pnpm hris:seed` / `hris:reset` stand up a curated org in a sandbox (scoped by a dedicated Division, server-side, so reset only removes what it created).
 
+**The ERP adapter is the same seam, on the procurement side.** [`lib/erp.ts`](lib/erp.ts) pulls a client's open purchase orders from QuickBooks Online (`liveQuickBooksErp`, real OAuth2 + SuiteTalk-style query) or replays a captured fixture through the **same** mapper (`recordedErp`); `defaultErp()` picks live-vs-recorded, the only place that branch exists. Everything QuickBooks-specific (the `QueryResponse.PurchaseOrder` wire shape, the token endpoint) stops at this file and `mapQboPurchaseOrders` returns the internal `PurchaseOrder` the matcher already consumes — swap QBO for a `netSuiteErp` of the same `PoSourceAdapter` and nothing downstream changes. The buying **department** is our own overlay (the ERP doesn't carry a vendor-facing cost-centre), so a pulled PO is matched on lines/prices and the department comes from the seed.
+
 **The investigator agent.** [`src/mastra/agents/investigator.ts`](src/mastra/agents/investigator.ts) is a Mastra `Agent` with three tools returning deliberately unstructured records. It runs an open-ended loop — picks which tools to call, reads them, writes a recommendation (`likely_legitimate` / `likely_overcharge` / `unclear`) — and only *recommends*; the engine and the human gate own the outcome. Tools read the trusted vendor from `requestContext`, not model args, so the agent can't pull the wrong vendor's file.
 
-**A real human-in-the-loop, statelessly.** On an exception the run pauses before reconciliation (`awaiting`) and the post doesn't happen until a human approves the pending gate(s). The demo never writes to the database, yet a pause normally needs a persisted run to resume — so instead the Approve/Reject click sends per-step decisions (`{ "director-review": "approve" }`) that recompute the cheap deterministic prefix and continue, gated in [`app/api/run/route.ts`](app/api/run/route.ts).
+**A real human-in-the-loop, statelessly.** On an exception (or a material clean bill) the run pauses before reconciliation (`awaiting`) and the post doesn't happen until a human approves the pending gate(s). The demo never writes to the database, yet a pause normally needs a persisted run to resume — so instead the Approve/Reject click sends per-step decisions (`{ "director-review": "approve" }`) that recompute the cheap deterministic prefix and continue. The run is the `run` procedure on the oRPC contract, streamed as a typed **event iterator**. Decisions accumulate across waves and the resume sends their union, so a workflow with a gate behind another gate re-pauses on the newly-reached gate instead of silently posting.
 
 **Zod as the single source of truth.** Every shape is defined once in Zod ([`lib/schema.ts`](lib/schema.ts), [`lib/approval-workflow.ts`](lib/approval-workflow.ts)): it constrains the model, validates every boundary at runtime (`safeParse`), and its inferred types flow into Drizzle, the workflow, the stream, and the UI. **Env is typed too** ([`lib/env.ts`](lib/env.ts), `@t3-oss/env-nextjs`): everything reads `env`, never `process.env`.
 
-**Streaming, relayed and adapted.** The route relays Mastra's `run.stream()` as NDJSON; a small adapter ([`lib/trace.ts`](lib/trace.ts)) maps raw chunks to a stable `TraceEvent` so the UI depends on our vocabulary, not Mastra's internals, and a junk chunk is dropped rather than crashing the stream.
+**Streaming, typed end to end.** The `run` procedure is an **oRPC event iterator** (a typed async generator of `TraceEvent | StreamDone`); the client consumes it with `for await`, no manual reader or cast. A small adapter ([`lib/trace.ts`](lib/trace.ts)) maps Mastra's raw `run.stream()` chunks to the stable `TraceEvent` vocabulary so the UI depends on ours, not Mastra's internals, and a junk chunk is dropped rather than crashing the stream.
 
 ### Stateless by design
 
@@ -111,15 +119,19 @@ lib/
   onboarding.ts            derive a workflow from an org (+ onboarding-model.ts)
   workflow-edit.ts         conversational edits + diff (+ workflow-edit-model.ts)
   hris.ts                  BambooHR adapter: live + recorded, one factory
-  client-profile.ts        per-client config; flat policy → DAG bridge
-  matching.ts · erp.ts     pure, unit-tested decision logic
-  extract.ts               vision extraction (invoice PDF → validated Invoice)
+  erp.ts                   QuickBooks PO pull: live + recorded, same factory + mapper
+  client-profile.ts        the default workflow (thresholds → DAG) when none derived
+  matching.ts              pure, unit-tested decision logic
+  extract.ts · intake.ts   vision extraction; the intake step that calls it
+  orpc/                    the typed API contract (router, schemas, client)
   schema.ts · env.ts       Zod source of truth; typed env
-  logger.ts · api-routes.ts · trace.ts   logging; endpoints; stream adapter
-app/api/
-  run/ · onboarding/ · workflow/edit/ · pdf/[id]/
+  use-pipeline-run.ts · trace.ts   the run hook (HITL, multi-wave); stream adapter
+app/
+  rpc/[[...rest]]/         the single oRPC handler (run · onboarding · editWorkflow)
+  api/pdf/[id]/            the one plain REST route left (binary PDF)
 db/
-  schema.ts · seed-data.ts · client.ts · fixtures/bamboohr/   Drizzle + real fixture
+  schema.ts · seed-data.ts · client.ts   Drizzle + read layer (PO-pull aware)
+  fixtures/bamboohr/ · fixtures/quickbooks/   the real captured HRIS + ERP fixtures
 config/eslint-rules/        custom lint rules (no-console, api-routes, …)
 ```
 
@@ -161,6 +173,7 @@ pnpm dev                          # http://localhost:3000
 | `DATABASE_URL` | **yes** | Supabase Postgres — use the **transaction pooler** string |
 | `DIRECT_DATABASE_URL` | optional | Direct (non-pooled) string for `db:push` / `db:seed` |
 | `BAMBOO_HR_API_KEY` + `BAMBOO_HR_SUBDOMAIN` | optional | Live BambooHR. **Without them onboarding replays the committed real fixture** — the demo and CI work with no key. |
+| `QBO_CLIENT_ID` + `QBO_CLIENT_SECRET` + `QBO_REFRESH_TOKEN` + `QBO_REALM_ID` | optional | Live QuickBooks PO pull. **Without all four the pipeline replays the committed real fixture** — demo and CI work with no key. |
 | `UPSTASH_*` / `KV_REST_API_*` | optional | Per-IP rate limiting; fails open without it |
 
 > **Set a spend cap on the Anthropic key** — the deployed demo is public and the buttons call the model.
@@ -171,11 +184,11 @@ pnpm dev                          # http://localhost:3000
 
 ## What's next
 
-A stateless demo with a fake ERP; the decision logic is pure, typed, and unit-tested. Production is additive, not a rewrite:
+A stateless demo; the decision logic is pure, typed, and unit-tested, and the read-side integrations (HRIS, ERP PO pull) are already real-or-replayed. Production is additive, not a rewrite:
 
-- swap the fake ERP / integration stubs for real adapters (same interfaces),
-- live BambooHR (the adapter + a captured fixture already exist; a dev key with field-edit permissions unlocks self-serve seeding) and a second HRIS behind the same `HrisAdapter`,
-- add persistence and an audit trail (the `agent_runs` table is shaped for it),
+- the ERP **pull** is real (QuickBooks); swap the **post**-side stub (`fakeErp`) and the Slack/Jira integration stubs for real adapters of the same interfaces,
+- live BambooHR + QuickBooks (both adapters + captured fixtures already exist; keys unlock the live path) and a second HRIS / ERP behind the same `HrisAdapter` / `PoSourceAdapter`,
+- add persistence and an audit trail (the `agent_runs` table is shaped for it) so a workflow and a paused run survive a refresh,
 - wire real approver identity to the per-step gates,
 - accept real uploaded PDFs at intake.
 
