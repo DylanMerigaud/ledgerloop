@@ -1,13 +1,12 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { WorkflowGraph } from "@/components/workflow-graph";
-import { API_ROUTES } from "@/lib/api-routes";
-import { ApprovalWorkflow, type StepChange } from "@/lib/approval-workflow";
-import { postJson, FetchJsonError } from "@/lib/fetch-json";
+import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
+import { orpc } from "@/lib/orpc/client";
 import {
   validateWorkflow,
   isActivatable,
@@ -34,26 +33,6 @@ type Proposal = {
   changes: StepChange[];
 };
 
-// The /api/workflow/edit response, as a Zod schema so we validate it at the fetch
-// boundary instead of asserting `res.json() as …`. The `changes` union mirrors
-// `StepChange` exactly (only "changed" carries `fields`).
-const StepChangeSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("added"), id: z.string(), label: z.string() }),
-  z.object({ kind: z.literal("removed"), id: z.string(), label: z.string() }),
-  z.object({
-    kind: z.literal("changed"),
-    id: z.string(),
-    label: z.string(),
-    fields: z.array(z.string()),
-  }),
-  z.object({ kind: z.literal("unchanged"), id: z.string(), label: z.string() }),
-]);
-const EditResponse = z.object({
-  proposed: ApprovalWorkflow,
-  changes: z.array(StepChangeSchema),
-  reason: z.string().nullable().optional(),
-});
-
 export const WorkflowEditor = ({
   initial,
   suggestions = [],
@@ -65,19 +44,22 @@ export const WorkflowEditor = ({
   const [current, setCurrent] = useState<ApprovalWorkflow>(initial);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [instruction, setInstruction] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Suggestions are consumable: once one produces a proposal it's removed, so a
   // chip never lingers after it's been used.
   const [chips, setChips] = useState<string[]>(suggestions);
 
+  // The edit is a TanStack Query mutation over the typed oRPC procedure;
+  // `isPending` is the busy state.
+  const editMutation = useMutation(orpc.editWorkflow.mutationOptions());
+  const busy = editMutation.isPending;
+
   const submit = async (text: string) => {
     const value = text.trim();
     if (!value || busy) return;
-    setBusy(true);
     setError(null);
     try {
-      const data = await postJson(API_ROUTES.workflowEdit, EditResponse, {
+      const data = await editMutation.mutateAsync({
         workflow: current,
         instruction: value,
       });
@@ -96,9 +78,7 @@ export const WorkflowEditor = ({
       // Drop the chip we just used (if this came from one).
       setChips((cs) => cs.filter((c) => c !== value));
     } catch (err) {
-      setError(err instanceof FetchJsonError ? err.message : "Edit failed.");
-    } finally {
-      setBusy(false);
+      setError(err instanceof Error ? err.message : "Edit failed.");
     }
   };
 

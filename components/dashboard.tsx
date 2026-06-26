@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import type { QueueItem } from "@/db/client";
+import { API_ROUTES } from "@/lib/api-routes";
 import {
   outcomeDot,
   outcomeLabel,
@@ -371,7 +372,7 @@ export const Dashboard = ({ queue }: { queue: QueueItem[] }) => {
             {previewId && (
               <div className="mb-4">
                 <ExtractionReveal
-                  pdfSrc={`/api/pdf/${encodeURIComponent(previewId)}`}
+                  pdfSrc={API_ROUTES.pdf(previewId)}
                   // Show the scanning state the instant Run is clicked — even
                   // before the first stream event lands — so the UI feels
                   // immediate. The real intake event takes over when it arrives.

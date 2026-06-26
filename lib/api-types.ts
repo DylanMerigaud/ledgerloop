@@ -38,13 +38,11 @@ export const RunRequest = z.object({
 export type RunRequest = z.infer<typeof RunRequest>;
 
 /**
- * The stream is newline-delimited JSON (NDJSON): each line is one serialized
- * `TraceEvent`, plus a terminal `{ done: true }` sentinel. We use NDJSON over the
- * `text/event-stream` (SSE) framing because the client reads it with
- * fetch + response.body.getReader() (a POST can't use the GET-only EventSource
- * API), and line-delimited JSON is the simplest robust framing for that reader.
+ * The run streams its trace as an oRPC EVENT ITERATOR (a typed async generator) —
+ * the procedure yields a sequence of `TraceEvent` and a terminal `StreamDone`, and
+ * the client consumes it with `for await`. (This replaced the old NDJSON framing;
+ * oRPC now owns the wire, fully typed end to end.)
  */
-export const STREAM_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";
 
 /** Terminal marker appended after the last trace event. A Zod schema so the client
     validates it off the wire (no cast) the same way it parses each TraceEvent. */

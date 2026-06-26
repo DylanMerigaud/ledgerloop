@@ -1,7 +1,7 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
 import { WorkflowGraph } from "@/components/workflow-graph";
-import { API_ROUTES } from "@/lib/api-routes";
-import { ApprovalWorkflow } from "@/lib/approval-workflow";
-import { postJson, FetchJsonError } from "@/lib/fetch-json";
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+import { orpc } from "@/lib/orpc/client";
+import { type OnboardingResult, type OrgEmployee } from "@/lib/orpc/schemas";
 
 /**
  * The onboarding discovery screen — the forward-deployed-engineer step.
@@ -32,69 +32,31 @@ import { postJson, FetchJsonError } from "@/lib/fetch-json";
  * issues before it goes live. (Conversational edits are the next layer.)
  */
 
-// The /api/onboarding response, as a Zod schema so we VALIDATE it at the fetch
-// boundary (no `res.json() as T`). Types are derived from the schemas.
-const OrgEmployee = z.object({
-  id: z.string(),
-  name: z.string(),
-  title: z.string(),
-  department: z.string(),
-  division: z.string(),
-  managerId: z.string().nullable(),
-});
-type OrgEmployee = z.infer<typeof OrgEmployee>;
-
-const RoleResolution = z.object({
-  role: z.string(),
-  title: z.string(),
-  employeeName: z.string().nullable(),
-  rationale: z.string(),
-});
-
-const OnboardingResponse = z.object({
-  source: z.string(),
-  employeeCount: z.number(),
-  employees: z.array(OrgEmployee),
-  workflow: ApprovalWorkflow,
-  proposal: z.object({
-    directorThreshold: z.number(),
-    roles: z.array(RoleResolution),
-    summary: z.string(),
-  }),
-  issues: z.array(
-    z.object({
-      employeeName: z.string(),
-      detail: z.string(),
-      note: z.string(),
-    }),
-  ),
-  /** Up to three AI-generated next-edit suggestions for the derived workflow. */
-  suggestions: z.array(z.string()),
-});
-type OnboardingResponse = z.infer<typeof OnboardingResponse>;
+// The onboarding response shape lives in the shared oRPC schema (one definition for
+// server + client), imported as OnboardingResult.
 
 type State =
   | { status: "idle" }
   | { status: "running" }
   | { status: "error"; message: string }
-  | { status: "done"; data: OnboardingResponse };
+  | { status: "done"; data: OnboardingResult };
 
 export const Onboarding = () => {
+  // Discovery is a TanStack Query mutation over the typed oRPC procedure. We map its
+  // lifecycle to the screen's State machine so the rest of the JSX is unchanged.
   const [state, setState] = useState<State>({ status: "idle" });
-
-  const discover = async () => {
-    setState({ status: "running" });
-    try {
-      const data = await postJson(API_ROUTES.onboarding, OnboardingResponse);
-      setState({ status: "done", data });
-    } catch (err) {
-      setState({
-        status: "error",
-        message:
-          err instanceof FetchJsonError ? err.message : "Discovery failed.",
-      });
-    }
-  };
+  const discovery = useMutation(
+    orpc.onboarding.mutationOptions({
+      onMutate: () => setState({ status: "running" }),
+      onSuccess: (data) => setState({ status: "done", data }),
+      onError: (err) =>
+        setState({
+          status: "error",
+          message: err instanceof Error ? err.message : "Discovery failed.",
+        }),
+    }),
+  );
+  const discover = () => discovery.mutate({});
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,400px)_1fr]">
@@ -366,7 +328,7 @@ const OrgTree = ({
   );
 };
 
-const DiscoverySummary = ({ data }: { data: OnboardingResponse }) => {
+const DiscoverySummary = ({ data }: { data: OnboardingResult }) => {
   const resolved = data.proposal.roles.filter((r) => r.employeeName).length;
   return (
     <div className="space-y-5">

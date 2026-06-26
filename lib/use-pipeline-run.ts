@@ -3,10 +3,9 @@
 import { useRef, useState } from "react";
 
 import { useEventCallback } from "@/hooks/use-event-callback";
-import { API_ROUTES } from "@/lib/api-routes";
-import { StreamLine, isStreamDone } from "@/lib/api-types";
+import { isStreamDone } from "@/lib/api-types";
 import type { Outcome } from "@/lib/display";
-import { NdjsonBuffer } from "@/lib/ndjson";
+import { client } from "@/lib/orpc/client";
 import {
   deriveOutcome,
   isAwaitingApproval,
@@ -121,50 +120,14 @@ export const usePipelineRun = () => {
         const body = decision
           ? { id, decisions: decisionsForPending(eventsRef.current, decision) }
           : { id };
-        const res = await fetch(API_ROUTES.run, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-
-        if (!res.ok || !res.body) {
-          const msg = await res
-            .json()
-            .then((j: { error?: string }) => j.error)
-            .catch(() => null);
-          setState((s) => ({
-            ...s,
-            status: "error",
-            outcome: "pending",
-            error: msg ?? `Run failed (HTTP ${res.status}).`,
-          }));
-          return;
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        const lines = new NdjsonBuffer();
+        // The oRPC `run` procedure is an event iterator: a typed async stream of
+        // TraceEvent | StreamDone. No manual reader / NDJSON parse / cast — just
+        // iterate, fully typed end-to-end.
+        const iterator = await client.run(body, { signal: controller.signal });
         let durationMs: number | null = null;
-
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          for (const raw of lines.push(
-            decoder.decode(value, { stream: true }),
-          )) {
-            let parsed: unknown;
-            try {
-              parsed = JSON.parse(raw);
-            } catch {
-              continue;
-            }
-            // One schema for both line kinds; discriminate on the result.
-            const line = StreamLine.safeParse(parsed);
-            if (!line.success) continue;
-            if (isStreamDone(line.data)) durationMs = line.data.durationMs;
-            else push(line.data);
-          }
+        for await (const event of iterator) {
+          if (isStreamDone(event)) durationMs = event.durationMs;
+          else push(event);
         }
 
         // If the run paused for a human decision, surface that as `awaiting` (not
