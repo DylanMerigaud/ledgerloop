@@ -67,10 +67,23 @@ const StepChangeSchema = z.discriminatedUnion("kind", [
 export const EditInput = z.object({
   workflow: ApprovalWorkflow,
   instruction: z.string().trim().min(1, "an instruction is required"),
+  /** The departments that exist in the client's org, so a department gate can only
+      target a real one (the agent returns a clarify when it can't). Optional —
+      defaults to none, in which case any department instruction is clarified. */
+  departments: z.array(z.string()).default([]),
+});
+
+/** The agent asks for a missing piece (e.g. which department) — the UI shows the
+    question + clickable options; the user's pick re-submits a completed instruction. */
+const ClarificationSchema = z.object({
+  question: z.string(),
+  options: z.array(z.string()),
 });
 
 export const EditResult = z.object({
   proposed: ApprovalWorkflow,
   changes: z.array(StepChangeSchema),
   reason: z.string().nullable(),
+  /** Set when the agent needs a clarification before editing (workflow unchanged). */
+  clarify: ClarificationSchema.nullable(),
 });

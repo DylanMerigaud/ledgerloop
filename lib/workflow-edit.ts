@@ -127,6 +127,19 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     .strict(),
   /** The model couldn't map the instruction to a supported edit — change nothing. */
   z.object({ op: z.literal("none"), reason: z.string() }).strict(),
+  /**
+   * The instruction is missing a piece the model won't guess (e.g. "add a department
+   * review" without saying WHICH department). Instead of inventing a dead gate, ask:
+   * the UI shows the question + clickable options and the user's pick re-submits a
+   * completed instruction. Changes nothing on its own.
+   */
+  z
+    .object({
+      op: z.literal("clarify"),
+      question: z.string(),
+      options: z.array(z.string()),
+    })
+    .strict(),
 ]);
 export type WorkflowEditOp = z.infer<typeof WorkflowEditOp>;
 
@@ -193,6 +206,9 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 
   switch (op.op) {
     case "none":
+    case "clarify":
+      // Neither changes the workflow — `none` declined, `clarify` is a question the
+      // agent surfaces to the user (handled in runEditAgent, never applied).
       return next;
 
     case "set-threshold": {
@@ -521,19 +537,23 @@ Return { "ops": [ ... ] } where each op is one of:
 - insert-approval-after { afterStepId, label, approverTitle, amountOver|null, department|null }: insert a gate immediately AFTER one step.
 - add-parallel-after { afterStepIds: [..], label, approverTitle, amountOver|null, department|null }: a gate that runs once ALL the listed steps are approved (use for "after X and Y, a step that waits on both").
 - none { reason }: only if NOTHING in the instruction maps to a supported edit.
+- clarify { question, options }: ask the user for a missing piece you must not guess (see the department rule). Return EXACTLY this one op when you need it; "options" are the choices to offer.
 
 Rules:
 - Output the ops in the order they should be applied.
 - For a multi-part instruction ("add a CFO gate over $50k AND a Slack notice"), return one op per part.
 - Don't add something the workflow already has.
+- DEPARTMENTS: a department gate may only target a department that EXISTS in this org (I list them below as AVAILABLE DEPARTMENTS). If the instruction asks to route by department but names NONE, or names one NOT in the list, do NOT guess and do NOT invent one — return a single clarify op whose options are the available departments. If it names a valid one, use it directly.
 - If I send you VALIDATION ISSUES from a previous attempt, return ops that FIX them (e.g. resolve an approver, merge a duplicate, add a second approver on a high-value path).
 Return only the JSON object.`;
 
-/** Prompt body for the planner: current steps (+ conditions) + the instruction, and
-    optionally the validation feedback from a previous attempt to correct. */
+/** Prompt body for the planner: current steps (+ conditions), the available
+    departments (so a department gate can only target a real one), the instruction,
+    and optionally the validation feedback from a previous attempt to correct. */
 export const planPrompt = (
   current: TWorkflow,
   instruction: string,
+  available: { departments: string[] },
   feedback?: { issues: { message: string }[]; triedOps: WorkflowEditOp[] },
 ): string => {
   const steps = current.steps
@@ -543,7 +563,11 @@ export const planPrompt = (
       return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
     })
     .join("\n");
-  const base = `CURRENT STEPS:\n${steps}\n\nINSTRUCTION:\n${instruction}`;
+  const depts =
+    available.departments.length > 0
+      ? available.departments.join(", ")
+      : "(none in this org)";
+  const base = `CURRENT STEPS:\n${steps}\n\nAVAILABLE DEPARTMENTS: ${depts}\n\nINSTRUCTION:\n${instruction}`;
   if (!feedback || feedback.issues.length === 0)
     return `${base}\n\nReturn the ordered ops as JSON.`;
   const probs = feedback.issues.map((i) => `- ${i.message}`).join("\n");

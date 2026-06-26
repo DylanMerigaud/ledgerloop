@@ -58,6 +58,7 @@ test("dispatches a multi-op plan in order (one round)", async () => {
     model,
     base,
     "add a CFO gate over 50k and a Slack notice",
+    { departments: [] },
   );
   assert.equal(ops.length, 2, "both ops applied");
   assert.ok(proposed.steps.some((s) => s.label === "CFO review"));
@@ -85,7 +86,7 @@ test("on an erroring plan, it re-plans with the validator's errors as feedback",
       return Promise.resolve<WorkflowEditOp[]>([]); // give up on the correction
     },
   };
-  await runEditAgent(model, base, "tidy up");
+  await runEditAgent(model, base, "tidy up", { departments: [] });
   assert.equal(call >= 2, true, "it ran a correction round");
   assert.equal(
     sawFeedbackError,
@@ -105,6 +106,7 @@ test("returns a reason when the plan is all no-ops (no change)", async () => {
     model,
     base,
     "do nothing useful",
+    { departments: [] },
   );
   assert.equal(
     changes.filter((c) => c.kind !== "unchanged").length,
@@ -112,6 +114,55 @@ test("returns a reason when the plan is all no-ops (no change)", async () => {
     "no real change",
   );
   assert.match(reason ?? "", /already does that/);
+});
+
+test("a clarify op short-circuits: workflow unchanged, clarification surfaced", async () => {
+  // When the model can't resolve a slot (which department?), it returns a clarify op.
+  // The agent must NOT apply anything and must surface the question + options.
+  const model: PlanModel = {
+    planOps: () =>
+      Promise.resolve<WorkflowEditOp[]>([
+        {
+          op: "clarify",
+          question: "Which department?",
+          options: ["Finance", "Product"],
+        },
+      ]),
+  };
+  const result = await runEditAgent(model, base, "add a department review", {
+    departments: ["Finance", "Product"],
+  });
+  assert.deepEqual(
+    result.clarify,
+    { question: "Which department?", options: ["Finance", "Product"] },
+    "the clarification is surfaced",
+  );
+  assert.equal(result.proposed, base, "the workflow is left unchanged");
+  assert.equal(
+    result.changes.filter((c) => c.kind !== "unchanged").length,
+    0,
+    "no edit applied",
+  );
+});
+
+test("a complete instruction applies normally (clarify stays null)", async () => {
+  const model: PlanModel = {
+    planOps: () =>
+      Promise.resolve<WorkflowEditOp[]>([
+        {
+          op: "add-approval",
+          label: "Finance review",
+          approverTitle: "Finance",
+          amountOver: null,
+          department: "Finance",
+        },
+      ]),
+  };
+  const result = await runEditAgent(model, base, "add a Finance review", {
+    departments: ["Finance"],
+  });
+  assert.equal(result.clarify, null, "no clarification needed");
+  assert.ok(result.proposed.steps.some((s) => s.label === "Finance review"));
 });
 
 test("stops at the step budget on a stubborn error (doesn't hang)", async () => {
@@ -126,7 +177,9 @@ test("stops at the step budget on a stubborn error (doesn't hang)", async () => 
       ]);
     },
   };
-  const { issues } = await runEditAgent(model, base, "break it");
+  const { issues } = await runEditAgent(model, base, "break it", {
+    departments: [],
+  });
   assert.ok(calls <= 4, "bounded to the step budget");
   // It returns (doesn't hang); the remaining error is surfaced.
   assert.ok(issues.some((i) => i.severity === "error"));

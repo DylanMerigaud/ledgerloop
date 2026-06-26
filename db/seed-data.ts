@@ -167,7 +167,8 @@ const priceMismatch: SeedBundle = {
     currency: "GBP",
     lineItems: poSteelLines,
     total: sum(poSteelLines),
-    department: "",
+    // Operational/facilities spend → the Operations team owns it (COO is the head).
+    department: "Operations",
   },
   goodsReceipt: {
     grNumber: "GR-5542",
@@ -373,7 +374,8 @@ const cleanChem: SeedBundle = {
     currency: "USD",
     lineItems: chemLines,
     total: sum(chemLines),
-    department: "",
+    // A Finance-controlled budget line → the Finance team reviews it (CFO is the head).
+    department: "Finance",
   },
   goodsReceipt: {
     grNumber: "GR-5547",

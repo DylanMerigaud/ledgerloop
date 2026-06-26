@@ -9,6 +9,7 @@ import {
 } from "@/lib/approval-workflow";
 import {
   applyEditOp,
+  parseEditPlan,
   proposeEdit,
   type EditModel,
   type WorkflowEditOp,
@@ -539,4 +540,23 @@ test("proposeEdit runs the model -> op -> apply -> diff", async () => {
   assert.equal(op.op, "add-approval");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(proposed));
   assert.ok(changes.some((c) => c.kind === "added"));
+});
+
+test("a clarify op leaves the workflow untouched (it's a question, not an edit)", () => {
+  const next = applyEditOp(base, {
+    op: "clarify",
+    question: "Which department?",
+    options: ["Finance", "Product"],
+  });
+  assert.deepEqual(next, base, "clarify changes nothing");
+});
+
+test("parseEditPlan accepts a clarify op in the plan", () => {
+  const ops = parseEditPlan({
+    ops: [
+      { op: "clarify", question: "Which department?", options: ["Finance"] },
+    ],
+  });
+  assert.equal(ops.length, 1);
+  assert.equal(ops[0]?.op, "clarify");
 });

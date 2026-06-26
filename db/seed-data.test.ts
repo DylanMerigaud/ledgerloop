@@ -39,6 +39,16 @@ const byId = (id: string): SeedBundle => {
   return b;
 };
 
+test("the demo's department POs carry their buying department", () => {
+  // Three distinct departments are seeded so a department-scoped gate is demonstrable
+  // (and each maps to a real org head). If a future edit drops one, the
+  // "route by department" demo would quietly stop firing.
+  const dept = (id: string) => byId(id).purchaseOrder?.department;
+  assert.equal(dept("INV-2044"), "Product"); // PO-7744
+  assert.equal(dept("INV-2042"), "Operations"); // PO-7742
+  assert.equal(dept("INV-2047"), "Finance"); // PO-7747
+});
+
 test("every seeded document validates against the Zod schema", () => {
   for (const b of SEED_BUNDLES) {
     assert.doesNotThrow(() => Invoice.parse(b.invoice), `${b.id} invoice`);

@@ -130,6 +130,7 @@ export const Onboarding = ({
               key={state.data.workflow.name + state.data.employeeCount}
               initial={state.data.workflow}
               suggestions={state.data.suggestions}
+              departments={departmentsOf(state.data.employees)}
               onCurrentChange={onWorkflowChange}
             />
           ) : (
@@ -244,10 +245,34 @@ const WhatCanIChange = () => {
               </li>
             ))}
           </ul>
+          {/* The levers a gate's condition can route on — so "what can I gate on?" is
+              answerable, not guesswork. Values come from the invoice in flight. */}
+          <div className="mt-1 border-t border-line px-2 pb-1 pt-2">
+            <span className="block text-[10px] font-medium uppercase tracking-wider text-faint">
+              Conditions you can route on
+            </span>
+            <span className="mt-1 block font-mono text-[10.5px] leading-relaxed text-muted">
+              amount &gt; $ · department == · variance ≥ % · verdict
+              (clean/exception)
+            </span>
+          </div>
         </div>
       )}
     </div>
   );
+};
+
+/** The distinct, non-empty departments in the org — the values a department gate can
+    route on, so the editor can offer them (and the agent only proposes real ones).
+    Sorted for a stable order; "Company" is the org root, not a buying team, so it's
+    dropped. */
+const departmentsOf = (employees: OrgEmployee[]): string[] => {
+  const set = new Set(
+    employees
+      .map((e) => e.department.trim())
+      .filter((d) => d.length > 0 && d !== "Company"),
+  );
+  return [...set].sort();
 };
 
 /** Initials for an avatar chip ("Riley Carter" → "RC"). */
