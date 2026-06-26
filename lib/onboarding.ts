@@ -82,18 +82,24 @@ export const assembleWorkflow = (
   // The manager sees an invoice when it's NOT trivial: any exception, or any clean
   // bill over a floor. So a small clean invoice posts straight through (the
   // automation win), while anything material or flagged gets a human — the standard
-  // AP control, not "a manager clicks approve on every $50 bill". The floor is the
-  // policy default; the director threshold (scaled to the org) gates the second gate.
+  // AP control, not "a manager clicks approve on every $50 bill".
+  //
+  // The floor SCALES with the org: it's an order of magnitude below the director
+  // threshold (the one number the model proposes), so a bigger company that escalates
+  // to a director at $50k lets the manager handle more before a human is needed,
+  // while a small one keeps a low bar. Deriving it (vs a second model number) keeps
+  // the model off a corrected, redundant decision and the relation always sound
+  // (manager floor < director threshold by construction). A small absolute minimum
+  // guards against an unusually low proposed threshold.
+  const managerFloor = Math.max(
+    DEFAULT_APPROVAL_POLICY.manager.amount / 2,
+    Math.round(proposal.directorThreshold / 10),
+  );
   const managerReview: Condition = {
     kind: "any",
     conditions: [
       { kind: "leaf", field: "verdict", op: "==", value: "exception" },
-      {
-        kind: "leaf",
-        field: "amount",
-        op: ">",
-        value: DEFAULT_APPROVAL_POLICY.manager.amount,
-      },
+      { kind: "leaf", field: "amount", op: ">", value: managerFloor },
     ],
   };
 
