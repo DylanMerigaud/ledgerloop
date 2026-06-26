@@ -246,6 +246,30 @@ export const GlEntry = z
 export type GlEntry = z.infer<typeof GlEntry>;
 
 /**
+ * The vendor bill we WOULD post to the ERP once an invoice clears — a DRY-RUN
+ * payload, never actually sent (the write-back is a stub; see lib/erp.ts). It
+ * mirrors the real shape a QuickBooks `POST /bill` carries (see the bill the seed
+ * script posts in scripts/seed-quickbooks.ts: a DocNumber, a vendor ref, and a
+ * single account-based expense line for the total). Surfaced on the trace so the
+ * reconciliation step shows the concrete artifact ("here's the bill we'd create")
+ * next to the synthetic reference. Read-only, no side effect.
+ */
+export const VendorBill = z
+  .object({
+    /** The vendor's invoice number, used as the bill's DocNumber. */
+    docNumber: z.string(),
+    vendor: z.string(),
+    /** The PO this bill settles, when there is one. */
+    poNumber: z.string().nullable(),
+    currency: Currency,
+    /** The GL/expense account the bill books to (the account-based line). */
+    expenseAccount: z.string(),
+    total: Amount,
+  })
+  .strict();
+export type VendorBill = z.infer<typeof VendorBill>;
+
+/**
  * How the reconciliation step resolved:
  *   posted    — booked to the ERP (clean auto, or human-approved)
  *   awaiting  — held pending a human approval decision (the run paused here)
@@ -265,6 +289,9 @@ export const ReconResult = z
     currency: Currency,
     amount: Amount,
     note: z.string(),
+    /** The bill we'd post to the ERP — a DRY-RUN payload (never sent). Present only
+     *  on the `posted` path; null when nothing clears (awaiting/rejected/blocked). */
+    vendorBill: VendorBill.nullable().default(null),
   })
   .strict();
 export type ReconResult = z.infer<typeof ReconResult>;

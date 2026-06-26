@@ -103,3 +103,23 @@ test("a bill from an ERP-inactive vendor is flagged for review", async ({
   });
   await expect(page.getByText(/marked inactive in the ERP/i)).toBeVisible();
 });
+
+test("a cleared invoice shows the dry-run bill it would post to the ERP", async ({
+  page,
+}) => {
+  // INV-2040 is a clean match → posts straight through (no human gate). The
+  // reconciliation detail then shows the DRY-RUN vendor bill: the exact payload a
+  // real write-back would POST, labelled so it can't be mistaken for a real post.
+  await selectAndRun(page, "INV-2040");
+  await expect(step(page, "reconciliation")).toHaveAttribute(
+    "data-status",
+    "ok",
+    { timeout: RUN_TIMEOUT },
+  );
+
+  const bill = page.getByTestId("vendor-bill-dryrun");
+  await expect(bill).toBeVisible();
+  await expect(bill).toContainText("dry-run");
+  await expect(bill).toContainText("INV-2040"); // the doc number
+  await expect(bill).toContainText("Atlas Fasteners"); // the vendor
+});
