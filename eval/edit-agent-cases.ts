@@ -71,4 +71,37 @@ export const AGENT_CASES: AgentCase[] = [
       },
     ],
   },
+  {
+    id: "long-sequential-chain",
+    instruction:
+      "Make approvals fully sequential: after the manager, add a team-lead review, then a finance review, then a controller review, each before the next",
+    minOps: 3,
+    why: "a multi-step SEQUENTIAL chain (several insert-approval-after in order)",
+    stub: [
+      {
+        op: "insert-approval-after",
+        afterStepId: "manager-review",
+        label: "Team lead review",
+        approverTitle: "Team Lead",
+        amountOver: null,
+        department: null,
+      },
+      {
+        op: "insert-approval-after",
+        afterStepId: "team-lead-review",
+        label: "Finance review",
+        approverTitle: "Finance",
+        amountOver: null,
+        department: null,
+      },
+      {
+        op: "insert-approval-after",
+        afterStepId: "finance-review",
+        label: "Controller review",
+        approverTitle: "Controller",
+        amountOver: null,
+        department: null,
+      },
+    ],
+  },
 ];

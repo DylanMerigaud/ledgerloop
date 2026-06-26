@@ -29,6 +29,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "0.104.1",
     "@mastra/core": "1.42.0",
+    "@orpc/client": "^1.14.6",
+    "@orpc/server": "^1.14.6",
+    "@orpc/tanstack-query": "^1.14.6",
+    "@tanstack/react-query": "^5.101.1",
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.38.0",
     "@xyflow/react": "^12.11.1",

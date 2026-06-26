@@ -1,0 +1,76 @@
+import { z } from "zod";
+
+import { ApprovalWorkflow } from "@/lib/approval-workflow";
+
+/**
+ * Shared input/output schemas for the oRPC API contract. Defined ONCE here and used
+ * by both the server router and the typed client, so a response-shape change is a
+ * compile error on both sides — the whole reason for oRPC over hand-rolled
+ * `res.json() as T`.
+ */
+
+/* ── onboarding ──────────────────────────────────────────────────────────────── */
+
+export const OrgEmployee = z.object({
+  id: z.string(),
+  name: z.string(),
+  title: z.string(),
+  department: z.string(),
+  division: z.string(),
+  managerId: z.string().nullable(),
+});
+export type OrgEmployee = z.infer<typeof OrgEmployee>;
+
+const RoleResolution = z.object({
+  role: z.string(),
+  title: z.string(),
+  employeeName: z.string().nullable(),
+  rationale: z.string(),
+});
+
+export const OnboardingResult = z.object({
+  source: z.string(),
+  employeeCount: z.number(),
+  employees: z.array(OrgEmployee),
+  workflow: ApprovalWorkflow,
+  proposal: z.object({
+    directorThreshold: z.number(),
+    roles: z.array(RoleResolution),
+    summary: z.string(),
+  }),
+  issues: z.array(
+    z.object({
+      employeeName: z.string(),
+      detail: z.string(),
+      note: z.string(),
+    }),
+  ),
+  /** Up to three AI-generated next-edit suggestions for the derived workflow. */
+  suggestions: z.array(z.string()),
+});
+export type OnboardingResult = z.infer<typeof OnboardingResult>;
+
+/* ── workflow edit ───────────────────────────────────────────────────────────── */
+
+const StepChangeSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("added"), id: z.string(), label: z.string() }),
+  z.object({ kind: z.literal("removed"), id: z.string(), label: z.string() }),
+  z.object({
+    kind: z.literal("changed"),
+    id: z.string(),
+    label: z.string(),
+    fields: z.array(z.string()),
+  }),
+  z.object({ kind: z.literal("unchanged"), id: z.string(), label: z.string() }),
+]);
+
+export const EditInput = z.object({
+  workflow: ApprovalWorkflow,
+  instruction: z.string().trim().min(1, "an instruction is required"),
+});
+
+export const EditResult = z.object({
+  proposed: ApprovalWorkflow,
+  changes: z.array(StepChangeSchema),
+  reason: z.string().nullable(),
+});
