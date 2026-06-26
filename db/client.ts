@@ -5,6 +5,7 @@ import postgres from "postgres";
 import { invoices, purchaseOrders, goodsReceipts } from "@/db/schema";
 import { env } from "@/lib/env";
 import { defaultErp, type PoSourceAdapter } from "@/lib/erp";
+import { billKey } from "@/lib/matching";
 import {
   Invoice,
   PurchaseOrder,
@@ -81,6 +82,13 @@ export type RunBundle = {
   goodsReceipt: TGoodsReceipt | null;
   /** Other invoice numbers in the ledger — for duplicate detection. */
   priorInvoiceNumbers: string[];
+  /** ERP master data, pulled read-only — the AP controls the matcher checks
+   *  against. "vendor invoiceNumber" of bills already posted in the ERP. */
+  postedBillKeys: string[];
+  /** Vendor names the ERP marks inactive. */
+  inactiveVendors: string[];
+  /** SKUs present in the ERP item catalog. */
+  catalogSkus: string[];
 };
 
 /**
@@ -169,7 +177,18 @@ export const loadRunBundle = async (
     .filter((r) => isEarlier(r.createdAt.getTime(), r.id))
     .map((r) => r.invoiceNumber);
 
-  return { invoice, purchaseOrder, goodsReceipt, priorInvoiceNumbers };
+  // ERP master data the AP controls check against, pulled read-only. Degrades to
+  // empty lists on any failure so those controls just don't fire (never blanks the
+  // run). Stateless: nothing persisted.
+  const master = await pulledMasterData(erp);
+
+  return {
+    invoice,
+    purchaseOrder,
+    goodsReceipt,
+    priorInvoiceNumbers,
+    ...master,
+  };
 };
 
 /**
@@ -189,6 +208,36 @@ const pulledPoByNumber = async (
   } catch {
     return null;
   }
+};
+
+/**
+ * Pull the ERP master data the matcher's AP controls check against — posted bills
+ * (for the already-paid duplicate), inactive vendors, and the item catalog. Each
+ * pull degrades independently to empty on failure, so one flaky entity doesn't
+ * disable the others or blank the run. Read-only.
+ */
+const pulledMasterData = async (
+  erp: PoSourceAdapter,
+): Promise<
+  Pick<RunBundle, "postedBillKeys" | "inactiveVendors" | "catalogSkus">
+> => {
+  const safe = async <T>(fn: () => Promise<T[]>): Promise<T[]> => {
+    try {
+      return await fn();
+    } catch {
+      return [];
+    }
+  };
+  const [bills, vendors, items] = await Promise.all([
+    safe(() => erp.pullPostedBills()),
+    safe(() => erp.pullVendors()),
+    safe(() => erp.pullItems()),
+  ]);
+  return {
+    postedBillKeys: bills.map((b) => billKey(b.vendor, b.docNumber)),
+    inactiveVendors: vendors.filter((v) => !v.active).map((v) => v.name),
+    catalogSkus: items.map((i) => i.sku),
+  };
 };
 
 /**

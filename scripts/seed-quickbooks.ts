@@ -31,7 +31,12 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import { scenarioPurchaseOrders } from "@/db/seed-data";
+import {
+  scenarioPurchaseOrders,
+  ERP_INACTIVE_VENDOR,
+  ERP_PAID_VENDOR,
+  ERP_PAID_INVOICE_NUMBER,
+} from "@/db/seed-data";
 import { isRecord, nonNull } from "@/lib/assert";
 import { qboPostEntity, qboQuery, type QboCreds } from "@/lib/erp";
 import type { LineItem, PurchaseOrder } from "@/lib/schema";
@@ -152,6 +157,101 @@ const ensureItem = async (
   return entityId(created, "Item");
 };
 
+/**
+ * Ensure a vendor by its EXACT name (no SEED_TAG prefix), returning its id. Used
+ * for the ERP-control demo artifacts where the matcher compares the vendor NAME
+ * (vendor_inactive / duplicate_in_erp), so the QBO name must equal the invoice's
+ * vendor verbatim.
+ */
+const ensureVendorExact = async (
+  c: QboCreds,
+  name: string,
+): Promise<string> => {
+  const existing = await qboQuery(
+    c,
+    `select * from Vendor where DisplayName = '${escapeQuery(name)}'`,
+  );
+  const found = firstEntity(existing, "Vendor");
+  if (found) return found;
+  const created = await qboPostEntity(c, "vendor", { DisplayName: name });
+  return entityId(created, "Vendor");
+};
+
+/**
+ * Deactivate a vendor. QBO ignores `Active:false` on create (a new vendor is
+ * always active), so deactivation is a separate SPARSE update carrying the current
+ * SyncToken. Idempotent: a no-op if already inactive.
+ */
+const deactivateVendor = async (c: QboCreds, name: string): Promise<void> => {
+  const raw = await qboQuery(
+    c,
+    `select * from Vendor where DisplayName = '${escapeQuery(name)}'`,
+  );
+  if (!isRecord(raw) || !isRecord(raw.QueryResponse)) return;
+  const parsed = z
+    .array(
+      z.object({
+        Id: z.string(),
+        SyncToken: z.string(),
+        Active: z.boolean().optional(),
+      }),
+    )
+    .safeParse(raw.QueryResponse.Vendor);
+  const v = parsed.success ? parsed.data[0] : undefined;
+  if (!v || v.Active === false) return;
+  await qboPostEntity(c, "vendor", {
+    Id: v.Id,
+    SyncToken: v.SyncToken,
+    sparse: true,
+    Active: false,
+  });
+};
+
+/**
+ * Post a Bill in the ERP (an already-paid invoice) so the historical-duplicate
+ * control has real data to catch. Minimal account-based line — the control keys
+ * only on vendor + DocNumber.
+ */
+const postBill = async (
+  c: QboCreds,
+  vendorId: string,
+  docNumber: string,
+  expenseAccountId: string,
+  amount: number,
+): Promise<void> => {
+  if (await seededBill(c, docNumber)) return; // idempotent — don't post twice
+  await qboPostEntity(c, "bill", {
+    DocNumber: docNumber,
+    VendorRef: { value: vendorId },
+    Line: [
+      {
+        DetailType: "AccountBasedExpenseLineDetail",
+        Amount: amount,
+        AccountBasedExpenseLineDetail: {
+          AccountRef: { value: expenseAccountId },
+        },
+      },
+    ],
+  });
+};
+
+/** Find the seeded posted Bill by its DocNumber, returning {id, syncToken} or null. */
+const seededBill = async (
+  c: QboCreds,
+  docNumber: string,
+): Promise<{ id: string; syncToken: string } | null> => {
+  const raw = await qboQuery(
+    c,
+    `select * from Bill where DocNumber = '${escapeQuery(docNumber)}'`,
+  );
+  if (!isRecord(raw) || !isRecord(raw.QueryResponse)) return null;
+  const rows = z
+    .array(z.object({ Id: z.string(), SyncToken: z.string() }))
+    .safeParse(raw.QueryResponse.Bill);
+  const row = rows.success ? rows.data[0] : undefined;
+  return row ? { id: row.Id, syncToken: row.SyncToken } : null;
+};
+
 /* ── PO create ──────────────────────────────────────────────────────────────*/
 const buildPoLine = (
   line: LineItem,
@@ -251,8 +351,29 @@ const seed = async (): Promise<void> => {
     );
   }
 
+  // ERP master-data control artifacts (exact vendor names — the matcher compares
+  // them, so no SEED_TAG here):
+  //  • an inactive vendor → drives the vendor_inactive control.
+  //  • a posted bill for an already-paid invoice number → drives duplicate_in_erp.
+  console.log("Seeding ERP-control demo data …");
+  await ensureVendorExact(c, ERP_INACTIVE_VENDOR);
+  await deactivateVendor(c, ERP_INACTIVE_VENDOR);
+  console.log(`  · inactive vendor "${ERP_INACTIVE_VENDOR}"`);
+
+  const paidVendorId = await ensureVendorExact(c, ERP_PAID_VENDOR);
+  await postBill(
+    c,
+    paidVendorId,
+    ERP_PAID_INVOICE_NUMBER,
+    expenseAccountId,
+    500,
+  );
   console.log(
-    `\nDone. ${pos.length} purchase order(s) seeded. ` +
+    `  · posted bill ${ERP_PAID_INVOICE_NUMBER} for "${ERP_PAID_VENDOR}" (already paid)`,
+  );
+
+  console.log(
+    `\nDone. ${pos.length} purchase order(s) + ERP-control data seeded. ` +
       `Run "pnpm erp:capture" to record them into the recorded fixture.`,
   );
 };
@@ -280,12 +401,30 @@ const reset = async (): Promise<void> => {
       console.log(`  ! could not delete ${t.docNumber}: ${reason}`);
     }
   }
-  // Vendors/items aren't hard-deleted by QBO; leaving them inactive-able is fine
-  // (they're tagged and harmless), so we stop at the POs — re-seeding reuses them.
+  // Delete the seeded posted Bill too (the duplicate_in_erp artifact).
+  const bill = await seededBill(c, ERP_PAID_INVOICE_NUMBER);
+  if (bill) {
+    try {
+      await qboPostEntity(c, "bill?operation=delete", {
+        Id: bill.id,
+        SyncToken: bill.syncToken,
+      });
+      console.log(`  - bill ${ERP_PAID_INVOICE_NUMBER} (${bill.id})`);
+    } catch (err) {
+      failed++;
+      const reason = err instanceof Error ? err.message : String(err);
+      console.log(
+        `  ! could not delete bill ${ERP_PAID_INVOICE_NUMBER}: ${reason}`,
+      );
+    }
+  }
+
+  // Vendors/items aren't hard-deleted by QBO (only deactivated); leaving them is
+  // harmless — re-seeding reuses them. So we stop at the POs + the bill.
   console.log(
     failed === 0
-      ? `Removed all ${targets.length}. (Seeded vendors/items are left in place, tagged "${SEED_TAG}".)`
-      : `${failed} could not be deleted (see above).`,
+      ? `Removed ${targets.length} PO(s) + the seeded bill. (Vendors/items left in place; tagged "${SEED_TAG}" or named exactly.)`
+      : `${failed} item(s) could not be deleted (see above).`,
   );
 };
 

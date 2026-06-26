@@ -452,6 +452,61 @@ const cleanOffice: SeedBundle = {
   },
 };
 
+/* ── 11. INACTIVE VENDOR (ERP master-data control) ──────────────────────────
+   The billing vendor is marked inactive in the client's ERP — a deactivated
+   supplier shouldn't be sending payable invoices (a control/fraud signal). The
+   PO matches cleanly; the ONLY exception is vendor_inactive, raised against the
+   pulled vendor master. The seed script (erp:seed) creates this vendor inactive
+   in QBO so the control fires against real pulled data. */
+export const ERP_INACTIVE_VENDOR = "Dormant Metals LLC";
+const ghostLines = [
+  line("STL-BAR-20", "Cold-rolled steel bar 20mm (per m)", 40, 33),
+];
+const inactiveVendor: SeedBundle = {
+  id: "INV-2050",
+  scenario: "Inactive vendor (ERP)",
+  // No PO: this case tests the vendor master control, not PO matching. The matcher
+  // raises vendor_inactive against the pulled vendor list (and no_po_line for the
+  // line, since a bill from a dormant supplier has no live PO anyway).
+  invoice: {
+    invoiceNumber: "INV-2050",
+    poNumber: null,
+    vendor: ERP_INACTIVE_VENDOR,
+    issueDate: "2026-05-16",
+    currency: "USD",
+    lineItems: ghostLines,
+    subtotal: sum(ghostLines),
+    tax: null,
+    total: sum(ghostLines),
+  },
+};
+
+/* ── 12. ALREADY PAID IN ERP (historical duplicate control) ─────────────────
+   A bill with this vendor + invoice number is ALREADY posted in the client's
+   ERP (paid in a prior period, outside this run). The in-run duplicate check
+   can't see it; the pulled posted-bill list can. Blocked as duplicate_in_erp.
+   The seed script posts this exact bill in QBO. */
+export const ERP_PAID_VENDOR = "Atlas Fasteners";
+export const ERP_PAID_INVOICE_NUMBER = "INV-1990";
+const alreadyPaidLines = [
+  line("BOLT-M8-50", "Hex bolt M8×50 (box/100)", 40, 12.5),
+];
+const alreadyPaidInErp: SeedBundle = {
+  id: "INV-1990",
+  scenario: "Already paid (ERP duplicate)",
+  invoice: {
+    invoiceNumber: ERP_PAID_INVOICE_NUMBER,
+    poNumber: null,
+    vendor: ERP_PAID_VENDOR,
+    issueDate: "2026-05-16",
+    currency: "USD",
+    lineItems: alreadyPaidLines,
+    subtotal: sum(alreadyPaidLines),
+    tax: null,
+    total: sum(alreadyPaidLines),
+  },
+};
+
 /** The full seed set, in the order they appear in the queue. */
 export const SEED_BUNDLES: SeedBundle[] = [
   clean,
@@ -465,6 +520,8 @@ export const SEED_BUNDLES: SeedBundle[] = [
   cleanChem,
   qtyMismatch,
   cleanOffice,
+  inactiveVendor,
+  alreadyPaidInErp,
 ];
 
 /**

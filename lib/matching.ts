@@ -54,7 +54,29 @@ export type MatchInput = {
    * The pipeline passes the seeded ledger; the check stays pure and testable.
    */
   priorInvoiceNumbers?: readonly string[];
+  /**
+   * The client's master data, PULLED from their ERP (lib/erp.ts). All optional —
+   * when absent, those controls simply don't fire, so the matcher (and every
+   * existing test) behaves exactly as before. Keeping the matcher pure: the I/O
+   * happens in the read layer, the comparison stays here.
+   *
+   *   • `postedBillKeys`  — "vendor invoiceNumber" of bills ALREADY posted in the
+   *     ERP. A hit means this invoice was already paid (the real, historical
+   *     duplicate — distinct from `priorInvoiceNumbers`, which is only what's been
+   *     seen in THIS run's queue).
+   *   • `inactiveVendors` — vendor names marked inactive in the ERP. A bill from
+   *     one is a control/fraud signal, not a pricing question.
+   *   • `catalogSkus`     — the set of SKUs the ERP item catalog knows. An invoiced
+   *     SKU outside it never appears in the client's records.
+   */
+  postedBillKeys?: ReadonlySet<string>;
+  inactiveVendors?: ReadonlySet<string>;
+  catalogSkus?: ReadonlySet<string>;
 };
+
+/** The key under which a (vendor, invoiceNumber) pair is recorded for ERP dup detection. */
+export const billKey = (vendor: string, invoiceNumber: string): string =>
+  `${vendor}	${invoiceNumber}`;
 
 /**
  * Run the match. Returns a fully-populated `MatchResult` whose `verdict` drives
@@ -72,40 +94,77 @@ export const runMatch = (
     purchaseOrder,
     goodsReceipt,
     priorInvoiceNumbers = [],
+    postedBillKeys,
+    inactiveVendors,
+    catalogSkus,
   } = input;
   const currency = invoice.currency;
   const matchType: MatchResult["matchType"] = goodsReceipt
     ? "three_way"
     : "two_way";
 
-  // 1. Duplicate detection short-circuits everything else: a duplicate invoice
-  //    is a control failure, not a pricing question. Block before we reason
-  //    about line variances at all.
-  const isDuplicate = priorInvoiceNumbers.includes(invoice.invoiceNumber);
-  if (isDuplicate) {
-    return {
-      invoiceNumber: invoice.invoiceNumber,
-      poNumber: purchaseOrder?.poNumber ?? invoice.poNumber ?? null,
-      matchType,
-      verdict: "duplicate",
-      exceptions: [
-        {
-          sku: "—",
-          code: "duplicate",
-          message: `Invoice ${invoice.invoiceNumber} has already been processed — blocking to prevent a double payment.`,
-          variancePct: 0,
-          invoiceValue: invoice.total,
-          expectedValue: null,
-        },
-      ],
-      maxVariancePct: 0,
-      exceptionAmount: invoice.total,
-      currency,
-      invoiceTotal: invoice.total,
-    };
+  // A blocked-duplicate result, shared by the two duplicate controls below. Both
+  // are control failures (never a pricing question), so they short-circuit before
+  // any line reasoning and yield the same blocking verdict.
+  const blockedAsDuplicate = (
+    code: "duplicate" | "duplicate_in_erp",
+    message: string,
+  ): MatchResult => ({
+    invoiceNumber: invoice.invoiceNumber,
+    poNumber: purchaseOrder?.poNumber ?? invoice.poNumber ?? null,
+    matchType,
+    verdict: "duplicate",
+    exceptions: [
+      {
+        sku: "—",
+        code,
+        message,
+        variancePct: 0,
+        invoiceValue: invoice.total,
+        expectedValue: null,
+      },
+    ],
+    maxVariancePct: 0,
+    exceptionAmount: invoice.total,
+    currency,
+    invoiceTotal: invoice.total,
+  });
+
+  // 1a. In-run duplicate: the same invoice number was already seen earlier in the
+  //     queue we're processing (e.g. a vendor re-send). Block before anything else.
+  if (priorInvoiceNumbers.includes(invoice.invoiceNumber)) {
+    return blockedAsDuplicate(
+      "duplicate",
+      `Invoice ${invoice.invoiceNumber} has already been processed — blocking to prevent a double payment.`,
+    );
+  }
+
+  // 1b. Already-paid duplicate: a bill with this vendor + number is ALREADY posted
+  //     in the client's ERP (paid in a prior period, outside this run). This is the
+  //     historical duplicate the in-run check can't see — caught against the pulled
+  //     posted-bill list.
+  if (postedBillKeys?.has(billKey(invoice.vendor, invoice.invoiceNumber))) {
+    return blockedAsDuplicate(
+      "duplicate_in_erp",
+      `Invoice ${invoice.invoiceNumber} from ${invoice.vendor} is already posted as a bill in the ERP — blocking a double payment.`,
+    );
   }
 
   const exceptions: MatchException[] = [];
+
+  // Invoice-level: a bill from a vendor the ERP marks inactive is a control signal
+  // (a deactivated supplier shouldn't be sending payable invoices). Flagged once
+  // for the whole invoice, routed to a human — not blocked outright.
+  if (inactiveVendors?.has(invoice.vendor)) {
+    exceptions.push({
+      sku: "—",
+      code: "vendor_inactive",
+      message: `Vendor "${invoice.vendor}" is marked inactive in the ERP — invoice needs review before payment.`,
+      variancePct: 0,
+      invoiceValue: invoice.total,
+      expectedValue: null,
+    });
+  }
 
   // Index the PO and receipt lines by SKU for line-level comparison.
   const poLines = new Map(
@@ -127,6 +186,21 @@ export const runMatch = (
         variancePct: relDiff(line.amount, computed),
         invoiceValue: line.amount,
         expectedValue: computed,
+      });
+    }
+
+    // 2b. Against the ERP item catalog: an invoiced SKU the client's ERP doesn't
+    //     know shouldn't be payable (wrong item, or off-contract). Only checked
+    //     when a NON-EMPTY catalog was pulled — an empty set means "unknown / not
+    //     pulled", not "every SKU is off-catalog".
+    if (catalogSkus && catalogSkus.size > 0 && !catalogSkus.has(line.sku)) {
+      exceptions.push({
+        sku: line.sku,
+        code: "sku_not_in_catalog",
+        message: `Line ${line.sku} (${line.description}) isn't in the ERP item catalog.`,
+        variancePct: 0,
+        invoiceValue: line.amount,
+        expectedValue: null,
       });
     }
 

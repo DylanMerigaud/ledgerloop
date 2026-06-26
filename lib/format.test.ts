@@ -22,7 +22,10 @@ test("formatDuration: ms under a second, seconds above", () => {
   assert.equal(formatDuration(3400), "3.4s");
 });
 
-test("humanize: snake/kebab → Title Case", () => {
-  assert.equal(humanize("qty_variance_po"), "Qty Variance Po");
+test("humanize: snake/kebab → Title Case, keeping domain acronyms upper", () => {
+  assert.equal(humanize("qty_variance_po"), "Qty Variance PO");
   assert.equal(humanize("price-variance"), "Price Variance");
+  assert.equal(humanize("duplicate_in_erp"), "Duplicate In ERP");
+  assert.equal(humanize("sku_not_in_catalog"), "SKU Not In Catalog");
+  assert.equal(humanize("vendor_inactive"), "Vendor Inactive");
 });

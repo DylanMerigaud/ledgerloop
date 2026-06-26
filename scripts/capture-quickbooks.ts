@@ -1,13 +1,14 @@
 /**
- * Capture the REAL QuickBooks Online purchase-order payload to a committed fixture.
+ * Capture the REAL QuickBooks Online master data to a committed fixture.
  *
  * The procurement mirror of capture-bamboo.ts. It calls the live QBO API via the
- * SAME `fetchQboPurchaseOrders` the production adapter uses (OAuth2 refresh-token
- * → access token → `query select * from PurchaseOrder`), then writes the raw
- * response (plus a dated `_meta` provenance block) to
- * `db/fixtures/quickbooks/purchase-orders.json`. `recordedErp()` later replays
- * that exact payload through the same mapper. So the fixture is not a hand-written
- * mock — it is QuickBooks' own output, frozen on the date below.
+ * SAME fetchers the production adapter uses (OAuth2 refresh-token → access token →
+ * query), for each entity the matcher checks against: purchase orders, the vendor
+ * master, the item catalog, and the already-posted bills. It writes each raw
+ * response under its own key (plus a dated `_meta` block) to
+ * `db/fixtures/quickbooks/erp.json`. `recordedErp()` replays those exact payloads
+ * through the same mappers — so the fixture is not a mock, it's QuickBooks' own
+ * output, frozen on the date below.
  *
  * Why this exists: the QBO sandbox token/app is short-lived. Capturing the fixture
  * while it's alive means the demo (and CI, which has no key) keeps running on real
@@ -18,8 +19,14 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { isRecord } from "@/lib/assert";
-import { fetchQboPurchaseOrders, mapQboPurchaseOrders } from "@/lib/erp";
+import {
+  fetchQboPurchaseOrders,
+  fetchQboVendors,
+  fetchQboItems,
+  fetchQboBills,
+  mapQboPurchaseOrders,
+  type QboCreds,
+} from "@/lib/erp";
 import { persistRotatedRefreshToken } from "@/scripts/qbo-token-writeback";
 
 /** Same env loading as eval/run.ts — native, no dotenv dep. */
@@ -46,43 +53,53 @@ const main = async (): Promise<void> => {
     );
     process.exit(1);
   }
-
-  console.log(`Fetching purchase orders from QBO realm ${realmId} …`);
-  const raw = await fetchQboPurchaseOrders({
+  const creds: QboCreds = {
     clientId,
     clientSecret,
     refreshToken,
     realmId,
     accessToken: process.env.QBO_ACCESS_TOKEN,
-  });
+  };
 
-  // Validate the capture is usable BEFORE writing — a fixture that can't be mapped
-  // is worse than no fixture.
-  const pos = mapQboPurchaseOrders(raw);
+  console.log(`Fetching ERP data from QBO realm ${realmId} …`);
+  const [purchaseOrders, vendors, items, bills] = await Promise.all([
+    fetchQboPurchaseOrders(creds),
+    fetchQboVendors(creds),
+    fetchQboItems(creds),
+    fetchQboBills(creds),
+  ]);
+
+  // Validate the PO capture is usable BEFORE writing — a fixture whose POs can't
+  // be mapped is worse than no fixture (the others can legitimately be empty).
+  const pos = mapQboPurchaseOrders(purchaseOrders);
   if (pos.length === 0) {
     console.error(
       "Mapped 0 purchase orders. The sandbox has no item-based POs to read — " +
-        "create one in the QuickBooks sandbox UI (vendor + item lines) and retry.",
+        "run `pnpm erp:seed` first to create the scenario, then retry.",
     );
     process.exit(1);
   }
   console.log(`Mapped OK: ${pos.length} purchase order(s).`);
 
   // Provenance: real data, record exactly when/where from. The realm id is written
-  // (it's not a secret — it's a company id), the tokens are NOT.
+  // (it's a company id, not a secret); tokens are NOT.
   const payload = {
     _meta: {
-      source: "QuickBooks Online API — query select * from PurchaseOrder",
-      note: "Real API response captured from the live sandbox. Replayed offline by recordedErp(). Not a mock.",
+      source:
+        "QuickBooks Online API — queries for PurchaseOrder / Vendor / Item / Bill",
+      note: "Real API responses captured from the live sandbox. Replayed offline by recordedErp(). Not a mock.",
       capturedAt: new Date().toISOString(),
       realmId,
     },
-    ...(isRecord(raw) ? raw : {}),
+    purchaseOrders,
+    vendors,
+    items,
+    bills,
   };
 
   const outDir = path.join(process.cwd(), "db", "fixtures", "quickbooks");
   mkdirSync(outDir, { recursive: true });
-  const outFile = path.join(outDir, "purchase-orders.json");
+  const outFile = path.join(outDir, "erp.json");
   writeFileSync(outFile, JSON.stringify(payload, null, 2) + "\n", "utf8");
   console.log(`Wrote ${path.relative(process.cwd(), outFile)}`);
 };

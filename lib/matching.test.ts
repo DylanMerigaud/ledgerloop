@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { runMatch, type MatchInput } from "@/lib/matching";
+import { runMatch, billKey, type MatchInput } from "@/lib/matching";
 import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**
@@ -202,4 +202,57 @@ test("exceptionAmount accumulates money on exception lines only", () => {
   inv.total = 400;
   const r = run({ invoice: inv });
   assert.equal(r.exceptionAmount, 300); // the exception line's amount
+});
+
+/* ── ERP master-data controls ─────────────────────────────────────────────────
+   The matcher checks the invoice against what the client's ERP holds (vendors,
+   catalog, posted bills), pulled by the read layer. All optional — absent means
+   the control doesn't fire (the non-regression test pins that). */
+
+test("ERP context absent → behaves exactly as before (clean stays clean)", () => {
+  // The default `run` passes no ERP sets; a clean invoice must stay clean.
+  assert.equal(run().verdict, "clean");
+});
+
+test("already posted in the ERP → blocked as duplicate_in_erp", () => {
+  const r = run({
+    postedBillKeys: new Set([billKey("Acme Steel", "INV-100")]),
+  });
+  assert.equal(r.verdict, "duplicate");
+  assert.equal(r.exceptions[0]?.code, "duplicate_in_erp");
+});
+
+test("in-run duplicate takes precedence over the ERP duplicate", () => {
+  // Both controls would fire; the in-run one is checked first.
+  const r = run({
+    priorInvoiceNumbers: ["INV-100"],
+    postedBillKeys: new Set([billKey("Acme Steel", "INV-100")]),
+  });
+  assert.equal(r.exceptions[0]?.code, "duplicate");
+});
+
+test("inactive vendor in the ERP → vendor_inactive exception", () => {
+  const r = run({ inactiveVendors: new Set(["Acme Steel"]) });
+  assert.ok(r.exceptions.some((e) => e.code === "vendor_inactive"));
+  assert.equal(r.verdict, "exception");
+});
+
+test("an active vendor raises no vendor_inactive flag", () => {
+  const r = run({ inactiveVendors: new Set(["Some Other Co"]) });
+  assert.ok(!r.exceptions.some((e) => e.code === "vendor_inactive"));
+});
+
+test("invoiced SKU outside the ERP catalog → sku_not_in_catalog", () => {
+  // Catalog has only one of the two invoiced SKUs.
+  const r = run({ catalogSkus: new Set(["BOLT-M8"]) });
+  const offCatalog = r.exceptions.filter(
+    (e) => e.code === "sku_not_in_catalog",
+  );
+  assert.equal(offCatalog.length, 1);
+  assert.equal(offCatalog[0]?.sku, "NUT-M8");
+});
+
+test("an empty catalog set means 'not pulled' — no SKU is flagged", () => {
+  const r = run({ catalogSkus: new Set() });
+  assert.ok(!r.exceptions.some((e) => e.code === "sku_not_in_catalog"));
 });

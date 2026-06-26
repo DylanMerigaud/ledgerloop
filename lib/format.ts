@@ -27,10 +27,20 @@ export const formatDuration = (ms: number): string => {
   return `${(ms / 1000).toFixed(1)}s`;
 };
 
-/** Title-case a snake/kebab token ("qty_variance_po" → "Qty Variance Po"). */
+/** Domain acronyms that should stay upper-cased after title-casing. */
+const ACRONYMS = new Set(["po", "erp", "sku", "gl", "ap", "id"]);
+
+/** Title-case a snake/kebab token ("qty_variance_po" → "Qty Variance PO"),
+ *  keeping known domain acronyms (PO, ERP, SKU, …) upper-cased. */
 export const humanize = (token: string): string => {
   return token
     .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
+    .trim()
+    .split(/\s+/)
+    .map((w) =>
+      ACRONYMS.has(w.toLowerCase())
+        ? w.toUpperCase()
+        : w.charAt(0).toUpperCase() + w.slice(1),
+    )
+    .join(" ");
 };

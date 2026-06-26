@@ -57,7 +57,7 @@ flowchart LR
 ```
 
 - **Extraction (AI)** — the vendor's invoice PDF is read by a vision model into a schema-validated `Invoice`. The extracted invoice is what the rest of the pipeline runs on — matching joins the extracted lines against the PO, like production.
-- **Matching** — a 2-way (invoice ↔ PO) or 3-way (invoice ↔ PO ↔ goods receipt) match, returning `clean`, `exception`, or `duplicate`.
+- **Matching** — a 2-way (invoice ↔ PO) or 3-way (invoice ↔ PO ↔ goods receipt) match, returning `clean`, `exception`, or `duplicate`. The purchase orders are **pulled from the client's ERP** (QuickBooks), not hand-seeded — the procurement mirror of reading the org from the HRIS. The matcher also checks the invoice against the ERP's master data: a vendor the ERP marks **inactive**, a SKU **not in the catalog**, and a bill **already posted** in the ERP (the historical "already paid" duplicate, distinct from a re-send in the queue).
 - **Investigation** — runs only on an exception, and the one open-ended agent in the operational path. A number ("9% over the PO") doesn't tell a reviewer whether it's a legitimate price increase or an overcharge; that lives in unstructured records, and which records matter depends on what you find. The agent **chooses** which tools to call, reads them, and recommends. It decides nothing about the money.
 - **Approval workflow engine** — the invoice runs through the client's derived DAG ([`lib/approval-engine.ts`](lib/approval-engine.ts)): each gate's condition is evaluated, the active gates **pause for a human** (several can be pending in parallel — a fan-out), and the bill posts only once **every** active gate is approved. One rejection blocks everything downstream. A clean invoice trips no gate and goes straight through.
 - **Reconciliation** — posts the vendor bill and double-entry GL to the ERP, only once cleared.
@@ -73,6 +73,8 @@ The split-view dashboard shows the **invoice queue** (color-coded by outcome) an
 | `INV-2042` | Price mismatch — steel bar invoiced ~9% over the PO | `price_variance` → manager gate → **pauses for your decision** |
 | `INV-2048` | Quantity mismatch — invoiced 100 units, only 80 received | 3-way receipt check → manager gate → **pauses for your decision** |
 | `INV-2041` (re-send) | Duplicate — same invoice number twice | `duplicate` → **blocked**, not posted |
+| `INV-1990` | Already paid — a bill with this number is posted in the ERP | `duplicate_in_erp` → **blocked**, not posted |
+| `INV-2050` | Inactive vendor — the ERP marks this supplier inactive | `vendor_inactive` → routed to a human |
 | 6 × clean | Clean 2/3-way matches | no gate → straight-through |
 
 ---
@@ -84,6 +86,8 @@ The split-view dashboard shows the **invoice queue** (color-coded by outcome) an
 **The conditional approval workflow.** Approval isn't a single tier — it's a DAG of conditional gates ([`lib/approval-workflow.ts`](lib/approval-workflow.ts)): each step carries a `when` condition (amount / variance / department / verdict, combinable with all/any) and parallel `next` edges. The engine ([`lib/approval-engine.ts`](lib/approval-engine.ts)) walks it per invoice with collect-all semantics: a skipped gate is a transparent pass-through, several gates can pend at once, one rejection blocks downstream. The per-client config lives in a `ClientProfile` ([`lib/client-profile.ts`](lib/client-profile.ts)); an un-onboarded profile derives a behaviour-equivalent DAG from simple thresholds, so the old flat tiering is a strict subset.
 
 **The HRIS adapter is real, captured, replayed.** [`lib/hris.ts`](lib/hris.ts) reads BambooHR (`bambooHris`, live HTTP) or replays a fixture captured from that same API (`recordedHris`); one `defaultHris()` factory picks live-vs-recorded — the only place that branch exists. The committed fixture in [`db/fixtures/bamboohr/`](db/fixtures/bamboohr/) is **real BambooHR output**, captured on a dated run via `pnpm hris:capture` — not a mock — so the demo (and CI, which has no key) runs on real data and survives the trial key expiring. `pnpm hris:seed` / `hris:reset` stand up a curated org in a sandbox (scoped by a dedicated Division, server-side, so reset only removes what it created).
+
+**The ERP adapter is real, captured, replayed — the procurement mirror of the HRIS seam.** [`lib/erp.ts`](lib/erp.ts) reads QuickBooks Online (`liveQuickBooksErp`, OAuth2 + REST) or replays a fixture captured from that same API (`recordedErp`); one `defaultErp()` factory picks live-vs-recorded. It pulls the client's open **purchase orders** (matched against incoming invoices) plus the master data the AP controls check against — the **vendor** list, the **item catalog**, and the **posted bills**. The committed fixture in [`db/fixtures/quickbooks/`](db/fixtures/quickbooks/) is **real QuickBooks output**, captured via `pnpm erp:capture` — not a mock — so the demo and CI run with no key. `pnpm erp:seed` / `erp:reset` stand up the scenario in a sandbox (POs, an inactive vendor, an already-posted bill), scoped so reset only removes what it created. The pull is **read-only**; the run never writes back.
 
 **The investigator agent.** [`src/mastra/agents/investigator.ts`](src/mastra/agents/investigator.ts) is a Mastra `Agent` with three tools returning deliberately unstructured records. It runs an open-ended loop — picks which tools to call, reads them, writes a recommendation (`likely_legitimate` / `likely_overcharge` / `unclear`) — and only *recommends*; the engine and the human gate own the outcome. Tools read the trusted vendor from `requestContext`, not model args, so the agent can't pull the wrong vendor's file.
 
@@ -111,19 +115,21 @@ lib/
   onboarding.ts            derive a workflow from an org (+ onboarding-model.ts)
   workflow-edit.ts         conversational edits + diff (+ workflow-edit-model.ts)
   hris.ts                  BambooHR adapter: live + recorded, one factory
+  erp.ts                   QuickBooks adapter: pull POs + master data, live + recorded
   client-profile.ts        per-client config; flat policy → DAG bridge
-  matching.ts · erp.ts     pure, unit-tested decision logic
+  matching.ts              pure, unit-tested 2/3-way match + ERP master-data controls
   extract.ts               vision extraction (invoice PDF → validated Invoice)
   schema.ts · env.ts       Zod source of truth; typed env
   logger.ts · api-routes.ts · trace.ts   logging; endpoints; stream adapter
 app/api/
   run/ · onboarding/ · workflow/edit/ · pdf/[id]/
 db/
-  schema.ts · seed-data.ts · client.ts · fixtures/bamboohr/   Drizzle + real fixture
+  schema.ts · seed-data.ts · client.ts          Drizzle + the seeded scenario
+  fixtures/bamboohr/ · fixtures/quickbooks/      real captured HRIS + ERP fixtures
 config/eslint-rules/        custom lint rules (no-console, api-routes, …)
 ```
 
-> **The ERP is a stub with a real interface** ([`lib/erp.ts`](lib/erp.ts)): swap `fakeErp` for a `NetSuiteAdapter` of the same `ErpAdapter` and the rest is unchanged. The integration steps (Slack/Jira) are likewise honest stubs; NetSuite is the one with a real adapter seam.
+> **The ERP read path is real; the write-back is a stub** ([`lib/erp.ts`](lib/erp.ts)). The **pull** (purchase orders + vendor/item/bill master data) is a real QuickBooks Online adapter with a captured fixture — see "How it's built". The **reconciliation post** (vendor bill + GL) is still an honest stub behind the same `ErpAdapter` interface: swap `fakeErp` for a real post and the rest is unchanged. Pushing a bill back is the invisible half; importing the client's existing data is the interesting one. The integration steps (Slack/Jira) are likewise honest stubs.
 
 ---
 
@@ -161,6 +167,7 @@ pnpm dev                          # http://localhost:3000
 | `DATABASE_URL` | **yes** | Supabase Postgres — use the **transaction pooler** string |
 | `DIRECT_DATABASE_URL` | optional | Direct (non-pooled) string for `db:push` / `db:seed` |
 | `BAMBOO_HR_API_KEY` + `BAMBOO_HR_SUBDOMAIN` | optional | Live BambooHR. **Without them onboarding replays the committed real fixture** — the demo and CI work with no key. |
+| `QBO_CLIENT_ID` + `QBO_CLIENT_SECRET` + `QBO_REFRESH_TOKEN` + `QBO_REALM_ID` | optional | Live QuickBooks (ERP pull). **Without them the pipeline replays the committed real fixture** — the demo and CI work with no key. |
 | `UPSTASH_*` / `KV_REST_API_*` | optional | Per-IP rate limiting; fails open without it |
 
 > **Set a spend cap on the Anthropic key** — the deployed demo is public and the buttons call the model.
@@ -171,10 +178,10 @@ pnpm dev                          # http://localhost:3000
 
 ## What's next
 
-A stateless demo with a fake ERP; the decision logic is pure, typed, and unit-tested. Production is additive, not a rewrite:
+A stateless demo: the ERP **read** path is a real QuickBooks adapter (with a captured fixture), the **write-back** is a stub; the decision logic is pure, typed, and unit-tested. Production is additive, not a rewrite:
 
-- swap the fake ERP / integration stubs for real adapters (same interfaces),
-- live BambooHR (the adapter + a captured fixture already exist; a dev key with field-edit permissions unlocks self-serve seeding) and a second HRIS behind the same `HrisAdapter`,
+- swap the ERP write-back / integration stubs for real adapters (same interfaces); the pull adapter is already real, and a second ERP (NetSuite) drops in behind the same `PoSourceAdapter`,
+- live BambooHR + QuickBooks (both adapters + captured fixtures already exist) and a second HRIS behind the same `HrisAdapter`,
 - add persistence and an audit trail (the `agent_runs` table is shaped for it),
 - wire real approver identity to the per-step gates,
 - accept real uploaded PDFs at intake.

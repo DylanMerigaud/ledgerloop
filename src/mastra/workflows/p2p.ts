@@ -56,6 +56,11 @@ const RunInput = z.object({
   purchaseOrder: PurchaseOrder.nullable(),
   goodsReceipt: GoodsReceipt.nullable(),
   priorInvoiceNumbers: z.array(z.string()),
+  /* ERP master data the matcher's AP controls check against (pulled read-only by
+     the DB layer). Default to empty so a run without them behaves as before. */
+  postedBillKeys: z.array(z.string()).default([]),
+  inactiveVendors: z.array(z.string()).default([]),
+  catalogSkus: z.array(z.string()).default([]),
   decisions: z.record(z.string(), z.enum(["approve", "reject"])).default({}),
   /* On a phase-2 resume the document was already read in phase 1 — skip the
      vision call so a resume doesn't re-extract (wasted cost + latency). */
@@ -150,6 +155,9 @@ const matchingStep = createStep({
         purchaseOrder: inputData.purchaseOrder,
         goodsReceipt: inputData.goodsReceipt,
         priorInvoiceNumbers: inputData.priorInvoiceNumbers,
+        postedBillKeys: new Set(inputData.postedBillKeys),
+        inactiveVendors: new Set(inputData.inactiveVendors),
+        catalogSkus: new Set(inputData.catalogSkus),
       },
       inputData.profile?.tolerances ?? DEFAULT_TOLERANCES,
     );

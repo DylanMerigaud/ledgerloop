@@ -140,7 +140,12 @@ const MatchExceptionCode = z.enum([
   "unit_price_x_qty", // line amount != qty * unitPrice (arithmetic)
   "no_po_line", // invoice line has no matching PO line
   "no_receipt_line", // (3-way only) invoice line was never received
-  "duplicate", // this invoice number was already processed (block, don't pay twice)
+  "duplicate", // this invoice number was already processed THIS RUN (re-send in the queue)
+  // ── ERP master-data controls (the invoice is checked against what the client's
+  //    ERP actually holds — see lib/erp.ts pullVendors/pullItems/pullPostedBills) ──
+  "duplicate_in_erp", // a bill with this vendor+number is already posted in the ERP (already paid)
+  "vendor_inactive", // the billing vendor is marked inactive in the ERP (control/fraud signal)
+  "sku_not_in_catalog", // an invoiced SKU isn't in the vendor's item catalog in the ERP
 ]);
 
 /** A single reconciliation problem on a single line, with the supporting numbers. */

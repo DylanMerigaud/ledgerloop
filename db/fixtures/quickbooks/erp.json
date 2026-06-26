@@ -1,0 +1,4322 @@
+{
+  "_meta": {
+    "source": "QuickBooks Online API — queries for PurchaseOrder / Vendor / Item / Bill",
+    "note": "Real API responses captured from the live sandbox. Replayed offline by recordedErp(). Not a mock.",
+    "capturedAt": "2026-06-26T17:51:58.875Z",
+    "realmId": "9341457351478236"
+  },
+  "purchaseOrders": {
+    "QueryResponse": {
+      "PurchaseOrder": [
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "175",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:44-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:44-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7749",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Ergonomic task chair",
+              "Amount": 2880,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "37",
+                  "name": "CHAIR-ERG"
+                },
+                "UnitPrice": 240,
+                "Qty": 12,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Sit-stand desk",
+              "Amount": 4920,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "38",
+                  "name": "DESK-STD"
+                },
+                "UnitPrice": 410,
+                "Qty": 12,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "67",
+            "name": "LL-DEMO Forma Office"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 7800
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "174",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:43-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:43-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7748",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Cat6 cable 305m reel",
+              "Amount": 9500,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "36",
+                  "name": "CAT6-305"
+                },
+                "UnitPrice": 95,
+                "Qty": 100,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "66",
+            "name": "LL-DEMO Conduit Cable Co"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 9500
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "173",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:42-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:42-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7747",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Isopropyl alcohol 99% (5L)",
+              "Amount": 660,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "34",
+                  "name": "SOLV-IPA-5L"
+                },
+                "UnitPrice": 22,
+                "Qty": 30,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Nitrile gloves (box/100)",
+              "Amount": 475,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "35",
+                  "name": "GLOVE-NITR"
+                },
+                "UnitPrice": 9.5,
+                "Qty": 50,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "65",
+            "name": "LL-DEMO Halcyon Lab Supplies"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 1135
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "172",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:41-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:41-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7746",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "14\" business laptop",
+              "Amount": 6400,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "33",
+                  "name": "LAPTOP-14"
+                },
+                "UnitPrice": 1280,
+                "Qty": 5,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "64",
+            "name": "LL-DEMO Vertex IT Hardware"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 6400
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "171",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:40-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:40-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7745",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Cyan ink cartridge",
+              "Amount": 640,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "31",
+                  "name": "INK-CYAN"
+                },
+                "UnitPrice": 64,
+                "Qty": 10,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Magenta ink cartridge",
+              "Amount": 640,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "32",
+                  "name": "INK-MAG"
+                },
+                "UnitPrice": 64,
+                "Qty": 10,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "63",
+            "name": "LL-DEMO Pinpoint Print Supplies"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 1280
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "170",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:38-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:38-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7744",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "A4 shipping box (bundle/25)",
+              "Amount": 504,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "28",
+                  "name": "BOX-A4"
+                },
+                "UnitPrice": 8.4,
+                "Qty": 60,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Packing tape 48mm (pack/6)",
+              "Amount": 336,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "29",
+                  "name": "TAPE-48"
+                },
+                "UnitPrice": 11.2,
+                "Qty": 30,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "3",
+              "LineNum": 3,
+              "Description": "Stretch wrap 500mm",
+              "Amount": 348,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "30",
+                  "name": "WRAP-500"
+                },
+                "UnitPrice": 14.5,
+                "Qty": 24,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "62",
+            "name": "LL-DEMO Meridian Packaging"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 1188
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "169",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:37-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:37-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7743",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Senior consultant (day)",
+              "Amount": 9600,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "26",
+                  "name": "CONSULT-SR"
+                },
+                "UnitPrice": 1200,
+                "Qty": 8,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Project manager (day)",
+              "Amount": 3800,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "27",
+                  "name": "CONSULT-PM"
+                },
+                "UnitPrice": 950,
+                "Qty": 4,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "61",
+            "name": "LL-DEMO Lumen Advisory"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 13400
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "168",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:36-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:36-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7742",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Cold-rolled steel bar 20mm (per m)",
+              "Amount": 6000,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "24",
+                  "name": "STL-BAR-20"
+                },
+                "UnitPrice": 7.5,
+                "Qty": 800,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Steel sheet 2mm (per m²)",
+              "Amount": 2160,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "25",
+                  "name": "STL-SHEET-2"
+                },
+                "UnitPrice": 18,
+                "Qty": 120,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "60",
+            "name": "LL-DEMO Severn Steelworks"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 8160
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "167",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:34-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:34-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7741",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "42U server rack",
+              "Amount": 2900,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "22",
+                  "name": "SVR-RACK-42U"
+                },
+                "UnitPrice": 1450,
+                "Qty": 2,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "30A rack PDU",
+              "Amount": 1280,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "23",
+                  "name": "PDU-30A"
+                },
+                "UnitPrice": 320,
+                "Qty": 4,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "59",
+            "name": "LL-DEMO NorthBridge Datacenter Supply"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 4180
+        },
+        {
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "166",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:33-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:33-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "PO-7740",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Hex bolt M8×50 (box/100)",
+              "Amount": 500,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "19",
+                  "name": "BOLT-M8-50"
+                },
+                "UnitPrice": 12.5,
+                "Qty": 40,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Hex nut M8 (box/100)",
+              "Amount": 168,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "20",
+                  "name": "NUT-M8"
+                },
+                "UnitPrice": 4.2,
+                "Qty": 40,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "3",
+              "LineNum": 3,
+              "Description": "Flat washer M8 (box/200)",
+              "Amount": 62,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "21",
+                  "name": "WSH-M8"
+                },
+                "UnitPrice": 3.1,
+                "Qty": 20,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "58",
+            "name": "LL-DEMO Atlas Fasteners"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 730
+        },
+        {
+          "VendorAddr": {
+            "Id": "92",
+            "Line1": "Julie Norton",
+            "Line2": "Norton Lumber and Building Materials",
+            "Line3": "4528 Country Road",
+            "Line4": "Middlefield, CA  94303",
+            "Lat": "37.4530553",
+            "Long": "-122.1178261"
+          },
+          "ShipAddr": {
+            "Id": "93",
+            "Line1": "Craig's Design and Landscaping Services",
+            "Line2": "123 Sierra Way",
+            "Line3": "San Pablo, CA  87999",
+            "Lat": "INVALID",
+            "Long": "INVALID"
+          },
+          "EmailStatus": "NotSet",
+          "POStatus": "Closed",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "125",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-29T13:10:14-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-29T13:10:36-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "1004",
+          "TxnDate": "2026-05-29",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "126",
+              "TxnType": "Bill"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Fountain Pump",
+              "Amount": 80,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "11",
+                  "name": "Pump"
+                },
+                "UnitPrice": 10,
+                "Qty": 8,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Rock Fountain",
+              "Amount": 125,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "5",
+                  "name": "Rock Fountain"
+                },
+                "UnitPrice": 125,
+                "Qty": 1,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "46",
+            "name": "Norton Lumber and Building Materials"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 205
+        },
+        {
+          "VendorAddr": {
+            "Id": "89",
+            "Line1": "Geoff Hicks",
+            "Line2": "Hicks Hardware",
+            "Line3": "42 Main St.",
+            "Line4": "Middlefield, CA  94303",
+            "Lat": "37.4530553",
+            "Long": "-122.1178261"
+          },
+          "ShipAddr": {
+            "Id": "90",
+            "Line1": "Craig's Design and Landscaping Services",
+            "Line2": "123 Sierra Way",
+            "Line3": "San Pablo, CA  87999",
+            "Lat": "INVALID",
+            "Long": "INVALID"
+          },
+          "EmailStatus": "NotSet",
+          "POStatus": "Closed",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "114",
+          "SyncToken": "2",
+          "MetaData": {
+            "CreateTime": "2026-05-29T12:50:05-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-29T12:51:47-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "1003",
+          "TxnDate": "2026-05-29",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "115",
+              "TxnType": "Purchase"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Rock Fountain",
+              "Amount": 125,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "CustomerRef": {
+                  "value": "25",
+                  "name": "Sushi by Katsuyuki"
+                },
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "5",
+                  "name": "Rock Fountain"
+                },
+                "UnitPrice": 125,
+                "Qty": 1,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Sprinkler Heads",
+              "Amount": 11.25,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "CustomerRef": {
+                  "value": "25",
+                  "name": "Sushi by Katsuyuki"
+                },
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "16",
+                  "name": "Sprinkler Heads"
+                },
+                "UnitPrice": 0.75,
+                "Qty": 15,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "3",
+              "LineNum": 3,
+              "Description": "Sprinkler Pipes",
+              "Amount": 62.5,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "CustomerRef": {
+                  "value": "25",
+                  "name": "Sushi by Katsuyuki"
+                },
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "17",
+                  "name": "Sprinkler Pipes"
+                },
+                "UnitPrice": 2.5,
+                "Qty": 25,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "4",
+              "LineNum": 4,
+              "Description": "Fountain Pump",
+              "Amount": 30,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "11",
+                  "name": "Pump"
+                },
+                "UnitPrice": 10,
+                "Qty": 3,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "41",
+            "name": "Hicks Hardware"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 228.75
+        },
+        {
+          "VendorAddr": {
+            "Id": "63",
+            "Line1": "Tim Philip",
+            "Line2": "Tim Philip Masonry",
+            "Line3": "3948 Elm St.",
+            "Line4": "Middlefield, CA  94482",
+            "Lat": "INVALID",
+            "Long": "INVALID"
+          },
+          "ShipAddr": {
+            "Id": "64",
+            "Line1": "Craig's Design and Landscaping Services",
+            "Line2": "123 Sierra Way",
+            "Line3": "San Pablo, CA  87999",
+            "Lat": "INVALID",
+            "Long": "INVALID"
+          },
+          "EmailStatus": "NotSet",
+          "POStatus": "Open",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "45",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-27T11:33:16-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-27T11:33:16-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "1002",
+          "TxnDate": "2026-05-27",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Rock Fountain",
+              "Amount": 125,
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "5",
+                  "name": "Rock Fountain"
+                },
+                "UnitPrice": 125,
+                "Qty": 1,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "51",
+            "name": "Tim Philip Masonry"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 125
+        }
+      ],
+      "startPosition": 1,
+      "maxResults": 13,
+      "totalCount": 13
+    },
+    "time": "2026-06-26T10:51:58.704-07:00"
+  },
+  "vendors": {
+    "QueryResponse": {
+      "Vendor": [
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 500,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "69",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:49:54-07:00",
+            "LastUpdatedTime": "2026-06-26T10:51:46-07:00"
+          },
+          "DisplayName": "Atlas Fasteners",
+          "PrintOnCheckName": "Atlas Fasteners",
+          "Active": true,
+          "V4IDPseudonym": "002098a015fff814404ddd950b82eb2e70f67f"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "56",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-12T14:28:52-07:00",
+            "LastUpdatedTime": "2026-06-12T14:28:52-07:00"
+          },
+          "DisplayName": "Bob's Burger Joint",
+          "PrintOnCheckName": "Bob's Burger Joint",
+          "Active": true,
+          "V4IDPseudonym": "0020981721acb9e21544e9be1fcbd8b535a7ae"
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "15 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "1345",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "30",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:07:56-07:00",
+            "LastUpdatedTime": "2026-05-27T11:13:46-07:00"
+          },
+          "GivenName": "Bessie",
+          "FamilyName": "Williams",
+          "CompanyName": "Books by Bessie",
+          "DisplayName": "Books by Bessie",
+          "PrintOnCheckName": "Books by Bessie",
+          "Active": true,
+          "V4IDPseudonym": "002098cc2fd6cfc61c4f2d9ba502d1dcca8735",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 555-7745"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "Books@Intuit.com"
+          },
+          "WebAddr": {
+            "URI": "http://www.booksbybessie.co"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "P.O. Box 5",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94482",
+            "Lat": "43.8249453",
+            "Long": "-79.2639122"
+          },
+          "Balance": 241.23,
+          "BillRate": 0,
+          "AcctNum": "7653412",
+          "Vendor1099": true,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "31",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:12:02-07:00",
+            "LastUpdatedTime": "2026-05-26T15:28:48-07:00"
+          },
+          "GivenName": "Nick",
+          "FamilyName": "Brosnahan",
+          "CompanyName": "Brosnahan Insurance Agency",
+          "DisplayName": "Brosnahan Insurance Agency",
+          "PrintOnCheckName": "Brosnahan Insurance Agency",
+          "Active": true,
+          "V4IDPseudonym": "00209858281e63d9024e3398bf2e4976cd79af",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 555-9912"
+          },
+          "Mobile": {
+            "FreeFormNumber": "(650) 555-9874"
+          },
+          "Fax": {
+            "FreeFormNumber": "(555) 123-4567"
+          },
+          "WebAddr": {
+            "URI": "http://BrosnahanInsuranceAgency.org"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "10 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "TermRef": {
+            "value": "1",
+            "name": "Due on receipt"
+          },
+          "Balance": 0,
+          "BillRate": 25,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "32",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:13:24-07:00",
+            "LastUpdatedTime": "2026-05-29T12:55:23-07:00"
+          },
+          "CompanyName": "Cal Telephone",
+          "DisplayName": "Cal Telephone",
+          "PrintOnCheckName": "Cal Telephone",
+          "Active": true,
+          "V4IDPseudonym": "0020984e322635b73e44e2a0e5d3e0f84b267f",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 555-1616"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "33",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:13:52-07:00",
+            "LastUpdatedTime": "2026-05-22T10:13:52-07:00"
+          },
+          "CompanyName": "Chin's Gas and Oil",
+          "DisplayName": "Chin's Gas and Oil",
+          "PrintOnCheckName": "Chin's Gas and Oil",
+          "Active": true,
+          "V4IDPseudonym": "0020989e5cb2e6918142758296261dd9c539f1"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "123456789",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "34",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:14:48-07:00",
+            "LastUpdatedTime": "2026-05-22T10:14:48-07:00"
+          },
+          "CompanyName": "Cigna Health Care",
+          "DisplayName": "Cigna Health Care",
+          "PrintOnCheckName": "Cigna Health Care",
+          "Active": true,
+          "V4IDPseudonym": "00209837ed4532c7b041acadd17b4251293b0f",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(520) 555-9874"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "1515 Main St.",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94482",
+            "Lat": "37.3787808",
+            "Long": "-122.1158227"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "35",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:16:29-07:00",
+            "LastUpdatedTime": "2026-05-22T10:16:29-07:00"
+          },
+          "GivenName": "Jenni",
+          "FamilyName": "Winslow",
+          "CompanyName": "Computers by Jenni",
+          "DisplayName": "Computers by Jenni",
+          "PrintOnCheckName": "Computers by Jenni",
+          "Active": true,
+          "V4IDPseudonym": "002098450002430f80423fbebf02a9dad89cea",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 555-8721"
+          },
+          "Mobile": {
+            "FreeFormNumber": "(650) 111-5648"
+          },
+          "Fax": {
+            "FreeFormNumber": "(650) 999-2663"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "Msfixit@Intuit.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 755,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "36",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:16:54-07:00",
+            "LastUpdatedTime": "2026-05-27T11:31:42-07:00"
+          },
+          "CompanyName": "Diego's Road Warrior Bodyshop",
+          "DisplayName": "Diego's Road Warrior Bodyshop",
+          "PrintOnCheckName": "Diego's Road Warrior Bodyshop",
+          "Active": true,
+          "V4IDPseudonym": "002098bb8414a448c5493597b6b38cf493e36a"
+        },
+        {
+          "BillAddr": {
+            "Id": "3"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "68",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:49:54-07:00",
+            "LastUpdatedTime": "2026-06-26T10:51:45-07:00"
+          },
+          "DisplayName": "Dormant Metals LLC (deleted)",
+          "PrintOnCheckName": "Dormant Metals LLC",
+          "Active": false,
+          "V4IDPseudonym": "002098aac2c677771a4fcba5ba645be205e223"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "37",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:17:10-07:00",
+            "LastUpdatedTime": "2026-05-22T10:17:10-07:00"
+          },
+          "CompanyName": "EDD",
+          "DisplayName": "EDD",
+          "PrintOnCheckName": "EDD",
+          "Active": true,
+          "V4IDPseudonym": "002098fd2a2537fdda4f298aa0217c5b245b2e"
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "45896 Main St.",
+            "City": "Middlefield",
+            "Country": "USA",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "39765",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "38",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:19:42-07:00",
+            "LastUpdatedTime": "2026-05-22T10:19:42-07:00"
+          },
+          "Title": "Ms.",
+          "GivenName": "Julie",
+          "MiddleName": "I.",
+          "FamilyName": "Ellis",
+          "CompanyName": "Ellis Equipment Rental",
+          "DisplayName": "Ellis Equipment Rental",
+          "PrintOnCheckName": "Ellis Equipment Rental",
+          "Active": true,
+          "V4IDPseudonym": "002098c404028e2e634ce2b55b92b31ce33a2b",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 555-3333"
+          },
+          "Mobile": {
+            "FreeFormNumber": "(650) 445-3333"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "Rental@intuit.com"
+          },
+          "WebAddr": {
+            "URI": "http://rental.intuit.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "39",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:20:03-07:00",
+            "LastUpdatedTime": "2026-05-22T10:20:03-07:00"
+          },
+          "CompanyName": "Fidelity",
+          "DisplayName": "Fidelity",
+          "PrintOnCheckName": "Fidelity",
+          "Active": true,
+          "V4IDPseudonym": "00209862d7e61bea614ad2ae05607af26f4a19"
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "P.O.Box 357",
+            "City": "South Orange",
+            "CountrySubDivisionCode": "NJ",
+            "PostalCode": "07079",
+            "Lat": "40.7489277",
+            "Long": "-74.2609903"
+          },
+          "Balance": 0,
+          "BillRate": 18,
+          "AcctNum": "55642",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "40",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:24:28-07:00",
+            "LastUpdatedTime": "2026-05-28T13:43:08-07:00"
+          },
+          "GivenName": "Melanie",
+          "FamilyName": "Hall",
+          "CompanyName": "Hall Properties",
+          "DisplayName": "Hall Properties",
+          "PrintOnCheckName": "Hall Properties",
+          "Active": true,
+          "V4IDPseudonym": "0020981674c16f8f384f61807a0760f345c2b1",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(973) 555-3827"
+          },
+          "Mobile": {
+            "FreeFormNumber": "(973) 888-6222"
+          },
+          "WebAddr": {
+            "URI": "http://www.hallproperties.intuit.org"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "42 Main St.",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "556223",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "41",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:26:56-07:00",
+            "LastUpdatedTime": "2026-05-28T13:01:57-07:00"
+          },
+          "GivenName": "Geoff",
+          "FamilyName": "Hicks",
+          "CompanyName": "Hicks Hardware",
+          "DisplayName": "Hicks Hardware",
+          "PrintOnCheckName": "Hicks Hardware",
+          "Active": true,
+          "V4IDPseudonym": "002098561bf916a9404db9b7e12207c1f70cb9",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 554-1973"
+          },
+          "Mobile": {
+            "FreeFormNumber": "(650) 445-6666"
+          },
+          "WebAddr": {
+            "URI": "http://Hickshardware.co"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "53 Main St.",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "776543",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "42",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:28:25-07:00",
+            "LastUpdatedTime": "2026-05-22T10:28:25-07:00"
+          },
+          "Title": "Mrs.",
+          "GivenName": "Laurel",
+          "MiddleName": "J.",
+          "FamilyName": "Lee",
+          "CompanyName": "Lee Advertising",
+          "DisplayName": "Lee Advertising",
+          "PrintOnCheckName": "Lee Advertising",
+          "Active": true,
+          "V4IDPseudonym": "0020989746fac150454447a938131b3bb518fc",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 554-4622"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "58",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T19:36:03-07:00",
+            "LastUpdatedTime": "2026-06-25T19:36:03-07:00"
+          },
+          "DisplayName": "LL-DEMO Atlas Fasteners",
+          "PrintOnCheckName": "LL-DEMO Atlas Fasteners",
+          "Active": true,
+          "V4IDPseudonym": "002098eb381130490047a3894e85f0bcf33e49"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "66",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:39-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:39-07:00"
+          },
+          "DisplayName": "LL-DEMO Conduit Cable Co",
+          "PrintOnCheckName": "LL-DEMO Conduit Cable Co",
+          "Active": true,
+          "V4IDPseudonym": "00209807f7e03236134c2887d71fa7766a9aed"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "67",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:41-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:41-07:00"
+          },
+          "DisplayName": "LL-DEMO Forma Office",
+          "PrintOnCheckName": "LL-DEMO Forma Office",
+          "Active": true,
+          "V4IDPseudonym": "002098433e09e335e94bfa81078e6396808743"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "65",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:37-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:37-07:00"
+          },
+          "DisplayName": "LL-DEMO Halcyon Lab Supplies",
+          "PrintOnCheckName": "LL-DEMO Halcyon Lab Supplies",
+          "Active": true,
+          "V4IDPseudonym": "002098f6e639cc43064046844e9603be67b36d"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "61",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:28-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:28-07:00"
+          },
+          "DisplayName": "LL-DEMO Lumen Advisory",
+          "PrintOnCheckName": "LL-DEMO Lumen Advisory",
+          "Active": true,
+          "V4IDPseudonym": "0020988be548abaaef4eacb9b040231181f960"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "62",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:30-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:30-07:00"
+          },
+          "DisplayName": "LL-DEMO Meridian Packaging",
+          "PrintOnCheckName": "LL-DEMO Meridian Packaging",
+          "Active": true,
+          "V4IDPseudonym": "00209825e15d8f80f84afeb0e9e9d7b06b0110"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "59",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:23-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:23-07:00"
+          },
+          "DisplayName": "LL-DEMO NorthBridge Datacenter Supply",
+          "PrintOnCheckName": "LL-DEMO NorthBridge Datacenter Supply",
+          "Active": true,
+          "V4IDPseudonym": "0020986881a98ad2df4586a3b3117596d65ad1"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "63",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:33-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:33-07:00"
+          },
+          "DisplayName": "LL-DEMO Pinpoint Print Supplies",
+          "PrintOnCheckName": "LL-DEMO Pinpoint Print Supplies",
+          "Active": true,
+          "V4IDPseudonym": "002098a7785fe519e44cb39a46a6beadfe7d55"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "60",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:25-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:25-07:00"
+          },
+          "DisplayName": "LL-DEMO Severn Steelworks",
+          "PrintOnCheckName": "LL-DEMO Severn Steelworks",
+          "Active": true,
+          "V4IDPseudonym": "002098ab11993a0af64696839e42ce0439c064"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "64",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:35-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:35-07:00"
+          },
+          "DisplayName": "LL-DEMO Vertex IT Hardware",
+          "PrintOnCheckName": "LL-DEMO Vertex IT Hardware",
+          "Active": true,
+          "V4IDPseudonym": "002098a21220bf759e48dd9aa28ad786746aad"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "43",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:28:46-07:00",
+            "LastUpdatedTime": "2026-05-22T10:28:46-07:00"
+          },
+          "CompanyName": "Mahoney Mugs",
+          "DisplayName": "Mahoney Mugs",
+          "PrintOnCheckName": "Mahoney Mugs",
+          "Active": true,
+          "V4IDPseudonym": "002098b4df907fdc5e44939f992a8773e2406d"
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "44",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:29:10-07:00",
+            "LastUpdatedTime": "2026-05-22T10:29:10-07:00"
+          },
+          "CompanyName": "Met Life Dental",
+          "DisplayName": "Met Life Dental",
+          "PrintOnCheckName": "Met Life Dental",
+          "Active": true,
+          "V4IDPseudonym": "0020984d84d3d5507a48bd8d7ef94d8471b052"
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "123 Anywhere Ave",
+            "City": "Tucson",
+            "CountrySubDivisionCode": "AZ",
+            "PostalCode": "85704",
+            "Lat": "32.3477051",
+            "Long": "-110.9992777"
+          },
+          "TermRef": {
+            "value": "3",
+            "name": "Net 30"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "164978565103482659421",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "45",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:31:37-07:00",
+            "LastUpdatedTime": "2026-05-22T10:31:37-07:00"
+          },
+          "CompanyName": "National Eye Care",
+          "DisplayName": "National Eye Care",
+          "PrintOnCheckName": "National Eye Care",
+          "Active": true,
+          "V4IDPseudonym": "00209831dc53ea7be84b64a517d6deaac4c129",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(800) 555-5555"
+          },
+          "Fax": {
+            "FreeFormNumber": "(800) 666-6666"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "Nateyecare@intuit.com, pauliejones15@intuit.com"
+          },
+          "WebAddr": {
+            "URI": "http://www.nateyecare.intuit.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "4528 Country Road",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.3752919",
+            "Long": "-122.1692159"
+          },
+          "Balance": 205,
+          "BillRate": 0,
+          "AcctNum": "32980256",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "46",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:32:55-07:00",
+            "LastUpdatedTime": "2026-05-29T13:10:36-07:00"
+          },
+          "GivenName": "Julie",
+          "FamilyName": "Norton",
+          "CompanyName": "Norton Lumber and Building Materials",
+          "DisplayName": "Norton Lumber and Building Materials",
+          "PrintOnCheckName": "Norton Lumber and Building Materials",
+          "Active": true,
+          "V4IDPseudonym": "00209896d7af68b2654cc5a61efe905cc386ab",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 363-6578"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "Materials@intuit.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "P.O. Box 15",
+            "City": "Bayshore",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94326",
+            "Lat": "45.2720537",
+            "Long": "-79.7935909"
+          },
+          "TermRef": {
+            "value": "1",
+            "name": "Due on receipt"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "64132549",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "47",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:35:10-07:00",
+            "LastUpdatedTime": "2026-05-22T10:35:10-07:00"
+          },
+          "GivenName": "Pam",
+          "FamilyName": "Seitz",
+          "CompanyName": "Pam Seitz, CPA",
+          "DisplayName": "Pam Seitz",
+          "PrintOnCheckName": "Pam Seitz",
+          "Active": true,
+          "V4IDPseudonym": "002098447e53d3099f4d9a8042c84bb03c4fd7",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 557-8855"
+          },
+          "Mobile": {
+            "FreeFormNumber": "(650) 888-4446"
+          },
+          "Fax": {
+            "FreeFormNumber": "(556) 454-5555"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "SeitzCPA@noemail.com"
+          },
+          "WebAddr": {
+            "URI": "http://seitzcpas.intuit.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "3",
+            "Line1": "4 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 86.44,
+          "BillRate": 0,
+          "AcctNum": "00649587213",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "48",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:36:57-07:00",
+            "LastUpdatedTime": "2026-05-28T13:00:36-07:00"
+          },
+          "CompanyName": "PG&E",
+          "DisplayName": "PG&E",
+          "PrintOnCheckName": "PG&E",
+          "Active": true,
+          "V4IDPseudonym": "002098736b0f6a9ddf451fb910f7d1c1534dd0",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(888) 555-9465"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "utilities@noemail.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "P.O. Box 147",
+            "City": "Bayshore",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94326",
+            "Lat": "45.2720537",
+            "Long": "-79.7935909"
+          },
+          "Balance": 315,
+          "BillRate": 0,
+          "AcctNum": "000005641",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "49",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:38:12-07:00",
+            "LastUpdatedTime": "2026-05-29T12:36:59-07:00"
+          },
+          "GivenName": "Jenny",
+          "FamilyName": "Robertson",
+          "CompanyName": "Robertson & Associates",
+          "DisplayName": "Robertson & Associates",
+          "PrintOnCheckName": "Robertson & Associates",
+          "Active": true,
+          "V4IDPseudonym": "00209888d8d69ecceb42289bac740616546772",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(650) 557-1111"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "57",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-12T14:29:35-07:00",
+            "LastUpdatedTime": "2026-06-12T14:29:35-07:00"
+          },
+          "DisplayName": "Squeaky Kleen Car Wash",
+          "PrintOnCheckName": "Squeaky Kleen Car Wash",
+          "Active": true,
+          "V4IDPseudonym": "002098b17bb987489d452f9d7061ce77a07b71"
+        },
+        {
+          "BillAddr": {
+            "Id": "3",
+            "Line1": "1111 Elm St.",
+            "City": "Middlefield",
+            "Country": "USA",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94482",
+            "Lat": "37.4604972",
+            "Long": "-122.1547528"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "2154",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "50",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:40:09-07:00",
+            "LastUpdatedTime": "2026-05-27T15:10:33-07:00"
+          },
+          "GivenName": "Tania",
+          "FamilyName": "Kronberg",
+          "CompanyName": "Tania's Nursery",
+          "DisplayName": "Tania's Nursery",
+          "PrintOnCheckName": "Tania's Nursery",
+          "Active": true,
+          "V4IDPseudonym": "002098a110e016890d4cd289d76b999a1d897c",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(886) 554-2265"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "plantqueen@taniasnursery.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "3948 Elm St.",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94482",
+            "Lat": "37.4604972",
+            "Long": "-122.1547528"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "0078965",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "51",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:42:31-07:00",
+            "LastUpdatedTime": "2026-05-28T13:06:58-07:00"
+          },
+          "GivenName": "Tim",
+          "FamilyName": "Philip",
+          "CompanyName": "Tim Philip Masonry",
+          "DisplayName": "Tim Philip Masonry",
+          "PrintOnCheckName": "Tim Philip Masonry",
+          "Active": true,
+          "V4IDPseudonym": "0020988b55d7b4daf848b6ac2b78fdd1dede6b",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(800) 556-1254"
+          },
+          "Mobile": {
+            "FreeFormNumber": "(650) 555-1549"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "tim.philip@timphilipmasonry.com"
+          },
+          "WebAddr": {
+            "URI": "http://www.bricksbytim4less.co"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "52",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:43:57-07:00",
+            "LastUpdatedTime": "2026-05-22T10:43:57-07:00"
+          },
+          "Title": "Mr.",
+          "GivenName": "Tony",
+          "MiddleName": "L",
+          "FamilyName": "Rodonuwu",
+          "Suffix": "Jr.",
+          "DisplayName": "Tony Rondonuwu",
+          "PrintOnCheckName": "Tony Rondonuwu",
+          "Active": true,
+          "V4IDPseudonym": "0020988a846e57b84e45ca8270ac84ff3311d6",
+          "PrimaryEmailAddr": {
+            "Address": "tonyrjr@intuit.com"
+          }
+        },
+        {
+          "BillAddr": {
+            "Id": "1",
+            "Line1": "5568 Capital Drive",
+            "City": "Tucson",
+            "CountrySubDivisionCode": "AZ",
+            "PostalCode": "85718",
+            "Lat": "32.3389931",
+            "Long": "-110.9268201"
+          },
+          "Balance": 0,
+          "BillRate": 0,
+          "AcctNum": "00000111546",
+          "Vendor1099": false,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "CostRate": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "53",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:46:00-07:00",
+            "LastUpdatedTime": "2026-05-22T10:46:00-07:00"
+          },
+          "DisplayName": "United States Treasury",
+          "PrintOnCheckName": "United States Treasury",
+          "Active": true,
+          "V4IDPseudonym": "0020983240603328c94f3b9349660f31d8177e",
+          "PrimaryPhone": {
+            "FreeFormNumber": "(888) 555-6454"
+          },
+          "PrimaryEmailAddr": {
+            "Address": "taxesaregreat@intuit.com"
+          },
+          "WebAddr": {
+            "URI": "http://www.ustreasury.gov"
+          }
+        }
+      ],
+      "startPosition": 1,
+      "maxResults": 38
+    },
+    "time": "2026-06-26T10:51:58.718-07:00"
+  },
+  "items": {
+    "QueryResponse": {
+      "Item": [
+        {
+          "Name": "BOLT-M8-50",
+          "Active": true,
+          "FullyQualifiedName": "BOLT-M8-50",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "19",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:20-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:20-07:00"
+          }
+        },
+        {
+          "Name": "BOX-A4",
+          "Active": true,
+          "FullyQualifiedName": "BOX-A4",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "28",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:31-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:31-07:00"
+          }
+        },
+        {
+          "Name": "CAT6-305",
+          "Active": true,
+          "FullyQualifiedName": "CAT6-305",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "36",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:40-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:40-07:00"
+          }
+        },
+        {
+          "Name": "CHAIR-ERG",
+          "Active": true,
+          "FullyQualifiedName": "CHAIR-ERG",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "37",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:42-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:42-07:00"
+          }
+        },
+        {
+          "Name": "Concrete",
+          "Description": "Concrete for fountain installation",
+          "Active": true,
+          "FullyQualifiedName": "Concrete",
+          "Taxable": true,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "48",
+            "name": "Landscaping Services:Job Materials:Fountains and Garden Lighting"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "3",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:36:03-07:00",
+            "LastUpdatedTime": "2026-05-29T12:47:47-07:00"
+          }
+        },
+        {
+          "Name": "CONSULT-PM",
+          "Active": true,
+          "FullyQualifiedName": "CONSULT-PM",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "27",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:29-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:29-07:00"
+          }
+        },
+        {
+          "Name": "CONSULT-SR",
+          "Active": true,
+          "FullyQualifiedName": "CONSULT-SR",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "26",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:29-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:29-07:00"
+          }
+        },
+        {
+          "Name": "Design",
+          "Description": "Custom Design",
+          "Active": true,
+          "FullyQualifiedName": "Design",
+          "Taxable": false,
+          "UnitPrice": 75,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "82",
+            "name": "Design income"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "4",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:41:38-07:00",
+            "LastUpdatedTime": "2026-05-26T10:41:38-07:00"
+          }
+        },
+        {
+          "Name": "DESK-STD",
+          "Active": true,
+          "FullyQualifiedName": "DESK-STD",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "38",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:42-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:42-07:00"
+          }
+        },
+        {
+          "Name": "Gardening",
+          "Description": "Weekly Gardening Service",
+          "Active": true,
+          "FullyQualifiedName": "Gardening",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "45",
+            "name": "Landscaping Services"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "6",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:43:14-07:00",
+            "LastUpdatedTime": "2026-05-26T10:43:14-07:00"
+          }
+        },
+        {
+          "Name": "GLOVE-NITR",
+          "Active": true,
+          "FullyQualifiedName": "GLOVE-NITR",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "35",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:38-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:38-07:00"
+          }
+        },
+        {
+          "Name": "Hours",
+          "Active": true,
+          "FullyQualifiedName": "Hours",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "1",
+            "name": "Services"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "2",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-21T14:42:05-07:00",
+            "LastUpdatedTime": "2026-05-21T14:42:05-07:00"
+          }
+        },
+        {
+          "Name": "INK-CYAN",
+          "Active": true,
+          "FullyQualifiedName": "INK-CYAN",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "31",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:34-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:34-07:00"
+          }
+        },
+        {
+          "Name": "INK-MAG",
+          "Active": true,
+          "FullyQualifiedName": "INK-MAG",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "32",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:34-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:34-07:00"
+          }
+        },
+        {
+          "Name": "Installation",
+          "Description": "Installation of landscape design",
+          "Active": true,
+          "FullyQualifiedName": "Installation",
+          "Taxable": false,
+          "UnitPrice": 50,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "52",
+            "name": "Landscaping Services:Labor:Installation"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "7",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:43:54-07:00",
+            "LastUpdatedTime": "2026-05-26T10:43:54-07:00"
+          }
+        },
+        {
+          "Name": "LAPTOP-14",
+          "Active": true,
+          "FullyQualifiedName": "LAPTOP-14",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "33",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:36-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:36-07:00"
+          }
+        },
+        {
+          "Name": "Lighting",
+          "Description": "Garden Lighting",
+          "Active": true,
+          "FullyQualifiedName": "Lighting",
+          "Taxable": true,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "48",
+            "name": "Landscaping Services:Job Materials:Fountains and Garden Lighting"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "8",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:44:40-07:00",
+            "LastUpdatedTime": "2026-05-29T12:47:38-07:00"
+          }
+        },
+        {
+          "Name": "Maintenance & Repair",
+          "Description": "Maintenance & Repair",
+          "Active": true,
+          "FullyQualifiedName": "Maintenance & Repair",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "53",
+            "name": "Landscaping Services:Labor:Maintenance and Repair"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "9",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:45:18-07:00",
+            "LastUpdatedTime": "2026-05-26T10:45:18-07:00"
+          }
+        },
+        {
+          "Name": "NUT-M8",
+          "Active": true,
+          "FullyQualifiedName": "NUT-M8",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "20",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:21-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:21-07:00"
+          }
+        },
+        {
+          "Name": "PDU-30A",
+          "Active": true,
+          "FullyQualifiedName": "PDU-30A",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "23",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:24-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:24-07:00"
+          }
+        },
+        {
+          "Name": "Pest Control",
+          "Description": "Pest Control Services",
+          "Active": true,
+          "FullyQualifiedName": "Pest Control",
+          "Taxable": false,
+          "UnitPrice": 35,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "54",
+            "name": "Pest Control Services"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "10",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:45:49-07:00",
+            "LastUpdatedTime": "2026-05-26T10:45:49-07:00"
+          }
+        },
+        {
+          "Name": "Pump",
+          "Description": "Fountain Pump",
+          "Active": true,
+          "FullyQualifiedName": "Pump",
+          "Taxable": true,
+          "UnitPrice": 15,
+          "Type": "Inventory",
+          "IncomeAccountRef": {
+            "value": "79",
+            "name": "Sales of Product Income"
+          },
+          "PurchaseDesc": "Fountain Pump",
+          "PurchaseCost": 10,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "AssetAccountRef": {
+            "value": "81",
+            "name": "Inventory Asset"
+          },
+          "TrackQtyOnHand": true,
+          "QtyOnHand": 25,
+          "InvStartDate": "2026-05-29",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "11",
+          "SyncToken": "3",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:46:45-07:00",
+            "LastUpdatedTime": "2026-05-29T13:16:17-07:00"
+          }
+        },
+        {
+          "Name": "Refunds & Allowances",
+          "Description": "Income due to refunds or allowances",
+          "Active": true,
+          "FullyQualifiedName": "Refunds & Allowances",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "83",
+            "name": "Other Income"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "12",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:49:18-07:00",
+            "LastUpdatedTime": "2026-05-26T10:49:18-07:00"
+          }
+        },
+        {
+          "Name": "Rock Fountain",
+          "Description": "Rock Fountain",
+          "Active": true,
+          "FullyQualifiedName": "Rock Fountain",
+          "Taxable": true,
+          "UnitPrice": 275,
+          "Type": "Inventory",
+          "IncomeAccountRef": {
+            "value": "79",
+            "name": "Sales of Product Income"
+          },
+          "PurchaseDesc": "Rock Fountain",
+          "PurchaseCost": 125,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "AssetAccountRef": {
+            "value": "81",
+            "name": "Inventory Asset"
+          },
+          "TrackQtyOnHand": true,
+          "QtyOnHand": 2,
+          "InvStartDate": "2026-05-29",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "5",
+          "SyncToken": "2",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:42:19-07:00",
+            "LastUpdatedTime": "2026-05-29T13:16:17-07:00"
+          }
+        },
+        {
+          "Name": "Rocks",
+          "Description": "Garden Rocks",
+          "Active": true,
+          "FullyQualifiedName": "Rocks",
+          "Taxable": true,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "48",
+            "name": "Landscaping Services:Job Materials:Fountains and Garden Lighting"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "13",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:50:11-07:00",
+            "LastUpdatedTime": "2026-05-29T12:47:31-07:00"
+          }
+        },
+        {
+          "Name": "Services",
+          "Active": true,
+          "FullyQualifiedName": "Services",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "1",
+            "name": "Services"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-21T14:42:05-07:00",
+            "LastUpdatedTime": "2026-05-21T14:42:05-07:00"
+          }
+        },
+        {
+          "Name": "Sod",
+          "Description": "Sod",
+          "Active": true,
+          "FullyQualifiedName": "Sod",
+          "Taxable": true,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "49",
+            "name": "Landscaping Services:Job Materials:Plants and Soil"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "14",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:50:45-07:00",
+            "LastUpdatedTime": "2026-05-29T12:47:22-07:00"
+          }
+        },
+        {
+          "Name": "Soil",
+          "Description": "2 cubic ft. bag",
+          "Active": true,
+          "FullyQualifiedName": "Soil",
+          "Taxable": true,
+          "UnitPrice": 10,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "49",
+            "name": "Landscaping Services:Job Materials:Plants and Soil"
+          },
+          "PurchaseDesc": "2 cubic ft. bag",
+          "PurchaseCost": 6.5,
+          "ExpenseAccountRef": {
+            "value": "66",
+            "name": "Job Expenses:Job Materials:Plants and Soil"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "15",
+          "SyncToken": "2",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:51:28-07:00",
+            "LastUpdatedTime": "2026-05-29T12:47:25-07:00"
+          }
+        },
+        {
+          "Name": "SOLV-IPA-5L",
+          "Active": true,
+          "FullyQualifiedName": "SOLV-IPA-5L",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "34",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:38-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:38-07:00"
+          }
+        },
+        {
+          "Name": "Sprinkler Heads",
+          "Description": "Sprinkler Heads",
+          "Active": true,
+          "FullyQualifiedName": "Sprinkler Heads",
+          "Taxable": true,
+          "UnitPrice": 2,
+          "Type": "Inventory",
+          "IncomeAccountRef": {
+            "value": "79",
+            "name": "Sales of Product Income"
+          },
+          "PurchaseDesc": "Sprinkler Heads",
+          "PurchaseCost": 0.75,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "AssetAccountRef": {
+            "value": "81",
+            "name": "Inventory Asset"
+          },
+          "TrackQtyOnHand": true,
+          "QtyOnHand": 25,
+          "InvStartDate": "2026-05-29",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "16",
+          "SyncToken": "3",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:51:50-07:00",
+            "LastUpdatedTime": "2026-05-29T12:51:47-07:00"
+          }
+        },
+        {
+          "Name": "Sprinkler Pipes",
+          "Description": "Sprinkler Pipes",
+          "Active": true,
+          "FullyQualifiedName": "Sprinkler Pipes",
+          "Taxable": true,
+          "UnitPrice": 4,
+          "Type": "Inventory",
+          "IncomeAccountRef": {
+            "value": "79",
+            "name": "Sales of Product Income"
+          },
+          "PurchaseDesc": "Sprinkler Pipes",
+          "PurchaseCost": 2.5,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "AssetAccountRef": {
+            "value": "81",
+            "name": "Inventory Asset"
+          },
+          "TrackQtyOnHand": true,
+          "QtyOnHand": 31,
+          "InvStartDate": "2026-05-29",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "17",
+          "SyncToken": "3",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:52:07-07:00",
+            "LastUpdatedTime": "2026-05-29T12:57:24-07:00"
+          }
+        },
+        {
+          "Name": "STL-BAR-20",
+          "Active": true,
+          "FullyQualifiedName": "STL-BAR-20",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "24",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:26-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:26-07:00"
+          }
+        },
+        {
+          "Name": "STL-SHEET-2",
+          "Active": true,
+          "FullyQualifiedName": "STL-SHEET-2",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "25",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:27-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:27-07:00"
+          }
+        },
+        {
+          "Name": "SVR-RACK-42U",
+          "Active": true,
+          "FullyQualifiedName": "SVR-RACK-42U",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "22",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:24-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:24-07:00"
+          }
+        },
+        {
+          "Name": "TAPE-48",
+          "Active": true,
+          "FullyQualifiedName": "TAPE-48",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "29",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:31-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:31-07:00"
+          }
+        },
+        {
+          "Name": "Trimming",
+          "Description": "Tree and Shrub Trimming",
+          "Active": true,
+          "FullyQualifiedName": "Trimming",
+          "Taxable": false,
+          "UnitPrice": 35,
+          "Type": "Service",
+          "IncomeAccountRef": {
+            "value": "45",
+            "name": "Landscaping Services"
+          },
+          "PurchaseCost": 0,
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "18",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T10:52:42-07:00",
+            "LastUpdatedTime": "2026-05-26T10:52:42-07:00"
+          }
+        },
+        {
+          "Name": "WRAP-500",
+          "Active": true,
+          "FullyQualifiedName": "WRAP-500",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "30",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:32-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:32-07:00"
+          }
+        },
+        {
+          "Name": "WSH-M8",
+          "Active": true,
+          "FullyQualifiedName": "WSH-M8",
+          "Taxable": false,
+          "UnitPrice": 0,
+          "Type": "Service",
+          "PurchaseCost": 0,
+          "ExpenseAccountRef": {
+            "value": "80",
+            "name": "Cost of Goods Sold"
+          },
+          "TrackQtyOnHand": false,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "21",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-25T20:36:22-07:00",
+            "LastUpdatedTime": "2026-06-25T20:36:22-07:00"
+          }
+        }
+      ],
+      "startPosition": 1,
+      "maxResults": 38
+    },
+    "time": "2026-06-26T10:51:58.571-07:00"
+  },
+  "bills": {
+    "QueryResponse": {
+      "Bill": [
+        {
+          "DueDate": "2026-06-26",
+          "Balance": 500,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "176",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-06-26T10:51:46-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-06-26T10:51:46-07:00"
+          },
+          "DocNumber": "INV-1990",
+          "TxnDate": "2026-06-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 500,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "80",
+                  "name": "Cost of Goods Sold"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "69",
+            "name": "Atlas Fasteners"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 500
+        },
+        {
+          "DueDate": "2026-05-29",
+          "VendorAddr": {
+            "Id": "40",
+            "Line1": "4528 Country Road",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.3752919",
+            "Long": "-122.1692159"
+          },
+          "Balance": 205,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "126",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-29T13:10:36-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-29T13:10:36-07:00"
+          },
+          "TxnDate": "2026-05-29",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Fountain Pump",
+              "Amount": 80,
+              "LinkedTxn": [],
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "11",
+                  "name": "Pump"
+                },
+                "UnitPrice": 10,
+                "Qty": 8,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Description": "Rock Fountain",
+              "Amount": 125,
+              "LinkedTxn": [],
+              "DetailType": "ItemBasedExpenseLineDetail",
+              "ItemBasedExpenseLineDetail": {
+                "BillableStatus": "NotBillable",
+                "ItemRef": {
+                  "value": "5",
+                  "name": "Rock Fountain"
+                },
+                "UnitPrice": 125,
+                "Qty": 1,
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "46",
+            "name": "Norton Lumber and Building Materials"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 205
+        },
+        {
+          "SalesTermRef": {
+            "value": "3"
+          },
+          "DueDate": "2026-06-25",
+          "VendorAddr": {
+            "Id": "40",
+            "Line1": "4528 Country Road",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.3752919",
+            "Long": "-122.1692159"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "25",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T15:37:25-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-29T12:56:17-07:00"
+          },
+          "TxnDate": "2026-05-26",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "118",
+              "TxnType": "BillPaymentCheck"
+            },
+            {
+              "TxnId": "26",
+              "TxnType": "ReimburseCharge"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Lumber",
+              "Amount": 103.55,
+              "LinkedTxn": [
+                {
+                  "TxnId": "26",
+                  "TxnType": "ReimburseCharge"
+                }
+              ],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "CustomerRef": {
+                  "value": "26",
+                  "name": "Travis Waldron"
+                },
+                "AccountRef": {
+                  "value": "64",
+                  "name": "Job Expenses:Job Materials:Decks and Patios"
+                },
+                "BillableStatus": "HasBeenBilled",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "46",
+            "name": "Norton Lumber and Building Materials"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 103.55
+        },
+        {
+          "SalesTermRef": {
+            "value": "1"
+          },
+          "DueDate": "2026-04-13",
+          "VendorAddr": {
+            "Id": "33",
+            "Line1": "10 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "105",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-28T13:43:56-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-29T12:55:23-07:00"
+          },
+          "TxnDate": "2026-04-13",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "117",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 56.5,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "77",
+                  "name": "Utilities:Telephone"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "32",
+            "name": "Cal Telephone"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 56.5
+        },
+        {
+          "DueDate": "2026-05-29",
+          "VendorAddr": {
+            "Id": "43",
+            "Line1": "P.O. Box 147",
+            "City": "Bayshore",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94326",
+            "Lat": "45.2720537",
+            "Long": "-79.7935909"
+          },
+          "Balance": 315,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "108",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-29T12:36:59-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-29T12:36:59-07:00"
+          },
+          "TxnDate": "2026-05-29",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 315,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "69",
+                  "name": "Legal & Professional Fees:Accounting"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "49",
+            "name": "Robertson & Associates"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 315
+        },
+        {
+          "SalesTermRef": {
+            "value": "3"
+          },
+          "DueDate": "2026-06-12",
+          "VendorAddr": {
+            "Id": "36",
+            "Line1": "P.O.Box 357",
+            "City": "South Orange",
+            "CountrySubDivisionCode": "NJ",
+            "PostalCode": "07079",
+            "Lat": "40.7489277",
+            "Long": "-74.2609903"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "24",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T15:31:20-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-28T13:43:08-07:00"
+          },
+          "TxnDate": "2026-05-13",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "104",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Building Lease",
+              "Amount": 900,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "17",
+                  "name": "Rent or Lease"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "40",
+            "name": "Hall Properties"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 900
+        },
+        {
+          "SalesTermRef": {
+            "value": "3"
+          },
+          "DueDate": "2026-02-24",
+          "VendorAddr": {
+            "Id": "43",
+            "Line1": "P.O. Box 147",
+            "City": "Bayshore",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94326",
+            "Lat": "45.2720537",
+            "Long": "-79.7935909"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "90",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-28T13:18:27-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-28T13:19:24-07:00"
+          },
+          "TxnDate": "2026-01-25",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "Lawyer fees related to Startup",
+          "LinkedTxn": [
+            {
+              "TxnId": "91",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 300,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "71",
+                  "name": "Legal & Professional Fees:Lawyer"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "49",
+            "name": "Robertson & Associates"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 300
+        },
+        {
+          "DueDate": "2026-05-14",
+          "VendorAddr": {
+            "Id": "45",
+            "Line1": "3948 Elm St.",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94482",
+            "Lat": "37.4604972",
+            "Long": "-122.1547528"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "3",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:42:31-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-28T13:06:58-07:00"
+          },
+          "TxnDate": "2026-05-14",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "Opening Balance",
+          "LinkedTxn": [
+            {
+              "TxnId": "82",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 666,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "14",
+                  "name": "Miscellaneous"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "51",
+            "name": "Tim Philip Masonry"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 666
+        },
+        {
+          "DueDate": "2026-04-22",
+          "VendorAddr": {
+            "Id": "37",
+            "Line1": "42 Main St.",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "2",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:26:56-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-28T13:01:57-07:00"
+          },
+          "TxnDate": "2026-04-22",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "Opening Balance",
+          "LinkedTxn": [
+            {
+              "TxnId": "79",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 250,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "14",
+                  "name": "Miscellaneous"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "41",
+            "name": "Hicks Hardware"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 250
+        },
+        {
+          "SalesTermRef": {
+            "value": "3"
+          },
+          "DueDate": "2026-05-14",
+          "VendorAddr": {
+            "Id": "42",
+            "Line1": "4 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 86.44,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "78",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-28T13:00:36-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-28T13:00:36-07:00"
+          },
+          "TxnDate": "2026-04-14",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 86.44,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "76",
+                  "name": "Utilities:Gas and Electric"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "48",
+            "name": "PG&E"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 86.44
+        },
+        {
+          "SalesTermRef": {
+            "value": "3"
+          },
+          "DueDate": "2026-06-12",
+          "VendorAddr": {
+            "Id": "42",
+            "Line1": "4 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "35",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-27T11:10:57-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-28T12:57:18-07:00"
+          },
+          "TxnDate": "2026-05-13",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "77",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 114.09,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "76",
+                  "name": "Utilities:Gas and Electric"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "48",
+            "name": "PG&E"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 114.09
+        },
+        {
+          "SalesTermRef": {
+            "value": "3"
+          },
+          "DueDate": "2026-06-12",
+          "VendorAddr": {
+            "Id": "33",
+            "Line1": "10 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "21",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T15:27:53-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-27T11:44:29-07:00"
+          },
+          "TxnDate": "2026-05-13",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "50",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Monthly Phone Bill",
+              "Amount": 74.36,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "77",
+                  "name": "Utilities:Telephone"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "32",
+            "name": "Cal Telephone"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 74.36
+        },
+        {
+          "SalesTermRef": {
+            "value": "3"
+          },
+          "DueDate": "2026-06-26",
+          "Balance": 755,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "44",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-27T11:31:42-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-27T11:31:42-07:00"
+          },
+          "TxnDate": "2026-05-27",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Description": "Repairs on the truck",
+              "Amount": 755,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "75",
+                  "name": "Maintenance and Repair:Equipment Repairs"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "36",
+            "name": "Diego's Road Warrior Bodyshop"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 755
+        },
+        {
+          "SalesTermRef": {
+            "value": "2"
+          },
+          "DueDate": "2026-05-30",
+          "VendorAddr": {
+            "Id": "31",
+            "Line1": "15 Main St.",
+            "City": "Palo Alto",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94303",
+            "Lat": "37.445013",
+            "Long": "-122.1391443"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "18",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-26T15:21:03-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-27T11:13:46-07:00"
+          },
+          "TxnDate": "2026-05-15",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [
+            {
+              "TxnId": "37",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 75,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "69",
+                  "name": "Legal & Professional Fees:Accounting"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "30",
+            "name": "Books by Bessie"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 75
+        },
+        {
+          "DueDate": "2026-05-22",
+          "VendorAddr": {
+            "Id": "32",
+            "Line1": "P.O. Box 5",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94482",
+            "Lat": "43.8249453",
+            "Long": "-79.2639122"
+          },
+          "Balance": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-05-22T10:12:02-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-26T15:28:48-07:00"
+          },
+          "TxnDate": "2026-05-22",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "Opening Balance",
+          "LinkedTxn": [
+            {
+              "TxnId": "22",
+              "TxnType": "BillPaymentCheck"
+            }
+          ],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 2000,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "14",
+                  "name": "Miscellaneous"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "31",
+            "name": "Brosnahan Insurance Agency"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 2000
+        },
+        {
+          "SalesTermRef": {
+            "value": "5"
+          },
+          "DueDate": "2026-06-01",
+          "VendorAddr": {
+            "Id": "32",
+            "Line1": "P.O. Box 5",
+            "City": "Middlefield",
+            "CountrySubDivisionCode": "CA",
+            "PostalCode": "94482",
+            "Lat": "43.8249453",
+            "Long": "-79.2639122"
+          },
+          "Balance": 241.23,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "19",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-05-26T15:24:48-07:00",
+            "LastModifiedByRef": {
+              "value": "9341457351478246"
+            },
+            "LastUpdatedTime": "2026-05-26T15:24:48-07:00"
+          },
+          "TxnDate": "2026-05-22",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 241.23,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "11",
+                  "name": "Insurance"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "31",
+            "name": "Brosnahan Insurance Agency"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 241.23
+        }
+      ],
+      "startPosition": 1,
+      "maxResults": 16,
+      "totalCount": 16
+    },
+    "time": "2026-06-26T10:51:58.560-07:00"
+  }
+}

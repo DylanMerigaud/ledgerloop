@@ -5,6 +5,9 @@ import { test } from "node:test";
 import {
   reconcileFromOutcome,
   mapQboPurchaseOrders,
+  mapQboVendors,
+  mapQboItems,
+  mapQboPostedBills,
   recordedErp,
 } from "@/lib/erp";
 import { PurchaseOrder, type MatchResult } from "@/lib/schema";
@@ -235,14 +238,82 @@ test("tolerates an empty / shapeless payload without throwing", () => {
   assert.equal(mapQboPurchaseOrders({ QueryResponse: {} }).length, 0);
 });
 
-test("the recorded QBO fixture maps to valid purchase orders", async (t) => {
-  if (!existsSync("db/fixtures/quickbooks/purchase-orders.json")) {
+/* ── Master-data mappers (Vendor / Item / Bill) ───────────────────────────── */
+
+test("maps QBO vendors, defaulting Active and stripping the '(deleted)' suffix", () => {
+  const vendors = mapQboVendors({
+    QueryResponse: {
+      Vendor: [
+        { DisplayName: "Atlas Fasteners" }, // no Active → active
+        { DisplayName: "Dormant Metals LLC (deleted)", Active: false },
+        { DisplayName: "  " }, // blank → dropped
+      ],
+    },
+  });
+  assert.equal(vendors.length, 2);
+  const dormant = vendors.find((v) => v.name === "Dormant Metals LLC");
+  assert.ok(dormant, "the '(deleted)' suffix is stripped so the name matches");
+  assert.equal(dormant.active, false);
+  assert.equal(vendors.find((v) => v.name === "Atlas Fasteners")?.active, true);
+});
+
+test("maps QBO items, keying the catalog on the item name (the SKU)", () => {
+  const items = mapQboItems({
+    QueryResponse: {
+      Item: [{ Name: "BOLT-M8-50" }, { Name: "STL-BAR-20", Active: true }, {}],
+    },
+  });
+  assert.deepEqual(items.map((i) => i.sku).sort(), [
+    "BOLT-M8-50",
+    "STL-BAR-20",
+  ]);
+});
+
+test("maps QBO bills to (vendor, docNumber); drops rows missing either", () => {
+  const bills = mapQboPostedBills({
+    QueryResponse: {
+      Bill: [
+        {
+          DocNumber: "INV-1990",
+          VendorRef: { value: "1", name: "Atlas Fasteners" },
+        },
+        { DocNumber: "NO-VENDOR" }, // no VendorRef → dropped
+        { VendorRef: { value: "2", name: "X" } }, // no DocNumber → dropped
+      ],
+    },
+  });
+  assert.equal(bills.length, 1);
+  assert.deepEqual(bills[0], {
+    vendor: "Atlas Fasteners",
+    docNumber: "INV-1990",
+  });
+});
+
+test("master-data mappers tolerate empty / shapeless payloads", () => {
+  assert.equal(mapQboVendors(null).length, 0);
+  assert.equal(mapQboItems({}).length, 0);
+  assert.equal(mapQboPostedBills({ QueryResponse: {} }).length, 0);
+});
+
+test("the recorded QBO fixture maps to valid purchase orders + master data", async (t) => {
+  if (!existsSync("db/fixtures/quickbooks/erp.json")) {
     t.skip("fixture missing — run pnpm erp:capture");
     return;
   }
-  const pos = await recordedErp().pullPurchaseOrders();
+  const erp = recordedErp();
+  const pos = await erp.pullPurchaseOrders();
   assert.ok(pos.length > 0, "expected the captured fixture to yield POs");
-  for (const po of pos) {
-    assert.doesNotThrow(() => PurchaseOrder.parse(po));
-  }
+  for (const p of pos) assert.doesNotThrow(() => PurchaseOrder.parse(p));
+
+  // The seeded control artifacts are present in the real capture.
+  const vendors = await erp.pullVendors();
+  assert.ok(
+    vendors.some((v) => v.name === "Dormant Metals LLC" && !v.active),
+    "expected the seeded inactive vendor",
+  );
+  const bills = await erp.pullPostedBills();
+  assert.ok(
+    bills.some((b) => b.docNumber === "INV-1990"),
+    "expected the seeded posted bill",
+  );
 });

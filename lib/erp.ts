@@ -189,11 +189,42 @@ export const reconcileFromOutcome = async (
  * changes.
  */
 
-/** @public — the read seam: anything that can list a client's open POs. */
+/** A vendor as the client's ERP knows it — the master record, normalised. */
+export type ErpVendor = {
+  name: string;
+  active: boolean;
+};
+
+/** An item as the client's ERP catalog knows it — `sku` is the matcher join key. */
+export type ErpItem = {
+  sku: string;
+  active: boolean;
+};
+
+/** A bill already posted (and paid) in the ERP — for historical duplicate detection. */
+export type ErpPostedBill = {
+  vendor: string;
+  /** The vendor's invoice/document number on the posted bill. */
+  docNumber: string;
+};
+
+/**
+ * @public — the read seam: a client's ERP, read-only. Beyond the open POs, it
+ * exposes the master data an AP control checks an incoming invoice against — the
+ * vendor list, the item catalog, and the already-posted bills. Each method throws
+ * only on transport/parse failure; callers degrade gracefully. Swap QBO for a
+ * `netSuiteErp` implementing this and nothing downstream changes (cf. HRIS).
+ */
 export type PoSourceAdapter = {
   readonly name: string;
-  /** Pull the client's purchase orders, normalised. Throws only on transport/parse failure. */
+  /** Pull the client's purchase orders, normalised. */
   pullPurchaseOrders(): Promise<TPurchaseOrder[]>;
+  /** Pull the client's vendor master (for the inactive-vendor control). */
+  pullVendors(): Promise<ErpVendor[]>;
+  /** Pull the client's item catalog (for the off-catalog SKU control). */
+  pullItems(): Promise<ErpItem[]>;
+  /** Pull bills already posted in the ERP (for the already-paid duplicate control). */
+  pullPostedBills(): Promise<ErpPostedBill[]>;
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -307,6 +338,86 @@ export const mapQboPurchaseOrders = (raw: unknown): TPurchaseOrder[] => {
     const candidate = { poNumber, vendor, currency, lineItems, total };
     const result = PurchaseOrder.safeParse(candidate);
     if (result.success) out.push(result.data);
+  }
+  return out;
+};
+
+/* ────────────────────────────────────────────────────────────────────────── *
+ *  Master-data wire shapes + mappers (QBO Vendor / Item / Bill)
+ * ────────────────────────────────────────────────────────────────────────── *
+ *
+ * Same discipline as the PO mapper: Zod at the JSON boundary, defensive reads,
+ * one mapper shared by live + recorded. QBO marks records active/inactive with an
+ * `Active` boolean (absent → treated as active).
+ */
+
+const QboVendorRow = z.object({
+  DisplayName: z.string().optional(),
+  Active: z.boolean().optional(),
+});
+const QboVendorResponse = z.object({
+  QueryResponse: z
+    .object({ Vendor: z.array(QboVendorRow).optional() })
+    .optional(),
+});
+
+/** Raw QBO Vendor query payload → internal vendor master.
+ *  QBO renames a deactivated name-list entity to "<name> (deleted)"; we strip that
+ *  suffix so the normalised vendor name still matches the invoice's vendor. */
+export const mapQboVendors = (raw: unknown): ErpVendor[] => {
+  const parsed = QboVendorResponse.safeParse(raw);
+  const rows = parsed.success ? (parsed.data.QueryResponse?.Vendor ?? []) : [];
+  const out: ErpVendor[] = [];
+  for (const v of rows) {
+    const raw = v.DisplayName?.trim();
+    if (!raw) continue;
+    const name = raw.replace(/\s*\(deleted\)\s*$/i, "");
+    out.push({ name, active: v.Active ?? true });
+  }
+  return out;
+};
+
+const QboItemRow = z.object({
+  Name: z.string().optional(),
+  Active: z.boolean().optional(),
+});
+const QboItemResponse = z.object({
+  QueryResponse: z.object({ Item: z.array(QboItemRow).optional() }).optional(),
+});
+
+/** Raw QBO Item query payload → internal catalog. `sku` is the item Name (the
+ *  matcher's join key, the same value the PO mapper keys lines on). */
+export const mapQboItems = (raw: unknown): ErpItem[] => {
+  const parsed = QboItemResponse.safeParse(raw);
+  const rows = parsed.success ? (parsed.data.QueryResponse?.Item ?? []) : [];
+  const out: ErpItem[] = [];
+  for (const i of rows) {
+    const sku = i.Name?.trim();
+    if (!sku) continue;
+    out.push({ sku, active: i.Active ?? true });
+  }
+  return out;
+};
+
+const QboBillRow = z.object({
+  DocNumber: z.string().optional(),
+  VendorRef: QboRef.optional(),
+});
+const QboBillResponse = z.object({
+  QueryResponse: z.object({ Bill: z.array(QboBillRow).optional() }).optional(),
+});
+
+/** Raw QBO Bill query payload → posted bills (only those with a vendor + number,
+ *  which is what the historical-duplicate control keys on). */
+export const mapQboPostedBills = (raw: unknown): ErpPostedBill[] => {
+  const parsed = QboBillResponse.safeParse(raw);
+  const rows = parsed.success ? (parsed.data.QueryResponse?.Bill ?? []) : [];
+  const out: ErpPostedBill[] = [];
+  for (const b of rows) {
+    const vendor = b.VendorRef?.name?.trim();
+    const docNumber = b.DocNumber?.trim();
+    if (!vendor || !docNumber) continue;
+    out.push({ vendor, docNumber });
   }
   return out;
 };
@@ -465,10 +576,20 @@ export const qboPostEntity = async (
   return res.json();
 };
 
-/** The raw PO query, exported so the capture script records the exact payload. */
-export const fetchQboPurchaseOrders = (creds: QboCreds): Promise<unknown> => {
-  return qboQuery(creds, "select * from PurchaseOrder maxresults 100");
-};
+/* The raw queries, exported so the capture script records the exact payloads. */
+export const fetchQboPurchaseOrders = (creds: QboCreds): Promise<unknown> =>
+  qboQuery(creds, "select * from PurchaseOrder maxresults 100");
+export const fetchQboVendors = (creds: QboCreds): Promise<unknown> =>
+  // QBO returns only active rows by default; the inactive-vendor control needs the
+  // deactivated ones too, so ask for both explicitly.
+  qboQuery(
+    creds,
+    "select * from Vendor where Active in (true, false) maxresults 1000",
+  );
+export const fetchQboItems = (creds: QboCreds): Promise<unknown> =>
+  qboQuery(creds, "select * from Item maxresults 1000");
+export const fetchQboBills = (creds: QboCreds): Promise<unknown> =>
+  qboQuery(creds, "select * from Bill maxresults 1000");
 
 /**
  * Live QuickBooks Online adapter.
@@ -480,8 +601,16 @@ export const liveQuickBooksErp = (creds: QboCreds): PoSourceAdapter => {
   return {
     name: "quickbooks",
     async pullPurchaseOrders() {
-      const raw = await fetchQboPurchaseOrders(creds);
-      return mapQboPurchaseOrders(raw);
+      return mapQboPurchaseOrders(await fetchQboPurchaseOrders(creds));
+    },
+    async pullVendors() {
+      return mapQboVendors(await fetchQboVendors(creds));
+    },
+    async pullItems() {
+      return mapQboItems(await fetchQboItems(creds));
+    },
+    async pullPostedBills() {
+      return mapQboPostedBills(await fetchQboBills(creds));
     },
   };
 };
@@ -490,30 +619,54 @@ export const liveQuickBooksErp = (creds: QboCreds): PoSourceAdapter => {
  *  Recorded adapter — replays the captured QBO payload
  * ────────────────────────────────────────────────────────────────────────── */
 
-const PO_FIXTURE_PATH = path.join(
+const ERP_FIXTURE_PATH = path.join(
   process.cwd(),
   "db",
   "fixtures",
   "quickbooks",
-  "purchase-orders.json",
+  "erp.json",
 );
 
 /**
- * Replays the captured QBO purchase-order payload from disk through the SAME
- * mapper the live adapter uses, so recorded and live read the exact same POs. The
- * fixture is a REAL capture (see `scripts/capture-quickbooks.ts` →
- * `pnpm erp:capture`) — its `_meta` records when/where from.
+ * The recorded fixture holds the raw QBO query response for each entity under its
+ * own key (`purchaseOrders`/`vendors`/`items`/`bills`), captured from the live
+ * sandbox by `pnpm erp:capture`. Validated as records so a missing/garbled entity
+ * yields an empty list rather than throwing.
+ */
+const ErpFixture = z.object({
+  purchaseOrders: z.unknown().optional(),
+  vendors: z.unknown().optional(),
+  items: z.unknown().optional(),
+  bills: z.unknown().optional(),
+});
+
+/**
+ * Replays the captured QBO payloads from disk through the SAME mappers the live
+ * adapter uses, so recorded and live read the exact same data. The fixture is a
+ * REAL capture (see `scripts/capture-quickbooks.ts`) — its `_meta` records
+ * when/where from.
  */
 export const recordedErp = (
-  fixturePath: string = PO_FIXTURE_PATH,
+  fixturePath: string = ERP_FIXTURE_PATH,
 ): PoSourceAdapter => {
+  // Read + parse once; each method maps its slice. Sync read, async contract.
+  const load = (): z.infer<typeof ErpFixture> => {
+    const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
+    return ErpFixture.parse(raw);
+  };
   return {
     name: "quickbooks (recorded)",
-    // Reads synchronously, but the contract is async (the live one does HTTP) —
-    // return a resolved promise rather than an await-less `async` method.
     pullPurchaseOrders() {
-      const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
-      return Promise.resolve(mapQboPurchaseOrders(raw));
+      return Promise.resolve(mapQboPurchaseOrders(load().purchaseOrders));
+    },
+    pullVendors() {
+      return Promise.resolve(mapQboVendors(load().vendors));
+    },
+    pullItems() {
+      return Promise.resolve(mapQboItems(load().items));
+    },
+    pullPostedBills() {
+      return Promise.resolve(mapQboPostedBills(load().bills));
     },
   };
 };
