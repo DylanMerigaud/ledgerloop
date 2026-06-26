@@ -1,7 +1,8 @@
 import { desc, eq } from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
 
 import { getDb, type Database } from "@/db/client";
-import { agentRuns } from "@/db/schema";
+import { agentRuns, type AgentRunRow } from "@/db/schema";
 import { log } from "@/lib/logger";
 import { TraceEvent } from "@/lib/trace";
 
@@ -29,15 +30,24 @@ export type SaveAgentRunInput = {
   model: string;
 };
 
+/** The narrow slice `saveAgentRun` uses — `insert(table).values(row)`. Declaring it
+ *  structurally (not the full `Database`) lets a test pass a tiny fake with no cast,
+ *  while the real handle satisfies the same shape. */
+type AuditWritableDb = {
+  insert: (table: PgTable) => {
+    values: (row: Record<string, unknown>) => unknown;
+  };
+};
+
 export const saveAgentRun = async (
   input: SaveAgentRunInput,
-  db: Database = getDb(),
+  db: AuditWritableDb = getDb(),
 ): Promise<void> => {
   try {
     await db.insert(agentRuns).values({
-      // A unique id per run — invoice number + the run's wall-clock start makes it
-      // sortable and collision-free across concurrent visitors.
-      id: `${input.invoiceNumber}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      // A unique id per run — the invoice number (readable) plus a UUID so two
+      // concurrent visitors running the same invoice can't collide.
+      id: `${input.invoiceNumber}-${crypto.randomUUID()}`,
       invoiceNumber: input.invoiceNumber,
       verdict: input.verdict,
       tier: input.outcome,
@@ -63,10 +73,33 @@ export type RunHistoryItem = {
   createdAt: string;
 };
 
+/** Map a stored row to the list-shaped history item: the DB calls the outcome
+ *  column `tier` (a legacy name), the UI wants `outcome`; the timestamp becomes an
+ *  ISO string. Pure — extracted so it can be unit-tested without a DB. */
+export const toHistoryItem = (
+  r: Pick<
+    AgentRunRow,
+    "id" | "invoiceNumber" | "verdict" | "tier" | "durationMs" | "createdAt"
+  >,
+): RunHistoryItem => ({
+  id: r.id,
+  invoiceNumber: r.invoiceNumber,
+  verdict: r.verdict,
+  outcome: r.tier,
+  durationMs: r.durationMs,
+  createdAt: r.createdAt.toISOString(),
+});
+
+/** Validate a stored trace blob back to `TraceEvent[]`, or `null` if it's drifted/
+ *  garbage — the Zod gate at the DB read boundary. Pure, unit-testable. */
+export const parseStoredTrace = (raw: unknown): TraceEvent[] | null => {
+  const parsed = TraceEvent.array().safeParse(raw);
+  return parsed.success ? parsed.data : null;
+};
+
 /**
- * The most recent runs, newest first, for the dashboard history view. Validates
- * each stored trace back through Zod when a single run is loaded for replay (see
- * `loadAgentRun`); the list itself is light metadata only.
+ * The most recent runs, newest first, for the dashboard history view. Light
+ * metadata only; the full trace is loaded on demand by `loadAgentRun` for replay.
  */
 export const listRecentRuns = async (
   limit = 20,
@@ -84,14 +117,7 @@ export const listRecentRuns = async (
     .from(agentRuns)
     .orderBy(desc(agentRuns.createdAt))
     .limit(limit);
-  return rows.map((r) => ({
-    id: r.id,
-    invoiceNumber: r.invoiceNumber,
-    verdict: r.verdict,
-    outcome: r.tier,
-    durationMs: r.durationMs,
-    createdAt: r.createdAt.toISOString(),
-  }));
+  return rows.map(toHistoryItem);
 };
 
 /**
@@ -110,7 +136,7 @@ export const loadAgentRun = async (
     .where(eq(agentRuns.id, id))
     .limit(1);
   if (!row) return null;
-  const trace = TraceEvent.array().safeParse(row.trace);
-  if (!trace.success) return null;
-  return { invoiceNumber: row.invoiceNumber, trace: trace.data };
+  const trace = parseStoredTrace(row.trace);
+  if (!trace) return null;
+  return { invoiceNumber: row.invoiceNumber, trace };
 };
