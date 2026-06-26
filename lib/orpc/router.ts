@@ -88,12 +88,13 @@ const editWorkflow = rateLimited
   .output(EditResult)
   .handler(async ({ input }) => {
     try {
-      const { proposed, changes, reason } = await runEditAgent(
+      const { proposed, changes, reason, clarify } = await runEditAgent(
         anthropicPlanModel,
         input.workflow,
         input.instruction,
+        { departments: input.departments },
       );
-      return { proposed, changes, reason };
+      return { proposed, changes, reason, clarify };
     } catch {
       throw new ORPCError("UNPROCESSABLE_CONTENT", {
         message:

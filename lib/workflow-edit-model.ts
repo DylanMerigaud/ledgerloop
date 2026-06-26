@@ -59,7 +59,7 @@ export const anthropicEditModel: EditModel = {
 const PLAN_JSON_SCHEMA = toModelJsonSchema(WorkflowEditPlan);
 
 export const anthropicPlanModel: PlanModel = {
-  async planOps({ current, instruction, feedback }) {
+  async planOps({ current, instruction, available, feedback }) {
     const message = await anthropic().messages.create({
       model: EDIT_MODEL,
       max_tokens: 1024,
@@ -68,7 +68,10 @@ export const anthropicPlanModel: PlanModel = {
         format: { type: "json_schema", schema: PLAN_JSON_SCHEMA },
       },
       messages: [
-        { role: "user", content: planPrompt(current, instruction, feedback) },
+        {
+          role: "user",
+          content: planPrompt(current, instruction, available, feedback),
+        },
       ],
     });
     if (message.stop_reason === "refusal") {

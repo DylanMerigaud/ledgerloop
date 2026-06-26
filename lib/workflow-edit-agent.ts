@@ -37,16 +37,22 @@ import {
 /** Anything that can plan an ordered list of ops from an instruction + feedback. */
 export type PlanModel = {
   /**
-   * Plan the ops for `instruction` against `current`. On a correction pass,
-   * `feedback` carries the validation issues from the previous attempt (and the
-   * ops tried), so the model can fix them.
+   * Plan the ops for `instruction` against `current`. `available` lists the real
+   * departments so a department gate can only target one that exists (else the model
+   * returns a `clarify` op). On a correction pass, `feedback` carries the validation
+   * issues from the previous attempt (and the ops tried), so the model can fix them.
    */
   planOps: (args: {
     current: TWorkflow;
     instruction: string;
+    available: { departments: string[] };
     feedback?: { issues: WorkflowIssue[]; triedOps: WorkflowEditOp[] };
   }) => Promise<WorkflowEditOp[]>;
 };
+
+/** A question the agent asks back when an instruction is missing a piece it won't
+    guess (e.g. which department) — the UI renders it as clickable options. */
+type Clarification = { question: string; options: string[] };
 
 export type AgentEditResult = {
   proposed: TWorkflow;
@@ -56,6 +62,9 @@ export type AgentEditResult = {
   issues: WorkflowIssue[];
   /** If the agent produced no real change, why (for the UI's "no change" message). */
   reason: string | null;
+  /** Set when the agent needs a missing piece before it can edit — the workflow is
+      left UNCHANGED and the UI offers the options. null on a normal edit. */
+  clarify: Clarification | null;
 };
 
 const MAX_STEPS = 4;
@@ -85,6 +94,7 @@ export const runEditAgent = async (
   model: PlanModel,
   current: TWorkflow,
   instruction: string,
+  available: { departments: string[] },
 ): Promise<AgentEditResult> => {
   const allOps: WorkflowEditOp[] = [];
   let working = current;
@@ -97,8 +107,28 @@ export const runEditAgent = async (
     const ops = await model.planOps({
       current: working,
       instruction,
+      available,
       feedback,
     });
+
+    // The model is asking for a missing piece (e.g. which department). Surface the
+    // question and stop — nothing is applied, the workflow is unchanged. (A clarify
+    // is meant to be the only op, but if it's mixed in we still honour it first.)
+    const clarifyOp = ops.find((o) => o.op === "clarify");
+    if (clarifyOp) {
+      return {
+        proposed: current,
+        ops: allOps,
+        changes: [],
+        issues: validateWorkflow(current),
+        reason: null,
+        clarify: {
+          question: clarifyOp.question,
+          options: clarifyOp.options,
+        },
+      };
+    }
+
     const applied = applyAll(working, ops);
     working = applied.result;
     if (applied.reason) reason = applied.reason;
@@ -118,5 +148,6 @@ export const runEditAgent = async (
     changes,
     issues: validateWorkflow(working),
     reason: realChanges.length === 0 ? (reason ?? "No change.") : null,
+    clarify: null,
   };
 };

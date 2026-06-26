@@ -37,11 +37,15 @@ type Proposal = {
 export const WorkflowEditor = ({
   initial,
   suggestions = [],
+  departments = [],
   onCurrentChange,
 }: {
   initial: ApprovalWorkflow;
   /** AI-generated next-edit suggestions for the initial workflow (may be empty). */
   suggestions?: string[];
+  /** The departments that exist in the org — shown as chips you can route on, and
+      sent to the edit agent so it only ever proposes a real one. */
+  departments?: string[];
   /** Called with the CURRENT (approved) workflow whenever it changes — the initial
       one, then each kept edit. Never the pending proposal (preview-only). Lets a
       parent (AppView) run the pipeline against exactly what's on screen here. */
@@ -51,6 +55,13 @@ export const WorkflowEditor = ({
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [instruction, setInstruction] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // A pending clarification from the agent ("which department?") + the instruction
+  // that triggered it, so clicking an option can re-submit a completed instruction.
+  const [clarify, setClarify] = useState<{
+    question: string;
+    options: string[];
+    instruction: string;
+  } | null>(null);
   // Suggestions are consumable: once one produces a proposal it's removed, so a
   // chip never lingers after it's been used.
   const [chips, setChips] = useState<string[]>(suggestions);
@@ -77,7 +88,16 @@ export const WorkflowEditor = ({
       const data = await editMutation.mutateAsync({
         workflow: current,
         instruction: value,
+        departments,
       });
+      // The agent needs a missing piece (e.g. which department) — offer the options
+      // instead of an edit. Remember the instruction so a pick can complete it.
+      if (data.clarify) {
+        setClarify({ ...data.clarify, instruction: value });
+        setInstruction("");
+        return;
+      }
+      setClarify(null);
       const realChanges = data.changes.filter((c) => c.kind !== "unchanged");
       if (realChanges.length === 0) {
         // The agent declined (redundant / off-topic) — say so, don't offer a no-op.
@@ -95,6 +115,14 @@ export const WorkflowEditor = ({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Edit failed.");
     }
+  };
+
+  /** The user picked a clarification option → re-submit the original instruction
+      completed with the choice (re-uses the whole edit flow). */
+  const pickClarifyOption = (option: string) => {
+    const base = clarify?.instruction ?? "";
+    setClarify(null);
+    void submit(`${base} for ${option}`);
   };
 
   // Validate whatever's on screen (the proposal if pending, else the live one).
@@ -120,6 +148,7 @@ export const WorkflowEditor = ({
     setProposal(null);
     setChips(suggestions);
     setError(null);
+    setClarify(null);
   };
 
   const changedCount = proposal
@@ -176,11 +205,31 @@ export const WorkflowEditor = ({
             {error}
           </div>
         )}
+        {/* The agent asked for a missing piece (e.g. which department) — show its
+            question + the choices as chips. Clicking one re-submits the completed
+            instruction. Takes over the chip area while it's pending. */}
+        {!proposal && clarify && (
+          <div className="space-y-1.5 rounded-xl bg-accent-soft/40 px-3 py-2.5 ring-1 ring-inset ring-accent/15">
+            <p className="text-[12.5px] font-medium text-ink">
+              {clarify.question}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {clarify.options.map((o) => (
+                <DeptChip
+                  key={o}
+                  label={o}
+                  onClick={() => pickClarifyOption(o)}
+                  disabled={busy}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         {/* AI-suggested next edits for this workflow. Only shown before a pending
             proposal, and only when the model returned some — no fixed chips, so a
             suggestion is always a real, applicable next step. A used chip is
             removed (consumed) once it produces a proposal. */}
-        {!proposal && chips.length > 0 && (
+        {!proposal && !clarify && chips.length > 0 && (
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
               <SparkIcon />
@@ -197,6 +246,28 @@ export const WorkflowEditor = ({
                   <span className="text-faint group-hover:text-accent">+</span>
                   <span className="truncate">{s}</span>
                 </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Route-by-department chips — the REAL departments from the org, so a user
+            sees what they can route on (and the agent only ever proposes a real one).
+            Clicking a chip asks for a review scoped to that department. Hidden while a
+            proposal or a clarification is pending. */}
+        {!proposal && !clarify && departments.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
+              <BuildingIcon />
+              Route by department
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {departments.map((d) => (
+                <DeptChip
+                  key={d}
+                  label={d}
+                  onClick={() => submit(`add a review for ${d} bills`)}
+                  disabled={busy}
+                />
               ))}
             </div>
           </div>
@@ -301,5 +372,57 @@ const SparkIcon = () => {
     <svg viewBox="0 0 12 12" className="size-3" fill="currentColor" aria-hidden>
       <path d="M6 0c.3 2.5 1.5 3.7 4 4-2.5.3-3.7 1.5-4 4-.3-2.5-1.5-3.7-4-4 2.5-.3 3.7-1.5 4-4Z" />
     </svg>
+  );
+};
+
+/** A small building glyph, marking the route-by-department chips. */
+const BuildingIcon = () => {
+  return (
+    <svg viewBox="0 0 12 12" className="size-3" fill="currentColor" aria-hidden>
+      <path d="M2 11V2.5A.5.5 0 0 1 2.5 2H7a.5.5 0 0 1 .5.5V5H10a.5.5 0 0 1 .5.5V11H2Zm1.5-1H5V8.5H3.5V10Zm0-2.5H5V6H3.5v1.5Zm0-2.5H5V3.5H3.5V5Zm5 5H9V8.5H8.5V10Zm-2 0H7V8.5h-.5V10Zm2-2.5H9V6h-.5v1.5Z" />
+    </svg>
+  );
+};
+
+/**
+ * Stable decorative hue from a label (not semantic — it must NOT reuse ok/danger
+ * tones, which carry meaning). Same name → same colour across renders, so the org's
+ * departments read as a consistent little palette.
+ */
+const hueFor = (label: string): number => {
+  let h = 0;
+  for (const ch of label) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return h;
+};
+
+/**
+ * A department / clarification chip: the app's interactive accent chip plus a small
+ * coloured dot keyed to the label, so a row of departments looks alive without
+ * inventing a semantic colour scale. Clicking submits the relevant instruction.
+ */
+const DeptChip = ({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) => {
+  const hue = hueFor(label);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-1.5 text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/30 disabled:opacity-50"
+    >
+      <span
+        aria-hidden
+        className="size-2 rounded-full"
+        style={{ backgroundColor: `hsl(${hue} 55% 55%)` }}
+      />
+      {label}
+    </button>
   );
 };

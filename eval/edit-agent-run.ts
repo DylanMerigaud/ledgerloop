@@ -26,6 +26,10 @@ import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
 
 const dryRun = process.argv.includes("--dry-run");
 
+/** The departments the agent may scope a gate to (the demo org's set). A live case
+    naming one outside this list should make the planner clarify, not invent. */
+const EVAL_DEPARTMENTS = ["Finance", "Operations", "Product", "Sales"];
+
 const loadEnv = (): void => {
   for (const f of [".env.local", ".env"]) {
     try {
@@ -89,7 +93,9 @@ const main = async (): Promise<void> => {
   const rows: Row[] = [];
   for (const c of AGENT_CASES) {
     const model = dryRun ? stubModel(c) : (liveModel ?? stubModel(c));
-    const result = await runEditAgent(model, EDIT_FIXTURE, c.instruction);
+    const result = await runEditAgent(model, EDIT_FIXTURE, c.instruction, {
+      departments: EVAL_DEPARTMENTS,
+    });
     const row = score(c, result);
     rows.push(row);
     console.log(
