@@ -59,7 +59,11 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
           />
         </div>
         <div className={view === "pipeline" ? "h-full" : "hidden"}>
-          <Dashboard queue={queue} workflow={workflow} />
+          <Dashboard
+            queue={queue}
+            workflow={workflow}
+            onBuildWorkflow={() => setView("onboarding")}
+          />
         </div>
       </div>
     </div>

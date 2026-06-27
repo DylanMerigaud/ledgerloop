@@ -36,7 +36,7 @@ export default async function Page() {
           just BELOW this box — off the bottom edge — so it only appears when you scroll
           down, giving the content the full screen. On mobile it all falls back to
           natural height + normal page scroll. */}
-      <div className="flex flex-col pb-3 pt-7 sm:pt-9 lg:h-dvh lg:pb-5">
+      <div className="flex flex-col pb-3 pt-5 sm:pt-6 lg:h-dvh lg:pb-5">
         <Header />
         <div className="min-h-0 flex-1">
           {dbError ? (
@@ -55,21 +55,21 @@ export default async function Page() {
 
 const Header = () => {
   return (
-    <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <LogoMark />
-        <div>
+    <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <div className="flex items-center gap-3">
+          <LogoMark />
           <h1 className="text-[19px] font-semibold leading-none tracking-tight text-ink">
             ledgerloop
           </h1>
-          <p className="mt-1.5 max-w-xl text-[13.5px] leading-snug text-muted">
-            An onboarding agent that reads a client&apos;s HRIS and{" "}
-            <span className="font-medium text-ink">
-              derives their approval workflow
-            </span>
-            , then runs procure-to-pay against it.
-          </p>
         </div>
+        <p className="mt-2 max-w-xl text-[13.5px] leading-snug text-muted">
+          Reads a client&apos;s HRIS,{" "}
+          <span className="font-medium text-ink">
+            derives their approval workflow
+          </span>
+          , and runs procure-to-pay against it.
+        </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <HowItWorks />

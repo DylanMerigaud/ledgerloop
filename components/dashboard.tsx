@@ -230,13 +230,24 @@ const Spinner = () => {
  */
 const RunningAgainst = ({
   workflow,
+  onBuildWorkflow,
 }: {
   workflow: TApprovalWorkflow | null;
+  /** Jump back to the "Build the workflow" tab to run discovery. */
+  onBuildWorkflow: () => void;
 }) => {
   if (!workflow) {
     return (
       <p className="mt-1 text-[11px] text-faint">
-        Default workflow — run discovery to route against your own.
+        Default workflow —{" "}
+        <button
+          type="button"
+          onClick={onBuildWorkflow}
+          className="font-medium text-accent underline-offset-2 hover:underline"
+        >
+          build your own
+        </button>{" "}
+        to route against it.
       </p>
     );
   }
@@ -254,12 +265,15 @@ const RunningAgainst = ({
 export const Dashboard = ({
   queue,
   workflow,
+  onBuildWorkflow,
 }: {
   queue: QueueItem[];
   /** The active approval workflow this pipeline runs against (lifted from
       onboarding via AppView). null until discovery has run — the server then falls
       back to its default DAG. */
   workflow: TApprovalWorkflow | null;
+  /** Switch to the "Build the workflow" tab (the trace's no-workflow hint links here). */
+  onBuildWorkflow: () => void;
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
@@ -574,7 +588,10 @@ export const Dashboard = ({
                 <span className="font-mono">{previewItem.invoiceNumber}</span>
               </p>
             )}
-            <RunningAgainst workflow={workflow} />
+            <RunningAgainst
+              workflow={workflow}
+              onBuildWorkflow={onBuildWorkflow}
+            />
           </div>
           {state.status === "awaiting" && selected && gates.length >= 2 ? (
             // Several gates pend in parallel — decide each on its node in the graph,
