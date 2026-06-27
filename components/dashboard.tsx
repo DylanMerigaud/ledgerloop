@@ -144,6 +144,60 @@ const QueueHint = ({
   );
 };
 
+/**
+ * Once the document has been READ and the run moves on, the big extraction reveal
+ * (its moment is over) collapses into this one-line node at the top of the trace —
+ * "Intake · INV-2042 · 3 lines · $730 · reconciled with PO" — expandable to re-show
+ * the document + extracted fields. Keeps the AI-reads-the-doc proof one click away
+ * while handing the pane to the workflow (the hero).
+ */
+const CollapsedIntake = ({
+  pdfSrc,
+  document,
+  state,
+}: {
+  pdfSrc: string;
+  document: Invoice;
+  state: ExtractionState;
+}) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-3 rounded-lg ring-1 ring-inset ring-line">
+      <button
+        type="button"
+        data-testid="intake-collapsed"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] hover:bg-subtle/50"
+      >
+        <span aria-hidden className="text-ok">
+          ✓
+        </span>
+        <span className="font-medium text-ink">Intake</span>
+        <span className="min-w-0 flex-1 truncate text-muted">
+          {document.vendor} · {document.lineItems.length} lines ·{" "}
+          {formatMoney(document.total, document.currency)}
+        </span>
+        {state.matches && <Badge tone="ok">reconciled with PO</Badge>}
+        <span
+          aria-hidden
+          className={`text-faint transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          ▾
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-line p-3">
+          <ExtractionReveal
+            pdfSrc={pdfSrc}
+            state={state}
+            extractedInvoice={document}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
 /** Small spinner shown while a run is in flight. */
 const Spinner = () => {
   return (
@@ -313,6 +367,20 @@ export const Dashboard = ({
   const runGraph = readRunGraph(state.trace);
   const graphToShow = runGraph?.workflow ?? workflow;
   const graphStatuses = runGraph?.statuses;
+
+  // Has the document been READ and the run moved on? The extraction reveal is a
+  // MOMENT (the AI reading a real PDF): it owns the pane while it happens, then —
+  // once matching/a later stage has started — it collapses to a one-line "Intake"
+  // node at the top of the trace, handing the pane to the workflow (the hero).
+  // `doneIntake` is the read document ONCE the run is past intake (else null), so
+  // it both flags the phase and carries the data the collapsed node needs.
+  const intake = readIntake(state.trace);
+  const movedPastIntake = state.trace.some(
+    (e) => e.stage !== "intake" && e.kind !== "run",
+  );
+  const doneIntake =
+    intake && intake.state.status === "done" && movedPastIntake ? intake : null;
+  const pastIntake = doneIntake !== null;
 
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.
@@ -645,45 +713,50 @@ export const Dashboard = ({
         area — the cue that the trace continues below (esp. on macOS where the
         scrollbar is hidden). */}
         <div className="relative min-h-0 flex-1">
+          {/* Three phases, so the most important thing always owns the pane:
+              • IDLE / READING — the extraction reveal (the AI reading the real PDF)
+                is the MOMENT; it gets the full width, centered.
+              • PAST INTAKE — the document's been read, so the reveal collapses to a
+                one-line "Intake ✓" node and the pane becomes two columns: the
+                WORKFLOW GRAPH (the hero) on the left, the trace on the right (with
+                that collapsed intake as its first node).
+              Mobile stacks everything into one scrolling column. */}
           <div
             ref={traceScrollRef}
             onScroll={measureTrace}
-            className="scrollbar-slim h-full overflow-y-auto px-5 py-4"
+            className={`scrollbar-slim h-full overflow-y-auto px-5 py-4 ${
+              pastIntake
+                ? "lg:grid lg:grid-cols-[1.35fr_minmax(300px,1fr)] lg:gap-5 lg:overflow-hidden"
+                : ""
+            }`}
           >
-            {/* The document + extraction panel is ALWAYS shown when a row is in
-            view (idle preview, or live during a run), so it never unmounts —
-            no flash between selecting and running. `intake` is null until the
-            run emits its first event; until then it's a static preview. */}
-            {previewId && (
-              <div className="mb-4">
-                <ExtractionReveal
-                  pdfSrc={API_ROUTES.pdf(previewId)}
-                  // Show the scanning state the instant Run is clicked — even
-                  // before the first stream event lands — so the UI feels
-                  // immediate. The real intake event takes over when it arrives.
-                  state={
-                    readIntake(state.trace)?.state ??
-                    (state.status === "running"
-                      ? { status: "running", extracted: null, matches: false }
-                      : null)
-                  }
-                  extractedInvoice={readIntake(state.trace)?.document ?? null}
-                />
-              </div>
+            {/* Before we're past intake: the extraction reveal owns the pane (idle
+            preview, or the live scan). Always mounted so there's no flash. */}
+            {!pastIntake && previewId && (
+              <ExtractionReveal
+                pdfSrc={API_ROUTES.pdf(previewId)}
+                // Show the scanning state the instant Run is clicked — even before
+                // the first stream event lands — so the UI feels immediate.
+                state={
+                  intake?.state ??
+                  (state.status === "running"
+                    ? { status: "running", extracted: null, matches: false }
+                    : null)
+                }
+                extractedInvoice={intake?.document ?? null}
+              />
             )}
-            {/* The live workflow graph — the SAME canvas onboarding draws, lit up
-            by this invoice's path (a gate "In review" / "Approved" / "Skipped").
-            This is the loop made visible: the workflow you built on the left is
-            exactly what routes the invoice here. Shown once a run is underway, above
-            the detailed text timeline. */}
-            {state.status !== "idle" && graphToShow && (
-              <div className="mb-4">
+
+            {/* Past intake: LEFT column — the workflow graph, the hero, given the
+            larger share of the width. */}
+            {pastIntake && graphToShow && (
+              <div className="mb-4 lg:mb-0 lg:flex lg:min-h-0 lg:flex-col">
                 <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
                   Routing through {graphToShow.name}
                 </p>
                 <div
                   data-testid="live-graph"
-                  className="h-[440px] overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:h-64"
+                  className="h-[440px] overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:h-64 lg:h-auto lg:min-h-[320px] lg:flex-1"
                 >
                   <WorkflowGraph
                     workflow={graphToShow}
@@ -703,13 +776,25 @@ export const Dashboard = ({
                 </div>
               </div>
             )}
-            {state.status !== "idle" && (
-              <TraceTimeline
-                state={state}
-                invoiceLabel={selected?.invoiceNumber ?? null}
-                canRun={!!selected}
-                onRun={() => selected && run(selected.id)}
-              />
+
+            {/* Past intake: RIGHT column — the trace, led by the collapsed Intake
+            node (expandable to re-show the document + extracted fields). */}
+            {doneIntake && (
+              <div className="scrollbar-slim lg:h-full lg:overflow-y-auto lg:pl-1">
+                {previewId && (
+                  <CollapsedIntake
+                    pdfSrc={API_ROUTES.pdf(previewId)}
+                    document={doneIntake.document}
+                    state={doneIntake.state}
+                  />
+                )}
+                <TraceTimeline
+                  state={state}
+                  invoiceLabel={selected?.invoiceNumber ?? null}
+                  canRun={!!selected}
+                  onRun={() => selected && run(selected.id)}
+                />
+              </div>
             )}
           </div>
           {/* "more ↓" is a trace affordance — only meaningful once a run is

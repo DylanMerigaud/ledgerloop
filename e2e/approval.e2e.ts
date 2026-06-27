@@ -93,9 +93,9 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
 
   // 4. No duplicated stage nodes after the resume (this is the audit-bug guard —
   //    a phase-2 resume must upsert the stages in place, not stack a second set).
-  //    Exactly one node per stage. (Intake is shown by the extraction reveal, not
-  //    a timeline node — assert the reveal is present exactly once instead.)
-  await expect(page.getByTestId("extraction-reveal")).toHaveCount(1);
+  //    Exactly one node per stage. (Once past intake the extraction collapses to a
+  //    single "Intake" node at the top of the trace — assert it's present once.)
+  await expect(page.getByTestId("intake-collapsed")).toHaveCount(1);
   await expect(step(page, "matching")).toHaveCount(1);
   await expect(step(page, "approval")).toHaveCount(1);
   await expect(step(page, "reconciliation")).toHaveCount(1);
