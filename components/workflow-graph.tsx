@@ -123,8 +123,12 @@ type NodeData = {
   decidable?: boolean;
   /** The decision staged on this gate (before the reviewer submits the wave). */
   choice?: "approve" | "reject";
+  /** The reject note staged on this gate (only when choice is "reject"). */
+  reason?: string;
   /** Record the reviewer's choice for this gate. */
   onDecide?: (choice: "approve" | "reject") => void;
+  /** Record the reviewer's reject note for this gate. */
+  onReason?: (reason: string) => void;
 };
 
 /** Ring/bg for a validation issue on a node (only used when there's no diff change). */
@@ -145,7 +149,9 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
     selected,
     decidable,
     choice,
+    reason,
     onDecide,
+    onReason,
   } = data;
   const st = statusTone(status);
   const cb = changeBadge(change);
@@ -287,6 +293,18 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           </button>
         </div>
       )}
+
+      {/* Reject note — appears on a gate staged "reject" so the blocked bill carries
+          a why into the trace + audit. Optional. */}
+      {decidable && onReason && choice === "reject" && (
+        <input
+          value={reason ?? ""}
+          onChange={(e) => onReason(e.target.value)}
+          placeholder="Reason (optional)"
+          data-testid={`gate-reason-${step.id}`}
+          className="nodrag nopan mt-1.5 h-7 w-full rounded-lg bg-surface px-2 text-[12px] text-ink outline-none ring-1 ring-inset ring-danger-line transition-shadow focus:ring-2 focus:ring-accent-ring"
+        />
+      )}
       <Handle
         type="source"
         position={sourcePos}
@@ -424,7 +442,9 @@ const Inner = ({
   selectedId,
   decisions,
   decidableIds,
+  reasons,
   onDecide,
+  onReason,
   focusIds,
 }: WorkflowGraphProps) => {
   // Stack the DAG vertically below the `sm` breakpoint (640px), where a wide
@@ -577,20 +597,33 @@ const Inner = ({
         .sort()
         .join("|")
     : "";
+  const reasonKey = reasons
+    ? Object.entries(reasons)
+        .map(([k, v]) => `${k}:${v}`)
+        .sort()
+        .join("|")
+    : "";
   useEffect(() => {
     const decidable = new Set(decidableIds ?? []);
     setNodes((cur) =>
       cur.map((n) => {
         const isDecidable = decidable.has(n.id);
         const choice = decisions?.[n.id] ?? undefined;
+        const reason = reasons?.[n.id] ?? undefined;
         const handler =
           isDecidable && onDecide
             ? (c: "approve" | "reject") => onDecide(n.id, c)
             : undefined;
+        const reasonHandler =
+          isDecidable && onReason
+            ? (r: string) => onReason(n.id, r)
+            : undefined;
         if (
           n.data.decidable === isDecidable &&
           n.data.choice === choice &&
-          n.data.onDecide === handler
+          n.data.reason === reason &&
+          n.data.onDecide === handler &&
+          n.data.onReason === reasonHandler
         ) {
           return n;
         }
@@ -600,12 +633,24 @@ const Inner = ({
             ...n.data,
             decidable: isDecidable,
             choice: choice ?? undefined,
+            reason: reason ?? undefined,
             onDecide: handler,
+            onReason: reasonHandler,
           },
         };
       }),
     );
-  }, [decidableKey, choiceKey, decidableIds, decisions, onDecide, setNodes]);
+  }, [
+    decidableKey,
+    choiceKey,
+    reasonKey,
+    decidableIds,
+    decisions,
+    reasons,
+    onDecide,
+    onReason,
+    setNodes,
+  ]);
 
   // Smoothly frame the focused nodes (the pending group, or one on hover). Runs only
   // AFTER the initial per-graph layout+fit (the `laidOutFor === graphKey` guard) so it
@@ -658,8 +703,12 @@ type WorkflowGraphProps = {
   decisions?: Record<string, "approve" | "reject" | null>;
   /** When set, a node here accepts a decision now (a paused gate). */
   decidableIds?: string[];
+  /** Staged reject notes per step id (shown on a node staged "reject"). */
+  reasons?: Record<string, string>;
   /** Record a per-gate decision (the inline node controls). */
   onDecide?: (stepId: string, choice: "approve" | "reject") => void;
+  /** Record a per-gate reject note (the inline node reason input). */
+  onReason?: (stepId: string, reason: string) => void;
   /** Smoothly pan/zoom to frame these nodes (the pending group, or one on hover). */
   focusIds?: string[];
 };

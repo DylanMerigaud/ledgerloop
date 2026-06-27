@@ -15,7 +15,8 @@ import { test, expect, type Page } from "@playwright/test";
  *   INV-2042          — price mismatch (exception → pauses for approval)
  */
 
-const RUN_TIMEOUT = 30_000; // a 4-agent Haiku run is a few seconds; allow margin
+const RUN_TIMEOUT = 45_000; // a Haiku run is usually a few seconds, but the model can
+// occasionally take 30s+; give the pause/resume asserts headroom so latency isn't a flake
 
 const selectAndRun = async (page: Page, rowId: string) => {
   await page.getByTestId(`queue-row-${rowId}`).click();
@@ -104,13 +105,18 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
   await expect(page.getByText("Pipeline started")).toHaveCount(0);
 });
 
-test("price-mismatch REJECT leaves it un-posted", async ({ page }) => {
+test("price-mismatch REJECT (with a reason) leaves it un-posted", async ({
+  page,
+}) => {
   await selectAndRun(page, "INV-2042");
 
   await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
+  // Reject arms a reason field; type a note, then confirm.
   await page.getByTestId("reject-btn").click();
+  await page.getByTestId("reject-reason").fill("price too high, renegotiate");
+  await page.getByTestId("reject-confirm").click();
 
   // Reconciliation ends in error (rejected), and nothing was posted.
   await expect(step(page, "reconciliation")).toHaveAttribute(
@@ -121,5 +127,8 @@ test("price-mismatch REJECT leaves it un-posted", async ({ page }) => {
     },
   );
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
-  await expect(page.getByText(/[Rr]eject/).first()).toBeVisible();
+  // The reason rides into the trace on the rejected gate's detail.
+  await expect(
+    page.getByText(/price too high, renegotiate/).first(),
+  ).toBeVisible();
 });

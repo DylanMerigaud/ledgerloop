@@ -62,6 +62,9 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
   // UNION of every decision so far, not just the wave just acted on. Without this, an
   // earlier wave's approval would be lost on the next resume and the bill never posts.
   const decisionsRef = useRef<Record<string, "approve" | "reject">>({});
+  // Reviewer notes per REJECTED gate, accumulated alongside decisions (same UNION
+  // discipline) so a note set in an earlier wave isn't lost on a later resume.
+  const reasonsRef = useRef<Record<string, string>>({});
 
   const reset = useEventCallback(() => {
     abortRef.current?.abort();
@@ -69,6 +72,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
     eventsRef.current = [];
     stepIndexRef.current = new Map();
     decisionsRef.current = {};
+    reasonsRef.current = {};
     setState(IDLE);
   });
 
@@ -79,7 +83,11 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
    * (`decide`), the per-node controls send an explicit per-gate map (`decideMany`).
    */
   const stream = useEventCallback(
-    async (id: string, decisions?: Record<string, "approve" | "reject">) => {
+    async (
+      id: string,
+      decisions?: Record<string, "approve" | "reject">,
+      reasons?: Record<string, string>,
+    ) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -89,6 +97,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
         eventsRef.current = [];
         stepIndexRef.current = new Map();
         decisionsRef.current = {};
+        reasonsRef.current = {};
       }
       setState((s) => ({
         ...s,
@@ -153,9 +162,16 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
         const activeWorkflow = workflowRef.current ?? undefined;
         if (decisions) {
           decisionsRef.current = { ...decisionsRef.current, ...decisions };
+          if (reasons)
+            reasonsRef.current = { ...reasonsRef.current, ...reasons };
         }
         const body = decisions
-          ? { id, decisions: decisionsRef.current, workflow: activeWorkflow }
+          ? {
+              id,
+              decisions: decisionsRef.current,
+              reasons: reasonsRef.current,
+              workflow: activeWorkflow,
+            }
           : { id, workflow: activeWorkflow };
         // The oRPC `run` procedure is an event iterator: a typed async stream of
         // TraceEvent | StreamDone. No manual reader / NDJSON parse / cast — just
@@ -210,16 +226,26 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
   );
 
   const run = useEventCallback((id: string) => stream(id));
-  // One decision applied to every gate pending in this wave (the header button).
+  // One decision applied to every gate pending in this wave (the header button). An
+  // optional reason (a reject note) is attached to those same gates.
   const decide = useEventCallback(
-    (id: string, decision: "approve" | "reject") =>
-      stream(id, decisionsForPending(eventsRef.current, decision)),
+    (id: string, decision: "approve" | "reject", reason?: string) => {
+      const decisions = decisionsForPending(eventsRef.current, decision);
+      const note = reason?.trim();
+      const reasons = note
+        ? Object.fromEntries(Object.keys(decisions).map((k) => [k, note]))
+        : undefined;
+      return stream(id, decisions, reasons);
+    },
   );
   // An explicit per-gate map (the inline node controls) — approve one, reject
-  // another in the same parallel wave.
+  // another in the same parallel wave, each with its own optional reject note.
   const decideMany = useEventCallback(
-    (id: string, perGate: Record<string, "approve" | "reject">) =>
-      stream(id, perGate),
+    (
+      id: string,
+      perGate: Record<string, "approve" | "reject">,
+      reasons?: Record<string, string>,
+    ) => stream(id, perGate, reasons),
   );
 
   /**

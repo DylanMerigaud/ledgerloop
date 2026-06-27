@@ -1,6 +1,7 @@
 import {
   executeWorkflow,
   type Decisions,
+  type Reasons,
   type ExecutionState,
   type StepState,
 } from "@/lib/approval-engine";
@@ -59,8 +60,14 @@ export const runApproval = (
   workflow: ApprovalWorkflow,
   match: MatchResult,
   decisions: Decisions = {},
+  reasons: Reasons = {},
 ): ApprovalRun => {
-  const state = executeWorkflow(workflow, contextFromMatch(match), decisions);
+  const state = executeWorkflow(
+    workflow,
+    contextFromMatch(match),
+    decisions,
+    reasons,
+  );
   const pending = state.steps.filter((s) => s.status === "pending");
 
   const outcome =
@@ -74,10 +81,19 @@ export const runApproval = (
     outcome === "posted"
       ? approvedNarration(state)
       : outcome === "rejected"
-        ? "An approver rejected the invoice — it will not be posted."
+        ? rejectedNarration(state)
         : pendingNarration(pending);
 
   return { state, outcome, pending, narration };
+};
+
+/** The rejection line — names WHY when the reviewer left a reason. The rejected
+    step's detail already reads "Rejected by <who>[: <reason>]"; surface it so the
+    reason rides into the always-visible trace narration (not just the step detail). */
+const rejectedNarration = (state: ExecutionState): string => {
+  const rejected = state.steps.find((s) => s.status === "rejected");
+  if (rejected) return `${rejected.detail} The invoice will not be posted.`;
+  return "An approver rejected the invoice — it will not be posted.";
 };
 
 const approvedNarration = (state: ExecutionState): string => {

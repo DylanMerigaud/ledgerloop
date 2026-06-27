@@ -27,6 +27,8 @@ export const runPipelineStream = async function* (
   input: RunRequest,
 ): AsyncGenerator<TraceEvent | StreamDone> {
   const decisions = input.decisions ?? {};
+  // Optional per-rejected-gate notes, parallel to decisions.
+  const reasons = input.reasons ?? {};
   // A resume (decisions present) re-runs from the top but the document was already
   // read — skip the costly vision call the second time.
   const hasDecisions = Object.keys(decisions).length > 0;
@@ -75,6 +77,7 @@ export const runPipelineStream = async function* (
         inactiveVendors: bundle.inactiveVendors,
         catalogSkus: bundle.catalogSkus,
         decisions,
+        reasons,
         skipExtraction: hasDecisions,
         // The activated workflow IS what the pipeline routes through — this is the
         // link between onboarding (where it's derived/edited) and the run. It's

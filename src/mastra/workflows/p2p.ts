@@ -62,6 +62,9 @@ const RunInput = z.object({
   inactiveVendors: z.array(z.string()).default([]),
   catalogSkus: z.array(z.string()).default([]),
   decisions: z.record(z.string(), z.enum(["approve", "reject"])).default({}),
+  /* Optional reviewer note per REJECTED gate (keyed by step id) — shown in the
+     rejected step's trace detail. Parallel to `decisions`. */
+  reasons: z.record(z.string(), z.string()).default({}),
   /* On a phase-2 resume the document was already read in phase 1 — skip the
      vision call so a resume doesn't re-extract (wasted cost + latency). */
   skipExtraction: z.boolean().default(false),
@@ -138,6 +141,7 @@ const intakeStep = createStep({
    vendor + the reviewer's decision forward. */
 const Decisions = z.object({
   decisions: z.record(z.string(), z.enum(["approve", "reject"])),
+  reasons: z.record(z.string(), z.string()).default({}),
 });
 const MatchStepOut = MatchResult.merge(Narrated)
   .merge(Decisions)
@@ -163,6 +167,7 @@ const matchingStep = createStep({
     return {
       ...match, // includes `vendor` (part of MatchResult now)
       decisions: inputData.decisions,
+      reasons: inputData.reasons,
       profile: inputData.profile,
       narration: matchLine(match),
     };
@@ -270,7 +275,13 @@ const investigateAndRouteStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData, mastra, writer }) => {
-    const { decisions, profile, narration: _prior, ...match } = inputData;
+    const {
+      decisions,
+      reasons,
+      profile,
+      narration: _prior,
+      ...match
+    } = inputData;
 
     const investigation = await investigate(
       mastra,
@@ -292,7 +303,7 @@ const investigateAndRouteStep = createStep({
     const workflow = workflowFor(
       profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
     );
-    const run = runApproval(workflow, match, decisions);
+    const run = runApproval(workflow, match, decisions, reasons);
 
     return {
       approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
@@ -312,6 +323,7 @@ const blockStep = createStep({
   execute: async ({ inputData }) => {
     const {
       decisions: _decisions,
+      reasons: _reasons,
       profile: _profile,
       narration: _prior,
       ...match
@@ -333,11 +345,17 @@ const autoApproveStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData }) => {
-    const { decisions, profile, narration: _prior, ...match } = inputData;
+    const {
+      decisions,
+      reasons,
+      profile,
+      narration: _prior,
+      ...match
+    } = inputData;
     const workflow = workflowFor(
       profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
     );
-    const run = runApproval(workflow, match, decisions);
+    const run = runApproval(workflow, match, decisions, reasons);
     return {
       approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
       match,

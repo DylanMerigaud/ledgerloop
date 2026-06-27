@@ -395,27 +395,51 @@ export const Dashboard = ({
   const [gateChoices, setGateChoices] = useState<
     Record<string, "approve" | "reject">
   >({});
-  // Clear staged decisions whenever the run leaves the awaiting state (resolved,
-  // re-run, or a new wave streams in fresh) so they never leak across waves/runs.
+  // Reject notes staged per gate (multi-gate), keyed by step id.
+  const [gateReasons, setGateReasons] = useState<Record<string, string>>({});
+  // Single-gate header: clicking Reject arms a reason input before confirming.
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  // Clear all staged decision/reason state whenever the run leaves the awaiting
+  // state (resolved, re-run, or a new wave streams in fresh) so nothing leaks.
   const awaiting = state.status === "awaiting";
   const wasAwaitingRef = useRef(false);
   useEffect(() => {
-    if (wasAwaitingRef.current && !awaiting) setGateChoices({});
+    if (wasAwaitingRef.current && !awaiting) {
+      setGateChoices({});
+      setGateReasons({});
+      setRejecting(false);
+      setRejectReason("");
+    }
     wasAwaitingRef.current = awaiting;
   }, [awaiting]);
 
   const setGate = useEventCallback((id: string, choice: "approve" | "reject") =>
     setGateChoices((m) => ({ ...m, [id]: choice })),
   );
+  // A gate flipped back to approve drops any reject note it had staged.
+  const setGateReason = useEventCallback((id: string, reason: string) =>
+    setGateReasons((m) => ({ ...m, [id]: reason })),
+  );
   const setAllGates = (choice: "approve" | "reject") =>
     setGateChoices(Object.fromEntries(pendingIds.map((id) => [id, choice])));
   const allDecided =
     gates.length > 0 && pendingIds.every((id) => gateChoices[id]);
+  // Only notes on gates still staged as reject go out (approve drops the note).
+  const rejectReasons = (): Record<string, string> =>
+    Object.fromEntries(
+      Object.entries(gateReasons).filter(
+        ([id, r]) => gateChoices[id] === "reject" && r.trim(),
+      ),
+    );
 
   const select = (id: string) => {
     if (id === selectedId || locked) return;
     setSelectedId(id);
     setGateChoices({});
+    setGateReasons({});
+    setRejecting(false);
+    setRejectReason("");
     reset();
   };
 
@@ -592,33 +616,71 @@ export const Dashboard = ({
                 size="sm"
                 data-testid="submit-decisions"
                 disabled={!allDecided}
-                onClick={() => decideMany(selected.id, gateChoices)}
+                onClick={() =>
+                  decideMany(selected.id, gateChoices, rejectReasons())
+                }
               >
                 Submit decisions
               </Button>
             </div>
           ) : state.status === "awaiting" && selected ? (
-            // A single gate — decide it straight from the header.
+            // A single gate — decide it straight from the header. Reject first arms a
+            // reason input (optional note) before confirming, so a blocked bill carries
+            // a why into the trace + the audit history.
             <div
               className="flex shrink-0 items-center gap-2"
               data-testid="approval-gate"
             >
-              <Button
-                variant="danger"
-                size="sm"
-                data-testid="reject-btn"
-                onClick={() => decide(selected.id, "reject")}
-              >
-                Reject
-              </Button>
-              <Button
-                variant="ok"
-                size="sm"
-                data-testid="approve-btn"
-                onClick={() => decide(selected.id, "approve")}
-              >
-                Approve
-              </Button>
+              {rejecting ? (
+                <>
+                  <input
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter")
+                        void decide(selected.id, "reject", rejectReason);
+                      if (e.key === "Escape") setRejecting(false);
+                    }}
+                    placeholder="Reason (optional)"
+                    data-testid="reject-reason"
+                    className="h-8 w-48 rounded-lg bg-surface px-2.5 text-[12px] text-ink outline-none ring-1 ring-inset ring-line-strong transition-shadow focus:ring-2 focus:ring-accent-ring"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRejecting(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    data-testid="reject-confirm"
+                    onClick={() => decide(selected.id, "reject", rejectReason)}
+                  >
+                    Reject
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    data-testid="reject-btn"
+                    onClick={() => setRejecting(true)}
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    variant="ok"
+                    size="sm"
+                    data-testid="approve-btn"
+                    onClick={() => decide(selected.id, "approve")}
+                  >
+                    Approve
+                  </Button>
+                </>
+              )}
             </div>
           ) : (
             // Run lives in the header at all times a row is selected: "Run
@@ -701,9 +763,16 @@ export const Dashboard = ({
                   <WorkflowGraph
                     workflow={graphToShow}
                     statuses={graphStatuses}
+                    // When >1 gate pends in parallel, each pending node gets inline
+                    // Approve/Reject (decide one, reject another) + a reason input on a
+                    // node staged reject. A single gate uses the header buttons, so the
+                    // graph stays read-only there.
                     decidableIds={gates.length >= 2 ? pendingIds : undefined}
                     decisions={gates.length >= 2 ? gateChoices : undefined}
+                    reasons={gates.length >= 2 ? gateReasons : undefined}
                     onDecide={gates.length >= 2 ? setGate : undefined}
+                    onReason={gates.length >= 2 ? setGateReason : undefined}
+                    // Pan to frame the waiting gate(s) the moment the run pauses.
                     focusIds={awaiting ? pendingIds : undefined}
                   />
                 </div>
