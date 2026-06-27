@@ -747,16 +747,18 @@ export const Dashboard = ({
               />
             )}
 
-            {/* Past intake: LEFT column — the workflow graph, the hero, given the
-            larger share of the width. */}
+            {/* Past intake: LEFT column — the workflow graph, the HERO. Given a
+            generous explicit height on desktop (not flex, which never fills a grid
+            row reliably) so React Flow's fitView frames the DAG large instead of
+            clustering it in a short box. The trace column scrolls beside it. */}
             {pastIntake && graphToShow && (
-              <div className="mb-4 lg:mb-0 lg:flex lg:min-h-0 lg:flex-col">
+              <div className="mb-4 lg:mb-0">
                 <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
                   Routing through {graphToShow.name}
                 </p>
                 <div
                   data-testid="live-graph"
-                  className="h-[440px] overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:h-64 lg:h-auto lg:min-h-[320px] lg:flex-1"
+                  className="h-[440px] overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:h-64 lg:h-[340px]"
                 >
                   <WorkflowGraph
                     workflow={graphToShow}
