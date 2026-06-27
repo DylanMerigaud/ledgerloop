@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { outcomeDot, type Outcome } from "@/lib/display";
@@ -60,6 +60,30 @@ export const RecentRuns = ({
 
   const runs = history.data?.runs ?? [];
 
+  // "N more ↓" scroll affordance: the list scrolls (max-h-56) but gives no cue that
+  // rows continue below. Mirror the queue's pill — measure the hidden rows and offer
+  // a click that scrolls down. Hidden once at the bottom.
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const [hiddenBelow, setHiddenBelow] = useState(0);
+  const measure = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    setHiddenBelow(remaining < 8 ? 0 : remaining);
+  };
+  useEffect(() => {
+    measure();
+    const el = listRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [runs.length]);
+
+  const ROW_PX = 45; // approx height of one run row
+  const moreCount =
+    hiddenBelow > 0 ? Math.max(1, Math.round(hiddenBelow / ROW_PX)) : 0;
+
   const replay = async (id: string) => {
     if (disabled || loadingId) return;
     setLoadingId(id);
@@ -89,43 +113,65 @@ export const RecentRuns = ({
           resets daily.
         </p>
       ) : (
-        <ul className="scrollbar-slim max-h-56 divide-y divide-line overflow-y-auto">
-          {runs.map((r) => {
-            const outcome = toOutcome(r.verdict, r.outcome);
-            const isLoading = loadingId === r.id;
-            return (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  data-testid={`run-history-${r.id}`}
-                  onClick={() => void replay(r.id)}
-                  disabled={disabled || loadingId !== null}
-                  aria-disabled={disabled || loadingId !== null}
-                  className={`flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-subtle/70 ${
-                    disabled ? "cursor-not-allowed opacity-40" : ""
-                  } ${isLoading ? "opacity-60" : ""}`}
-                >
-                  <span
-                    aria-hidden
-                    className="h-2 w-2 shrink-0 rounded-full ring-2 ring-surface"
-                    style={{ backgroundColor: outcomeDot(outcome) }}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-mono text-[11px] text-ink">
-                      {r.invoiceNumber}
+        <div className="relative min-h-0">
+          <ul
+            ref={listRef}
+            onScroll={measure}
+            className="scrollbar-slim max-h-56 divide-y divide-line overflow-y-auto"
+          >
+            {runs.map((r) => {
+              const outcome = toOutcome(r.verdict, r.outcome);
+              const isLoading = loadingId === r.id;
+              return (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    data-testid={`run-history-${r.id}`}
+                    onClick={() => void replay(r.id)}
+                    disabled={disabled || loadingId !== null}
+                    aria-disabled={disabled || loadingId !== null}
+                    className={`flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-subtle/70 ${
+                      disabled ? "cursor-not-allowed opacity-40" : ""
+                    } ${isLoading ? "opacity-60" : ""}`}
+                  >
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 shrink-0 rounded-full ring-2 ring-surface"
+                      style={{ backgroundColor: outcomeDot(outcome) }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-mono text-[11px] text-ink">
+                        {r.invoiceNumber}
+                      </span>
+                      <span className="block truncate text-[11px] text-muted">
+                        {r.verdict} · {r.outcome} ·{" "}
+                        {formatDuration(r.durationMs)}
+                      </span>
                     </span>
-                    <span className="block truncate text-[11px] text-muted">
-                      {r.verdict} · {r.outcome} · {formatDuration(r.durationMs)}
+                    <span className="shrink-0 text-[10px] text-faint tnum">
+                      {timeAgo(r.createdAt)}
                     </span>
-                  </span>
-                  <span className="shrink-0 text-[10px] text-faint tnum">
-                    {timeAgo(r.createdAt)}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {moreCount > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                listRef.current?.scrollBy({
+                  top: listRef.current.clientHeight * 0.8,
+                  behavior: "smooth",
+                })
+              }
+              className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
+            >
+              {moreCount} more
+              <span aria-hidden>↓</span>
+            </button>
+          )}
+        </div>
       )}
     </Card>
   );

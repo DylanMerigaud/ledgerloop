@@ -538,28 +538,23 @@ export const Dashboard = ({
                 );
               })}
             </ul>
-            {/* "N more" scroll affordance: a fade + a pill that scrolls the list
-          when clicked. Hidden once the list is at the bottom. */}
+            {/* "N more" scroll affordance: a pill that scrolls the list when clicked.
+          Hidden once the list is at the bottom. (No fade — the rows are short and it
+          ate into the last row.) */}
             {moreCount > 0 && (
-              <>
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface via-surface/80 to-transparent"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    listRef.current?.scrollBy({
-                      top: listRef.current.clientHeight * 0.8,
-                      behavior: "smooth",
-                    })
-                  }
-                  className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
-                >
-                  {moreCount} more
-                  <span aria-hidden>↓</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() =>
+                  listRef.current?.scrollBy({
+                    top: listRef.current.clientHeight * 0.8,
+                    behavior: "smooth",
+                  })
+                }
+                className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
+              >
+                {moreCount} more
+                <span aria-hidden>↓</span>
+              </button>
             )}
           </div>
         </Card>
@@ -580,16 +575,6 @@ export const Dashboard = ({
               </p>
             )}
             <RunningAgainst workflow={workflow} />
-            {/* Idle: a one-line "what to do" at the top of the pane (where the eye
-            lands), pointing at the showcase invoice. The queue's "Start here" chip
-            is the other half of the cue. */}
-            {state.status === "idle" && (
-              <p className="mt-1.5 max-w-md text-[11.5px] leading-snug text-muted">
-                {selected?.id === "INV-2042"
-                  ? "Hit Run pipeline — the agent investigates the price variance, then pauses for your approval."
-                  : "New here? Run INV-2042 (the “Start here” row) to see the agent investigate a variance and pause for approval. Clean invoices post straight through."}
-              </p>
-            )}
           </div>
           {state.status === "awaiting" && selected && gates.length >= 2 ? (
             // Several gates pend in parallel — decide each on its node in the graph,
