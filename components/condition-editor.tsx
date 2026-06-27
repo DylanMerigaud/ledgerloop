@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import type {
   Condition,
   ConditionField,
@@ -258,6 +259,24 @@ const ValueInput = ({
   onChange: (next: ConditionLeaf) => void;
 }) => {
   if (meta.kind === "enum" && meta.options) {
+    const labelOf = (o: string) =>
+      meta.label === "Exception flag" ? o.replace(/_/g, " ") : o;
+    // Long lists (vendors, exception codes) get a searchable combobox; short enums
+    // (verdict, matchType) stay a plain select — search there is overkill.
+    if (meta.options.length > 6) {
+      return (
+        <div className="min-w-0 flex-1">
+          <Combobox
+            value={String(leaf.value)}
+            onChange={(v) => onChange({ ...leaf, value: v })}
+            options={meta.options.map((o) => ({ value: o, label: labelOf(o) }))}
+            placeholder="Choose…"
+            testid="cond-value"
+            buttonClassName="h-8 text-[12px]"
+          />
+        </div>
+      );
+    }
     return (
       <select
         aria-label="Value"
@@ -268,7 +287,7 @@ const ValueInput = ({
       >
         {meta.options.map((o) => (
           <option key={o} value={o}>
-            {meta.label === "Exception flag" ? o.replace(/_/g, " ") : o}
+            {labelOf(o)}
           </option>
         ))}
       </select>

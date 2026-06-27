@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ConditionEditor } from "@/components/condition-editor";
 import { Button } from "@/components/ui/button";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
 import type { AvailableValues } from "@/lib/condition-fields";
 import type { OrgEmployee } from "@/lib/orpc/schemas";
@@ -36,6 +37,26 @@ const peopleFor = (people: OrgEmployee[], role: string): OrgEmployee[] => {
   const score = (p: OrgEmployee): number => (relevant(p) ? 0 : 1);
   return [...people].sort(
     (a, b) => score(a) - score(b) || a.name.localeCompare(b.name),
+  );
+};
+
+/** A person row for the approver combobox: initials avatar + name + title. */
+const PersonRow = ({ name, title }: { name: string; title: string }) => {
+  const initials = name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("");
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      <span className="grid size-[18px] shrink-0 place-items-center rounded-full bg-accent-soft text-[8px] font-semibold uppercase text-accent">
+        {initials}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+        {name}
+        {title && <span className="text-faint"> · {title}</span>}
+      </span>
+    </span>
   );
 };
 
@@ -94,33 +115,27 @@ const ApprovalFields = ({
 }) => {
   const ordered = peopleFor(people, step.approverTitle);
   const unresolved = step.approverName === null;
+  const personOptions: ComboboxOption[] = ordered.map((p) => ({
+    value: p.name,
+    label: p.name,
+    sublabel: p.title || undefined,
+    keywords: `${p.title} ${p.department}`,
+    render: () => <PersonRow name={p.name} title={p.title} />,
+  }));
 
   return (
     <>
       <Field label={`Approver · ${step.approverTitle}`}>
-        <select
+        <Combobox
           value={step.approverName ?? ""}
-          onChange={(e) =>
-            onApply({
-              op: "set-approver",
-              stepId: step.id,
-              approverName: e.target.value,
-            })
+          onChange={(name) =>
+            onApply({ op: "set-approver", stepId: step.id, approverName: name })
           }
-          className={`h-9 w-full rounded-lg bg-surface px-2.5 text-[13px] text-ink outline-none ring-1 ring-inset transition-shadow focus:ring-2 focus:ring-accent-ring ${
-            unresolved ? "ring-warn-line" : "ring-line-strong"
-          }`}
-        >
-          <option value="" disabled>
-            {unresolved ? "⚠ Choose a person…" : "Choose a person…"}
-          </option>
-          {ordered.map((p) => (
-            <option key={p.id} value={p.name}>
-              {p.name}
-              {p.title ? ` · ${p.title}` : ""}
-            </option>
-          ))}
-        </select>
+          options={personOptions}
+          placeholder={unresolved ? "⚠ Choose a person…" : "Choose a person…"}
+          invalid={unresolved}
+          testid="approver-combobox"
+        />
       </Field>
 
       <Field label="Triggers when">

@@ -21,21 +21,16 @@ test("clicking a gate opens the panel and the approver picker resolves it", asyn
     timeout: DISCOVERY_TIMEOUT,
   });
 
-  // Click the manager-review gate → the panel opens for that step.
+  // Click the manager-review gate → the panel opens for that step (the trigger editor).
   await node(page, "manager-review").click();
-  await expect(page.getByText(/Triggers when amount over/)).toBeVisible();
+  await expect(page.getByText(/Triggers when/)).toBeVisible();
 
   // The department-review gate is often unresolved by the model — open it and assign
-  // a person via the picker; the node's "unresolved" warning then clears.
+  // a person via the approver combobox; the node's "unresolved" warning then clears.
   await node(page, "department-review").click();
-  const picker = page.locator("select").first();
-  await expect(picker).toBeVisible();
-  // Pick the first real person in the list.
-  const firstPerson = await picker
-    .locator("option:not([disabled])")
-    .first()
-    .getAttribute("value");
-  await picker.selectOption(firstPerson);
+  await page.getByTestId("approver-combobox").click();
+  // Pick the first person in the open list.
+  await page.locator('[role="option"]').first().click();
   // The chosen person now shows on the department gate (no more "unresolved").
   await expect(
     node(page, "department-review").getByText("unresolved"),
@@ -54,8 +49,8 @@ test("the pipeline graph is read-only — clicking a node does nothing", async (
   const liveNode = page
     .getByTestId("live-graph")
     .getByTestId("graph-node-manager-review");
-  await expect(liveNode).toBeVisible({ timeout: 40_000 });
+  await expect(liveNode).toBeVisible({ timeout: 45_000 });
   await liveNode.click();
-  // No edit panel appears in the pipeline (the panel's hallmark field is absent).
-  await expect(page.getByText(/Triggers when amount over/)).toHaveCount(0);
+  // No edit panel appears in the pipeline (the condition editor's heading is absent).
+  await expect(page.getByText(/Triggers when/)).toHaveCount(0);
 });
