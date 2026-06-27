@@ -139,8 +139,10 @@ export type GoodsReceipt = z.infer<typeof GoodsReceipt>;
  *  Stage 2 — matching result (output of the deterministic matcher)
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** Why a given line failed to reconcile (or, for `duplicate`, the whole invoice). */
-const MatchExceptionCode = z.enum([
+/** Why a given line failed to reconcile (or, for `duplicate`, the whole invoice).
+    Exported so the condition editor can offer this canonical list as the value
+    choices for an `exceptionCode` gate (one source of truth for the codes). */
+export const MatchExceptionCode = z.enum([
   "price_variance", // invoice unit price differs from the PO unit price
   "qty_variance_po", // invoice qty differs from the PO qty
   "qty_variance_receipt", // invoice qty exceeds what was actually received

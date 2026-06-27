@@ -542,6 +542,29 @@ test("set-threshold: changes only the targeted gate's amount", () => {
   assert.match(w, /verdict == exception/);
 });
 
+test("set-condition: replaces only the targeted gate's trigger", () => {
+  const next = applyEditOp(base, {
+    op: "set-condition",
+    stepId: "director",
+    when: {
+      kind: "any",
+      conditions: [
+        { kind: "leaf", field: "verdict", op: "==", value: "exception" },
+        { kind: "leaf", field: "amount", op: ">", value: 10000 },
+      ],
+    },
+  });
+  // The director's trigger is the new tree…
+  assert.match(
+    whenOf(next, "director"),
+    /verdict == exception or amount > \$10,000/,
+  );
+  // …and a sibling gate's trigger is untouched.
+  assert.equal(whenOf(next, "manager"), whenOf(base, "manager"));
+  // Still a sound, parseable workflow.
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+});
+
 test("set-approver: sets the person on one step only", () => {
   const next = applyEditOp(base, {
     op: "set-approver",

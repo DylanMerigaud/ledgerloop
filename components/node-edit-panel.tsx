@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 
+import { ConditionEditor } from "@/components/condition-editor";
 import { Button } from "@/components/ui/button";
-import type {
-  ApprovalWorkflow,
-  Condition,
-  WorkflowStep,
-} from "@/lib/approval-workflow";
+import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
+import type { AvailableValues } from "@/lib/condition-fields";
 import type { OrgEmployee } from "@/lib/orpc/schemas";
 import { applyEditOp, type WorkflowEditOp } from "@/lib/workflow-edit";
 import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
@@ -17,24 +15,9 @@ import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
  * edits THAT step directly, the Pivot/Retool pattern. Every change is deterministic:
  * it builds one `WorkflowEditOp` and the parent applies it with `applyEditOp`
  * immediately (no model, no preview/approve cycle — the chat handles fuzzy intent;
- * this handles precise, unambiguous edits like "who approves this" and "what's the
- * threshold"). V1 fields: approver, amount threshold, label, remove.
+ * this handles precise, unambiguous edits). Fields: approver, the full trigger
+ * (the condition editor), label, remove.
  */
-
-/** The amount floor a gate enforces (its `> N` amount leaf), or null. Mirrors the
-    validator's reader; kept local so the panel doesn't reach into validation. */
-const amountFloorOf = (when: Condition): number | null => {
-  const leaves = (c: Condition): Extract<Condition, { kind: "leaf" }>[] =>
-    c.kind === "leaf"
-      ? [c]
-      : c.kind === "all" || c.kind === "any"
-        ? c.conditions.flatMap(leaves)
-        : [];
-  const amt = leaves(when).find(
-    (l) => l.field === "amount" && (l.op === ">" || l.op === ">="),
-  );
-  return amt && typeof amt.value === "number" ? amt.value : null;
-};
 
 /** Order the org for the approver picker: titles closest to the gate's role first
     (a "Director" gate surfaces VPs / C-level), then everyone else, by name. */
@@ -60,12 +43,14 @@ export const NodeEditPanel = ({
   workflow,
   stepId,
   people,
+  available,
   onApply,
   onClose,
 }: {
   workflow: ApprovalWorkflow;
   stepId: string;
   people: OrgEmployee[];
+  available: AvailableValues;
   onApply: (op: WorkflowEditOp) => void;
   onClose: () => void;
 }) => {
@@ -74,7 +59,12 @@ export const NodeEditPanel = ({
   return (
     <PanelShell title={step.label} onClose={onClose}>
       {step.kind === "approval" ? (
-        <ApprovalFields step={step} people={people} onApply={onApply} />
+        <ApprovalFields
+          step={step}
+          people={people}
+          available={available}
+          onApply={onApply}
+        />
       ) : (
         <p className="text-[12px] text-faint">
           A system step (posts the bill / notifies). Rename or remove it below.
@@ -94,16 +84,14 @@ export const NodeEditPanel = ({
 const ApprovalFields = ({
   step,
   people,
+  available,
   onApply,
 }: {
   step: Extract<WorkflowStep, { kind: "approval" }>;
   people: OrgEmployee[];
+  available: AvailableValues;
   onApply: (op: WorkflowEditOp) => void;
 }) => {
-  const floor = amountFloorOf(step.when);
-  const [amount, setAmount] = useState<string>(
-    floor != null ? String(floor) : "",
-  );
   const ordered = peopleFor(people, step.approverTitle);
   const unresolved = step.approverName === null;
 
@@ -135,28 +123,14 @@ const ApprovalFields = ({
         </select>
       </Field>
 
-      <Field label="Triggers when amount over ($)">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const n = Number(amount);
-            if (Number.isFinite(n) && n > 0)
-              onApply({ op: "set-threshold", stepId: step.id, amountOver: n });
-          }}
-          className="flex items-center gap-1.5"
-        >
-          <input
-            type="number"
-            min={0}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="any amount"
-            className="h-9 flex-1 rounded-lg bg-surface px-2.5 text-[13px] text-ink outline-none ring-1 ring-inset ring-line-strong transition-shadow focus:ring-2 focus:ring-accent-ring"
-          />
-          <Button type="submit" size="sm" variant="ghost">
-            Set
-          </Button>
-        </form>
+      <Field label="Triggers when">
+        <ConditionEditor
+          value={step.when}
+          available={available}
+          onChange={(when) =>
+            onApply({ op: "set-condition", stepId: step.id, when })
+          }
+        />
       </Field>
     </>
   );
@@ -245,7 +219,7 @@ const PanelShell = ({
 }) => (
   // Overlay on the right edge of the graph; the canvas stays full width behind it.
   // On a narrow screen it spans the bottom instead of a thin right column.
-  <div className="absolute inset-x-0 bottom-0 z-20 max-h-[70%] overflow-y-auto rounded-t-xl bg-surface p-4 shadow-lift ring-1 ring-inset ring-line sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[280px] sm:rounded-l-xl sm:rounded-tr-none">
+  <div className="absolute inset-x-0 bottom-0 z-20 max-h-[70%] overflow-y-auto rounded-t-xl bg-surface p-4 shadow-lift ring-1 ring-inset ring-line sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[320px] sm:rounded-l-xl sm:rounded-tr-none">
     <div className="mb-3 flex items-center justify-between gap-2">
       <span className="truncate text-[13px] font-semibold text-ink">
         {title}

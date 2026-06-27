@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   type ApprovalWorkflow as TWorkflow,
   type WorkflowStep,
-  type Condition,
+  Condition,
   IntegrationKind,
   diffWorkflows,
   describeCondition,
@@ -66,6 +66,16 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       /** Id of the existing approval step whose amount threshold changes. */
       stepId: z.string(),
       amountOver: z.number(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("set-condition"),
+      /** Id of the existing approval step whose trigger is replaced. */
+      stepId: z.string(),
+      /** The whole new trigger — the condition editor owns the tree, so this
+          REPLACES the gate's `when` (no surgical merge like set-threshold). */
+      when: Condition,
     })
     .strict(),
   z
@@ -274,6 +284,13 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       if (step && step.kind === "approval") {
         step.when = mergeAmount(step.when, op.amountOver);
       }
+      return next;
+    }
+
+    case "set-condition": {
+      const step = next.steps.find((s) => s.id === op.stepId);
+      // Replace the whole trigger (the editor built and validated the tree).
+      if (step && step.kind === "approval") step.when = op.when;
       return next;
     }
 

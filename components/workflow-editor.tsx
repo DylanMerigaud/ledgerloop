@@ -204,6 +204,7 @@ export const WorkflowEditor = ({
             workflow={current}
             stepId={selectedId}
             people={people}
+            available={{ departments, vendors, currencies }}
             onApply={(op) => setCurrent((wf) => applyEditOp(wf, op))}
             onClose={() => setSelectedId(null)}
           />

@@ -54,10 +54,12 @@ const ConditionField = z.enum([
       flag", `!= code` means "it doesn't". */
   "exceptionCode",
 ]);
-type ConditionField = z.infer<typeof ConditionField>;
+/** @public — the field a condition leaf tests (the routing levers). */
+export type ConditionField = z.infer<typeof ConditionField>;
 
 const ConditionOp = z.enum([">", ">=", "<", "<=", "==", "!="]);
-type ConditionOp = z.infer<typeof ConditionOp>;
+/** @public — the comparison operator on a condition leaf. */
+export type ConditionOp = z.infer<typeof ConditionOp>;
 
 /**
  * A condition is either a leaf comparison, a boolean combinator over
@@ -74,6 +76,9 @@ export type Condition =
     }
   | { kind: "all"; conditions: Condition[] }
   | { kind: "any"; conditions: Condition[] };
+
+/** @public — a single comparison in a condition (the editor's row unit). */
+export type ConditionLeaf = Extract<Condition, { kind: "leaf" }>;
 
 export const Condition: z.ZodType<Condition> = z.lazy(() =>
   z.discriminatedUnion("kind", [
