@@ -31,6 +31,10 @@ export const RunRequest = z.object({
   id: z.string().min(1, "an invoice id is required"),
   /** Reviewer decisions keyed by workflow step id. Omitted on the first run. */
   decisions: z.record(z.string(), StepDecision).optional(),
+  /** Optional note the reviewer attached when REJECTING a gate, keyed by step id.
+      Sparse (only rejects), so it rides alongside `decisions` rather than folding
+      into it. Surfaces in the rejected step's trace detail + the audit history. */
+  reasons: z.record(z.string(), z.string()).optional(),
   /** The approval workflow this run executes — the one the onboarding agent
       derived and the user edited, passed in (never persisted: the run stays
       stateless). Optional: when absent the run falls back to the default DAG, so a

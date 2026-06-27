@@ -48,6 +48,10 @@ export type StepState = {
 /** The human's decision on a given approval step id. */
 type StepDecision = "approve" | "reject";
 export type Decisions = Record<string, StepDecision>;
+/** An optional note the reviewer attached when rejecting a gate, by step id. Sparse —
+    only rejects carry one. Kept parallel to `Decisions` so the decision stays a bare
+    enum everywhere it flows. */
+export type Reasons = Record<string, string>;
 
 export type ExecutionState = {
   steps: StepState[];
@@ -67,6 +71,7 @@ export const executeWorkflow = (
   workflow: ApprovalWorkflow,
   ctx: InvoiceContext,
   decisions: Decisions = {},
+  reasons: Reasons = {},
 ): ExecutionState => {
   const byId = new Map<string, WorkflowStep>(
     workflow.steps.map((s) => [s.id, s]),
@@ -147,10 +152,14 @@ export const executeWorkflow = (
       };
     }
     if (decision === "reject") {
+      const who = step.approverName ?? step.approverTitle;
+      const reason = reasons[step.id]?.trim();
       return {
         id: step.id,
         status: "rejected",
-        detail: `Rejected by ${step.approverName ?? step.approverTitle}.`,
+        detail: reason
+          ? `Rejected by ${who}: ${reason}`
+          : `Rejected by ${who}.`,
       };
     }
     return {

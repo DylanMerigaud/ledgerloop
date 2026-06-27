@@ -146,6 +146,38 @@ test("manager rejection blocks the whole tree", () => {
   assert.equal(s.outcome, "rejected");
 });
 
+const detail = (s: ReturnType<typeof executeWorkflow>, id: string) =>
+  s.steps.find((x) => x.id === id)!.detail;
+
+test("a reject reason shows in the rejected step's detail", () => {
+  const s = executeWorkflow(
+    wf,
+    ctx({ amount: 9000 }),
+    { manager: "reject" },
+    { manager: "price too high, renegotiate" },
+  );
+  assert.match(
+    detail(s, "manager"),
+    /Rejected by .+: price too high, renegotiate/,
+  );
+});
+
+test("a reject WITHOUT a reason keeps the bare detail (no regression)", () => {
+  const s = executeWorkflow(wf, ctx({ amount: 9000 }), { manager: "reject" });
+  assert.match(detail(s, "manager"), /^Rejected by .+\.$/);
+});
+
+test("a reason for a non-rejected / absent step is ignored", () => {
+  // A reason keyed to an APPROVED gate doesn't leak into its detail.
+  const s = executeWorkflow(
+    wf,
+    ctx({ amount: 9000 }),
+    { manager: "approve" },
+    { manager: "should be ignored", ghost: "nobody" },
+  );
+  assert.match(detail(s, "manager"), /^Approved by /);
+});
+
 test("director gates exactly at the threshold (strict >)", () => {
   const at = executeWorkflow(wf, ctx({ amount: 5000 }), { manager: "approve" });
   assert.equal(status(at, "director"), "skipped"); // 5000 is not > 5000
