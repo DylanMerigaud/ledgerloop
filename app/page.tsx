@@ -29,13 +29,14 @@ export default async function Page() {
   }
 
   return (
-    <main className="mx-auto max-w-[1240px] px-4 pb-3 pt-7 sm:px-8 sm:pt-9">
-      {/* The app proper is exactly viewport-tall on desktop (a flex column) so there
-          is ONE scroll context inside the panels, not a competing page scroll. The
-          footer lives OUTSIDE this budget — it sits just past the fold and only shows
-          when you scroll down, giving the content the full screen height. On mobile
-          everything falls back to natural height + normal page scroll. */}
-      <div className="flex flex-col lg:h-screen lg:pb-5">
+    <main className="mx-auto max-w-[1240px] px-4 sm:px-8">
+      {/* The app proper fills EXACTLY the viewport on desktop (a flex column sized to
+          the dynamic viewport height, padding included) so the content never overflows
+          the screen and there is one scroll context inside the panels. The footer lives
+          just BELOW this box — off the bottom edge — so it only appears when you scroll
+          down, giving the content the full screen. On mobile it all falls back to
+          natural height + normal page scroll. */}
+      <div className="flex flex-col pb-3 pt-7 sm:pt-9 lg:h-dvh lg:pb-5">
         <Header />
         <div className="min-h-0 flex-1">
           {dbError ? (
