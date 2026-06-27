@@ -106,9 +106,11 @@ export const Condition: z.ZodType<Condition> = z.lazy(() =>
 
 /**
  * An approval step: a named human gate. `approverTitle` is the ROLE the agent
- * derived (e.g. "Director", "VP of IT"); `approverName` is the person the agent
- * resolved from the org chart, or null if it couldn't (which is itself something
- * the human resolves at validation time).
+ * derived (e.g. "Director", "VP of IT"); `approverName` is the PRIMARY person the
+ * agent resolved from the org chart, or null if it couldn't (which is itself
+ * something the human resolves at validation time). `approvers` are ADDITIONAL
+ * co-approvers a human added (the primary is never repeated there); the people on
+ * the gate are `approversOf(step)`.
  */
 /** @public — an approval gate in the workflow (rendered by the UI/canvas). */
 export const ApprovalStep = z
@@ -119,11 +121,21 @@ export const ApprovalStep = z
     when: Condition,
     approverTitle: z.string(),
     approverName: z.string().nullable(),
+    /** Additional co-approvers beyond the primary (`approverName`). Optional so every
+        existing gate/literal stays valid; absent means "just the primary". */
+    approvers: z.array(z.string()).optional(),
     /** Ids of the steps that run after this one (parallel fan-out when >1). */
     next: z.array(z.string()),
   })
   .strict();
 export type ApprovalStep = z.infer<typeof ApprovalStep>;
+
+/** @public — everyone who approves a gate: the primary (if resolved) then the extras,
+    in order. Empty when the gate is unresolved with no extras. */
+export const approversOf = (step: ApprovalStep): string[] =>
+  [step.approverName, ...(step.approvers ?? [])].filter(
+    (n): n is string => !!n,
+  );
 
 /** @public — the system actions an integration step can run. */
 export const IntegrationKind = z.enum(["slack", "jira", "netsuite"]);
@@ -391,8 +403,10 @@ const stepFieldDiffs = (a: WorkflowStep, b: WorkflowStep): string[] => {
   if (a.label !== b.label) fields.push("label");
   if (describeCondition(a.when) !== describeCondition(b.when))
     fields.push("condition");
-  const aAppr = a.kind === "approval" ? a.approverName : null;
-  const bAppr = b.kind === "approval" ? b.approverName : null;
+  // "approver" covers the whole gate roster (primary + co-approvers), so adding or
+  // dropping an "Also requires" person reads as a change, not "unchanged".
+  const aAppr = a.kind === "approval" ? approversOf(a).join(",") : "";
+  const bAppr = b.kind === "approval" ? approversOf(b).join(",") : "";
   if (aAppr !== bAppr) fields.push("approver");
   const aTitle = a.kind === "approval" ? a.approverTitle : null;
   const bTitle = b.kind === "approval" ? b.approverTitle : null;

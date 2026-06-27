@@ -7,6 +7,7 @@ import {
   IntegrationKind,
   diffWorkflows,
   describeCondition,
+  approversOf,
   type StepChange,
 } from "@/lib/approval-workflow";
 import { nonNull, assertUnreachable } from "@/lib/assert";
@@ -82,6 +83,33 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     .object({
       op: z.literal("set-approver"),
       stepId: z.string(),
+      approverName: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("set-approvers"),
+      stepId: z.string(),
+      /** The ADDITIONAL co-approvers (the primary stays on approverName). */
+      approvers: z.array(z.string()),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("add-approver"),
+      stepId: z.string(),
+      /** ONE co-approver to append (the chat grain — "also require X"). No-op if
+          they're already the primary or already on the gate. */
+      approverName: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("remove-approver"),
+      stepId: z.string(),
+      /** ONE co-approver to drop from the gate ("X no longer needs to sign off").
+          No-op if they aren't an extra. Does NOT touch the primary (approverName) —
+          use set-approver to change that. */
       approverName: z.string(),
     })
     .strict(),
@@ -297,6 +325,35 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
     case "set-approver": {
       const step = next.steps.find((s) => s.id === op.stepId);
       if (step && step.kind === "approval") step.approverName = op.approverName;
+      return next;
+    }
+
+    case "set-approvers": {
+      const step = next.steps.find((s) => s.id === op.stepId);
+      // The extra co-approvers; never duplicate the primary (approverName).
+      if (step && step.kind === "approval")
+        step.approvers = op.approvers.filter((n) => n !== step.approverName);
+      return next;
+    }
+
+    case "add-approver": {
+      const step = next.steps.find((s) => s.id === op.stepId);
+      // Append one co-approver, unless they're already the primary or on the gate.
+      if (step && step.kind === "approval") {
+        const already =
+          op.approverName === step.approverName ||
+          (step.approvers ?? []).includes(op.approverName);
+        if (!already)
+          step.approvers = [...(step.approvers ?? []), op.approverName];
+      }
+      return next;
+    }
+
+    case "remove-approver": {
+      const step = next.steps.find((s) => s.id === op.stepId);
+      // Drop one co-approver; the primary is untouched (that's set-approver's job).
+      if (step && step.kind === "approval" && step.approvers)
+        step.approvers = step.approvers.filter((n) => n !== op.approverName);
       return next;
     }
 
@@ -554,7 +611,9 @@ export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instr
 - add-approval: a new human approval gate. Set "label" to a SHORT title only (e.g. "CFO review" or "VP sign-off") — do NOT put the threshold or department in the label, they're shown separately. Set "approverTitle" (the role, e.g. "CFO"), "amountOver" (the dollar threshold it applies above, or null for every invoice), and "department" (scope to one department like "Product", or null for any).
 - add-integration: a system action — "slack", "jira", or "netsuite" — that runs after the bill posts. Set "label" to a short title (e.g. "Notify on Slack", "Open Jira ticket").
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
-- set-approver: set the person on an existing approval step (by "stepId").
+- set-approver: set the PRIMARY person on an existing approval step (by "stepId"). Use for "make X the approver" / "assign X".
+- add-approver: add ANOTHER required approver to a gate that already has one (by "stepId" + "approverName"). Use for "also require X" / "add X as a co-approver" / "X should sign off too". The gate keeps its existing approver and also routes to this person.
+- remove-approver: remove a CO-approver from a gate (by "stepId" + "approverName"). Use for "X no longer needs to sign off" / "drop X from the gate" / "remove X as a co-approver". This only removes an EXTRA approver, never the gate's main one (to change that, use set-approver).
 - remove-step: remove a step by "stepId".
 - rename-step: change a step's title/label (by "stepId", set "label"). Use for "rename X to Y" / "call it Z".
 - duplicate-step: copy an existing step (by "stepId", set "label" for the copy). Use for "duplicate X" / "add another like X".
@@ -572,7 +631,11 @@ export const editPrompt = (current: TWorkflow, instruction: string): string => {
   const steps = current.steps
     .map((s) => {
       const who =
-        s.kind === "approval" ? `approver=${s.approverTitle}` : s.integration;
+        s.kind === "approval"
+          ? `approver=${s.approverTitle}${
+              approversOf(s).length > 0 ? ` (${approversOf(s).join(", ")})` : ""
+            }`
+          : s.integration;
       return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
     })
     .join("\n");
@@ -603,7 +666,9 @@ Return { "ops": [ ... ] } where each op is one of:
 - add-approval { label, approverTitle, amountOver|null, department|null, vendor|null, currency|null, matchType|null, exceptionCode|null }: a new gate after the first step. Keep "label" a short title only. Set as many scope fields as the instruction names (they AND together); leave the rest null.
 - add-integration { label, integration: "slack"|"jira"|"netsuite" }: a system action after the bill posts.
 - set-threshold { stepId, amountOver }: change an existing gate's amount threshold.
-- set-approver { stepId, approverName }: set the person on a gate.
+- set-approver { stepId, approverName }: set the PRIMARY person on a gate.
+- add-approver { stepId, approverName }: add ANOTHER required approver to a gate that already has one ("also require X" / "X should sign off too"). The gate keeps its current approver and also routes to this person.
+- remove-approver { stepId, approverName }: remove a CO-approver from a gate ("drop X" / "X no longer needs to sign off"). Only removes an extra approver, never the gate's main one.
 - remove-step { stepId }.
 - rename-step { stepId, label }: change a step's title.
 - duplicate-step { stepId, label }: copy an existing step.
@@ -646,7 +711,11 @@ export const planPrompt = (
   const steps = current.steps
     .map((s) => {
       const who =
-        s.kind === "approval" ? `approver=${s.approverTitle}` : s.integration;
+        s.kind === "approval"
+          ? `approver=${s.approverTitle}${
+              approversOf(s).length > 0 ? ` (${approversOf(s).join(", ")})` : ""
+            }`
+          : s.integration;
       return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
     })
     .join("\n");

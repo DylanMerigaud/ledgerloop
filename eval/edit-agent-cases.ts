@@ -128,4 +128,37 @@ export const AGENT_CASES: AgentCase[] = [
       },
     ],
   },
+  {
+    id: "add-co-approver",
+    instruction:
+      "The director review should also need Jordan Ellis to sign off",
+    minOps: 1,
+    why: "a co-approver added to an existing gate; the result still validates clean",
+    stub: [
+      {
+        op: "add-approver",
+        stepId: "director-review",
+        approverName: "Jordan Ellis",
+      },
+    ],
+  },
+  {
+    id: "add-then-remove-co-approver",
+    instruction:
+      "Add Jordan Ellis as a co-approver on the director review, then actually drop them again",
+    minOps: 2,
+    why: "add then remove a co-approver in one plan; the gate ends as it began and stays sound",
+    stub: [
+      {
+        op: "add-approver",
+        stepId: "director-review",
+        approverName: "Jordan Ellis",
+      },
+      {
+        op: "remove-approver",
+        stepId: "director-review",
+        approverName: "Jordan Ellis",
+      },
+    ],
+  },
 ];

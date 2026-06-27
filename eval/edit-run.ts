@@ -123,6 +123,18 @@ const stubOp = (c: EditCase): WorkflowEditOp => {
         stepId: "it-review",
         approverName: "Sam Patel",
       };
+    case "add-approver":
+      return {
+        op: "add-approver",
+        stepId: "director-review",
+        approverName: "Jordan Ellis",
+      };
+    case "remove-approver":
+      return {
+        op: "remove-approver",
+        stepId: "director-review",
+        approverName: "Jordan Ellis",
+      };
     case "remove-step":
       return { op: "remove-step", stepId: "it-review" };
     case "none":

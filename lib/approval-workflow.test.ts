@@ -3,7 +3,9 @@ import { test } from "node:test";
 
 import {
   ApprovalWorkflow,
+  type ApprovalStep,
   type Condition,
+  approversOf,
   evaluateCondition,
   describeCondition,
   humanizeCondition,
@@ -293,4 +295,38 @@ test("an unknown step kind is rejected by the schema", () => {
     ],
   };
   assert.throws(() => ApprovalWorkflow.parse(bad));
+});
+
+/** A minimal approval step for the roster helper. */
+const gate = (over: Partial<ApprovalStep> = {}): ApprovalStep => ({
+  id: "g",
+  kind: "approval",
+  label: "Gate",
+  when: { kind: "always" },
+  approverTitle: "Director",
+  approverName: "Jordan Ellis",
+  next: [],
+  ...over,
+});
+
+test("approversOf: primary then the extras, in order", () => {
+  assert.deepEqual(
+    approversOf(gate({ approvers: ["Cameron Diaz", "Sam Patel"] })),
+    ["Jordan Ellis", "Cameron Diaz", "Sam Patel"],
+  );
+});
+
+test("approversOf: just the primary when there are no extras", () => {
+  assert.deepEqual(approversOf(gate()), ["Jordan Ellis"]);
+});
+
+test("approversOf: drops an unresolved primary but keeps the extras", () => {
+  assert.deepEqual(
+    approversOf(gate({ approverName: null, approvers: ["Cameron Diaz"] })),
+    ["Cameron Diaz"],
+  );
+});
+
+test("approversOf: empty when unresolved with no extras", () => {
+  assert.deepEqual(approversOf(gate({ approverName: null })), []);
 });

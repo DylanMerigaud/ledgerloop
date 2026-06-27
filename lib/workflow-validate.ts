@@ -3,6 +3,7 @@ import {
   type WorkflowStep,
   type ApprovalStep,
   type Condition,
+  approversOf,
 } from "@/lib/approval-workflow";
 
 /**
@@ -274,17 +275,21 @@ const segregationOfDuties = (wf: ApprovalWorkflow): WorkflowIssue[] => {
     const seen = new Map<string, string>(); // person → first step label
     for (const id of path) {
       const s = byId.get(id);
-      if (!s || s.kind !== "approval" || !s.approverName) continue;
-      const prev = seen.get(s.approverName);
-      if (prev) {
-        out.push({
-          severity: "warning",
-          code: "segregation-of-duties",
-          message: `${s.approverName} approves more than once on the same path ("${prev}" and "${s.label}") — a second person should sign off.`,
-          stepIds: [id],
-        });
-      } else {
-        seen.set(s.approverName, s.label);
+      if (!s || s.kind !== "approval") continue;
+      // Every approver on the gate counts — a co-approver who already signed an
+      // earlier gate on this path breaks segregation just as a primary would.
+      for (const person of approversOf(s)) {
+        const prev = seen.get(person);
+        if (prev) {
+          out.push({
+            severity: "warning",
+            code: "segregation-of-duties",
+            message: `${person} approves more than once on the same path ("${prev}" and "${s.label}") — a second person should sign off.`,
+            stepIds: [id],
+          });
+        } else {
+          seen.set(person, s.label);
+        }
       }
     }
   }

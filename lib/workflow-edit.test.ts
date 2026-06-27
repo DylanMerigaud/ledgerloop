@@ -606,6 +606,154 @@ test("set-approver: assigning a person clears the unresolved-approver warning", 
   );
 });
 
+test("set-approvers: adds co-approvers to one gate, leaves the primary and others", () => {
+  const next = applyEditOp(base, {
+    op: "set-approvers",
+    stepId: "director",
+    approvers: ["Cameron Diaz", "Sam Patel"],
+  });
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.equal(dir?.kind === "approval" && dir.approverName, "Jordan Ellis");
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
+    "Cameron Diaz",
+    "Sam Patel",
+  ]);
+  // The other gate is untouched and never grows an `approvers` array.
+  const mgr = next.steps.find((s) => s.id === "manager");
+  assert.equal(mgr?.kind === "approval" && mgr.approvers, undefined);
+});
+
+test("set-approvers: never duplicates the primary into the co-approver list", () => {
+  const next = applyEditOp(base, {
+    op: "set-approvers",
+    stepId: "director",
+    // "Jordan Ellis" is already the primary — it must be dropped from the extras.
+    approvers: ["Jordan Ellis", "Cameron Diaz"],
+  });
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
+    "Cameron Diaz",
+  ]);
+});
+
+test("add-approver: appends one co-approver, keeping the primary", () => {
+  const next = applyEditOp(base, {
+    op: "add-approver",
+    stepId: "director",
+    approverName: "Cameron Diaz",
+  });
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.equal(dir?.kind === "approval" && dir.approverName, "Jordan Ellis");
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
+    "Cameron Diaz",
+  ]);
+});
+
+test("add-approver: a second add appends, doesn't replace", () => {
+  let next = applyEditOp(base, {
+    op: "add-approver",
+    stepId: "director",
+    approverName: "Cameron Diaz",
+  });
+  next = applyEditOp(next, {
+    op: "add-approver",
+    stepId: "director",
+    approverName: "Sam Patel",
+  });
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
+    "Cameron Diaz",
+    "Sam Patel",
+  ]);
+});
+
+test("add-approver: a no-op when the person is already on the gate", () => {
+  // Already the primary → nothing added.
+  const samePrimary = applyEditOp(base, {
+    op: "add-approver",
+    stepId: "director",
+    approverName: "Jordan Ellis",
+  });
+  const dir1 = samePrimary.steps.find((s) => s.id === "director");
+  assert.equal(
+    dir1?.kind === "approval" && (dir1.approvers ?? []).length,
+    0,
+    "the primary is never duplicated into the extras",
+  );
+  // Already an extra → not added twice.
+  let twice = applyEditOp(base, {
+    op: "add-approver",
+    stepId: "director",
+    approverName: "Cameron Diaz",
+  });
+  twice = applyEditOp(twice, {
+    op: "add-approver",
+    stepId: "director",
+    approverName: "Cameron Diaz",
+  });
+  const dir2 = twice.steps.find((s) => s.id === "director");
+  assert.deepEqual(dir2?.kind === "approval" ? dir2.approvers : null, [
+    "Cameron Diaz",
+  ]);
+});
+
+test("remove-approver: drops one co-approver, keeps the rest and the primary", () => {
+  const withTwo = applyEditOp(
+    applyEditOp(base, {
+      op: "add-approver",
+      stepId: "director",
+      approverName: "Cameron Diaz",
+    }),
+    { op: "add-approver", stepId: "director", approverName: "Sam Patel" },
+  );
+  const next = applyEditOp(withTwo, {
+    op: "remove-approver",
+    stepId: "director",
+    approverName: "Cameron Diaz",
+  });
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.equal(dir?.kind === "approval" && dir.approverName, "Jordan Ellis");
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
+    "Sam Patel",
+  ]);
+});
+
+test("remove-approver: never removes the primary, only extras", () => {
+  const next = applyEditOp(base, {
+    op: "remove-approver",
+    stepId: "director",
+    // "Jordan Ellis" is the primary — remove-approver must leave it alone.
+    approverName: "Jordan Ellis",
+  });
+  const dir = next.steps.find((s) => s.id === "director");
+  assert.equal(dir?.kind === "approval" && dir.approverName, "Jordan Ellis");
+});
+
+test("remove-approver: a no-op when the person isn't a co-approver", () => {
+  const next = applyEditOp(base, {
+    op: "remove-approver",
+    stepId: "director",
+    approverName: "Nobody Here",
+  });
+  assert.deepEqual(next, base);
+});
+
+test("diffWorkflows: adding a co-approver reads as a changed approver, not unchanged", () => {
+  const next = applyEditOp(base, {
+    op: "set-approvers",
+    stepId: "director",
+    approvers: ["Cameron Diaz"],
+  });
+  const change = diffWorkflows(base, next).find((c) => c.id === "director");
+  assert.equal(change?.kind, "changed");
+  assert.ok(
+    change?.kind === "changed" && change.fields.includes("approver"),
+    "the co-approver edit surfaces as an approver change in the preview",
+  );
+});
+
 test("remove-step: drops the step and every edge into it", () => {
   const next = applyEditOp(base, { op: "remove-step", stepId: "director" });
   assert.ok(!next.steps.some((s) => s.id === "director"));

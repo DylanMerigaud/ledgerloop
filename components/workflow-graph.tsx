@@ -161,6 +161,8 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const cb = changeBadge(change);
   const isApproval = step.kind === "approval";
   const condition = humanizeCondition(step.when);
+  // Co-approvers beyond the primary (the panel's "Also requires").
+  const extraApprovers = step.kind === "approval" ? (step.approvers ?? []) : [];
   const unconditional = step.when.kind === "always";
 
   const badge = cb ?? st;
@@ -217,18 +219,30 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
             Approver
           </div>
           {step.approverName ? (
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="grid size-[18px] place-items-center rounded-full bg-accent-soft text-[8px] font-semibold uppercase text-accent">
-                {step.approverName
-                  .split(" ")
-                  .map((p) => p[0])
-                  .slice(0, 2)
-                  .join("")}
-              </span>
-              <span className="truncate text-[12px] font-medium text-ink">
-                {step.approverName}
-              </span>
-            </div>
+            <>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className="grid size-[18px] place-items-center rounded-full bg-accent-soft text-[8px] font-semibold uppercase text-accent">
+                  {step.approverName
+                    .split(" ")
+                    .map((p) => p[0])
+                    .slice(0, 2)
+                    .join("")}
+                </span>
+                <span className="truncate text-[12px] font-medium text-ink">
+                  {step.approverName}
+                </span>
+                {extraApprovers.length > 0 && (
+                  <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                    +{extraApprovers.length}
+                  </span>
+                )}
+              </div>
+              {extraApprovers.length > 0 && (
+                <div className="mt-1 truncate text-[11px] font-medium text-faint">
+                  with {extraApprovers.join(", ")}
+                </div>
+              )}
+            </>
           ) : (
             <div className="mt-1 text-[11.5px] font-medium text-warn">
               ⚠ unresolved · {step.approverTitle}

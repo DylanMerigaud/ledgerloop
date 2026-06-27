@@ -115,13 +115,20 @@ const ApprovalFields = ({
 }) => {
   const ordered = peopleFor(people, step.approverTitle);
   const unresolved = step.approverName === null;
-  const personOptions: ComboboxOption[] = ordered.map((p) => ({
-    value: p.name,
-    label: p.name,
-    sublabel: p.title || undefined,
-    keywords: `${p.title} ${p.department}`,
-    render: () => <PersonRow name={p.name} title={p.title} />,
-  }));
+  const optionsFor = (taken: string[]): ComboboxOption[] =>
+    ordered
+      .filter((p) => !taken.includes(p.name))
+      .map((p) => ({
+        value: p.name,
+        label: p.name,
+        sublabel: p.title || undefined,
+        keywords: `${p.title} ${p.department}`,
+        render: () => <PersonRow name={p.name} title={p.title} />,
+      }));
+
+  const extras = step.approvers ?? [];
+  const setExtras = (next: string[]) =>
+    onApply({ op: "set-approvers", stepId: step.id, approvers: next });
 
   return (
     <>
@@ -131,10 +138,44 @@ const ApprovalFields = ({
           onChange={(name) =>
             onApply({ op: "set-approver", stepId: step.id, approverName: name })
           }
-          options={personOptions}
+          options={optionsFor(extras)}
           placeholder={unresolved ? "⚠ Choose a person…" : "Choose a person…"}
           invalid={unresolved}
           testid="approver-combobox"
+        />
+      </Field>
+
+      <Field label="Also requires">
+        {extras.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap gap-1.5">
+            {extras.map((name) => (
+              <span
+                key={name}
+                data-testid={`extra-approver-${name}`}
+                className="inline-flex items-center gap-1 rounded-full bg-accent-soft py-0.5 pl-2 pr-1 text-[11.5px] font-medium text-accent"
+              >
+                {name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  onClick={() => setExtras(extras.filter((n) => n !== name))}
+                  className="grid size-4 place-items-center rounded-full text-accent/70 hover:bg-accent/10 hover:text-accent"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <Combobox
+          value=""
+          onChange={(name) => name && setExtras([...extras, name])}
+          options={optionsFor([
+            ...(step.approverName ? [step.approverName] : []),
+            ...extras,
+          ])}
+          placeholder="Add another approver…"
+          testid="add-approver-combobox"
         />
       </Field>
 

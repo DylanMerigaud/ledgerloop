@@ -106,6 +106,28 @@ export const EDIT_CASES: EditCase[] = [
     why: "set the person on the existing IT gate",
   },
   {
+    id: "add-director-co-approver",
+    instruction:
+      "The director review should also require Jordan Ellis to sign off",
+    expectedOp: "add-approver",
+    check: (op) =>
+      op.op === "add-approver" &&
+      op.stepId === "director-review" &&
+      /jordan ellis/i.test(op.approverName),
+    why: "ADD a co-approver to the director gate (keep Cameron Diaz), not replace the approver",
+  },
+  {
+    id: "remove-director-co-approver",
+    instruction:
+      "Jordan Ellis no longer needs to sign off on the director review",
+    expectedOp: "remove-approver",
+    check: (op) =>
+      op.op === "remove-approver" &&
+      op.stepId === "director-review" &&
+      /jordan ellis/i.test(op.approverName),
+    why: "drop a CO-approver from the director gate, not remove the whole step or the primary",
+  },
+  {
     id: "drop-it",
     instruction: "Remove the IT review step entirely",
     expectedOp: "remove-step",

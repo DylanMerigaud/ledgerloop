@@ -1,6 +1,7 @@
 import {
   evaluateCondition,
   describeCondition,
+  approversOf,
   type ApprovalWorkflow,
   type WorkflowStep,
   type InvoiceContext,
@@ -142,17 +143,18 @@ export const executeWorkflow = (
       };
     }
 
-    // Approval step, condition true → look at the human decision.
+    // Approval step, condition true → look at the human decision. `who` names every
+    // approver on the gate (primary + extras), or the role if none is resolved yet.
     const decision = decisions[step.id];
+    const who = approversOf(step).join(", ") || step.approverTitle;
     if (decision === "approve") {
       return {
         id: step.id,
         status: "approved",
-        detail: `Approved by ${step.approverName ?? step.approverTitle}.`,
+        detail: `Approved by ${who}.`,
       };
     }
     if (decision === "reject") {
-      const who = step.approverName ?? step.approverTitle;
       const reason = reasons[step.id]?.trim();
       return {
         id: step.id,
@@ -165,7 +167,7 @@ export const executeWorkflow = (
     return {
       id: step.id,
       status: "pending",
-      detail: `Awaiting ${step.approverName ?? step.approverTitle}${
+      detail: `Awaiting ${who}${
         condText === "always" ? "" : ` (${condText})`
       }.`,
     };
