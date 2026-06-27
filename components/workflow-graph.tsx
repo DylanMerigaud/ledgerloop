@@ -45,6 +45,10 @@ import type { WorkflowIssue } from "@/lib/workflow-validate";
 
 export type StepStatuses = Record<string, string>;
 
+/** Target statuses that mean "the invoice reached this node" — so the edge into it is
+    on the realized path (skipped/blocked are dead branches, not part of the flow). */
+const REACHED = new Set(["pending", "approved", "done", "rejected"]);
+
 /* ── node visuals ──────────────────────────────────────────────────────────── */
 
 const statusTone = (
@@ -507,6 +511,8 @@ const Inner = ({
     return [...real, ...gone];
   }, [workflow, statuses, changeOf, removed, issueOf, vertical]);
 
+  // Structural edges only (no status) so the layout/reset path never re-fires on a
+  // status change — the live "flow" styling is patched separately below.
   const edges = useMemo<Edge[]>(() => {
     const out: Edge[] = [];
     for (const s of workflow.steps)
@@ -662,6 +668,44 @@ const Inner = ({
     const ids = focusKey.split("|").map((id) => ({ id }));
     void fitView({ nodes: ids, duration: 400, padding: 0.3 });
   }, [focusKey, initialized, graphKey, fitView]);
+
+  // Patch edge "flow" styling from the live statuses — cheap, no relayout (kept out of
+  // the structural `edges` so a status tick never resets/re-measures the graph). An edge
+  // animates + goes accent when the invoice flowed along it: source passed
+  // (approved/done) and target was reached. Keyed on a status signature so it only runs
+  // when statuses change.
+  const statusKey = statuses
+    ? Object.entries(statuses)
+        .map(([k, v]) => `${k}:${v}`)
+        .sort()
+        .join("|")
+    : "";
+  useEffect(() => {
+    const st = statuses ?? {};
+    setEdges((cur) =>
+      cur.map((e) => {
+        const src = st[e.source];
+        const live =
+          (src === "approved" || src === "done") &&
+          REACHED.has(st[e.target] ?? "");
+        const stroke = live ? "#5B53D6" : "#CBCDD4";
+        const strokeWidth = live ? 2 : 1.5;
+        const prev = e.style ?? {};
+        if (
+          e.animated === live &&
+          prev.stroke === stroke &&
+          prev.strokeWidth === strokeWidth
+        ) {
+          return e;
+        }
+        return {
+          ...e,
+          animated: live,
+          style: { ...prev, stroke, strokeWidth },
+        };
+      }),
+    );
+  }, [statusKey, statuses, setEdges]);
 
   return (
     <ReactFlow
