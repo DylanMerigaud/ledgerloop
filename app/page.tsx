@@ -29,19 +29,23 @@ export default async function Page() {
   }
 
   return (
-    // On desktop the page is exactly viewport-tall (flex column) so there is ONE
-    // scroll context — inside the queue/trace panels — not a competing page
-    // scroll. On mobile it falls back to natural height + normal page scroll.
-    <main className="mx-auto flex max-w-[1240px] flex-col px-4 pb-3 pt-7 sm:px-8 sm:pt-9 lg:h-screen lg:pb-5">
-      <Header />
-      <div className="min-h-0 flex-1">
-        {dbError ? (
-          <SetupNotice detail={dbError} />
-        ) : queue.length === 0 ? (
-          <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
-        ) : (
-          <AppView queue={queue} />
-        )}
+    <main className="mx-auto max-w-[1240px] px-4 pb-3 pt-7 sm:px-8 sm:pt-9">
+      {/* The app proper is exactly viewport-tall on desktop (a flex column) so there
+          is ONE scroll context inside the panels, not a competing page scroll. The
+          footer lives OUTSIDE this budget — it sits just past the fold and only shows
+          when you scroll down, giving the content the full screen height. On mobile
+          everything falls back to natural height + normal page scroll. */}
+      <div className="flex flex-col lg:h-screen lg:pb-5">
+        <Header />
+        <div className="min-h-0 flex-1">
+          {dbError ? (
+            <SetupNotice detail={dbError} />
+          ) : queue.length === 0 ? (
+            <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
+          ) : (
+            <AppView queue={queue} />
+          )}
+        </div>
       </div>
       <Footer />
     </main>

@@ -17,7 +17,8 @@ test("the editor builds a vendor-scoped gate from a plain instruction", async ({
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
-  await expect(page.getByText(/Route by department/)).toBeVisible({
+  // Discovery done once the derived workflow has rendered its gates.
+  await expect(page.getByTestId("graph-node-manager-review")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 

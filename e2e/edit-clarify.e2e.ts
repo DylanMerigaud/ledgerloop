@@ -21,8 +21,8 @@ test("an ambiguous department edit asks which one, then applies the pick", async
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
 
-  // Discoverability: the real org departments show as chips you can route on.
-  await expect(page.getByText(/Route by department/)).toBeVisible({
+  // Discovery done once the derived workflow has rendered its gates.
+  await expect(page.getByTestId("graph-node-manager-review")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 

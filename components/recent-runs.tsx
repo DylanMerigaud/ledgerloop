@@ -117,7 +117,7 @@ export const RecentRuns = ({
           <ul
             ref={listRef}
             onScroll={measure}
-            className="scrollbar-slim max-h-56 divide-y divide-line overflow-y-auto"
+            className="scrollbar-slim max-h-40 divide-y divide-line overflow-y-auto"
           >
             {runs.map((r) => {
               const outcome = toOutcome(r.verdict, r.outcome);

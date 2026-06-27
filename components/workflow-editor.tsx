@@ -49,8 +49,9 @@ export const WorkflowEditor = ({
   initial: ApprovalWorkflow;
   /** AI-generated next-edit suggestions for the initial workflow (may be empty). */
   suggestions?: string[];
-  /** The departments that exist in the org — shown as chips you can route on, and
-      sent to the edit agent so it only ever proposes a real one. */
+  /** The departments that exist in the org — offered in the node-edit condition
+      editor and the "What can I change?" doc, and sent to the edit agent so it only
+      ever proposes a real one. */
   departments?: string[];
   /** The vendors / currencies present on the invoices — sent to the edit agent so a
       vendor/currency gate targets a real one (it declines an unknown value). */
@@ -289,28 +290,6 @@ export const WorkflowEditor = ({
             </div>
           </div>
         )}
-        {/* Route-by-department chips — the REAL departments from the org, so a user
-            sees what they can route on (and the agent only ever proposes a real one).
-            Clicking a chip asks for a review scoped to that department. Hidden while a
-            proposal or a clarification is pending. */}
-        {!proposal && !clarify && departments.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
-              <BuildingIcon />
-              Route by department
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {departments.map((d) => (
-                <DeptChip
-                  key={d}
-                  label={d}
-                  onClick={() => submit(`add a review for ${d} bills`)}
-                  disabled={busy}
-                />
-              ))}
-            </div>
-          </div>
-        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -356,18 +335,14 @@ export const WorkflowEditor = ({
 };
 
 /**
- * The validation summary. "Sound" when there's nothing to flag; otherwise the list
- * of errors (red, block applying) and warnings (amber, control best-practices). This
- * is what shows the tool understands the workflow, not just draws it.
+ * The validation summary. Renders nothing when the workflow is clean; otherwise the
+ * list of errors (red, block applying) and warnings (amber, control best-practices).
+ * This is what shows the tool understands the workflow, not just draws it.
  */
 const ValidationPanel = ({ issues }: { issues: WorkflowIssue[] }) => {
-  if (issues.length === 0) {
-    return (
-      <div className="flex items-center gap-1.5 rounded-xl bg-ok-soft/50 px-3.5 py-2 text-[12px] font-medium text-ok ring-1 ring-inset ring-ok-line/60">
-        <span aria-hidden>✓</span> Sound — passes the approval-control checks
-      </div>
-    );
-  }
+  // Nothing to flag → show nothing. A clean workflow doesn't need a banner taking a
+  // row; the checks only surface when there's an error or a best-practice warning.
+  if (issues.length === 0) return null;
   const errors = issues.filter((i) => i.severity === "error");
   const warnings = issues.filter((i) => i.severity === "warning");
   return (
@@ -414,15 +389,6 @@ const SparkIcon = () => {
   );
 };
 
-/** A small building glyph, marking the route-by-department chips. */
-const BuildingIcon = () => {
-  return (
-    <svg viewBox="0 0 12 12" className="size-3" fill="currentColor" aria-hidden>
-      <path d="M2 11V2.5A.5.5 0 0 1 2.5 2H7a.5.5 0 0 1 .5.5V5H10a.5.5 0 0 1 .5.5V11H2Zm1.5-1H5V8.5H3.5V10Zm0-2.5H5V6H3.5v1.5Zm0-2.5H5V3.5H3.5V5Zm5 5H9V8.5H8.5V10Zm-2 0H7V8.5h-.5V10Zm2-2.5H9V6h-.5v1.5Z" />
-    </svg>
-  );
-};
-
 /**
  * Stable decorative hue from a label (not semantic — it must NOT reuse ok/danger
  * tones, which carry meaning). Same name → same colour across renders, so the org's
@@ -435,9 +401,10 @@ const hueFor = (label: string): number => {
 };
 
 /**
- * A department / clarification chip: the app's interactive accent chip plus a small
- * coloured dot keyed to the label, so a row of departments looks alive without
- * inventing a semantic colour scale. Clicking submits the relevant instruction.
+ * A clarification chip: the app's interactive accent chip plus a small coloured dot
+ * keyed to the label, so a row of options looks alive without inventing a semantic
+ * colour scale. Used for the agent's "which department?" choices — clicking one
+ * re-submits the completed instruction.
  */
 const DeptChip = ({
   label,

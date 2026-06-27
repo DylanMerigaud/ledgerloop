@@ -560,6 +560,10 @@ const Inner = ({
   // When the source graph changes (new discovery / edit), reset to the new nodes
   // HIDDEN so they get re-measured, and mark that this set still needs a layout.
   const laidOutFor = useRef<string>("");
+  // The graph's container — observed so we can re-fit when it resizes (the editor's
+  // bottom stack growing/shrinking, a window resize). fitView otherwise runs once per
+  // graph, so without this a node could sit clipped off the edge after a resize.
+  const wrapRef = useRef<HTMLDivElement>(null);
   const graphKey = useMemo(
     () =>
       initialNodes.map((n) => n.id).join("|") +
@@ -593,6 +597,24 @@ const Inner = ({
     });
     requestAnimationFrame(() => void fitView({ padding: 0.18, duration: 200 }));
   }, [initialized, graphKey, initialNodes, edges, setNodes, fitView, vertical]);
+
+  // Re-fit when the container resizes so nodes never sit clipped past an edge after a
+  // layout reflow or window resize. RAF-debounced; skipped until the nodes exist.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (!initialized) return;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => void fitView({ padding: 0.18 }));
+    });
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [initialized, fitView]);
 
   // Patch the `selected` halo on the live nodes when the selection changes — cheap,
   // no re-layout (kept out of the layout pipeline so a click doesn't reflow the graph).
@@ -722,27 +744,29 @@ const Inner = ({
   }, [statusKey, statuses, setEdges]);
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={rfEdges}
-      onNodeClick={onNodeSelect ? (_, n) => onNodeSelect(n.id) : undefined}
-      onPaneClick={onNodeSelect ? () => onNodeSelect(null) : undefined}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      nodeTypes={nodeTypes}
-      proOptions={{ hideAttribution: true }}
-      nodesDraggable={false}
-      nodesConnectable={false}
-      edgesFocusable={false}
-      minZoom={0.4}
-      maxZoom={1.5}
-      // On touch, don't swallow the page scroll — the graph is pan-by-drag and the
-      // page scrolls past it, so a phone user isn't trapped on the canvas. (The
-      // graph is a secondary view on mobile; the text timeline carries the detail.)
-      preventScrolling={false}
-    >
-      <Background gap={18} size={1.5} color="#D7DAE1" />
-    </ReactFlow>
+    <div ref={wrapRef} className="h-full w-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={rfEdges}
+        onNodeClick={onNodeSelect ? (_, n) => onNodeSelect(n.id) : undefined}
+        onPaneClick={onNodeSelect ? () => onNodeSelect(null) : undefined}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        proOptions={{ hideAttribution: true }}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        edgesFocusable={false}
+        minZoom={0.4}
+        maxZoom={1.5}
+        // On touch, don't swallow the page scroll — the graph is pan-by-drag and the
+        // page scrolls past it, so a phone user isn't trapped on the canvas. (The
+        // graph is a secondary view on mobile; the text timeline carries the detail.)
+        preventScrolling={false}
+      >
+        <Background gap={18} size={1.5} color="#D7DAE1" />
+      </ReactFlow>
+    </div>
   );
 };
 

@@ -17,7 +17,8 @@ test("clicking a gate opens the panel and the approver picker resolves it", asyn
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
-  await expect(page.getByText(/Route by department/)).toBeVisible({
+  // Discovery done once the derived workflow has rendered its gates.
+  await expect(page.getByTestId("graph-node-manager-review")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 

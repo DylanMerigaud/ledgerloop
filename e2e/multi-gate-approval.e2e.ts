@@ -30,7 +30,8 @@ test("two parallel gates: reject one, approve the other → bill blocked", async
 
   // 1. Derive the workflow from the org (parallel roots: manager + department).
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
-  await expect(page.getByText(/Route by department/)).toBeVisible({
+  // Discovery done once the derived workflow has rendered its gates.
+  await expect(page.getByTestId("graph-node-manager-review")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 
