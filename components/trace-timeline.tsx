@@ -11,6 +11,49 @@ import type { TraceEvent } from "@/lib/trace";
 import type { PipelineRunState } from "@/lib/use-pipeline-run";
 
 /**
+ * Compose a one-line reason the run paused, from the trace data already on screen:
+ * which gate(s) are pending (the approval step's `steps`) and why (the top
+ * matching exception's message). Read defensively with `isRecord` — a trace whose
+ * shape we don't recognise just yields no extras, so the banner degrades to the
+ * plain "needs a human decision" rather than guessing. Keeps the pause LEGIBLE
+ * without a paragraph: "Paused at <gate> — <reason>."
+ */
+/* The slices of the trace data this banner reads, Zod-validated so the unknown
+   `data` is narrowed without a cast (same discipline as the rest of the app). */
+const ApprovalData = z.object({
+  steps: z
+    .array(z.object({ status: z.string(), detail: z.string() }))
+    .optional(),
+});
+const MatchingData = z.object({
+  exceptions: z.array(z.object({ message: z.string() })).optional(),
+});
+
+const pauseReason = (trace: TraceEvent[]): string => {
+  const approval = trace.find((e) => e.stage === "approval");
+  const matching = trace.find((e) => e.stage === "matching");
+
+  // Pending gate label — the engine's pending detail reads "Awaiting <approver>…".
+  let gates = "";
+  const ap = ApprovalData.safeParse(approval?.data);
+  if (ap.success) {
+    const pending = (ap.data.steps ?? []).find((s) => s.status === "pending");
+    if (pending) gates = pending.detail.replace(/\.$/, "");
+  }
+
+  // The top exception message (e.g. "Line STL-BAR-20: invoiced at 8.18/unit vs PO
+  // 7.50/unit (9.1% over).") — the "why".
+  let why = "";
+  const mt = MatchingData.safeParse(matching?.data);
+  if (mt.success) why = mt.data.exceptions?.[0]?.message ?? "";
+
+  if (gates && why) return `Paused — ${gates}. ${why}`;
+  if (gates) return `Paused — ${gates}.`;
+  if (why) return `Paused — ${why}`;
+  return "Paused — this invoice needs a human decision.";
+};
+
+/**
  * The execution trace — a vertical timeline streamed in live as the run
  * progresses. Each node is one TraceEvent: the deterministic steps, the
  * investigator agent's tool calls and recommendation, and (rendered red/amber)
@@ -34,8 +77,8 @@ export const TraceTimeline = ({
         title="Run the pipeline"
         body={
           invoiceLabel
-            ? `Run ${invoiceLabel} through matching, routing, and reconciliation — live. Pick a flagged invoice (price or quantity mismatch) to watch the investigator agent dig into the variance, then pause for your decision.`
-            : "Select an invoice to begin. Flagged ones — a price or quantity mismatch — trigger the investigator agent and pause for your decision."
+            ? `Run ${invoiceLabel} through matching, routing, and reconciliation — live.`
+            : "Select an invoice to begin."
         }
         action={
           canRun ? (
@@ -80,8 +123,7 @@ export const TraceTimeline = ({
 
       {state.status === "awaiting" && (
         <div className="ml-8 mt-1 rounded-lg bg-warn-soft/60 px-3 py-2 text-[12px] text-warn ring-1 ring-inset ring-warn-line">
-          Paused — this invoice needs a human decision. Approve or reject it
-          above to continue.
+          {pauseReason(state.trace)} Approve or reject above to continue.
         </div>
       )}
 

@@ -66,16 +66,78 @@ const Header = () => {
           </p>
         </div>
       </div>
-      <a
-        href="https://github.com/DylanMerigaud/ledgerloop"
-        target="_blank"
-        rel="noreferrer noopener"
-        className="hidden shrink-0 items-center gap-1.5 rounded-full bg-subtle px-3 py-1.5 text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:text-ink sm:inline-flex"
-      >
-        <span className="size-1.5 rounded-full bg-ok" aria-hidden />
-        Live demo · source on GitHub
-      </a>
+      <div className="flex shrink-0 items-center gap-2">
+        <HowItWorks />
+        <a
+          href="https://github.com/DylanMerigaud/ledgerloop"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="hidden items-center gap-1.5 rounded-full bg-subtle px-3 py-1.5 text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:text-ink sm:inline-flex"
+        >
+          <span className="size-1.5 rounded-full bg-ok" aria-hidden />
+          Live demo · source on GitHub
+        </a>
+      </div>
     </header>
+  );
+};
+
+/**
+ * An on-demand glossary — closed by default so it adds zero noise for anyone who
+ * knows the domain, and a one-line definition for anyone who doesn't (gate, the
+ * match types, the verdicts, the agent). The terms appear all over the trace and
+ * the workflow; this is the single place they're defined, without peppering the UI
+ * with inline tooltips.
+ */
+const HowItWorks = () => {
+  return (
+    <details className="group relative">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-subtle px-3 py-1.5 text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:text-ink">
+        How it works
+        <span
+          aria-hidden
+          className="text-faint transition-transform group-open:rotate-180"
+        >
+          ▾
+        </span>
+      </summary>
+      <div className="absolute right-0 z-20 mt-2 w-[300px] rounded-xl bg-surface p-3 text-[12px] leading-snug text-muted shadow-lift ring-1 ring-inset ring-line">
+        <dl className="space-y-1.5">
+          <Term name="Gate">
+            an approval step that fires on a condition (amount, variance, …) and
+            pauses for a human.
+          </Term>
+          <Term name="2-way / 3-way match">
+            invoice ↔ PO, or invoice ↔ PO ↔ goods receipt (did we receive it?).
+          </Term>
+          <Term name="Verdict">
+            <span className="text-ink">clean</span> (reconciles),{" "}
+            <span className="text-ink">exception</span> (a variance needs a
+            decision), <span className="text-ink">duplicate</span> (blocked,
+            never paid twice).
+          </Term>
+          <Term name="Investigator">
+            an AI agent that reads messy records on an exception and recommends
+            — a human still decides.
+          </Term>
+        </dl>
+      </div>
+    </details>
+  );
+};
+
+const Term = ({
+  name,
+  children,
+}: {
+  name: string;
+  children: React.ReactNode;
+}) => {
+  return (
+    <div>
+      <dt className="inline font-medium text-ink">{name}: </dt>
+      <dd className="inline">{children}</dd>
+    </div>
   );
 };
 
