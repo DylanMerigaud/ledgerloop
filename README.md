@@ -6,7 +6,7 @@ The two halves are one loop: the workflow you derive and edit on the left is **e
 
 AI is used in the places it earns its keep, and nowhere else. **Extraction** reads the messy vendor PDF into structured data (vision). **Onboarding discovery** maps an org's titles to approval authority (genuinely fuzzy judgement). **Investigation** judges a flagged exception against unstructured records and recommends. Everything else — matching, the workflow engine, reconciliation — is deterministic code, because a payment decision must be exact and repeatable, never a model's guess. Nothing posts until a human approves. Built with [Mastra](https://mastra.ai).
 
-The differentiator vs the workflow builders (Ramp, Zip, Pivot): you don't draw the approval graph on a canvas by hand. **The agent derives it from the HRIS, and you maintain it in plain language** — "above $25k also require CFO approval" — with a preview you approve or revert.
+The differentiator vs the workflow builders (Ramp, Zip, Pivot): you don't draw the approval graph on a canvas by hand. **The agent derives it from the HRIS, and you maintain it in plain language** — "above $25k also require CFO approval", "the director review also needs the controller to sign off" — with a preview you approve or revert. A gate isn't limited to one signer: it can route to several named co-approvers, each added or dropped by name.
 
 ### ▶︎ [Try the live demo →](https://ledgerloop-eta.vercel.app/)
 
@@ -89,7 +89,7 @@ The manager gate fires on any exception **or** a clean bill over a floor ($1,000
 
 **AI at the edges, deterministic code in the core.** The ends are language/perception/judgement problems — reading a PDF, mapping titles to approval authority, judging a fuzzy exception — so they use a model. The middle (is this a 9%-over variance? which gates apply? did every gate approve?) is arithmetic and graph logic, so it's pure, unit-tested functions ([`lib/matching.ts`](lib/matching.ts), [`lib/approval-workflow.ts`](lib/approval-workflow.ts), [`lib/approval-engine.ts`](lib/approval-engine.ts), [`lib/erp.ts`](lib/erp.ts)): exact, auditable, identical on every run. An LLM never decides a payment amount.
 
-**The conditional approval workflow.** Approval isn't a single tier — it's a DAG of conditional gates ([`lib/approval-workflow.ts`](lib/approval-workflow.ts)): each step carries a `when` condition (route on amount / variance / department / verdict / vendor / currency / match type / exception code, combinable with all/any) and parallel `next` edges. The conversational editor knows the real values present (the org's departments, the invoices' vendors + currencies), so it only ever builds a gate that can actually fire, and the "What can I change?" doc lists those levers and values — routing is discoverable, not guesswork. The engine ([`lib/approval-engine.ts`](lib/approval-engine.ts)) walks it per invoice with collect-all semantics: a skipped gate is a transparent pass-through, several gates can pend at once, one rejection blocks downstream. **The workflow the onboarding agent derived is what the run executes** — it's passed into the run as input (held in client state, never persisted, so the run stays stateless), and the pipeline routes through it. When no workflow has been derived yet, a default DAG ([`lib/client-profile.ts`](lib/client-profile.ts)) built from simple thresholds stands in, so the pipeline works on a cold visit and behaves the same as a derived one.
+**The conditional approval workflow.** Approval isn't a single tier — it's a DAG of conditional gates ([`lib/approval-workflow.ts`](lib/approval-workflow.ts)): each step carries a `when` condition (route on amount / exception amount / variance / department / verdict / vendor / currency / match type / exception code, combinable with all/any) and parallel `next` edges. A gate also carries its **approvers** — a primary the agent resolved from the org chart, plus any co-approvers a human added (`approversOf(step)` is everyone who signs it); the editor and the canvas show them, and "also require the controller" adds one in plain language. The conversational editor knows the real values present (the org's departments, the invoices' vendors + currencies), so it only ever builds a gate that can actually fire, and the "What can I change?" doc lists those levers and values — routing is discoverable, not guesswork. The engine ([`lib/approval-engine.ts`](lib/approval-engine.ts)) walks it per invoice with collect-all semantics: a skipped gate is a transparent pass-through, several gates can pend at once, one rejection blocks downstream. **The workflow the onboarding agent derived is what the run executes** — it's passed into the run as input (held in client state, never persisted, so the run stays stateless), and the pipeline routes through it. When no workflow has been derived yet, a default DAG ([`lib/client-profile.ts`](lib/client-profile.ts)) built from simple thresholds stands in, so the pipeline works on a cold visit and behaves the same as a derived one.
 
 **The HRIS adapter is real, captured, replayed.** [`lib/hris.ts`](lib/hris.ts) reads BambooHR (`bambooHris`, live HTTP) or replays a fixture captured from that same API (`recordedHris`); one `defaultHris()` factory picks live-vs-recorded — the only place that branch exists. The committed fixture in [`db/fixtures/bamboohr/`](db/fixtures/bamboohr/) is **real BambooHR output**, captured on a dated run via `pnpm hris:capture` — not a mock — so the demo (and CI, which has no key) runs on real data and survives the trial key expiring. `pnpm hris:seed` / `hris:reset` stand up a curated org in a sandbox (scoped by a dedicated Division, server-side, so reset only removes what it created).
 
@@ -122,8 +122,12 @@ src/mastra/
 lib/
   approval-workflow.ts     the conditional DAG model + condition evaluator + diff
   approval-engine.ts       executes the DAG per invoice (fan-out, collect-all)
+  workflow-validate.ts     structural + AP-best-practice checks (the validator)
+  condition-fields.ts      the condition levers + their real run-sourced values
   onboarding.ts            derive a workflow from an org (+ onboarding-model.ts)
-  workflow-edit.ts         conversational edits + diff (+ workflow-edit-model.ts)
+  workflow-edit.ts         conversational edits + diff (the edit ops)
+  workflow-edit-agent.ts   the bounded edit loop (Claude SDK, not a Mastra agent)
+  workflow-edit-model.ts   the Claude planner (structured-output op selection)
   hris.ts                  BambooHR adapter: live + recorded, one factory
   erp.ts                   QuickBooks adapter: pull POs + master data, live + recorded
   client-profile.ts        per-client config; flat policy → DAG bridge
@@ -196,7 +200,7 @@ The decision logic is pure, typed, and unit-tested; the read-side integrations (
 - the ERP **pull** is real (QuickBooks); swap the **post**-side stub (`fakeErp`) and the Slack/Jira integration stubs for real adapters of the same interfaces,
 - live BambooHR + QuickBooks (both adapters + captured fixtures already exist; keys unlock the live path) and a second HRIS / ERP behind the same `HrisAdapter` / `PoSourceAdapter`,
 - the audit trail persists today (append-only `agent_runs`, replayable, reset nightly); drop the reset and add per-tenant scoping for a multi-client deployment, and persist the paused-run snapshot if you want resume to survive a server restart (today it's recomputed from the decisions),
-- wire real approver identity to the per-step gates,
+- gates already carry named approvers (a primary plus co-approvers); add per-approver decision tracking and auth so a multi-signer gate records **which** person approved, not just that the gate cleared (today a decision is gate-level — the single operator acts as the reviewer),
 - accept real uploaded PDFs at intake.
 
 ---
