@@ -21,13 +21,13 @@ import { anthropicSuggestModel } from "@/lib/workflow-suggest-model";
 import { runPipelineStream } from "@/src/mastra/run-stream";
 
 /**
- * The oRPC API — one typed contract for the whole backend. Procedures define their
+ * The oRPC API, one typed contract for the whole backend. Procedures define their
  * Zod input/output here; the same `router` type drives the browser client, so a
  * shape change is a compile error on both ends (no `res.json() as T`). Streaming is
  * an event-iterator procedure (an async generator), replacing the manual NDJSON
  * reader. Mounted by app/rpc/[[...rest]]/route.ts (runtime: nodejs).
  *
- * Context carries the request headers so middleware can rate-limit by IP — the same
+ * Context carries the request headers so middleware can rate-limit by IP, the same
  * per-IP demo guard the old routes had.
  */
 
@@ -69,7 +69,7 @@ const onboarding = rateLimited.output(OnboardingResult).handler(async () => {
       anthropicProposalModel,
       org,
     );
-    // Suggestions are best-effort — never fail discovery over them.
+    // Suggestions are best-effort, never fail discovery over them.
     const suggestions = await anthropicSuggestModel
       .suggest(workflow)
       .catch(() => []);
@@ -110,7 +110,7 @@ const editWorkflow = rateLimited
     } catch {
       throw new ORPCError("UNPROCESSABLE_CONTENT", {
         message:
-          "Could not produce a valid edit for that instruction. The current workflow is unchanged — try rephrasing.",
+          "Could not produce a valid edit for that instruction. The current workflow is unchanged, try rephrasing.",
       });
     }
   });
@@ -132,7 +132,7 @@ const history = base.output(HistoryResult).handler(async () => {
   try {
     return { runs: await listRecentRuns() };
   } catch {
-    // A missing/empty audit table shouldn't break the dashboard — show no history.
+    // A missing/empty audit table shouldn't break the dashboard, show no history.
     return { runs: [] };
   }
 });

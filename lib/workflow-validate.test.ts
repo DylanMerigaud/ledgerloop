@@ -9,7 +9,7 @@ import {
 } from "@/lib/workflow-validate";
 
 /**
- * The validator is the tool that decides whether a workflow "makes sense" — both
+ * The validator is the tool that decides whether a workflow "makes sense", both
  * structurally (a sound DAG that posts) and against AP controls (segregation of
  * duties, a second approver on high-value spend, etc.). Each check is pinned here.
  */
@@ -144,7 +144,7 @@ test("same person approving twice on a path → segregation-of-duties", () => {
 test("a co-approver who already signed an earlier gate → segregation-of-duties", () => {
   const wf = sound();
   // Riley Carter is the manager (primary). Add Riley as a CO-approver on the
-  // director gate further down the same path — still a self-approval.
+  // director gate further down the same path, still a self-approval.
   const dir = wf.steps[1];
   if (dir?.kind === "approval") dir.approvers = ["Riley Carter"];
   assert.ok(codes(wf).includes("segregation-of-duties"));

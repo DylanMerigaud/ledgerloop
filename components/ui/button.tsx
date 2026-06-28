@@ -2,14 +2,14 @@ import { cn } from "@/lib/utils";
 
 /**
  * The one button. Every clickable CTA in the app routes through here so weight,
- * radius, focus ring, and motion stay identical everywhere — before this, each
+ * radius, focus ring, and motion stay identical everywhere, before this, each
  * screen hand-rolled its own button classes and they drifted.
  *
  * Variants map to the app's actual roles:
- *   primary — the accent CTA (Run, Edit, Discover)
- *   ghost   — a quiet bordered action (Revert, secondary)
- *   ok      — the approve gate (green)
- *   danger  — the reject gate (red, bordered)
+ *   primary, the accent CTA (Run, Edit, Discover)
+ *   ghost  , a quiet bordered action (Revert, secondary)
+ *   ok     , the approve gate (green)
+ *   danger , the reject gate (red, bordered)
  */
 type Variant = "primary" | "ghost" | "ok" | "danger";
 type Size = "sm" | "md";
@@ -21,7 +21,7 @@ const BASE =
   "focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<Variant, string> = {
-  // Ink primary (Attio register) — compact black button, hairline shadow, no
+  // Ink primary (Attio register), compact black button, hairline shadow, no
   // coloured halo. The accent shows up only as the focus ring.
   primary: "bg-ink text-white shadow-button hover:bg-[#2A2C30]",
   ghost:

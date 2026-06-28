@@ -12,7 +12,7 @@ import {
 } from "@/lib/workflow-suggest";
 
 /**
- * The real suggestion model — a small structured-output Anthropic call that reads
+ * The real suggestion model, a small structured-output Anthropic call that reads
  * the current workflow and returns up to three relevant edit instructions (or an
  * empty list). Haiku: this is a quick, cheap "what's missing here" pass, not deep
  * reasoning, and it runs once as part of onboarding.

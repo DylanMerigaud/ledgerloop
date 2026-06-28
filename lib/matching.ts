@@ -8,12 +8,12 @@ import type {
 } from "@/lib/schema";
 
 /**
- * The 2/3-way matcher — the deterministic core of the demo.
+ * The 2/3-way matcher, the deterministic core of the demo.
  *
  * This is a PURE function (no I/O, no LLM): given an invoice, its purchase order,
  * and an optional goods receipt, it decides whether the three documents
  * reconcile and, if not, exactly which lines diverge and by how much. The
- * matching workflow step calls this directly, as do the unit tests — so the tests
+ * matching workflow step calls this directly, as do the unit tests, so the tests
  * measure the real pipeline, not a reimplementation. The verdict is deterministic
  * by design: a payment decision must be exact and repeatable, never a model's
  * guess, which is also what lets the seeded edge cases fire reliably in a live
@@ -50,23 +50,23 @@ export type MatchInput = {
   goodsReceipt: GoodsReceipt | null;
   /**
    * Invoice numbers already seen in this vendor's ledger. If the invoice under
-   * test is in here, it's a duplicate (block it — never pay an invoice twice).
+   * test is in here, it's a duplicate (block it, never pay an invoice twice).
    * The pipeline passes the seeded ledger; the check stays pure and testable.
    */
   priorInvoiceNumbers?: readonly string[];
   /**
-   * The client's master data, PULLED from their ERP (lib/erp.ts). All optional —
+   * The client's master data, PULLED from their ERP (lib/erp.ts). All optional,
    * when absent, those controls simply don't fire, so the matcher (and every
    * existing test) behaves exactly as before. Keeping the matcher pure: the I/O
    * happens in the read layer, the comparison stays here.
    *
-   *   • `postedBillKeys`  — "vendor invoiceNumber" of bills ALREADY posted in the
+   *   • `postedBillKeys` , "vendor invoiceNumber" of bills ALREADY posted in the
    *     ERP. A hit means this invoice was already paid (the real, historical
-   *     duplicate — distinct from `priorInvoiceNumbers`, which is only what's been
+   *     duplicate, distinct from `priorInvoiceNumbers`, which is only what's been
    *     seen in THIS run's queue).
-   *   • `inactiveVendors` — vendor names marked inactive in the ERP. A bill from
+   *   • `inactiveVendors`, vendor names marked inactive in the ERP. A bill from
    *     one is a control/fraud signal, not a pricing question.
-   *   • `catalogSkus`     — the set of SKUs the ERP item catalog knows. An invoiced
+   *   • `catalogSkus`    , the set of SKUs the ERP item catalog knows. An invoiced
    *     SKU outside it never appears in the client's records.
    */
   postedBillKeys?: ReadonlySet<string>;
@@ -119,7 +119,7 @@ export const runMatch = (
     verdict: "duplicate",
     exceptions: [
       {
-        sku: "—",
+        sku: "-",
         code,
         message,
         variancePct: 0,
@@ -140,18 +140,18 @@ export const runMatch = (
   if (priorInvoiceNumbers.includes(invoice.invoiceNumber)) {
     return blockedAsDuplicate(
       "duplicate",
-      `Invoice ${invoice.invoiceNumber} has already been processed — blocking to prevent a double payment.`,
+      `Invoice ${invoice.invoiceNumber} has already been processed, blocking to prevent a double payment.`,
     );
   }
 
   // 1b. Already-paid duplicate: a bill with this vendor + number is ALREADY posted
   //     in the client's ERP (paid in a prior period, outside this run). This is the
-  //     historical duplicate the in-run check can't see — caught against the pulled
+  //     historical duplicate the in-run check can't see, caught against the pulled
   //     posted-bill list.
   if (postedBillKeys?.has(billKey(invoice.vendor, invoice.invoiceNumber))) {
     return blockedAsDuplicate(
       "duplicate_in_erp",
-      `Invoice ${invoice.invoiceNumber} from ${invoice.vendor} is already posted as a bill in the ERP — blocking a double payment.`,
+      `Invoice ${invoice.invoiceNumber} from ${invoice.vendor} is already posted as a bill in the ERP, blocking a double payment.`,
     );
   }
 
@@ -159,12 +159,12 @@ export const runMatch = (
 
   // Invoice-level: a bill from a vendor the ERP marks inactive is a control signal
   // (a deactivated supplier shouldn't be sending payable invoices). Flagged once
-  // for the whole invoice, routed to a human — not blocked outright.
+  // for the whole invoice, routed to a human, not blocked outright.
   if (inactiveVendors?.has(invoice.vendor)) {
     exceptions.push({
-      sku: "—",
+      sku: "-",
       code: "vendor_inactive",
-      message: `Vendor "${invoice.vendor}" is marked inactive in the ERP — invoice needs review before payment.`,
+      message: `Vendor "${invoice.vendor}" is marked inactive in the ERP, invoice needs review before payment.`,
       variancePct: 0,
       invoiceValue: invoice.total,
       expectedValue: null,
@@ -196,7 +196,7 @@ export const runMatch = (
 
     // 2b. Against the ERP item catalog: an invoiced SKU the client's ERP doesn't
     //     know shouldn't be payable (wrong item, or off-contract). Only checked
-    //     when a NON-EMPTY catalog was pulled — an empty set means "unknown / not
+    //     when a NON-EMPTY catalog was pulled, an empty set means "unknown / not
     //     pulled", not "every SKU is off-catalog".
     if (catalogSkus && catalogSkus.size > 0 && !catalogSkus.has(line.sku)) {
       exceptions.push({
@@ -215,7 +215,7 @@ export const runMatch = (
       exceptions.push({
         sku: line.sku,
         code: "no_po_line",
-        message: `Line ${line.sku} (${line.description}) isn't on PO ${purchaseOrder?.poNumber ?? invoice.poNumber ?? "—"}.`,
+        message: `Line ${line.sku} (${line.description}) isn't on PO ${purchaseOrder?.poNumber ?? invoice.poNumber ?? "-"}.`,
         variancePct: 0,
         invoiceValue: line.amount,
         expectedValue: null,

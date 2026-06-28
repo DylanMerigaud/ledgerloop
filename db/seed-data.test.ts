@@ -113,7 +113,7 @@ test("the original of the duplicate pair is itself clean", () => {
 });
 
 test("a small clean invoice routes straight through (under the manager floor)", () => {
-  // INV-2040 is a $730 clean 3-way match — below the $1,000 manager floor, so no
+  // INV-2040 is a $730 clean 3-way match, below the $1,000 manager floor, so no
   // gate fires and it posts with no human (the straight-through automation win).
   const run = runApproval(WORKFLOW, matchOf(byId("INV-2040")));
   assert.equal(run.outcome, "posted");
@@ -135,7 +135,7 @@ test("a material clean invoice still needs the manager (over the floor)", () => 
 });
 
 // A parallel-root workflow like the one onboarding derives: manager review fires on
-// any exception, department review fires on the Product department — two ROOTS that
+// any exception, department review fires on the Product department, two ROOTS that
 // can pend at once. (The default policy workflow has a single root, so it can't
 // surface this; this mirrors the derived shape just enough to pin the data premise.)
 const PARALLEL_WORKFLOW: ApprovalWorkflow = {
@@ -212,7 +212,7 @@ test("exceptions need a human gate; the duplicate is a (pre-workflow) block", ()
     assert.equal(run.outcome, "awaiting", `${id} should await approval`);
     assert.ok(run.pending.length >= 1, `${id} should have a pending gate`);
   }
-  // The duplicate is a control failure caught at matching — never routed.
+  // The duplicate is a control failure caught at matching, never routed.
   assert.equal(matchOf(byId("INV-2041-RESEND")).verdict, "duplicate");
 });
 

@@ -1,14 +1,14 @@
 import type { LanguageModel } from "@mastra/core/llm";
 
 /**
- * A tiny in-process mock language model for tests — Mastra's own shipped mock
+ * A tiny in-process mock language model for tests, Mastra's own shipped mock
  * (`@mastra/core/test-utils/llm-mock`) is referenced in its package exports but
  * the file isn't published, so we hand-roll the minimum of the AI SDK v5 model
  * interface we need. Typed as Mastra's own `LanguageModel`, so whatever it
  * accepts, this satisfies.
  *
  * It always emits ONE tool call (to `toolName`, with `toolArgs` as the JSON
- * input) followed by a fixed `narration` text, then finishes — exactly the
+ * input) followed by a fixed `narration` text, then finishes, exactly the
  * sequence an agent step expects: the tool fires (proving the requestContext →
  * tool wiring and that the call reaches the trace), and the narration comes back
  * on `.text`. No network, no key, deterministic.

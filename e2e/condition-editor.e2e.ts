@@ -41,7 +41,7 @@ test("edit a gate's trigger: add a condition and a nested group", async ({
     expect(await fieldCount()).toBe(before + 2),
   ).toPass();
 
-  // Switch the root combinator to ANY — the node's plain-English chip recomputes
+  // Switch the root combinator to ANY, the node's plain-English chip recomputes
   // (an "or" rule), proving the edit flowed through set-condition to the graph.
   await page.getByTestId("cond-combinator").first().selectOption("any");
   await expect(node(page, "manager-review").getByText(/ or /)).toBeVisible();

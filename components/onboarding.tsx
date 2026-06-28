@@ -19,12 +19,12 @@ import { orpc } from "@/lib/orpc/client";
 import { type OnboardingResult, type OrgEmployee } from "@/lib/orpc/schemas";
 
 /**
- * The onboarding discovery screen — the forward-deployed-engineer step.
+ * The onboarding discovery screen, the forward-deployed-engineer step.
  *
  * The differentiator made visible: you don't draw an approval workflow on a
  * canvas (the way every competitor's builder works). You point the agent at the
- * client's HRIS and it DERIVES the workflow — who approves what, resolved to real
- * people from the org chart — and flags the data-quality problems a human must fix
+ * client's HRIS and it DERIVES the workflow, who approves what, resolved to real
+ * people from the org chart, and flags the data-quality problems a human must fix
  * first. This screen runs that discovery and shows the result for validation.
  *
  * It reads from POST /api/onboarding (the agent over the real/recorded org). The
@@ -49,7 +49,7 @@ export const Onboarding = ({
   /** Push the active workflow up to AppView so the Pipeline tab runs against it:
       the derived one on discovery, then each approved edit from the editor. */
   onWorkflowChange: (workflow: ApprovalWorkflow) => void;
-  /** The vendors / currencies present on the invoices — the real values a gate can
+  /** The vendors / currencies present on the invoices, the real values a gate can
       route on. Passed to the editor (offer + validate) and shown in the doc. */
   vendors?: string[];
   currencies?: string[];
@@ -76,7 +76,7 @@ export const Onboarding = ({
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,400px)_1fr]">
-      {/* LEFT — the action + what was discovered about the org */}
+      {/* LEFT, the action + what was discovered about the org */}
       <Card className="flex max-h-[80vh] flex-col overflow-hidden lg:max-h-none">
         <CardHeader>
           <CardTitle>HRIS discovery</CardTitle>
@@ -85,7 +85,7 @@ export const Onboarding = ({
           )}
         </CardHeader>
         <div className="scrollbar-slim flex flex-1 flex-col gap-4 overflow-y-auto p-5">
-          {/* The pitch is only useful BEFORE a run — once results are in, it just
+          {/* The pitch is only useful BEFORE a run, once results are in, it just
               repeats what the panel now shows, so drop it. */}
           {state.status !== "done" && (
             <p className="text-[13px] leading-relaxed text-muted">
@@ -123,7 +123,7 @@ export const Onboarding = ({
         </div>
       </Card>
 
-      {/* RIGHT — the derived workflow */}
+      {/* RIGHT, the derived workflow */}
       <Card className="flex flex-col overflow-hidden">
         <CardHeader>
           <CardTitle>Derived approval workflow</CardTitle>
@@ -159,7 +159,7 @@ export const Onboarding = ({
 
 /**
  * A clickable "What can I change?" helper that opens a popover listing the edits
- * the plain-language editor actually supports — so the capabilities are
+ * the plain-language editor actually supports, so the capabilities are
  * discoverable without overclaiming. (The editor maps your sentence to one of
  * these structured ops; it's natural-language editing, not an open-ended agent.)
  */
@@ -245,7 +245,7 @@ const WhatCanIChange = ({
       {open && (
         <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl bg-surface p-2 shadow-lift ring-1 ring-inset ring-line">
           <p className="px-2 pb-1.5 pt-1 text-[11px] leading-snug text-faint">
-            Describe a change in plain language; it proposes a rewrite and you
+            Describe a change in plain language. It proposes a rewrite and you
             review the diff before anything applies.
           </p>
           <ul className="space-y-0.5">
@@ -268,7 +268,7 @@ const WhatCanIChange = ({
               </li>
             ))}
           </ul>
-          {/* The levers a gate can route on — and, for the ones with a fixed set of
+          {/* The levers a gate can route on, and, for the ones with a fixed set of
               values, the REAL values present (departments from the org, vendors +
               currencies from the invoices). So "what can I gate on?" is answerable,
               with the actual options, not guesswork. */}
@@ -315,7 +315,7 @@ const Lever = ({
   );
 };
 
-/** The distinct, non-empty departments in the org — the values a department gate can
+/** The distinct, non-empty departments in the org, the values a department gate can
     route on, so the editor can offer them (and the agent only proposes real ones).
     Sorted for a stable order; "Company" is the org root, not a buying team, so it's
     dropped. */
@@ -340,7 +340,7 @@ const initials = (name: string): string =>
 
 /**
  * The org as a reporting tree (roots at top, reports nested under a guide rail),
- * with flagged people marked by a warn ring on their avatar — so a viewer can see
+ * with flagged people marked by a warn ring on their avatar, so a viewer can see
  * the data issues against the real chart (the junk record, the orphan with no
  * manager) instead of just a count. Scrolls inside a capped box so a real 90-person
  * org doesn't push the rest of the panel off screen.
@@ -360,7 +360,7 @@ const OrgTree = ({
   );
 
   // Build children-by-manager. Anyone whose managerId isn't a real employee (or is
-  // null) is a root — which surfaces the orphans/dangling managers visually.
+  // null) is a root, which surfaces the orphans/dangling managers visually.
   const ids = new Set(employees.map((e) => e.id));
   const childrenOf = new Map<string | null, OrgEmployee[]>();
   for (const e of employees) {
@@ -431,16 +431,16 @@ const DiscoverySummary = ({ data }: { data: OnboardingResult }) => {
         )}
       </div>
 
-      {/* (The agent's prose summary was dropped — it duplicated the workflow on the
+      {/* (The agent's prose summary was dropped, it duplicated the workflow on the
           right and the resolved-approvers + issues already shown below.) */}
 
-      {/* The org the agent read — flagged people marked against the real chart. */}
+      {/* The org the agent read, flagged people marked against the real chart. */}
       <section className="space-y-2">
         <Eyebrow>Org chart · {data.employees.length} people</Eyebrow>
         <OrgTree employees={data.employees} issues={data.issues} />
       </section>
 
-      {/* Role resolutions — the fuzzy work the agent did. Rationale behind a
+      {/* Role resolutions, the fuzzy work the agent did. Rationale behind a
           per-row disclosure so the list reads cleanly by default. */}
       <section className="space-y-2">
         <Eyebrow>Approvers resolved from the org</Eyebrow>
@@ -471,7 +471,7 @@ const DiscoverySummary = ({ data }: { data: OnboardingResult }) => {
         </div>
       </section>
 
-      {/* Data-quality issues — what a human must fix */}
+      {/* Data-quality issues, what a human must fix */}
       {data.issues.length > 0 && (
         <section className="space-y-2">
           <Eyebrow>Fix before activating</Eyebrow>
@@ -514,7 +514,7 @@ const Chevron = () => {
 
 /**
  * A representative workflow shown DIMMED behind the empty/running state, so the
- * canvas is never a blank box — the viewer sees the shape of the thing discovery
+ * canvas is never a blank box, the viewer sees the shape of the thing discovery
  * produces (a conditional gate DAG) before they run it. Sample data only; the real
  * one is derived from the client's org.
  */
@@ -563,7 +563,7 @@ const SAMPLE_WORKFLOW: ApprovalWorkflow = {
 const EmptyState = ({ running }: { running: boolean }) => {
   return (
     <div className="relative h-full min-h-72 overflow-hidden rounded-xl bg-subtle/40 ring-1 ring-inset ring-line">
-      {/* The sample workflow, dimmed — gives the canvas real structure instead of
+      {/* The sample workflow, dimmed, gives the canvas real structure instead of
           a hollow box. Non-interactive (pointer-events-none). */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.18] blur-[1px]">
         <WorkflowGraph workflow={SAMPLE_WORKFLOW} />

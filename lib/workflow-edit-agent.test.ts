@@ -73,7 +73,7 @@ test("dispatches a multi-op plan in order (one round)", async () => {
 test("on an erroring plan, it re-plans with the validator's errors as feedback", async () => {
   // The defining agentic behaviour: if the first plan leaves the workflow with a
   // validation ERROR, the agent calls the planner AGAIN and hands it those errors so
-  // it can correct. (We assert the feedback contract — the loop's correction round.)
+  // it can correct. (We assert the feedback contract, the loop's correction round.)
   let sawFeedbackError = false;
   let call = 0;
   const model: PlanModel = {
@@ -182,7 +182,7 @@ test("a complete instruction applies normally (clarify stays null)", async () =>
 });
 
 test("stops at the step budget on a stubborn error (doesn't hang)", async () => {
-  // The model keeps removing the post (always leaving a no-post error) — the loop
+  // The model keeps removing the post (always leaving a no-post error), the loop
   // must terminate at the budget rather than spin forever.
   let calls = 0;
   const model: PlanModel = {

@@ -13,7 +13,7 @@ import {
 } from "@/lib/approval-workflow";
 
 /**
- * The condition evaluator is the load-bearing part of the DAG model — the engine
+ * The condition evaluator is the load-bearing part of the DAG model, the engine
  * (B-3) routes on it, so it must be exact. Plus a check that a realistic derived
  * workflow validates against the schema (the shape the agent will emit).
  */
@@ -264,7 +264,7 @@ test("a realistic derived workflow validates against the schema", () => {
         label: "IT review",
         when: { kind: "leaf", field: "department", op: "==", value: "IT" },
         approverTitle: "VP of IT",
-        approverName: null, // agent couldn't resolve — human to fill
+        approverName: null, // agent couldn't resolve, human to fill
         next: ["post"],
       },
       {

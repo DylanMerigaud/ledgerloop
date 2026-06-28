@@ -7,22 +7,22 @@ import {
 } from "@/lib/approval-workflow";
 
 /**
- * Workflow validation — does this approval workflow make sense?
+ * Workflow validation, does this approval workflow make sense?
  *
- * Two kinds of checks, both PURE and deterministic (no model, no I/O — so it's
+ * Two kinds of checks, both PURE and deterministic (no model, no I/O, so it's
  * exhaustively testable and safe to run on every edit, and it can be the tool an
  * editing agent corrects against):
  *
- *   • STRUCTURAL — the graph is sound: it's a DAG, every step is reachable, it ends
+ *   • STRUCTURAL, the graph is sound: it's a DAG, every step is reachable, it ends
  *     in a posting step, no dangling edges.
- *   • AP BEST-PRACTICE — it's a *good* approval workflow per accounts-payable
+ *   • AP BEST-PRACTICE, it's a *good* approval workflow per accounts-payable
  *     controls: segregation of duties (no one approves twice on a path), a second
  *     approver on high-value spend, at least one human gate before posting, no
  *     duplicate/contradictory gates, every approver resolved to a real person.
  *
- * Errors mean the workflow is broken (it won't run / can't post) — the UI blocks
+ * Errors mean the workflow is broken (it won't run / can't post), the UI blocks
  * "Approve" on a proposal with errors. Warnings mean it runs but violates a control
- * best-practice — surfaced prominently, not blocking. Zero of both = "Sound".
+ * best-practice, surfaced prominently, not blocking. Zero of both = "Sound".
  *
  * Sources for the AP rules: ApprovalMax AP-controls, Ramp segregation-of-duties.
  */
@@ -189,7 +189,7 @@ const cycleFree = (wf: ApprovalWorkflow): WorkflowIssue[] => {
     {
       severity: "error",
       code: "cycle",
-      message: "The workflow has a cycle — approvals must flow one way.",
+      message: "The workflow has a cycle, approvals must flow one way.",
       stepIds: [],
     },
   ];
@@ -216,7 +216,7 @@ const postReached = (wf: ApprovalWorkflow): WorkflowIssue[] => {
       {
         severity: "error",
         code: "no-post",
-        message: "Nothing posts the bill — add a final NetSuite step.",
+        message: "Nothing posts the bill, add a final NetSuite step.",
         stepIds: [],
       },
     ];
@@ -241,7 +241,7 @@ const unresolvedApprovers = (wf: ApprovalWorkflow): WorkflowIssue[] =>
     .map((s) => ({
       severity: "warning",
       code: "unresolved-approver",
-      message: `"${s.label}" has no person assigned — resolve the ${s.approverTitle} before activating.`,
+      message: `"${s.label}" has no person assigned, resolve the ${s.approverTitle} before activating.`,
       stepIds: [s.id],
     }));
 
@@ -259,7 +259,7 @@ const duplicateGates = (wf: ApprovalWorkflow): WorkflowIssue[] => {
         out.push({
           severity: "warning",
           code: "duplicate-gate",
-          message: `"${a.label}" and "${b.label}" overlap (same role and scope) — merge them or narrow one.`,
+          message: `"${a.label}" and "${b.label}" overlap (same role and scope), merge them or narrow one.`,
           stepIds: [a.id, b.id],
         });
       }
@@ -276,7 +276,7 @@ const segregationOfDuties = (wf: ApprovalWorkflow): WorkflowIssue[] => {
     for (const id of path) {
       const s = byId.get(id);
       if (!s || s.kind !== "approval") continue;
-      // Every approver on the gate counts — a co-approver who already signed an
+      // Every approver on the gate counts, a co-approver who already signed an
       // earlier gate on this path breaks segregation just as a primary would.
       for (const person of approversOf(s)) {
         const prev = seen.get(person);
@@ -284,7 +284,7 @@ const segregationOfDuties = (wf: ApprovalWorkflow): WorkflowIssue[] => {
           out.push({
             severity: "warning",
             code: "segregation-of-duties",
-            message: `${person} approves more than once on the same path ("${prev}" and "${s.label}") — a second person should sign off.`,
+            message: `${person} approves more than once on the same path ("${prev}" and "${s.label}"), a second person should sign off.`,
             stepIds: [id],
           });
         } else {
@@ -314,7 +314,7 @@ const highValueSecondApprover = (wf: ApprovalWorkflow): WorkflowIssue[] => {
       out.push({
         severity: "warning",
         code: "single-approver-high-value",
-        message: `Bills over $${pathFloor.toLocaleString("en-US")} clear with only one approval — high-value spend should need a second approver.`,
+        message: `Bills over $${pathFloor.toLocaleString("en-US")} clear with only one approval, high-value spend should need a second approver.`,
         stepIds: path.filter((id) => byId.get(id)?.kind === "approval"),
       });
     }
@@ -335,7 +335,7 @@ const humanBeforePost = (wf: ApprovalWorkflow): WorkflowIssue[] => {
       severity: "warning",
       code: "no-human-approval",
       message:
-        "A bill can post with no human approval — add at least one approval gate before posting.",
+        "A bill can post with no human approval, add at least one approval gate before posting.",
       stepIds: [],
     },
   ];

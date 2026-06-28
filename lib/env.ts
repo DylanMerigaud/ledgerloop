@@ -2,22 +2,22 @@ import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
 /**
- * Typed, validated environment — the single place env vars are read.
+ * Typed, validated environment, the single place env vars are read.
  *
  * Everywhere else imports `env` instead of touching `process.env` (enforced by
  * ESLint), so a missing or malformed var is a clear boot-time error with a name,
  * not an `undefined` surfacing three layers deep. Optionality here mirrors the
- * app's real degradation: the BambooHR creds and the Redis/KV pair are OPTIONAL —
+ * app's real degradation: the BambooHR creds and the Redis/KV pair are OPTIONAL,
  * without them the HRIS adapter replays the recorded fixture and the rate-limiter
  * fails open. Only what the app genuinely can't run without is required.
  */
 export const env = createEnv({
   server: {
-    /** Node environment — drives dev-only logging. */
+    /** Node environment, drives dev-only logging. */
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    /** Postgres connection (seeded invoice queue). Required — there's no app without it. */
+    /** Postgres connection (seeded invoice queue). Required, there's no app without it. */
     DATABASE_URL: z.string().min(1),
     /** Direct (non-pooled) Postgres URL, used by migrations/tooling. Optional. */
     DIRECT_DATABASE_URL: z.string().min(1).optional(),
@@ -26,14 +26,14 @@ export const env = createEnv({
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
     /** Shared secret guarding the nightly reset endpoint. Vercel Cron injects it as
      *  `Authorization: Bearer $CRON_SECRET`; the route 401s anything else, so the
-     *  truncate+reseed isn't a public button. Optional — absent → the route refuses
+     *  truncate+reseed isn't a public button. Optional, absent → the route refuses
      *  all callers (the cron just won't reset until it's set). */
     CRON_SECRET: z.string().min(1).optional(),
-    /** BambooHR API key. Optional — absent → the HRIS adapter replays the fixture. */
+    /** BambooHR API key. Optional, absent → the HRIS adapter replays the fixture. */
     BAMBOO_HR_API_KEY: z.string().min(1).optional(),
     /** BambooHR company subdomain (the `neige` in neige.bamboohr.com). Optional. */
     BAMBOO_HR_SUBDOMAIN: z.string().min(1).optional(),
-    /** QuickBooks Online OAuth2 app credentials + sandbox realm. All optional —
+    /** QuickBooks Online OAuth2 app credentials + sandbox realm. All optional,
      *  absent → the ERP adapter replays the recorded PO fixture (CI / no-key).
      *  The access token is short-lived (≈1h), so we store the long-lived refresh
      *  token and mint an access token on demand (see lib/erp.ts). */
@@ -42,7 +42,7 @@ export const env = createEnv({
     QBO_REFRESH_TOKEN: z.string().min(1).optional(),
     /** The sandbox company id ("realm") the PO query is scoped to. */
     QBO_REALM_ID: z.string().min(1).optional(),
-    /** Upstash Redis REST creds for rate-limiting. Optional — absent → fails open. */
+    /** Upstash Redis REST creds for rate-limiting. Optional, absent → fails open. */
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
     /** Vercel KV aliases for the same Redis (either pair works). Optional. */
@@ -71,7 +71,7 @@ export const env = createEnv({
     KV_REST_API_URL: process.env.KV_REST_API_URL,
     KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
   },
-  /** `SKIP_ENV_VALIDATION=1` skips validation — useful for Docker/CI builds. */
+  /** `SKIP_ENV_VALIDATION=1` skips validation, useful for Docker/CI builds. */
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   /** Treat empty strings as undefined, so `VAR=''` doesn't pass a required check. */
   emptyStringAsUndefined: true,

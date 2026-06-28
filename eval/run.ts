@@ -1,5 +1,5 @@
 /**
- * Investigator eval harness — `tsx eval/run.ts [--dry-run] [caseId ...]`.
+ * Investigator eval harness, `tsx eval/run.ts [--dry-run] [caseId ...]`.
  *
  *   pnpm eval              # run every case against the REAL agent
  *   pnpm eval INV-2042     # run only the named case(s)
@@ -12,13 +12,13 @@
  *   • overall accuracy
  *   • overcharge precision / recall / F1 (catching the invoices to push back on)
  *
- * This is what proves the AGENT's judgment holds across mixed exceptions — not
+ * This is what proves the AGENT's judgment holds across mixed exceptions, not
  * just that the deterministic routing fires (that's `pnpm sanity`).
  *
  * Needs ANTHROPIC_API_KEY (loaded from .env.local / .env); each case is one
  * agent run, a few cents for the whole set. `--dry-run` stubs the agent with the
  * ground-truth label so the scoring + corpus are exercised with zero API calls
- * (a perfect score is the expected dry-run output) — what CI runs.
+ * (a perfect score is the expected dry-run output), what CI runs.
  */
 
 import { join } from "node:path";
@@ -63,12 +63,12 @@ const loadEnv = () => {
     try {
       process.loadEnvFile(join(process.cwd(), f));
     } catch {
-      /* file absent — fine */
+      /* file absent, fine */
     }
   }
 };
 
-/** Prior invoice numbers for duplicate detection — everything seeded before it. */
+/** Prior invoice numbers for duplicate detection, everything seeded before it. */
 const priorNumbersFor = (bundle: SeedBundle): string[] => {
   const idx = SEED_BUNDLES.indexOf(bundle);
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
@@ -170,7 +170,7 @@ const printTable = (scores: CaseScore[]) => {
       : s.correct
         ? col(C.green, "✓")
         : col(C.red, "✗");
-    const got = s.failed ? col(C.red, s.failed) : (s.got ?? "—");
+    const got = s.failed ? col(C.red, s.failed) : (s.got ?? "-");
     console.log(
       "  " +
         s.id.padEnd(idW) +
@@ -244,7 +244,7 @@ const main = async () => {
   }
 
   console.log(
-    col(C.bold, `\nledgerloop — investigator eval`) +
+    col(C.bold, `\nledgerloop, investigator eval`) +
       col(
         C.gray,
         `  (${cases.length} case${cases.length === 1 ? "" : "s"}, model ${PIPELINE_MODEL})`,
@@ -274,7 +274,7 @@ const main = async () => {
   printSummary(scores);
 
   // Gate: hard failures (agent errored / corpus broken) always fail. On a real
-  // run we also require the agent to catch every real overcharge — a missed
+  // run we also require the agent to catch every real overcharge, a missed
   // overcharge (recall < 1) is the expensive error, so CI/local should see it.
   const hardFailures = scores.filter((s) => s.failed).length;
   const conf = overchargeConfusion(scores);

@@ -7,12 +7,12 @@ import { test, expect, type Page } from "@playwright/test";
  * This is the check the unit/integration tests can't give: it exercises the
  * actual React hook's cross-phase trace accumulation, the Approve/Reject
  * rendering, and the pause → resume UX as a user experiences it. It needs
- * ANTHROPIC_API_KEY + DATABASE_URL in the environment, so it is NOT run in CI —
+ * ANTHROPIC_API_KEY + DATABASE_URL in the environment, so it is NOT run in CI,
  * run `pnpm e2e` locally (with .env loaded) before deploys.
  *
  * Seeded rows used (ids are the queue's stable keys):
- *   INV-2040          — clean 3-way match (straight-through, no human)
- *   INV-2042          — price mismatch (exception → pauses for approval)
+ *   INV-2040         , clean 3-way match (straight-through, no human)
+ *   INV-2042         , price mismatch (exception → pauses for approval)
  */
 
 const RUN_TIMEOUT = 45_000; // a Haiku run is usually a few seconds, but the model can
@@ -32,12 +32,12 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   // The app opens on the "Build the workflow" tab; the pipeline lives behind the
   // "Run it on invoices" tab. Switch to it, then the seeded queue must be visible
-  // (not the "needs its database" notice — if this fails, the backend env isn't set).
+  // (not the "needs its database" notice, if this fails, the backend env isn't set).
   await page.getByRole("button", { name: /Run it on invoices/ }).click();
   await expect(page.getByText("Invoice queue")).toBeVisible();
 });
 
-test("clean invoice runs straight through — no approval gate", async ({
+test("clean invoice runs straight through, no approval gate", async ({
   page,
 }) => {
   await selectAndRun(page, "INV-2040");
@@ -74,7 +74,7 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
   );
   await expect(page.getByTestId("approval-gate")).toBeVisible();
   await expect(page.getByText(/Paused/)).toBeVisible();
-  // It has NOT posted yet — no ERP reference on the trace.
+  // It has NOT posted yet, no ERP reference on the trace.
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
 
   // 3. Approve → reconciliation transitions to posted, gate disappears.
@@ -86,21 +86,21 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
       timeout: RUN_TIMEOUT,
     },
   );
-  // The ERP ref shows up (both in the narration and the detail row) — assert at
+  // The ERP ref shows up (both in the narration and the detail row), assert at
   // least one match rather than a single visible node.
   await expect(page.getByText(/NETSUITE-BILL-/).first()).toBeVisible();
   await expect(page.getByTestId("approval-gate")).toHaveCount(0);
 
-  // 4. No duplicated stage nodes after the resume (this is the audit-bug guard —
+  // 4. No duplicated stage nodes after the resume (this is the audit-bug guard,
   //    a phase-2 resume must upsert the stages in place, not stack a second set).
   //    Exactly one node per stage. (Once past intake the extraction collapses to a
-  //    single "Intake" node at the top of the trace — assert it's present once.)
+  //    single "Intake" node at the top of the trace, assert it's present once.)
   await expect(page.getByTestId("intake-collapsed")).toHaveCount(1);
   await expect(step(page, "matching")).toHaveCount(1);
   await expect(step(page, "approval")).toHaveCount(1);
   await expect(step(page, "reconciliation")).toHaveCount(1);
   // No stray "Pipeline started" duplicated by the resume. (Run markers are pruned
-  // at the pause and the resume adds none, so the count is 0 here — the bug we're
+  // at the pause and the resume adds none, so the count is 0 here, the bug we're
   // guarding against would make it ≥ 1 from a re-emitted phase-2 marker.)
   await expect(page.getByText("Pipeline started")).toHaveCount(0);
 });

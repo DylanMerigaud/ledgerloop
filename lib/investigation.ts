@@ -1,7 +1,7 @@
 import type { MatchResult, Investigation } from "@/lib/schema";
 
 /**
- * The reusable core of the exception investigation — shared by the workflow step
+ * The reusable core of the exception investigation, shared by the workflow step
  * ([`src/mastra/workflows/p2p.ts`](../src/mastra/workflows/p2p.ts)) and the eval
  * harness ([`eval/run.ts`](../eval/run.ts)), so both run the agent identically.
  *
@@ -25,7 +25,7 @@ type AgentResult = {
   toolCalls?: Array<{ payload?: { toolName?: string } }>;
 };
 
-/** Anything that can run a prompt — the real Mastra Agent, or a test/eval fake. */
+/** Anything that can run a prompt, the real Mastra Agent, or a test/eval fake. */
 export type InvestigatorAgent = {
   generate: (
     prompt: string,
@@ -45,7 +45,7 @@ const investigationPrompt = (match: MatchResult, vendor: string): string => {
 /**
  * The agent's closing text. `res.text` concatenates text across all internal
  * steps (so with a tool call it repeats), so we take the LAST step that actually
- * produced text — the conclusion after the tool ran — and only fall back to
+ * produced text, the conclusion after the tool ran, and only fall back to
  * `res.text` if no step had any.
  */
 const finalText = (res: AgentResult): string => {
@@ -75,7 +75,7 @@ const toolsUsedFrom = (res: AgentResult): string[] => {
  *
  * The agent is asked to LEAD with its verdict, so we trust the first ~120 chars:
  * a clear "legitimate" / "overcharge|error" near the start wins. We only fall
- * back to scanning the whole text when the lead is ambiguous — which avoids a
+ * back to scanning the whole text when the lead is ambiguous, which avoids a
  * stray word later in the paragraph (e.g. "returned for correction") flipping a
  * clearly-legitimate verdict to "unclear".
  */
@@ -88,7 +88,7 @@ export const classify = (text: string): Investigation["recommendation"] => {
   if (leadOvercharge && !leadLegit) return "likely_overcharge";
   if (leadLegit && !leadOvercharge) return "likely_legitimate";
 
-  // Ambiguous lead — fall back to weighing the whole text.
+  // Ambiguous lead, fall back to weighing the whole text.
   const legit = /legitimate|justified|in line|expected/.test(t);
   const bad =
     /overcharge|over-charge|no (notice|basis|contractual|surcharge)|typo|bill(ing)? (slip|error)/.test(

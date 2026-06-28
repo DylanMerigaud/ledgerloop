@@ -10,7 +10,7 @@ import type { Invoice, PurchaseOrder, OrgChart } from "@/lib/schema";
 /**
  * The department lever, end to end: a buying department lives on the PO, flows
  * through matching into the MatchResult, and the engine routes a derived workflow's
- * "department review" gate on it. This guards the chain that used to be dead — the
+ * "department review" gate on it. This guards the chain that used to be dead, the
  * engine hardcoded department: "" so a department gate could never fire.
  */
 
@@ -44,7 +44,7 @@ const INV: Invoice = {
 };
 
 // A tiny org + proposal so the DERIVED workflow (not a hand-built one) is what
-// routes — the gate is `department == "Product"` per the template.
+// routes, the gate is `department == "Product"` per the template.
 const org: OrgChart = {
   source: "test-co",
   employees: [
@@ -117,7 +117,7 @@ test("the derived department gate fires for its department, isolating it from th
     purchaseOrder: PO("Product"),
     goodsReceipt: null,
   });
-  // A small clean invoice would post straight through — but its PO is Product, so the
+  // A small clean invoice would post straight through, but its PO is Product, so the
   // department gate (a parallel root) fires on its own. Only that gate pends, which
   // proves the department lever routes independently of the amount/exception gates.
   const run = runApproval(wf, match);

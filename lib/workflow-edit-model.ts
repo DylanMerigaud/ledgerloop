@@ -17,11 +17,11 @@ import {
 import type { PlanModel } from "@/lib/workflow-edit-agent";
 
 /**
- * The real conversational-edit model — a structured-output Anthropic call that maps
+ * The real conversational-edit model, a structured-output Anthropic call that maps
  * an instruction to ONE small `WorkflowEditOp` (not the whole workflow). The op
  * schema is tiny and flat, so it stays well inside the structured-output grammar
  * limit and the model never round-trips (and silently drifts) the existing nested
- * conditions. Deterministic `applyEditOp` then applies it. Sonnet — picking the
+ * conditions. Deterministic `applyEditOp` then applies it. Sonnet, picking the
  * right op + scope is real reasoning; edits are interactive but infrequent.
  */
 
@@ -52,7 +52,7 @@ export const anthropicEditModel: EditModel = {
 };
 
 /**
- * The agent's planner — returns an ORDERED list of ops for a (possibly multi-part)
+ * The agent's planner, returns an ORDERED list of ops for a (possibly multi-part)
  * instruction, and on a correction pass takes the validation issues as feedback.
  * `runEditAgent` drives the loop (apply → validate → correct). Same Sonnet model.
  */

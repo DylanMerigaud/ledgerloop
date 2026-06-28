@@ -15,12 +15,12 @@ import { CTX } from "@/src/mastra/tools/context";
  * Unlike the deterministic stages (match / route / reconcile), this agent runs an
  * OPEN-ENDED loop: given a flagged exception, it decides which of these records to
  * pull, in what order, and when it has enough to form a recommendation. The path
- * isn't knowable in advance — that's what makes an agent the right tool here.
+ * isn't knowable in advance, that's what makes an agent the right tool here.
  *
  * Each tool returns deliberately MESSY, free-text data (the imperfect data a real
  * AP team actually has). The agent reads it like a human would. The vendor whose
  * records to read is taken from `requestContext` (server-trusted), not from
- * model-supplied arguments — so the agent can't pull the wrong vendor's file.
+ * model-supplied arguments, so the agent can't pull the wrong vendor's file.
  *
  * Nothing these tools return is a decision. The agent's output is a
  * RECOMMENDATION shown to the human before they approve or reject; the money
@@ -32,7 +32,7 @@ const isGetter = (v: unknown): v is (k: string) => unknown =>
 
 const vendorFromContext = (context: unknown): string => {
   // `context` is Mastra's tool context (typed loosely as unknown here); read the
-  // server-injected investigation record off requestContext WITHOUT casting — guard
+  // server-injected investigation record off requestContext WITHOUT casting, guard
   // each hop and validate the payload shape.
   if (!isRecord(context)) throw noContext();
   const rc = context["requestContext"];
@@ -49,7 +49,7 @@ const noContext = (): Error =>
 export const priceHistoryTool = createTool({
   id: "get-vendor-price-history",
   description:
-    "Pull the buyer's free-text price history and account notes for this vendor — past quoted prices, any surcharge or price-increase notices, and prior billing disputes. Use this to judge whether a price variance is a legitimate increase or an overcharge. Takes no arguments.",
+    "Pull the buyer's free-text price history and account notes for this vendor, past quoted prices, any surcharge or price-increase notices, and prior billing disputes. Use this to judge whether a price variance is a legitimate increase or an overcharge. Takes no arguments.",
   inputSchema: z.object({}),
   outputSchema: z.object({ vendor: z.string(), priceHistory: z.string() }),
   execute: async (_input, context) => {
@@ -61,7 +61,7 @@ export const priceHistoryTool = createTool({
 export const poNotesTool = createTool({
   id: "get-po-notes",
   description:
-    "Read the buyer's free-text notes attached to this vendor's purchase order — intent, side agreements, and any standing guidance on how to handle variances. Use this to see whether the exception was already anticipated. Takes no arguments.",
+    "Read the buyer's free-text notes attached to this vendor's purchase order, intent, side agreements, and any standing guidance on how to handle variances. Use this to see whether the exception was already anticipated. Takes no arguments.",
   inputSchema: z.object({}),
   outputSchema: z.object({ vendor: z.string(), poNotes: z.string() }),
   execute: async (_input, context) => {
@@ -73,7 +73,7 @@ export const poNotesTool = createTool({
 export const receiptNotesTool = createTool({
   id: "get-receipt-notes",
   description:
-    "Read the warehouse / receiving notes for this vendor's delivery — what was actually received and any remarks the receiver wrote (damage, partial delivery, price addenda on the delivery slip). Takes no arguments.",
+    "Read the warehouse / receiving notes for this vendor's delivery, what was actually received and any remarks the receiver wrote (damage, partial delivery, price addenda on the delivery slip). Takes no arguments.",
   inputSchema: z.object({}),
   outputSchema: z.object({ vendor: z.string(), receiptNotes: z.string() }),
   execute: async (_input, context) => {

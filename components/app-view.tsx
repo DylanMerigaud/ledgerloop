@@ -10,18 +10,18 @@ import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 /**
  * The top-level view switch. Two halves of the product, in the order a
  * forward-deployed engineer works them:
- *   1. Onboarding — connect the client's HRIS, let the agent derive the approval
+ *   1. Onboarding, connect the client's HRIS, let the agent derive the approval
  *      workflow from their org. (The differentiator.)
- *   2. Pipeline — run invoices through that workflow, live.
+ *   2. Pipeline, run invoices through that workflow, live.
  *
  * It also owns the ONE shared piece of state between the two tabs: the active
  * approval workflow. Onboarding derives/edits it and pushes it up here; the
  * Pipeline reads it and runs every invoice through it. So there's a single
- * workflow, not a per-tab copy — edit it on the left, it's what executes on the
- * right. It lives in client state only (the run is stateless — nothing persisted);
+ * workflow, not a per-tab copy, edit it on the left, it's what executes on the
+ * right. It lives in client state only (the run is stateless, nothing persisted);
  * until discovery has run it's null and the pipeline falls back to its default DAG.
  *
- * Both tabs stay MOUNTED — the inactive one is hidden, not unmounted — so the wow
+ * Both tabs stay MOUNTED, the inactive one is hidden, not unmounted, so the wow
  * loop holds: derive + edit on the left, switch to Pipeline, run, switch back, and
  * your discovery + edits are still there (and a run in flight isn't aborted). A
  * conditional render would drop all of that on every tab switch.
@@ -37,7 +37,7 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
   // runs discovery; the pipeline falls back to its default DAG meanwhile.
   const [workflow, setWorkflow] = useState<ApprovalWorkflow | null>(null);
 
-  // The vendors / currencies actually present on the queued invoices — the real
+  // The vendors / currencies actually present on the queued invoices, the real
   // values a vendor/currency gate can route on. Derived from the already-loaded
   // queue (no extra query); passed to onboarding so the editor offers + validates
   // them, and the popover documents them.
@@ -142,7 +142,7 @@ const TabButton = ({
         <span className="block text-[13px] font-medium leading-tight">
           {label}
         </span>
-        {/* The subtitle is the point — keep it visible on wider screens; drop it on
+        {/* The subtitle is the point, keep it visible on wider screens; drop it on
             narrow ones where it would wrap and crowd the row. */}
         <span className="hidden text-[11px] font-normal leading-tight text-faint sm:block">
           {sub}

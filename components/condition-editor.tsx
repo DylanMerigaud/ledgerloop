@@ -15,7 +15,7 @@ import {
 } from "@/lib/condition-fields";
 
 /**
- * The condition editor — edits a gate's `when` as a 2-level ALL/ANY tree (the
+ * The condition editor, edits a gate's `when` as a 2-level ALL/ANY tree (the
  * Pivot/Retool filter pattern, kept to two levels: a root combinator holding leaves
  * plus ONE level of nested groups). The model supports arbitrary nesting and the engine
  * already evaluates it; this is the structural UI for it. Every change is deterministic
@@ -23,12 +23,12 @@ import {
  * stored `when` and its humanized chip stay clean.
  *
  * Field semantics (which ops, which value widget) come entirely from `condition-fields`,
- * so this component is declarative — adding a routing lever needs no change here.
+ * so this component is declarative, adding a routing lever needs no change here.
  */
 
 type Group = { kind: "all" | "any"; conditions: Condition[] };
 
-/** A leaf or a (single-level) group — the two kinds of row in the root list. */
+/** A leaf or a (single-level) group, the two kinds of row in the root list. */
 const isGroup = (c: Condition): c is Group =>
   c.kind === "all" || c.kind === "any";
 const isLeaf = (c: Condition): c is ConditionLeaf => c.kind === "leaf";
@@ -99,7 +99,7 @@ export const ConditionEditor = ({
 
       {root.conditions.length === 0 && (
         <p className="px-0.5 py-1 text-[11.5px] text-faint">
-          No conditions — this gate fires on every invoice.
+          No conditions: this gate fires on every invoice.
         </p>
       )}
 
@@ -135,7 +135,7 @@ export const ConditionEditor = ({
   );
 };
 
-/** A nested group — leaves only (depth cap = 2, so no "+ group" inside). */
+/** A nested group, leaves only (depth cap = 2, so no "+ group" inside). */
 const SubGroup = ({
   group,
   available,
@@ -262,7 +262,7 @@ const ValueInput = ({
     const labelOf = (o: string) =>
       meta.label === "Exception flag" ? o.replace(/_/g, " ") : o;
     // Long lists (vendors, exception codes) get a searchable combobox; short enums
-    // (verdict, matchType) stay a plain select — search there is overkill.
+    // (verdict, matchType) stay a plain select, search there is overkill.
     if (meta.options.length > 6) {
       return (
         <div className="min-w-0 flex-1">

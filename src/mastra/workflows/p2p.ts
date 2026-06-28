@@ -25,30 +25,30 @@ import {
 import { CTX, type ToolContext } from "@/src/mastra/tools/context";
 
 /**
- * The procure-to-pay workflow — the showcase.
+ * The procure-to-pay workflow, the showcase.
  *
  *   intake → matching → ┌─ exception → INVESTIGATE (agent) → approval ─┐→ reconciliation
  *                       ├─ duplicate → block ────────────────────────┤
  *                       └─ clean (straight-through) ──────────────────┘
  *
  * The decisions are DETERMINISTIC. Matching, approval tiering, and reconciliation
- * are pure, unit-tested functions — payment outcomes must be exact and
+ * are pure, unit-tested functions, payment outcomes must be exact and
  * repeatable, never a model's guess. Those steps narrate with a templated line;
  * no LLM is called for them (no latency, no tokens, no chance of drift).
  *
  * The one place an agent earns its keep is the EXCEPTION INVESTIGATION: when the
  * matcher flags a variance, whether it's a legitimate price increase or an
  * overcharge is a judgment over messy, unstructured records, and which records
- * matter depends on what you find — an open-ended trajectory you can't hard-code.
+ * matter depends on what you find, an open-ended trajectory you can't hard-code.
  * So that step runs the investigator agent, which CHOOSES its tools and forms a
  * recommendation for the human. It decides nothing about the money; the reviewer
  * does. Autonomy lives off the critical path, which is exactly where it's safe.
  */
 
-/* The state the workflow is seeded with — produced by the DB read layer. The
+/* The state the workflow is seeded with, produced by the DB read layer. The
    optional `decisions` are the reviewer's per-step approvals (keyed by workflow
    step id): empty on the first run (active gates pause as pending), populated on a
-   resume. The approval workflow is a DAG so several gates can pend in parallel —
+   resume. The approval workflow is a DAG so several gates can pend in parallel,
    the bill posts only once every active gate is approved. Clean invoices have no
    active gate; a duplicate is blocked before the workflow runs. */
 const RunInput = z.object({
@@ -62,14 +62,14 @@ const RunInput = z.object({
   inactiveVendors: z.array(z.string()).default([]),
   catalogSkus: z.array(z.string()).default([]),
   decisions: z.record(z.string(), z.enum(["approve", "reject"])).default({}),
-  /* Optional reviewer note per REJECTED gate (keyed by step id) — shown in the
+  /* Optional reviewer note per REJECTED gate (keyed by step id), shown in the
      rejected step's trace detail. Parallel to `decisions`. */
   reasons: z.record(z.string(), z.string()).default({}),
-  /* On a phase-2 resume the document was already read in phase 1 — skip the
+  /* On a phase-2 resume the document was already read in phase 1, skip the
      vision call so a resume doesn't re-extract (wasted cost + latency). */
   skipExtraction: z.boolean().default(false),
   /* The client profile drives the per-customer behaviour: matching tolerances and
-     the approval workflow. Optional — defaults to the standard values so a run
+     the approval workflow. Optional, defaults to the standard values so a run
      without a profile behaves as before. This is what onboarding produces and the
      pipeline consumes. */
   profile: ClientProfile.optional(),
@@ -83,9 +83,9 @@ const Narrated = z.object({ narration: z.string() });
    is the exception investigator). It renders the source record to a PDF and has
    the vision model read it back ([`lib/intake.ts`](../../../lib/intake.ts)).
 
-   The extracted invoice is what the REST OF THE PIPELINE RUNS ON — matching joins
+   The extracted invoice is what the REST OF THE PIPELINE RUNS ON, matching joins
    the extracted lines against the PO/receipt. Like production: the document is the
-   source of truth; if the read fails, we don't invent data — the run stops with
+   source of truth; if the read fails, we don't invent data, the run stops with
    an error (no silent fallback to the record). The seeded record is only what we
    render the PDF from (our stand-in for "a vendor PDF arrived"), and the PO /
    receipt / prior numbers stay as the reference (they come from the DB, as they'd
@@ -104,12 +104,12 @@ const intakeStep = createStep({
       try {
         await writer.write(chunk);
       } catch {
-        /* ignore writer errors — never let the trace affect the result */
+        /* ignore writer errors, never let the trace affect the result */
       }
     };
 
     // Phase-2 resume: the document was read in phase 1. Re-running the workflow
-    // re-enters intake, but we don't pay for a second vision call — pass the
+    // re-enters intake, but we don't pay for a second vision call, pass the
     // already-known invoice through. (Phase-1 extraction drives the run; the
     // resume just continues it.)
     if (inputData.skipExtraction) return inputData;
@@ -126,7 +126,7 @@ const intakeStep = createStep({
     if (!result.ok) {
       // Like production: no document, no run. Surface a clear failure instead of
       // fabricating data.
-      throw new Error(`Intake failed — ${result.reason}`);
+      throw new Error(`Intake failed, ${result.reason}`);
     }
 
     // The pipeline runs on the EXTRACTED invoice; PO/receipt/ledger stay as the
@@ -176,10 +176,10 @@ const matchingStep = createStep({
 
 const matchLine = (m: MatchResult): string => {
   if (m.verdict === "duplicate") {
-    return `${m.invoiceNumber} is a duplicate — blocking to prevent a double payment.`;
+    return `${m.invoiceNumber} is a duplicate, blocking to prevent a double payment.`;
   }
   if (m.verdict === "clean") {
-    return `Clean ${m.matchType === "three_way" ? "3-way" : "2-way"} match — eligible for straight-through processing.`;
+    return `Clean ${m.matchType === "three_way" ? "3-way" : "2-way"} match, eligible for straight-through processing.`;
   }
   return `${m.exceptions.length} exception(s) found (max ${(m.maxVariancePct * 100).toFixed(1)}% variance).`;
 };
@@ -194,7 +194,7 @@ type ChunkWriter = {
 /**
  * Run the investigator agent over a flagged match and surface its tool calls on
  * the live trace. Returns the recommendation, or `null` if there's no agent / the
- * call fails — the pipeline degrades gracefully (it proceeds to approval without
+ * call fails, the pipeline degrades gracefully (it proceeds to approval without
  * the note). The agent-running + parsing lives in `lib/investigation.ts`, shared
  * with the eval harness; here we add only the workflow-stream concern.
  */
@@ -224,7 +224,7 @@ const investigate = async (
       try {
         await writer?.write({ type: "tool-call", payload: { toolName } });
       } catch {
-        /* ignore writer errors — never let the trace affect the result */
+        /* ignore writer errors, never let the trace affect the result */
       }
     }
     return out.investigation;
@@ -243,7 +243,7 @@ const ApprovalRunOut = z.object({
   steps: z.array(
     z.object({ id: z.string(), status: z.string(), detail: z.string() }),
   ),
-  /* The workflow graph this run executed — carried so the trace can render the
+  /* The workflow graph this run executed, carried so the trace can render the
      SAME graph the onboarding screen draws, coloured by this invoice's path.
      Optional (the duplicate block has no workflow). */
   workflow: ApprovalWorkflowSchema.optional(),
@@ -268,7 +268,7 @@ const stepSummaries = (
 /* Exception path: FIRST the investigator agent (the one open-ended, agentic step)
    reads messy vendor records and recommends how to read the variance; its note is
    written to the trace as its own node. THEN the conditional approval WORKFLOW is
-   executed — its gates (manager/director/department, by condition) decide who must
+   executed, its gates (manager/director/department, by condition) decide who must
    sign off. The agent informs the human; it decides no gate. */
 const investigateAndRouteStep = createStep({
   id: "approval", // stage = approval on the trace; the investigation is a sub-node
@@ -314,7 +314,7 @@ const investigateAndRouteStep = createStep({
   },
 });
 
-/* Duplicate path: a control failure, not a pricing question — nothing to
+/* Duplicate path: a control failure, not a pricing question, nothing to
    investigate and no workflow to run. Surfaced directly as a blocked outcome. */
 const blockStep = createStep({
   id: "approval-blocked", // same stage; a duplicate is a (blocked) approval outcome
@@ -332,12 +332,12 @@ const blockStep = createStep({
       approval: { outcome: "blocked" as const, steps: [] },
       match,
       vendor: match.vendor,
-      narration: `Blocked: ${match.invoiceNumber} is a duplicate of an already-processed invoice. Held for AP review — not routed for approval.`,
+      narration: `Blocked: ${match.invoiceNumber} is a duplicate of an already-processed invoice. Held for AP review, not routed for approval.`,
     };
   },
 });
 
-/* Clean path: run the workflow too — for a clean invoice every gate's condition is
+/* Clean path: run the workflow too, for a clean invoice every gate's condition is
    false, so they all skip and the run resolves straight to "posted" (the
    straight-through path), through the exact same engine as an exception. */
 const autoApproveStep = createStep({

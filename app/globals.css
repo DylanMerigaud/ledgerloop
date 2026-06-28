@@ -31,7 +31,7 @@ body {
   }
 
   /* Always-visible slim scrollbar. macOS hides overlay scrollbars by default,
-     so a long list looks deceptively complete — this keeps a discreet track
+     so a long list looks deceptively complete, this keeps a discreet track
      visible (paired with a bottom fade) so it's obvious the list scrolls. */
   .scrollbar-slim {
     scrollbar-width: thin; /* Firefox */

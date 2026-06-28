@@ -5,7 +5,7 @@ import { runIntake, type Extractor } from "@/lib/intake";
 import type { Invoice } from "@/lib/schema";
 
 /**
- * Intake tests — the "mock vision" coverage. The real extraction calls the
+ * Intake tests, the "mock vision" coverage. The real extraction calls the
  * Anthropic vision API; here we inject a mock extractor so the whole intake path
  * (render → extract → reconcile-with-record / fail) is exercised offline.
  */
@@ -57,7 +57,7 @@ test("extracted header differing from the record → matchesRecord false", async
 });
 
 test("the pipeline runs on the EXTRACTED data, not the source", async () => {
-  // The model reads a different unit price than the record — runIntake must
+  // The model reads a different unit price than the record, runIntake must
   // return the model's number (that's the whole point: data comes from the read).
   const extracted: Invoice = {
     ...SOURCE,

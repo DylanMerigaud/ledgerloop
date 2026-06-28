@@ -18,7 +18,7 @@ import { validateWorkflow } from "@/lib/workflow-validate";
 
 /**
  * The edit is deterministic: the model only picks an op (tested live in the eval);
- * `applyEditOp` does the structural change and is the part that must be exact —
+ * `applyEditOp` does the structural change and is the part that must be exact,
  * crucially, it must NEVER touch unrelated steps or their conditions (the bug the
  * old full-workflow-round-trip had). These pin that.
  */
@@ -40,7 +40,7 @@ const base: TWorkflow = {
       id: "director",
       kind: "approval",
       label: "Director review",
-      // A NESTED condition — the exact shape the old model dropped.
+      // A NESTED condition, the exact shape the old model dropped.
       when: {
         kind: "all",
         conditions: [
@@ -69,7 +69,7 @@ const base: TWorkflow = {
   ],
 };
 
-/** Helper: a step's condition text by id (throws if missing — fine in a test). */
+/** Helper: a step's condition text by id (throws if missing, fine in a test). */
 const whenOf = (wf: TWorkflow, id: string): string => {
   const step = wf.steps.find((s) => s.id === id);
   if (!step) throw new Error(`no step ${id}`);
@@ -167,7 +167,7 @@ test("add-integration: runs after the post, doesn't alter other conditions", () 
 test("a SECOND notification still branches off the ERP post, not the first", () => {
   // Regression: postStepId used to return "the integration with no outgoing edge",
   // so once Slack trailed the post, a second notification chained off Slack and an
-  // added approval converged on Slack — tangling the graph. The post must stay the
+  // added approval converged on Slack, tangling the graph. The post must stay the
   // join node regardless of trailing notifications.
   const withSlack = applyEditOp(base, {
     op: "add-integration",
@@ -510,7 +510,7 @@ test("move-step: a linear-chain move still bypasses (keeps flow)", () => {
 
 test("move-step keeps the graph acyclic (it unhooks before re-inserting)", () => {
   // move-step always detaches the step (predecessors bypass it) before re-parenting
-  // it under the anchor, so it can't introduce a back-edge — the result stays a DAG
+  // it under the anchor, so it can't introduce a back-edge, the result stays a DAG
   // whatever the source/anchor. A self-move (anchor === step) is a no-op.
   const self = applyEditOp(base, {
     op: "move-step",
@@ -628,7 +628,7 @@ test("set-approvers: never duplicates the primary into the co-approver list", ()
   const next = applyEditOp(base, {
     op: "set-approvers",
     stepId: "director",
-    // "Jordan Ellis" is already the primary — it must be dropped from the extras.
+    // "Jordan Ellis" is already the primary, it must be dropped from the extras.
     approvers: ["Jordan Ellis", "Cameron Diaz"],
   });
   const dir = next.steps.find((s) => s.id === "director");
@@ -724,7 +724,7 @@ test("remove-approver: never removes the primary, only extras", () => {
   const next = applyEditOp(base, {
     op: "remove-approver",
     stepId: "director",
-    // "Jordan Ellis" is the primary — remove-approver must leave it alone.
+    // "Jordan Ellis" is the primary, remove-approver must leave it alone.
     approverName: "Jordan Ellis",
   });
   const dir = next.steps.find((s) => s.id === "director");

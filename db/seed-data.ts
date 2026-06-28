@@ -1,22 +1,22 @@
 import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**
- * The seeded dataset — the demo scenario.
+ * The seeded dataset, the demo scenario.
  *
  * ~10 invoices with their purchase orders and goods receipts, deliberately
  * including the edge cases the spec calls for, because the matcher CATCHING these
  * (and the agent investigating them) is what sells the demo:
  *
- *   • price mismatch     — INV-2042 (steel bar invoiced 9% over the PO price)
- *   • quantity mismatch  — INV-2048 (invoiced more units than were received)
- *   • duplicate invoice  — INV-2041 appears twice (same number, second is a re-send)
+ *   • price mismatch    , INV-2042 (steel bar invoiced 9% over the PO price)
+ *   • quantity mismatch , INV-2048 (invoiced more units than were received)
+ *   • duplicate invoice , INV-2041 appears twice (same number, second is a re-send)
  *
  * Plus straight-through "clean" matches (the happy path), a 2-way match with no
- * goods receipt (services), an arithmetic error, and an off-PO line — so the
+ * goods receipt (services), an arithmetic error, and an off-PO line, so the
  * dashboard shows a realistic mix of verdicts, not just the three exceptions.
  *
  * The data is shaped so the PURE matcher (`lib/matching.ts`) produces a
- * deterministic verdict for each — no reliance on the LLM to "decide". A seed is
+ * deterministic verdict for each, no reliance on the LLM to "decide". A seed is
  * defined as a {invoice, po?, gr?, scenario} bundle; `scenario` is a short label
  * the queue shows.
  */
@@ -182,7 +182,7 @@ const priceMismatch: SeedBundle = {
   },
 };
 
-/* ── 4. Clean 2-way match — SERVICES (no goods receipt) ──────────────────────
+/* ── 4. Clean 2-way match, SERVICES (no goods receipt) ──────────────────────
    A consulting invoice: matched to a PO but there's nothing to "receive", so
    it's a 2-way match. Clean → straight-through. */
 const svcLines = [
@@ -241,7 +241,7 @@ const cleanPackaging: SeedBundle = {
     lineItems: pkgLines,
     total: sum(pkgLines),
     // Tagged to a real org department so a derived/edited "department review" gate
-    // actually fires on this invoice — the demonstrable end of the department lever.
+    // actually fires on this invoice, the demonstrable end of the department lever.
     department: "Product",
   },
   goodsReceipt: {
@@ -258,9 +258,9 @@ const cleanPackaging: SeedBundle = {
 
 /* ── 5b. PRICE MISMATCH on a PRODUCT-owned PO ───────────────────────────────
    A price overrun (exception) on a PO the Product team owns. On the DERIVED
-   onboarding workflow the first wave has two parallel gates — manager review
+   onboarding workflow the first wave has two parallel gates, manager review
    (fires on the exception) AND department review (fires on department ==
-   "Product") — so BOTH pend at once. This is the invoice that demonstrates
+   "Product"), so BOTH pend at once. This is the invoice that demonstrates
    per-gate decisions: approve one parallel gate, reject the other. */
 const prodPoLines = [
   line("DEV-SEAT", "IDE seat license (annual)", 40, 180),
@@ -441,7 +441,7 @@ const cleanChem: SeedBundle = {
 
 /* ── 9. QUANTITY MISMATCH (over-received) ───────────────────────────────────
    Invoiced for 100 units of cable but only 80 were received. The PO ordered
-   100, so the PO check passes — only the 3-way RECEIPT check catches it. Large
+   100, so the PO check passes, only the 3-way RECEIPT check catches it. Large
    variance (25%) → director tier. This is the showcase for why 3-way matters. */
 const qtyPoLines = [line("CAT6-305", "Cat6 cable 305m reel", 100, 95)];
 const qtyInvLines = [line("CAT6-305", "Cat6 cable 305m reel", 100, 95)];
@@ -477,7 +477,7 @@ const qtyMismatch: SeedBundle = {
   },
 };
 
-/* ── 10. Clean 3-way (office) — rounds the queue to a healthy majority-clean ─*/
+/* ── 10. Clean 3-way (office), rounds the queue to a healthy majority-clean ─*/
 const officeLines = [
   line("CHAIR-ERG", "Ergonomic task chair", 12, 240),
   line("DESK-STD", "Sit-stand desk", 12, 410),
@@ -517,7 +517,7 @@ const cleanOffice: SeedBundle = {
 };
 
 /* ── 11. INACTIVE VENDOR (ERP master-data control) ──────────────────────────
-   The billing vendor is marked inactive in the client's ERP — a deactivated
+   The billing vendor is marked inactive in the client's ERP, a deactivated
    supplier shouldn't be sending payable invoices (a control/fraud signal). The
    PO matches cleanly; the ONLY exception is vendor_inactive, raised against the
    pulled vendor master. The seed script (erp:seed) creates this vendor inactive
@@ -590,7 +590,7 @@ export const SEED_BUNDLES: SeedBundle[] = [
 ];
 
 /**
- * The scenario's purchase orders, de-duplicated by PO number — the SINGLE source
+ * The scenario's purchase orders, de-duplicated by PO number, the SINGLE source
  * the QuickBooks seed (`scripts/seed-quickbooks.ts`) pushes into the client's ERP
  * and the matcher then pulls back. Derived from `SEED_BUNDLES` so the POs the
  * pipeline matches against and the POs we seed into QBO can never drift. The

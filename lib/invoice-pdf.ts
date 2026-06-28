@@ -5,7 +5,7 @@ import type { Invoice } from "@/lib/schema";
 /**
  * Render an `Invoice` to a realistic one-page PDF (pdf-lib). Generated on demand
  * from the seeded invoice (see `app/api/pdf/[id]`) so the intake step has a real
- * document to read — the "AI reads the messy document" half of the demo — with no
+ * document to read, the "AI reads the messy document" half of the demo, with no
  * stored binary and no chance of the PDF drifting from the data.
  *
  * It draws the data AS GIVEN (defects included): if a seeded line's amount is a
@@ -69,7 +69,7 @@ export const renderInvoicePdf = async (
   let y = MARGIN + 56;
   const meta: Array<[string, string]> = [
     ["Invoice No.", invoice.invoiceNumber],
-    ["PO Number", invoice.poNumber ?? "—"],
+    ["PO Number", invoice.poNumber ?? "-"],
     ["Issue date", invoice.issueDate],
     ["Currency", invoice.currency],
   ];
@@ -81,7 +81,7 @@ export const renderInvoicePdf = async (
 
   // ── Line-item table ───────────────────────────────────────────────────────
   // The SKU column is printed because matching joins invoice ↔ PO ↔ receipt by
-  // SKU — the extraction has to be able to read the item code off the document
+  // SKU, the extraction has to be able to read the item code off the document
   // (a real invoice carries one), otherwise the downstream match has no key.
   y += 24;
   const colSku = MARGIN;
@@ -136,7 +136,7 @@ export const renderInvoicePdf = async (
   return doc.save();
 };
 
-/** Render and return base64 — the form the vision model's `document` block wants. */
+/** Render and return base64, the form the vision model's `document` block wants. */
 export const renderInvoicePdfBase64 = async (
   invoice: Invoice,
 ): Promise<string> => {

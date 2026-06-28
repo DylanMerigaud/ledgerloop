@@ -9,7 +9,7 @@ import {
 } from "@/lib/schema";
 
 /**
- * Document extraction — the intake step's real work: a vendor's invoice PDF in,
+ * Document extraction, the intake step's real work: a vendor's invoice PDF in,
  * a schema-validated structured `Invoice` out. This is where the AI reads the
  * messy real-world document so the rest of the pipeline can be deterministic.
  *
@@ -39,9 +39,9 @@ Rules:
 - Return ONLY data actually present on the document. Never invent or guess values.
 - Dates must be ISO-8601 (YYYY-MM-DD). Convert any format you see.
 - "currency" is the 3-letter ISO-4217 code (USD, EUR, GBP, ...). Infer from a symbol or explicit code.
-- Numbers are plain JSON numbers — no currency symbols, no thousands separators, a period as decimal.
+- Numbers are plain JSON numbers, no currency symbols, no thousands separators, a period as decimal.
 - "lineItems" is one entry per billed line; "amount" is that line's total.
-- "subtotal" is the pre-tax sum; "total" is the final amount due. Transcribe the numbers as printed, even if they don't add up — a downstream checker flags inconsistencies. Do NOT silently fix the math.
+- "subtotal" is the pre-tax sum; "total" is the final amount due. Transcribe the numbers as printed, even if they don't add up, a downstream checker flags inconsistencies. Do NOT silently fix the math.
 - Each line item needs a "sku": copy the printed item/SKU code for that line EXACTLY as shown (e.g. the "Item" column). Only if no code is printed, fall back to a short slug of the description.`;
 
 /** Extract a base64-encoded PDF into a validated Invoice (or a tagged failure). */
@@ -52,7 +52,7 @@ export const extractInvoice = async (
   try {
     message = await anthropic().messages.create({
       model: EXTRACTION_MODEL,
-      // Headroom for invoices with many line items — a truncated response would
+      // Headroom for invoices with many line items, a truncated response would
       // be invalid JSON (caught below, but better to not truncate in the first place).
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
@@ -155,7 +155,7 @@ const mapApiError = (err: unknown): ExtractionResult => {
       status,
       message:
         status === 429
-          ? "Extraction model rate-limited — try again shortly."
+          ? "Extraction model rate-limited, try again shortly."
           : "The extraction model returned an error.",
     };
   }

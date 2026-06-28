@@ -7,11 +7,11 @@ import {
 } from "@/lib/approval-workflow";
 
 /**
- * A CLIENT PROFILE — the config that makes the pipeline behave differently per
+ * A CLIENT PROFILE, the config that makes the pipeline behave differently per
  * customer, without touching code. This is what onboarding a client comes down
  * to: not a custom build, but filling in this profile.
  *
- * The profile holds the matching tolerances and the APPROVAL WORKFLOW — the
+ * The profile holds the matching tolerances and the APPROVAL WORKFLOW, the
  * conditional DAG of who approves what under which conditions (lib/approval-
  * workflow.ts). The onboarding discovery agent derives the workflow from the
  * client's org chart, a human validates it, and the pipeline executes it. One
@@ -19,11 +19,11 @@ import {
  *
  * The legacy two-tier `approvalPolicy` is still here as the SOURCE the default
  * workflow is generated from (`workflowFromPolicy`), so a profile without an
- * explicit workflow still routes exactly as before — the DAG is a strict
+ * explicit workflow still routes exactly as before, the DAG is a strict
  * superset of the old flat tiering.
  *
  * Defaults mirror the values the demo shipped with, so a profile is optional
- * everywhere — pass one to customise, omit it for the standard behaviour.
+ * everywhere, pass one to customise, omit it for the standard behaviour.
  */
 
 /** Tolerances below which a variance is rounding noise, not a real exception. */
@@ -64,7 +64,7 @@ export const ClientProfile = z
     /** Human label for the queue / UI. */
     name: z.string().trim().min(1),
     tolerances: MatchTolerances,
-    /** The legacy tier thresholds — the source the default workflow derives from. */
+    /** The legacy tier thresholds, the source the default workflow derives from. */
     approvalPolicy: ApprovalPolicy,
     /**
      * The conditional approval DAG. Optional: when absent, the pipeline derives a
@@ -77,12 +77,12 @@ export const ClientProfile = z
   .strict();
 export type ClientProfile = z.infer<typeof ClientProfile>;
 
-/* ── Defaults — the values the demo shipped with ────────────────────────────
+/* ── Defaults, the values the demo shipped with ────────────────────────────
    Used wherever a profile isn't supplied, so existing call sites (tests, the
    sanity check) keep their exact behaviour. */
 
 export const DEFAULT_TOLERANCES: MatchTolerances = {
-  pricePct: 0.01, // 1% — absorbs FX/rounding without hiding real overcharges
+  pricePct: 0.01, // 1%, absorbs FX/rounding without hiding real overcharges
   lineAmountAbs: 0.01,
   qtyAbs: 0,
 };
@@ -96,7 +96,7 @@ export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
  *  The default workflow: the standard two-tier policy as a DAG
  * ────────────────────────────────────────────────────────────────────────── *
  *
- * What a profile without an explicit (agent-derived) workflow runs — the standard
+ * What a profile without an explicit (agent-derived) workflow runs, the standard
  * AP policy expressed as the same conditional DAG the onboarding template produces,
  * so a run behaves consistently with or without discovery:
  *
@@ -106,7 +106,7 @@ export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
  *   • exception      → manager gate fires; the director gate additionally fires when
  *                      the amount or variance clears the director threshold.
  *   • duplicate      → handled as a pre-workflow control (blocked), never routed
- *                      here — a duplicate is a control failure, not an approval.
+ *                      here, a duplicate is a control failure, not an approval.
  */
 export const workflowFromPolicy = (
   policy: ApprovalPolicy,
@@ -156,8 +156,8 @@ export const workflowFromPolicy = (
 
   // The default (un-onboarded) workflow stands in for "the standard policy", so its
   // gates are filled by ROLE, not a real person. We set approverName to the role so
-  // the canvas reads cleanly ("Manager review — Manager") instead of flagging every
-  // gate "unresolved" — that warning is for an ONBOARDED workflow the agent couldn't
+  // the canvas reads cleanly ("Manager review, Manager") instead of flagging every
+  // gate "unresolved", that warning is for an ONBOARDED workflow the agent couldn't
   // resolve, not for this generic fallback. (Onboarding resolves these to people.)
   const steps: WorkflowStep[] = [
     {

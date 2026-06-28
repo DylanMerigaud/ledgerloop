@@ -4,7 +4,7 @@ import { test, expect, type Page } from "@playwright/test";
  * End-to-end coverage for the audit-log persistence + the ERP master-data
  * controls, driven through the REAL browser against the REAL backend (Mastra
  * agent on Claude + Supabase). Like the other e2e specs it needs ANTHROPIC_API_KEY
- * + DATABASE_URL and is NOT run in CI — run `pnpm e2e` locally before deploys.
+ * + DATABASE_URL and is NOT run in CI, run `pnpm e2e` locally before deploys.
  *
  * What the unit tests can't give, pinned here:
  *   1. A completed run is PERSISTED and shows in the Recent runs panel, and
@@ -14,9 +14,9 @@ import { test, expect, type Page } from "@playwright/test";
  *      vendor is flagged (`vendor_inactive`).
  *
  * Seeded rows used (ids = the queue's stable keys):
- *   INV-2042  — price mismatch (exception → pauses for approval)
- *   INV-1990  — already posted as a bill in the ERP (duplicate_in_erp → blocked)
- *   INV-2050  — billing vendor is inactive in the ERP (vendor_inactive)
+ *   INV-2042 , price mismatch (exception → pauses for approval)
+ *   INV-1990 , already posted as a bill in the ERP (duplicate_in_erp → blocked)
+ *   INV-2050 , billing vendor is inactive in the ERP (vendor_inactive)
  */
 
 const RUN_TIMEOUT = 30_000;
@@ -47,7 +47,7 @@ test("a completed run is logged in Recent runs and replays without re-running", 
   await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
-  // Approve so the run reaches a final outcome (posted) — that's when the dashboard
+  // Approve so the run reaches a final outcome (posted), that's when the dashboard
   // refreshes the Recent runs list.
   await page.getByTestId("approve-btn").click();
   await expect(step(page, "reconciliation")).toHaveAttribute(
@@ -64,13 +64,13 @@ test("a completed run is logged in Recent runs and replays without re-running", 
   await expect(historyRow).toBeVisible({ timeout: RUN_TIMEOUT });
 
   // 2. Clicking it REPLAYS the stored trace: the stages re-render, but no new run
-  //    is kicked off — the Run button never shows "Running…", and the approval
+  //    is kicked off, the Run button never shows "Running…", and the approval
   //    gate does not reappear (a replay is a finished, read-only render).
   await historyRow.click();
   await expect(step(page, "matching")).toBeVisible();
   await expect(step(page, "reconciliation")).toBeVisible();
   await expect(page.getByText("Running…")).toHaveCount(0);
-  // Exactly one node per stage — a replay sets the trace, it doesn't stack a run.
+  // Exactly one node per stage, a replay sets the trace, it doesn't stack a run.
   await expect(step(page, "matching")).toHaveCount(1);
 });
 
@@ -88,7 +88,7 @@ test("an invoice already posted in the ERP is blocked as a duplicate", async ({
     page.getByText(/already posted as a bill in the ERP/i),
   ).toBeVisible();
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
-  // It's a control failure, not an approval question — no human gate.
+  // It's a control failure, not an approval question, no human gate.
   await expect(page.getByTestId("approval-gate")).toHaveCount(0);
 });
 

@@ -14,7 +14,7 @@ import {
 import { PurchaseOrder, VendorBill, type MatchResult } from "@/lib/schema";
 
 /**
- * Unit tests for reconciliation — the step that posts to the (fake) ERP, driven
+ * Unit tests for reconciliation, the step that posts to the (fake) ERP, driven
  * by the approval workflow's outcome. These pin what happens for each outcome,
  * which is what the dashboard's posted/awaiting/rejected states depend on. (The
  * outcome itself is decided by the workflow engine, tested in approval-engine.)
@@ -94,7 +94,7 @@ test("blocked outcome (duplicate) → never posted", async () => {
   assert.equal(r.erpRef, null);
 });
 
-test("awaiting outcome → HELD, not posted — the pause", async () => {
+test("awaiting outcome → HELD, not posted, the pause", async () => {
   const r = await reconcileFromOutcome("awaiting", match(), "Acme");
   assert.equal(r.outcome, "awaiting");
   assert.equal(r.posted, false);
@@ -123,12 +123,12 @@ test("GL entries balance (debit total == credit total) when posted", async () =>
 
 /* ── PULL side: the QuickBooks PO mapper ──────────────────────────────────────
    Two layers, the same discipline as hris.test.ts:
-     1. Mapper logic on small, real-shaped QBO query payloads — pins each cleanup
+     1. Mapper logic on small, real-shaped QBO query payloads, pins each cleanup
         rule (item-line filter, DocNumber→poNumber, currency fallback, recompute).
-     2. A loose smoke test against the REAL captured fixture — proves the live
+     2. A loose smoke test against the REAL captured fixture, proves the live
         payload maps to valid PurchaseOrders without crashing. */
 
-// A minimal QBO query response — only the fields the mapper reads.
+// A minimal QBO query response, only the fields the mapper reads.
 const qboResponse = (pos: unknown[]) => ({
   QueryResponse: { PurchaseOrder: pos },
 });
@@ -247,7 +247,7 @@ test("drops non-item lines (subtotals, account-based) the matcher can't join", (
         VendorRef: { value: "1", name: "Acme" },
         Line: [
           itemLine("5", "Widget", 1, 10),
-          // An account-based line with no ItemRef — not matchable.
+          // An account-based line with no ItemRef, not matchable.
           { DetailType: "AccountBasedExpenseLineDetail", Amount: 50 },
         ],
       },
@@ -335,7 +335,7 @@ test("master-data mappers tolerate empty / shapeless payloads", () => {
 
 test("the recorded QBO fixture maps to valid purchase orders + master data", async (t) => {
   if (!existsSync("db/fixtures/quickbooks/erp.json")) {
-    t.skip("fixture missing — run pnpm erp:capture");
+    t.skip("fixture missing, run pnpm erp:capture");
     return;
   }
   const erp = recordedErp();

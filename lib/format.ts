@@ -1,5 +1,5 @@
 /**
- * Display formatters — pure, unit-tested, shared by the trace UI and the queue.
+ * Display formatters, pure, unit-tested, shared by the trace UI and the queue.
  * Keeping these here (not inline in components) means the numbers render
  * identically everywhere and the formatting is covered by `pnpm test`.
  */

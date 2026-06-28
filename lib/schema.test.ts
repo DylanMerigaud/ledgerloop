@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { Invoice, MatchResult, INVOICE_JSON_SCHEMA } from "@/lib/schema";
 
 /**
- * Schema accept/reject tests — the single-source-of-truth guarantee in action.
+ * Schema accept/reject tests, the single-source-of-truth guarantee in action.
  * If the model (or the DB, or a refactor) produces a shape the validator would
  * reject, these fail. They also confirm the JSON schema we hand the intake model
  * is well-formed and derived from the same object.

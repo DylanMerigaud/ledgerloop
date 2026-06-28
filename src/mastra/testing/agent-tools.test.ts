@@ -10,7 +10,7 @@ import { z } from "zod";
 import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
 
 /**
- * Offline integration test for the "real agent calls its tool" wiring — the
+ * Offline integration test for the "real agent calls its tool" wiring, the
  * thing the runtime audit could only check with a live key. Using a hand-rolled
  * mock model (no network, no key, CI-safe), this proves the three links that
  * have to hold for the agentic story to be true at runtime:

@@ -16,7 +16,7 @@ import {
 /**
  * Fake ERP adapter.
  *
- * This is a STUB with a clear, real-looking interface — never a real ERP call.
+ * This is a STUB with a clear, real-looking interface, never a real ERP call.
  * In a production accounts-payable system the reconciliation step posts a vendor
  * bill (and its GL distribution) into the ERP (NetSuite, etc.); here we
  * synthesize a deterministic reference and double-entry posting so the demo's
@@ -25,7 +25,7 @@ import {
  *
  * The interface is what matters: swap `fakeErp` for a `netSuiteAdapter`
  * implementing the same `ErpAdapter` and the reconciliation step is unchanged.
- * The adapter contract below is deliberately part of the public surface — it's
+ * The adapter contract below is deliberately part of the public surface, it's
  * the integration seam a reviewer should see.
  *
  * @public
@@ -35,7 +35,7 @@ export type ErpAdapter = {
   postVendorBill(req: ErpPostingRequest): Promise<ErpPostingResult>;
 };
 
-/** @public — the request shape an ERP adapter receives. */
+/** @public, the request shape an ERP adapter receives. */
 export type ErpPostingRequest = {
   invoiceNumber: string;
   poNumber: string | null;
@@ -44,7 +44,7 @@ export type ErpPostingRequest = {
   currency: string;
 };
 
-/** @public — what an ERP adapter returns on a successful post. */
+/** @public, what an ERP adapter returns on a successful post. */
 export type ErpPostingResult = {
   /** The ERP's reference for the created bill, e.g. "NETSUITE-BILL-1042". */
   erpRef: string;
@@ -66,12 +66,12 @@ const buildGlEntries = (amount: number): GlEntry[] => {
 
 /**
  * Build the vendor-bill payload the ERP write-back WOULD post once an invoice
- * clears — pure, no network, no side effect. It mirrors the real QuickBooks bill
+ * clears, pure, no network, no side effect. It mirrors the real QuickBooks bill
  * the seed posts (DocNumber + vendor + a single account-based expense line for the
  * total). Shown on the reconciliation trace as a DRY-RUN: the concrete artifact a
  * real post would create, never actually sent (the write-back is a stub).
  *
- * @public — part of the ERP seam: a real adapter would send exactly this.
+ * @public, part of the ERP seam: a real adapter would send exactly this.
  */
 export const buildVendorBill = (
   match: MatchResult,
@@ -97,7 +97,7 @@ const refFor = (invoiceNumber: string): string => {
 
 const fakeErp: ErpAdapter = {
   name: "fake-netsuite",
-  // Synchronous stub, but the adapter contract is async (a real ERP post is) — so
+  // Synchronous stub, but the adapter contract is async (a real ERP post is), so
   // return a resolved promise instead of an `async` method with no await.
   postVendorBill(req) {
     return Promise.resolve({
@@ -109,15 +109,15 @@ const fakeErp: ErpAdapter = {
 
 /**
  * How the approval workflow resolved for this invoice, as the engine reports it:
- *   "blocked"  — a duplicate; a control failure, never routed or paid
- *   "awaiting" — one or more approval gates are still pending a human
- *   "rejected" — an approver declined; not posted
- *   "posted"   — every active gate approved (or none applied); cleared to post
+ *   "blocked" , a duplicate; a control failure, never routed or paid
+ *   "awaiting", one or more approval gates are still pending a human
+ *   "rejected", an approver declined; not posted
+ *   "posted"  , every active gate approved (or none applied); cleared to post
  */
 export type ApprovalOutcome = "posted" | "awaiting" | "rejected" | "blocked";
 
 /**
- * Reconcile an invoice by posting it through the ERP adapter — or refusing to —
+ * Reconcile an invoice by posting it through the ERP adapter, or refusing to,
  * driven by the approval workflow's OUTCOME. The workflow engine has already
  * resolved who needed to sign off and whether they did; reconciliation just acts
  * on the result. Pure orchestration over the adapter; the reconciliation workflow
@@ -147,7 +147,7 @@ export const reconcileFromOutcome = async (
       posted: false,
       erpRef: null,
       glEntries: [],
-      note: "Not posted — invoice is blocked (duplicate). Held for AP review.",
+      note: "Not posted, invoice is blocked (duplicate). Held for AP review.",
       vendorBill: null,
     };
   }
@@ -159,7 +159,7 @@ export const reconcileFromOutcome = async (
       posted: false,
       erpRef: null,
       glEntries: [],
-      note: "Awaiting approval before posting — paused for the pending reviewer(s).",
+      note: "Awaiting approval before posting, paused for the pending reviewer(s).",
       vendorBill: null,
     };
   }
@@ -171,12 +171,12 @@ export const reconcileFromOutcome = async (
       posted: false,
       erpRef: null,
       glEntries: [],
-      note: "Rejected by an approver — not posted. Returned to the vendor for correction.",
+      note: "Rejected by an approver, not posted. Returned to the vendor for correction.",
       vendorBill: null,
     };
   }
 
-  // posted — every active gate approved (or it was a clean straight-through run).
+  // posted, every active gate approved (or it was a clean straight-through run).
   const { erpRef, glEntries } = await adapter.postVendorBill({
     invoiceNumber: match.invoiceNumber,
     poNumber: match.poNumber,
@@ -191,7 +191,7 @@ export const reconcileFromOutcome = async (
     posted: true,
     erpRef,
     glEntries,
-    note: `Cleared to post as ${erpRef} (write-back is a dry-run — the bill below is what we'd send).`,
+    note: `Cleared to post as ${erpRef} (write-back is a dry-run, the bill below is what we'd send).`,
     // The dry-run payload: the exact bill a real write-back would POST. Built
     // deterministically here; never sent (the write-back is a stub).
     vendorBill: buildVendorBill(match, vendor),
@@ -199,43 +199,43 @@ export const reconcileFromOutcome = async (
 };
 
 /* ══════════════════════════════════════════════════════════════════════════ *
- *  PULL side — read a client's existing purchase orders from their ERP
+ *  PULL side, read a client's existing purchase orders from their ERP
  * ══════════════════════════════════════════════════════════════════════════ *
  *
  * The procurement mirror of the HRIS seam (`lib/hris.ts`). Onboarding reads a
  * client's org from BambooHR; the pipeline reads a client's open purchase orders
  * from their ERP (QuickBooks Online here) and matches incoming invoices against
- * them. PULL only — the bill we post back (the `reconcileFromOutcome` side above)
+ * them. PULL only, the bill we post back (the `reconcileFromOutcome` side above)
  * is the deterministic stub; importing the client's REAL POs is the interesting
  * half, because it's the same "connect their system, read their data" story.
  *
  * Same discipline as HRIS, two implementations behind one interface:
- *   • `liveQuickBooksErp(creds)` — real SuiteTalk-style HTTP against the QBO API,
+ *   • `liveQuickBooksErp(creds)`, real SuiteTalk-style HTTP against the QBO API,
  *     scoped to the client's company ("realm"). OAuth2 with a long-lived refresh
  *     token; we mint a short-lived access token per pull.
- *   • `recordedErp()`           — replays a captured fixture from disk through the
+ *   • `recordedErp()`          , replays a captured fixture from disk through the
  *     SAME mapper, so recorded == live and the demo runs with no key (CI included).
  *
  * Everything QuickBooks-specific (the `QueryResponse.PurchaseOrder` wire shape,
  * the OAuth2 token endpoint) stops at this file. `pullPurchaseOrders()` returns
- * the internal `PurchaseOrder[]` the matcher already consumes — swap QBO for a
+ * the internal `PurchaseOrder[]` the matcher already consumes, swap QBO for a
  * `netSuiteErp` implementing the same `PoSourceAdapter` and nothing downstream
  * changes.
  */
 
-/** A vendor as the client's ERP knows it — the master record, normalised. */
+/** A vendor as the client's ERP knows it, the master record, normalised. */
 export type ErpVendor = {
   name: string;
   active: boolean;
 };
 
-/** An item as the client's ERP catalog knows it — `sku` is the matcher join key. */
+/** An item as the client's ERP catalog knows it, `sku` is the matcher join key. */
 export type ErpItem = {
   sku: string;
   active: boolean;
 };
 
-/** A bill already posted (and paid) in the ERP — for historical duplicate detection. */
+/** A bill already posted (and paid) in the ERP, for historical duplicate detection. */
 export type ErpPostedBill = {
   vendor: string;
   /** The vendor's invoice/document number on the posted bill. */
@@ -243,8 +243,8 @@ export type ErpPostedBill = {
 };
 
 /**
- * @public — the read seam: a client's ERP, read-only. Beyond the open POs, it
- * exposes the master data an AP control checks an incoming invoice against — the
+ * @public, the read seam: a client's ERP, read-only. Beyond the open POs, it
+ * exposes the master data an AP control checks an incoming invoice against, the
  * vendor list, the item catalog, and the already-posted bills. Each method throws
  * only on transport/parse failure; callers degrade gracefully. Swap QBO for a
  * `netSuiteErp` implementing this and nothing downstream changes (cf. HRIS).
@@ -262,7 +262,7 @@ export type PoSourceAdapter = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  The vendor's wire shape (QuickBooks Online) — confined to this file
+ *  The vendor's wire shape (QuickBooks Online), confined to this file
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -273,7 +273,7 @@ export type PoSourceAdapter = {
  * defensively. Unknown extra fields are ignored. A reference in QBO is a
  * `{ value, name? }` pair (the id is `value`); a line carries its item, qty and
  * unit price under `ItemBasedExpenseLineDetail`. Only `ItemBasedExpenseLine` rows
- * carry an item we can match on — other line types (e.g. a subtotal) are dropped.
+ * carry an item we can match on, other line types (e.g. a subtotal) are dropped.
  */
 const QboRef = z.object({ value: z.string(), name: z.string().optional() });
 
@@ -306,7 +306,7 @@ const QboPoResponse = z.object({
 });
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  The shared mapper — QBO shape → internal PurchaseOrder[]
+ *  The shared mapper, QBO shape → internal PurchaseOrder[]
  * ────────────────────────────────────────────────────────────────────────── */
 
 const round2 = (n: number): number =>
@@ -315,17 +315,17 @@ const round2 = (n: number): number =>
 /**
  * Turn a raw QBO PurchaseOrder query payload into our `PurchaseOrder[]`. The ONE
  * place QBO's shape becomes our shape; it runs identically on live bytes and on
- * replayed fixture bytes, so the two adapters can't drift. Pure and synchronous —
+ * replayed fixture bytes, so the two adapters can't drift. Pure and synchronous,
  * easy to test against the captured fixture.
  *
  * Real-world cleanups, each deliberate:
  *   1. A PO needs a vendor and at least one matchable (item) line to be usable by
- *      the matcher — POs missing either are dropped, not invented. (QBO can carry
+ *      the matcher, POs missing either are dropped, not invented. (QBO can carry
  *      account-based or subtotal lines that have no item.)
  *   2. The internal `poNumber` is QBO's human `DocNumber`, falling back to the
- *      internal `Id` when a PO has no doc number — so it always has a stable key.
+ *      internal `Id` when a PO has no doc number, so it always has a stable key.
  *   3. The matcher joins lines on `sku`, and QBO's PO line carries the item only as
- *      `ItemRef.{value:id, name}` — the real SKU lives on the Item entity, not the
+ *      `ItemRef.{value:id, name}`, the real SKU lives on the Item entity, not the
  *      line. So we key on the item NAME (which the seed sets to the SKU), not the
  *      numeric id, so a pulled PO line lines up with the invoice line by SKU. The
  *      longer `Line.Description` becomes the human description.
@@ -346,7 +346,7 @@ export const mapQboPurchaseOrders = (raw: unknown): TPurchaseOrder[] => {
     const poNumber = po.DocNumber?.trim() || po.Id?.trim() || "";
     const currency = po.CurrencyRef?.value.trim() || "USD";
 
-    // Keep only item-based lines that carry an item NAME — that name is the SKU
+    // Keep only item-based lines that carry an item NAME, that name is the SKU
     // the matcher joins on (see cleanup 3). Map each to our LineItem shape.
     const lineItems = (po.Line ?? [])
       .filter((l) => (l.ItemBasedExpenseLineDetail?.ItemRef?.name ?? "").trim())
@@ -361,7 +361,7 @@ export const mapQboPurchaseOrders = (raw: unknown): TPurchaseOrder[] => {
         return { sku, description, qty, unitPrice, amount };
       });
 
-    // A PO with no vendor or no matchable line can't drive a 2/3-way match —
+    // A PO with no vendor or no matchable line can't drive a 2/3-way match,
     // skip it rather than emit something the schema would reject or the matcher
     // can't use.
     if (!vendor || !poNumber || lineItems.length === 0) continue;
@@ -467,10 +467,10 @@ export const mapQboPostedBills = (raw: unknown): ErpPostedBill[] => {
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Live adapter — real QuickBooks Online
+ *  Live adapter, real QuickBooks Online
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** @public — credentials a live QBO adapter needs (OAuth2 + the company realm). */
+/** @public, credentials a live QBO adapter needs (OAuth2 + the company realm). */
 export type QboCreds = {
   clientId: string;
   clientSecret: string;
@@ -480,7 +480,7 @@ export type QboCreds = {
   realmId: string;
   /**
    * An already-minted access token to use as-is, skipping the refresh exchange.
-   * Optional — handy when you have a fresh token from the OAuth Playground (good
+   * Optional, handy when you have a fresh token from the OAuth Playground (good
    * ≈1h) and want to avoid the refresh-token rotation dance entirely.
    */
   accessToken?: string;
@@ -512,7 +512,7 @@ let rotatedRefreshToken: string | null = null;
 export const qboRotatedRefreshToken = (): string | null => rotatedRefreshToken;
 
 const qboAccessToken = async (creds: QboCreds): Promise<string> => {
-  // A directly-supplied access token wins — no refresh exchange (avoids the
+  // A directly-supplied access token wins, no refresh exchange (avoids the
   // refresh-token rotation entirely while the token is fresh).
   if (creds.accessToken) return creds.accessToken;
   if (tokenCache && Date.now() < tokenCache.expiresAt) return tokenCache.token;
@@ -534,7 +534,7 @@ const qboAccessToken = async (creds: QboCreds): Promise<string> => {
   if (!res.ok) {
     throw new Error(
       `QBO token refresh failed: HTTP ${res.status} ${res.statusText}. ` +
-        "The refresh token is invalid or expired (QBO rotates it) — mint a fresh " +
+        "The refresh token is invalid or expired (QBO rotates it), mint a fresh " +
         "one from the OAuth 2.0 Playground and update QBO_REFRESH_TOKEN.",
     );
   }
@@ -614,7 +614,7 @@ export const qboPostEntity = async (
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(
-      `QBO ${entityPath} failed: HTTP ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`,
+      `QBO ${entityPath} failed: HTTP ${res.status} ${res.statusText}${detail ? `, ${detail}` : ""}`,
     );
   }
   return res.json();
@@ -638,7 +638,7 @@ export const fetchQboBills = (creds: QboCreds): Promise<unknown> =>
 /**
  * Live QuickBooks Online adapter.
  *
- * @public — the integration seam: swap this for a `netSuiteErp` implementing
+ * @public, the integration seam: swap this for a `netSuiteErp` implementing
  * `PoSourceAdapter` and nothing downstream changes (cf. the HRIS seam).
  */
 export const liveQuickBooksErp = (creds: QboCreds): PoSourceAdapter => {
@@ -660,7 +660,7 @@ export const liveQuickBooksErp = (creds: QboCreds): PoSourceAdapter => {
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Recorded adapter — replays the captured QBO payload
+ *  Recorded adapter, replays the captured QBO payload
  * ────────────────────────────────────────────────────────────────────────── */
 
 const ERP_FIXTURE_PATH = path.join(
@@ -687,7 +687,7 @@ const ErpFixture = z.object({
 /**
  * Replays the captured QBO payloads from disk through the SAME mappers the live
  * adapter uses, so recorded and live read the exact same data. The fixture is a
- * REAL capture (see `scripts/capture-quickbooks.ts`) — its `_meta` records
+ * REAL capture (see `scripts/capture-quickbooks.ts`), its `_meta` records
  * when/where from.
  */
 export const recordedErp = (
@@ -721,11 +721,11 @@ export const recordedErp = (
 
 /**
  * The ONLY place the live-vs-recorded choice is made. Live when all four QBO
- * values are present (you, with the sandbox app); recorded — the captured
- * fixture — otherwise (CI, a teammate, after the sandbox expires). Everything
+ * values are present (you, with the sandbox app); recorded, the captured
+ * fixture, otherwise (CI, a teammate, after the sandbox expires). Everything
  * else calls this and is oblivious, the same discipline as `defaultHris()`.
  *
- * @public — the entry point the pipeline uses to read a client's POs.
+ * @public, the entry point the pipeline uses to read a client's POs.
  */
 export const defaultErp = (): PoSourceAdapter => {
   const { QBO_CLIENT_ID, QBO_CLIENT_SECRET, QBO_REFRESH_TOKEN, QBO_REALM_ID } =

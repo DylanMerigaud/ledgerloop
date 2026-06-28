@@ -1,5 +1,5 @@
 /**
- * Compact contact icons (GitHub, LinkedIn, email) for the footer — muted by
+ * Compact contact icons (GitHub, LinkedIn, email) for the footer, muted by
  * default, indigo on hover. Icons only, no labels, to keep it sober. Mirrors the
  * sibling ai-invoice-parser repo so the two demos share one footer language.
  */

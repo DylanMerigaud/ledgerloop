@@ -12,10 +12,10 @@ import { applyEditOp, type WorkflowEditOp } from "@/lib/workflow-edit";
 import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
 
 /**
- * The node editor — click a gate in the graph (onboarding only) and this side panel
+ * The node editor, click a gate in the graph (onboarding only) and this side panel
  * edits THAT step directly, the Pivot/Retool pattern. Every change is deterministic:
  * it builds one `WorkflowEditOp` and the parent applies it with `applyEditOp`
- * immediately (no model, no preview/approve cycle — the chat handles fuzzy intent;
+ * immediately (no model, no preview/approve cycle, the chat handles fuzzy intent;
  * this handles precise, unambiguous edits). Fields: approver, the full trigger
  * (the condition editor), label, remove.
  */
@@ -239,11 +239,11 @@ const RemoveField = ({
   const remove = () => {
     if (!window.confirm("Remove this step from the workflow?")) return;
     // Guard: a removal that breaks the graph (post unreachable, a dangling edge) is
-    // refused — the validator is the same one the editor blocks Approve on.
+    // refused, the validator is the same one the editor blocks Approve on.
     const after = applyEditOp(workflow, { op: "remove-step", stepId });
     if (!isActivatable(validateWorkflow(after))) {
       setError(
-        "Can't remove this — it would break the workflow (nothing would post).",
+        "Can't remove this. It would break the workflow (nothing would post).",
       );
       return;
     }

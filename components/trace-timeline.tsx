@@ -13,10 +13,10 @@ import type { PipelineRunState } from "@/lib/use-pipeline-run";
 /**
  * Compose a one-line reason the run paused, from the trace data already on screen:
  * which gate(s) are pending (the approval step's `steps`) and why (the top
- * matching exception's message). Read defensively with `isRecord` — a trace whose
+ * matching exception's message). Read defensively with `isRecord`, a trace whose
  * shape we don't recognise just yields no extras, so the banner degrades to the
  * plain "needs a human decision" rather than guessing. Keeps the pause LEGIBLE
- * without a paragraph: "Paused at <gate> — <reason>."
+ * without a paragraph: "Paused at <gate>, <reason>."
  */
 /* The slices of the trace data this banner reads, Zod-validated so the unknown
    `data` is narrowed without a cast (same discipline as the rest of the app). */
@@ -33,7 +33,7 @@ const pauseReason = (trace: TraceEvent[]): string => {
   const approval = trace.find((e) => e.stage === "approval");
   const matching = trace.find((e) => e.stage === "matching");
 
-  // Pending gate label — the engine's pending detail reads "Awaiting <approver>…".
+  // Pending gate label, the engine's pending detail reads "Awaiting <approver>…".
   let gates = "";
   const ap = ApprovalData.safeParse(approval?.data);
   if (ap.success) {
@@ -42,23 +42,23 @@ const pauseReason = (trace: TraceEvent[]): string => {
   }
 
   // The top exception message (e.g. "Line STL-BAR-20: invoiced at 8.18/unit vs PO
-  // 7.50/unit (9.1% over).") — the "why".
+  // 7.50/unit (9.1% over)."), the "why".
   let why = "";
   const mt = MatchingData.safeParse(matching?.data);
   if (mt.success) why = mt.data.exceptions?.[0]?.message ?? "";
 
-  if (gates && why) return `Paused — ${gates}. ${why}`;
-  if (gates) return `Paused — ${gates}.`;
-  if (why) return `Paused — ${why}`;
-  return "Paused — this invoice needs a human decision.";
+  if (gates && why) return `Paused: ${gates}. ${why}`;
+  if (gates) return `Paused: ${gates}.`;
+  if (why) return `Paused: ${why}`;
+  return "Paused: this invoice needs a human decision.";
 };
 
 /**
- * The execution trace — a vertical timeline streamed in live as the run
+ * The execution trace, a vertical timeline streamed in live as the run
  * progresses. Each node is one TraceEvent: the deterministic steps, the
  * investigator agent's tool calls and recommendation, and (rendered red/amber)
  * the caught discrepancies and the routing to approval. This is the heart of the
- * demo — you watch the agent choose its tools and the human gate pause the run.
+ * demo, you watch the agent choose its tools and the human gate pause the run.
  */
 export const TraceTimeline = ({
   state,
@@ -77,7 +77,7 @@ export const TraceTimeline = ({
         title="Run the pipeline"
         body={
           invoiceLabel
-            ? `Run ${invoiceLabel} through matching, routing, and reconciliation — live.`
+            ? `Run ${invoiceLabel} through matching, routing, and reconciliation, live.`
             : "Select an invoice to begin."
         }
         action={

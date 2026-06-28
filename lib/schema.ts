@@ -7,12 +7,12 @@ import { isRecord } from "@/lib/assert";
  * The Zod schemas in this file are the SINGLE SOURCE OF TRUTH for the whole
  * pipeline, the same discipline as the sibling ai-invoice-parser repo:
  *
- *   1. They can constrain a model at generation time — `INVOICE_JSON_SCHEMA`
+ *   1. They can constrain a model at generation time, `INVOICE_JSON_SCHEMA`
  *      (below) is derived from the `Invoice` object for a structured-output model.
  *   2. They validate every model/tool/DB boundary at runtime (`.safeParse`),
  *      so a bad value becomes a handled trace step, never a crash.
  *   3. Their inferred TypeScript types flow into the Drizzle layer, the Mastra
- *      step I/O, the streaming trace, and the React UI — one definition, no
+ *      step I/O, the streaming trace, and the React UI, one definition, no
  *      drift between the model, the validator, the database, and the screen.
  *
  * The procure-to-pay state accretes as it moves down the pipeline: each stage's
@@ -21,10 +21,10 @@ import { isRecord } from "@/lib/assert";
  */
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Primitives (shared, reused — keep validation identical everywhere)
+ *  Primitives (shared, reused, keep validation identical everywhere)
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** A 3-letter ISO-4217-ish currency code. Shape only — we don't enumerate codes. */
+/** A 3-letter ISO-4217-ish currency code. Shape only, we don't enumerate codes. */
 const Currency = z
   .string()
   .trim()
@@ -49,7 +49,7 @@ const Amount = z
 const Quantity = Amount.nonnegative("quantity cannot be negative");
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Line items — the unit that matching compares across documents
+ *  Line items, the unit that matching compares across documents
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -70,12 +70,12 @@ export const LineItem = z
 export type LineItem = z.infer<typeof LineItem>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 0 — the documents (seeded, read-only)
+ *  Stage 0, the documents (seeded, read-only)
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
  * The parsed invoice. This is also the shape a document-extraction step would
- * produce from a PDF/text — `INVOICE_JSON_SCHEMA` below is derived from it.
+ * produce from a PDF/text, `INVOICE_JSON_SCHEMA` below is derived from it.
  */
 export const Invoice = z
   .object({
@@ -92,7 +92,7 @@ export const Invoice = z
   .strict();
 export type Invoice = z.infer<typeof Invoice>;
 
-/** A purchase order — what we agreed to buy and at what price. */
+/** A purchase order, what we agreed to buy and at what price. */
 export const PurchaseOrder = z
   .object({
     poNumber: z.string().trim().min(1),
@@ -102,17 +102,17 @@ export const PurchaseOrder = z
     total: Amount,
     /** The BUYING department (the internal team the spend belongs to), so an
         approval workflow can route a department-specific review. It lives on the PO,
-        not the invoice: a vendor doesn't know your cost centres — your PO does. "" =
+        not the invoice: a vendor doesn't know your cost centres, your PO does. "" =
         no department, so a PO without one routes normally and a department-scoped
         gate simply doesn't fire. Required (explicit "") to keep the seed + fixtures
-        unambiguous — same "no hidden defaults" discipline as the rest of the schema. */
+        unambiguous, same "no hidden defaults" discipline as the rest of the schema. */
     department: z.string(),
   })
   .strict();
 export type PurchaseOrder = z.infer<typeof PurchaseOrder>;
 
 /**
- * A goods receipt — what the warehouse actually accepted. Only quantities matter
+ * A goods receipt, what the warehouse actually accepted. Only quantities matter
  * here (you receive units, not prices), so each line is sku + receivedQty. The
  * presence/absence of a goods receipt is what makes a match "3-way" vs "2-way".
  */
@@ -136,7 +136,7 @@ export const GoodsReceipt = z
 export type GoodsReceipt = z.infer<typeof GoodsReceipt>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 2 — matching result (output of the deterministic matcher)
+ *  Stage 2, matching result (output of the deterministic matcher)
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Why a given line failed to reconcile (or, for `duplicate`, the whole invoice).
@@ -151,7 +151,7 @@ export const MatchExceptionCode = z.enum([
   "no_receipt_line", // (3-way only) invoice line was never received
   "duplicate", // this invoice number was already processed THIS RUN (re-send in the queue)
   // ── ERP master-data controls (the invoice is checked against what the client's
-  //    ERP actually holds — see lib/erp.ts pullVendors/pullItems/pullPostedBills) ──
+  //    ERP actually holds, see lib/erp.ts pullVendors/pullItems/pullPostedBills) ──
   "duplicate_in_erp", // a bill with this vendor+number is already posted in the ERP (already paid)
   "vendor_inactive", // the billing vendor is marked inactive in the ERP (control/fraud signal)
   "sku_not_in_catalog", // an invoiced SKU isn't in the vendor's item catalog in the ERP
@@ -202,7 +202,7 @@ export const MatchResult = z
 export type MatchResult = z.infer<typeof MatchResult>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 2.5 — exception investigation (the one open-ended AGENT step)
+ *  Stage 2.5, exception investigation (the one open-ended AGENT step)
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -211,9 +211,9 @@ export type MatchResult = z.infer<typeof MatchResult>;
  * messy vendor records (price history, PO notes, receipt notes) of its own
  * choosing and forms a view on whether the flagged variance looks legitimate.
  *
- *   recommendation — what the agent suggests the reviewer do
- *   rationale      — one or two sentences citing what it found
- *   toolsUsed      — which records it pulled (shows the open-ended trajectory)
+ *   recommendation, what the agent suggests the reviewer do
+ *   rationale     , one or two sentences citing what it found
+ *   toolsUsed     , which records it pulled (shows the open-ended trajectory)
  */
 export const Investigation = z
   .object({
@@ -229,12 +229,12 @@ export const Investigation = z
   .strict();
 export type Investigation = z.infer<typeof Investigation>;
 
-/* Approval is no longer a single tier decision — it's a conditional workflow DAG
+/* Approval is no longer a single tier decision, it's a conditional workflow DAG
    (lib/approval-workflow.ts) executed per invoice (lib/approval-engine.ts). The
    old `ApproverTier` / `ApprovalDecision` types were retired in that migration. */
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Stage 4 — reconciliation result (output of the deterministic ERP post)
+ *  Stage 4, reconciliation result (output of the deterministic ERP post)
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** A double-entry GL posting line. Debits and credits must net to zero. */
@@ -248,7 +248,7 @@ export const GlEntry = z
 export type GlEntry = z.infer<typeof GlEntry>;
 
 /**
- * The vendor bill we WOULD post to the ERP once an invoice clears — a DRY-RUN
+ * The vendor bill we WOULD post to the ERP once an invoice clears, a DRY-RUN
  * payload, never actually sent (the write-back is a stub; see lib/erp.ts). It
  * mirrors the real shape a QuickBooks `POST /bill` carries (see the bill the seed
  * script posts in scripts/seed-quickbooks.ts: a DocNumber, a vendor ref, and a
@@ -273,10 +273,10 @@ export type VendorBill = z.infer<typeof VendorBill>;
 
 /**
  * How the reconciliation step resolved:
- *   posted    — booked to the ERP (clean auto, or human-approved)
- *   awaiting  — held pending a human approval decision (the run paused here)
- *   rejected  — a reviewer declined it; not posted
- *   blocked   — a duplicate; never posted
+ *   posted   , booked to the ERP (clean auto, or human-approved)
+ *   awaiting , held pending a human approval decision (the run paused here)
+ *   rejected , a reviewer declined it; not posted
+ *   blocked  , a duplicate; never posted
  */
 const ReconOutcome = z.enum(["posted", "awaiting", "rejected", "blocked"]);
 
@@ -291,7 +291,7 @@ export const ReconResult = z
     currency: Currency,
     amount: Amount,
     note: z.string(),
-    /** The bill we'd post to the ERP — a DRY-RUN payload (never sent). Present only
+    /** The bill we'd post to the ERP, a DRY-RUN payload (never sent). Present only
      *  on the `posted` path; null when nothing clears (awaiting/rejected/blocked). */
     vendorBill: VendorBill.nullable().default(null),
   })
@@ -299,7 +299,7 @@ export const ReconResult = z
 export type ReconResult = z.infer<typeof ReconResult>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  HRIS / org model — the onboarding side, INTERNAL types
+ *  HRIS / org model, the onboarding side, INTERNAL types
  * ────────────────────────────────────────────────────────────────────────── *
  *
  * The onboarding discovery agent reads a client's HRIS (BambooHR today) and
@@ -314,7 +314,7 @@ export type ReconResult = z.infer<typeof ReconResult>;
 /** One person in the org, normalised from whatever the HRIS calls these. */
 export const Employee = z
   .object({
-    /** Stable HRIS id (string — BambooHR ids are numeric-but-stringly). */
+    /** Stable HRIS id (string, BambooHR ids are numeric-but-stringly). */
     id: z.string().min(1),
     name: z.string().min(1),
     title: z.string(),
@@ -334,7 +334,7 @@ export const Employee = z
 export type Employee = z.infer<typeof Employee>;
 
 /**
- * A reporting edge the agent could NOT resolve cleanly — a person whose manager
+ * A reporting edge the agent could NOT resolve cleanly, a person whose manager
  * id points nowhere, a cycle, or an active employee with no manager who isn't
  * plausibly the CEO. Surfaced to the human reviewer rather than guessed: this is
  * the data-quality work a forward-deployed engineer actually does on onboarding,
@@ -352,7 +352,7 @@ export type OrgIssue = z.infer<typeof OrgIssue>;
 
 /**
  * The normalised org as the agent sees it: the clean roster plus the issues that
- * need a human. The pipeline never consumes this directly — the agent turns it
+ * need a human. The pipeline never consumes this directly, the agent turns it
  * into a proposed approval policy, a human validates, and THAT becomes a
  * ClientProfile (see [`lib/client-profile.ts`](./client-profile.ts)).
  */
@@ -372,7 +372,7 @@ export type OrgChart = z.infer<typeof OrgChart>;
 
 /**
  * Built from the SAME `Invoice` Zod object so a structured-output model and the
- * runtime validator can't drift — the single-source-of-truth discipline applied
+ * runtime validator can't drift, the single-source-of-truth discipline applied
  * to the model boundary. Emitted inline (no `$ref`/`definitions` wrapper) with
  * `$schema` stripped, the cleanest shape to hand a model. The intake extraction
  * ([`lib/extract.ts`](./extract.ts)) hands this to the model, then
@@ -380,7 +380,7 @@ export type OrgChart = z.infer<typeof OrgChart>;
  *
  * The Anthropic structured-output schema doesn't support numeric range keywords
  * (`minimum`/`maximum`/…) or string `format`, but our Zod has `.nonnegative()`
- * etc. So we STRIP those keywords for the model — they're advisory there anyway —
+ * etc. So we STRIP those keywords for the model, they're advisory there anyway,
  * while `Invoice.safeParse` still enforces every constraint at runtime. The model
  * is shaped; the validator is the real gate.
  */

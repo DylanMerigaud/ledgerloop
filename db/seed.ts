@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { resetAndReseed } from "@/db/reset";
 
 /**
- * Seed script — `pnpm db:seed`.
+ * Seed script, `pnpm db:seed`.
  *
  * Truncates the document tables + `agent_runs`, then re-inserts the seeded
  * dataset (the shared `resetAndReseed` in db/reset.ts does the work, so the CLI
@@ -15,7 +15,7 @@ const main = async () => {
   const url = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
   if (!url) {
     console.error(
-      "✖ Set DATABASE_URL (or DIRECT_DATABASE_URL) before seeding — see .env.example.",
+      "✖ Set DATABASE_URL (or DIRECT_DATABASE_URL) before seeding, see .env.example.",
     );
     process.exit(1);
   }

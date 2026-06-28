@@ -3,7 +3,7 @@ import { z } from "zod";
 import { isRecord } from "@/lib/assert";
 
 /**
- * The trace model — the wire contract between the streaming route and the
+ * The trace model, the wire contract between the streaming route and the
  * timeline UI. It's how the pipeline shows its work: deterministic steps, the
  * investigator agent's real tool calls, and the human gate, live as they happen.
  *
@@ -13,10 +13,10 @@ import { isRecord } from "@/lib/assert";
  * `TraceEvent` union the UI can render directly. Two reasons, both worth saying
  * on a sales call:
  *
- *   1. Decoupling — the dashboard depends on OUR vocabulary (stages, statuses),
+ *   1. Decoupling, the dashboard depends on OUR vocabulary (stages, statuses),
  *      not Mastra's internal chunk format, so a Mastra version bump can't break
  *      the UI contract.
- *   2. Graceful failure — `toTraceEvent` never throws. An unrecognized or
+ *   2. Graceful failure, `toTraceEvent` never throws. An unrecognized or
  *      malformed chunk maps to `null` (dropped) rather than crashing the stream;
  *      the route additionally surfaces real errors as a `pipeline-error` event,
  *      so a bad model output becomes a red trace step, not a white screen.
@@ -53,7 +53,7 @@ export const stageForStep = (stepId: string): TraceStage => {
  * normalisation step Mastra inserts between the branch and reconciliation gets an
  * auto-generated id like `mapping_<uuid>`; it's plumbing, not an agent stage, so
  * we drop its events rather than render a confusing extra node. (An empty step id
- * is NOT treated as internal here — tool-call chunks carry a tool name instead of
+ * is NOT treated as internal here, tool-call chunks carry a tool name instead of
  * a step id and are mapped to their stage by `stageForTool`.)
  */
 const isMappingStep = (stepId: string): boolean => {
@@ -62,7 +62,7 @@ const isMappingStep = (stepId: string): boolean => {
 
 /** Map one of our tool names to its pipeline stage (tool-call chunks carry the name, not a step id). */
 const stageForTool = (toolName: string): TraceStage => {
-  // The investigator agent's tools — these are the real tool-calls in the demo.
+  // The investigator agent's tools, these are the real tool-calls in the demo.
   if (toolName.startsWith("get-")) return "investigation";
   return "pipeline";
 };
@@ -79,7 +79,7 @@ export type TraceStatus = z.infer<typeof TraceStatus>;
 
 /**
  * One entry on the timeline. `kind` separates the structural lifecycle of a stage
- * (`step`) from notable things that happened inside it — a tool firing
+ * (`step`) from notable things that happened inside it, a tool firing
  * (`tool`), a caught discrepancy (`finding`, rendered red/amber), or a run-level
  * marker (`run`). The optional `data` carries the already-validated stage output
  * (MatchResult, ApprovalDecision, …) for the UI to render rich detail.
@@ -139,13 +139,13 @@ const stageLabel = (stage: TraceStage): string => {
 /**
  * Convert one raw Mastra chunk to a partial TraceEvent (sans `seq`/`atMs`, which
  * the route stamps). Returns `null` for chunks we intentionally don't surface
- * (internal lifecycle noise) or anything malformed — never throws.
+ * (internal lifecycle noise) or anything malformed, never throws.
  */
 export const toTraceEvent = (
   chunk: unknown,
 ): Omit<TraceEvent, "seq" | "atMs"> | null => {
   try {
-    // `chunk` is genuinely unknown — narrow it through `asRecord` (which handles
+    // `chunk` is genuinely unknown, narrow it through `asRecord` (which handles
     // null/non-object) rather than casting to a non-null shape. No lying cast, so
     // no "unnecessary" optional chains downstream.
     const c = asRecord(chunk);
@@ -229,7 +229,7 @@ export const toTraceEvent = (
             stage: "intake",
             status: "running",
             stepId: "intake",
-            label: "Intake — reading invoice PDF",
+            label: "Intake, reading invoice PDF",
             detail: "Extracting the document with the vision model…",
             data: { document: asRecord(innerPayload?.["document"]) },
           };
@@ -248,7 +248,7 @@ export const toTraceEvent = (
             stage: "intake",
             status: ok ? "ok" : "error",
             stepId: "intake",
-            label: ok ? "Intake — extracted" : "Intake — failed",
+            label: ok ? "Intake, extracted" : "Intake, failed",
             detail: ok
               ? matches
                 ? "Read the document and reconciled it with the PO record."
@@ -265,7 +265,7 @@ export const toTraceEvent = (
 
       case "tool-call": {
         // Native tool-call chunks (should the runtime surface them directly) carry
-        // a tool name, not a workflow step id — map the stage from the tool name.
+        // a tool name, not a workflow step id, map the stage from the tool name.
         const name =
           typeof payload?.["toolName"] === "string"
             ? payload["toolName"]
@@ -326,7 +326,7 @@ export const toTraceEvent = (
         };
 
       default:
-        return null; // step-output/-progress/-waiting/reasoning/etc — not surfaced
+        return null; // step-output/-progress/-waiting/reasoning/etc, not surfaced
     }
   } catch {
     return null; // never let a weird chunk crash the stream

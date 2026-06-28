@@ -1,12 +1,12 @@
 /**
- * Build the recorded HRIS fixture FROM the seed definition — `tsx
+ * Build the recorded HRIS fixture FROM the seed definition, `tsx
  * scripts/build-recorded-fixture.ts`.
  *
  * The recorded fixture must mirror the SAME demo the live adapter reads (the seeded
  * "LedgerLoop Demo" org of ~13), not the trial account's whole sample staff. Rather
  * than depend on a trial key to re-capture, we render `SEED_ORG` into the exact
  * BambooHR `POST /reports/custom` shape the mapper consumes, scoped to the demo
- * division — so recorded == seed, deterministic, key-free, and the planted issues
+ * division, so recorded == seed, deterministic, key-free, and the planted issues
  * (the orphan, the blank-title root) survive because we reproduce BambooHR's own
  * write-time behaviour (an unmatched manager name is dropped → no supervisorEId).
  *
@@ -39,7 +39,7 @@ const build = (): void => {
 
   const employees: BambooRow[] = SEED_ORG.map((p, i) => {
     // Resolve the manager by name to an id. An unmatched name (the intentionally
-    // absent "Riley Stone") resolves to null — exactly what BambooHR does on write,
+    // absent "Riley Stone") resolves to null, exactly what BambooHR does on write,
     // which is what makes Morgan Vega surface as an orphan.
     const supervisorEId =
       p.managerName !== null ? (idByName.get(p.managerName) ?? null) : null;

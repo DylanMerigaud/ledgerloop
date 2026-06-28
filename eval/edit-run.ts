@@ -1,15 +1,15 @@
 /**
- * Conversational-edit eval — `tsx eval/edit-run.ts [--dry-run]`.
+ * Conversational-edit eval, `tsx eval/edit-run.ts [--dry-run]`.
  *
  * Runs the REAL edit model over a corpus of plain-language instructions and scores
  * whether it picks the right `WorkflowEditOp` (kind + the params that matter). It's
  * the edit counterpart to the investigator eval: that proves the agent's judgement
  * on exceptions; this proves the agent maps instructions to the correct structured
- * edit — including correctly DECLINING (`none`) when an instruction is redundant or
+ * edit, including correctly DECLINING (`none`) when an instruction is redundant or
  * off-topic, the false-positive the old hardcoded suggestions had.
  *
  * `--dry-run` (CI) stubs the model with each case's expected op, so the corpus +
- * scoring run with zero API calls — a perfect score is the expected output. Live
+ * scoring run with zero API calls, a perfect score is the expected output. Live
  * (no flag) calls the real Sonnet edit model; needs ANTHROPIC_API_KEY.
  */
 import { join } from "node:path";
@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { EDIT_CASES, EDIT_FIXTURE, type EditCase } from "@/eval/edit-cases";
 import type { WorkflowEditOp } from "@/lib/workflow-edit";
 // NOTE: the model (which imports lib/env, validating DATABASE_URL at load) is
-// imported DYNAMICALLY after loadEnv() and only when not dry-run — so a dry-run
+// imported DYNAMICALLY after loadEnv() and only when not dry-run, so a dry-run
 // has no env dependency at all.
 
 const dryRun = process.argv.includes("--dry-run");
@@ -27,7 +27,7 @@ const loadEnv = (): void => {
     try {
       process.loadEnvFile(join(process.cwd(), f));
     } catch {
-      /* absent — fine */
+      /* absent, fine */
     }
   }
 };
@@ -44,7 +44,7 @@ const scoreOne = (c: EditCase, op: WorkflowEditOp): Result => {
 const main = async (): Promise<void> => {
   loadEnv();
   console.log(
-    `conversational-edit eval — ${dryRun ? "dry-run (no API)" : "live"}\n`,
+    `conversational-edit eval, ${dryRun ? "dry-run (no API)" : "live"}\n`,
   );
 
   if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
@@ -55,7 +55,7 @@ const main = async (): Promise<void> => {
   }
 
   // Import the model only for a live run (it loads lib/env, which validates the DB
-  // URL) — a dry-run stays env-free.
+  // URL), a dry-run stays env-free.
   const planEdit = dryRun
     ? null
     : (await import("@/lib/workflow-edit-model")).anthropicEditModel.planEdit;

@@ -5,7 +5,7 @@ import { SEED_BUNDLES } from "@/db/seed-data";
 import { scenarioKind, scenarioBadge } from "@/lib/display";
 
 /**
- * The queue signposting helpers — what marks a seeded row BEFORE it's run, so a
+ * The queue signposting helpers, what marks a seeded row BEFORE it's run, so a
  * first-time visitor's eye lands on the interesting cases. Classification is
  * derived from the scenario label; these pin that every seeded scenario lands in
  * the right bucket (a mislabel would mark a clean row as an exception, or hide a

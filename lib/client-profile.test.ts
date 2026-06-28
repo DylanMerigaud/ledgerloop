@@ -8,7 +8,7 @@ import type { Invoice, PurchaseOrder } from "@/lib/schema";
 /**
  * The config-driven claim, at the tolerance layer: the SAME invoice gets a
  * different verdict depending on the client's matching tolerances. (The approval
- * side of "config, not code" — how a policy becomes a gating DAG — is covered in
+ * side of "config, not code", how a policy becomes a gating DAG, is covered in
  * workflow-from-policy.test.ts.)
  */
 

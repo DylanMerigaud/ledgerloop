@@ -5,12 +5,12 @@ import type { WorkflowEditOp } from "@/lib/workflow-edit";
  * Corpus for the conversational-edit eval. Each case is a plain-language
  * instruction against a known workflow, with the op the model SHOULD pick. We
  * score the op kind (always) and the parameters that matter for that kind
- * (threshold, integration, target step) — not the prose. The interesting cases are
+ * (threshold, integration, target step), not the prose. The interesting cases are
  * the "none" ones: an instruction that asks for something already true must NOT
  * invent a redundant edit (the false-positive the hardcoded suggestions had).
  */
 
-/** A small workflow the cases run against — manager → director(>10k) → IT → post. */
+/** A small workflow the cases run against, manager → director(>10k) → IT → post. */
 export const EDIT_FIXTURE: ApprovalWorkflow = {
   name: "fixture",
   roots: ["manager-review"],
@@ -138,12 +138,12 @@ export const EDIT_CASES: EditCase[] = [
     id: "already-has-director",
     instruction: "Make sure invoices over $10,000 get a director sign-off",
     expectedOp: "none",
-    why: "the director gate already fires at >10k — must NOT add a redundant gate",
+    why: "the director gate already fires at >10k, must NOT add a redundant gate",
   },
   {
     id: "nonsense",
     instruction: "Change the company logo to blue",
     expectedOp: "none",
-    why: "nothing about approvals — must decline, not invent an edit",
+    why: "nothing about approvals, must decline, not invent an edit",
   },
 ];

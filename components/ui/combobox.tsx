@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * A searchable single-select — a trigger button that opens a popover with a filter
+ * A searchable single-select, a trigger button that opens a popover with a filter
  * input and a keyboard-navigable list. Used where a native `<select>` doesn't cut it:
  * the approver picker (13+ people, avatars) and long condition-value lists (vendors,
  * exception codes). Short enums stay plain `<select>`s.
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 export type ComboboxOption = {
   value: string;
   label: string;
-  /** Secondary line (e.g. a title) — also matched when filtering. */
+  /** Secondary line (e.g. a title), also matched when filtering. */
   sublabel?: string;
   /** Extra words to match on (not shown). */
   keywords?: string;

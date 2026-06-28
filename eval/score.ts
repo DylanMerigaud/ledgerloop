@@ -1,11 +1,11 @@
 import type { Investigation } from "@/lib/schema";
 
 /**
- * Pure scoring for the investigator eval — no I/O, unit-tested.
+ * Pure scoring for the investigator eval, no I/O, unit-tested.
  *
  * Two views, because "accuracy" alone hides the failure that matters in AP:
- *   • overall accuracy — did the recommendation match the expected label?
- *   • overcharge precision / recall — treating "likely_overcharge" as the
+ *   • overall accuracy, did the recommendation match the expected label?
+ *   • overcharge precision / recall, treating "likely_overcharge" as the
  *     positive class. Recall = of the invoices that SHOULD be pushed back on, how
  *     many did the agent catch; precision = of the ones it flagged, how many were
  *     real. Missing a real overcharge (low recall) is the expensive error.
@@ -61,9 +61,9 @@ export const accuracy = (scores: CaseScore[]): number => {
 
 /**
  * Precision / recall / F1 for the "likely_overcharge" positive class.
- *   TP — expected overcharge, got overcharge
- *   FP — got overcharge, expected something else
- *   FN — expected overcharge, got something else (or failed)
+ *   TP, expected overcharge, got overcharge
+ *   FP, got overcharge, expected something else
+ *   FN, expected overcharge, got something else (or failed)
  */
 export const overchargeConfusion = (scores: CaseScore[]): Confusion => {
   let tp = 0;

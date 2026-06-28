@@ -7,14 +7,14 @@ import { OrgChart } from "@/lib/schema";
 
 /**
  * Two layers:
- *   1. Mapper logic on small, hand-built BambooHR-shaped payloads — deterministic,
+ *   1. Mapper logic on small, hand-built BambooHR-shaped payloads, deterministic,
  *      pins every cleanup rule (active filter, id-based edges, each issue kind).
- *   2. A loose smoke test against the REAL captured fixture — proves the live
+ *   2. A loose smoke test against the REAL captured fixture, proves the live
  *      payload maps to a valid OrgChart without crashing. Loose on purpose: a
  *      re-capture changes the numbers, and we don't want a brittle snapshot.
  */
 
-// A minimal report row helper — only the fields the mapper reads.
+// A minimal report row helper, only the fields the mapper reads.
 type Row = Record<string, string>;
 const report = (employees: Row[]) => ({ employees });
 
@@ -170,11 +170,11 @@ test("the recorded fixture maps to a valid OrgChart", async (t) => {
   const adapter = recordedHris();
   // recordedHris() points at db/fixtures/bamboohr/report.json by default.
   if (!existsSync("db/fixtures/bamboohr/report.json")) {
-    t.skip("fixture missing — run pnpm fixture:build");
+    t.skip("fixture missing, run pnpm fixture:build");
     return;
   }
   const org = await adapter.fetchOrg();
-  // Valid against the schema (the real assertion — shape is correct).
+  // Valid against the schema (the real assertion, shape is correct).
   assert.doesNotThrow(() => OrgChart.parse(org));
   // Sanity: the seed-built demo org has its roster and at least one clean edge.
   assert.ok(org.employees.length > 10, "expected a populated org");

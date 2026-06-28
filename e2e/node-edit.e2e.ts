@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 /**
  * The node editor (the Pivot-style side panel): in onboarding, clicking a gate in
- * the graph opens a panel that edits THAT step directly — the approver picker (which
+ * the graph opens a panel that edits THAT step directly, the approver picker (which
  * resolves an unresolved gate), the threshold, the label, remove. In the pipeline the
  * graph is read-only (clicking a node does nothing). Needs ANTHROPIC_API_KEY +
  * DATABASE_URL (discovery), so it's local-only (`pnpm e2e`); recorded HRIS is fine.
@@ -26,7 +26,7 @@ test("clicking a gate opens the panel and the approver picker resolves it", asyn
   await node(page, "manager-review").click();
   await expect(page.getByText(/Triggers when/)).toBeVisible();
 
-  // The department-review gate is often unresolved by the model — open it and assign
+  // The department-review gate is often unresolved by the model, open it and assign
   // a person via the approver combobox; the node's "unresolved" warning then clears.
   await node(page, "department-review").click();
   await page.getByTestId("approver-combobox").click();
@@ -38,7 +38,7 @@ test("clicking a gate opens the panel and the approver picker resolves it", asyn
   ).toHaveCount(0);
 });
 
-test("the pipeline graph is read-only — clicking a node does nothing", async ({
+test("the pipeline graph is read-only, clicking a node does nothing", async ({
   page,
 }) => {
   await page.goto("/");

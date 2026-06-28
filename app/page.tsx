@@ -7,12 +7,12 @@ import { PIPELINE_MODEL } from "@/src/mastra/model";
  * The dashboard page (server component).
  *
  * Reads the seeded invoice queue from Postgres on the server and hands it to the
- * client Dashboard. No auth, zero friction — a visitor lands straight here with
+ * client Dashboard. No auth, zero friction, a visitor lands straight here with
  * data present. If the database isn't configured yet (no DATABASE_URL), we render
  * a clear setup notice instead of crashing, so the app still builds and runs.
  *
  * `force-dynamic` because the queue is read per request (and to keep the demo
- * honest — there's a live DB behind it), though the data is static seed data.
+ * honest, there's a live DB behind it), though the data is static seed data.
  */
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function Page() {
       {/* The app proper fills EXACTLY the viewport on desktop (a flex column sized to
           the dynamic viewport height, padding included) so the content never overflows
           the screen and there is one scroll context inside the panels. The footer lives
-          just BELOW this box — off the bottom edge — so it only appears when you scroll
+          just BELOW this box, off the bottom edge, so it only appears when you scroll
           down, giving the content the full screen. On mobile it all falls back to
           natural height + normal page scroll. */}
       <div className="flex flex-col pb-3 pt-5 sm:pt-6 lg:h-dvh lg:pb-5">
@@ -42,7 +42,7 @@ export default async function Page() {
           {dbError ? (
             <SetupNotice detail={dbError} />
           ) : queue.length === 0 ? (
-            <SetupNotice detail="The database is reachable but empty — run `pnpm db:seed` to load the demo invoices." />
+            <SetupNotice detail="The database is reachable but empty. Run `pnpm db:seed` to load the demo invoices." />
           ) : (
             <AppView queue={queue} />
           )}
@@ -88,7 +88,7 @@ const Header = () => {
 };
 
 /**
- * An on-demand glossary — closed by default so it adds zero noise for anyone who
+ * An on-demand glossary, closed by default so it adds zero noise for anyone who
  * knows the domain, and a one-line definition for anyone who doesn't (gate, the
  * match types, the verdicts, the agent). The terms appear all over the trace and
  * the workflow; this is the single place they're defined, without peppering the UI
@@ -122,8 +122,8 @@ const HowItWorks = () => {
             never paid twice).
           </Term>
           <Term name="Investigator">
-            an AI agent that reads messy records on an exception and recommends
-            — a human still decides.
+            an AI agent that reads messy records on an exception and recommends.
+            A human still decides.
           </Term>
         </dl>
       </div>
@@ -146,7 +146,7 @@ const Term = ({
   );
 };
 
-/** Logo mark: an "ll" monogram whose strokes curl into a loop — the ledgerloop
+/** Logo mark: an "ll" monogram whose strokes curl into a loop, the ledgerloop
     glyph (matches app/icon.svg). The second stroke is the accent. */
 const LogoMark = () => {
   return (
@@ -206,7 +206,7 @@ const Footer = () => {
       <p>
         Built with <span className="text-muted">Mastra</span> · investigator
         agent on <span className="font-mono text-muted">{PIPELINE_MODEL}</span>{" "}
-        · Next.js · Supabase · Drizzle. Runs are stateless; nothing is written
+        · Next.js · Supabase · Drizzle. Runs are stateless. Nothing is written
         back.
       </p>
       <div className="flex items-center gap-2">

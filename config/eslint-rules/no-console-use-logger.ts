@@ -3,7 +3,7 @@ import { ESLintUtils } from "@typescript-eslint/utils";
 const createRule = ESLintUtils.RuleCreator((name) => `${name}`);
 
 /**
- * Disallow `console.*` in app code — use the logger (`@/lib/logger`) instead, so
+ * Disallow `console.*` in app code, use the logger (`@/lib/logger`) instead, so
  * logging has one shape and one place to wire up Sentry/PostHog later. Scripts,
  * the sanity check, and the eval harness are exempted in the ESLint config (they
  * legitimately print to the terminal).

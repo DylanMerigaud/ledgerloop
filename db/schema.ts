@@ -15,18 +15,18 @@ import type {
 } from "@/lib/schema-types";
 
 /**
- * Drizzle schema — the four tables the spec calls for:
+ * Drizzle schema, the four tables the spec calls for:
  *   invoices, purchase_orders, goods_receipts, agent_runs
  *
  * Two deliberate design points a CTO should notice:
  *
  *  1. The JSONB document columns are typed with `.$type<…>()` using the SAME
  *     inferred types as the Zod single source of truth (`lib/schema.ts`). The
- *     database rows, the model output, and the UI all speak one vocabulary —
+ *     database rows, the model output, and the UI all speak one vocabulary,
  *     a line item is a `LineItem` everywhere, no parallel DB-only shape.
  *
  *  2. `agent_runs` is modelled as the PERSISTED shape of a pipeline execution
- *     (the trace + verdicts). It's the schema's key visual asset — the execution
+ *     (the trace + verdicts). It's the schema's key visual asset, the execution
  *     log. BUT on the public demo it is intentionally left EMPTY and never
  *     written: running the pipeline streams the trace to the visitor and forgets
  *     (see the route + README on why). The table documents what a stateful
@@ -34,7 +34,7 @@ import type {
  *     visitor. Reads in this app touch only the three document tables.
  */
 
-/* Line-item arrays are stored as typed JSONB rather than child tables — these
+/* Line-item arrays are stored as typed JSONB rather than child tables, these
    documents are read whole, never queried by line, so JSONB keeps the seed and
    the read layer simple while staying fully typed. */
 
@@ -64,7 +64,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   lineItems: jsonb("line_items").$type<LineItem[]>().notNull(),
   total: numeric("total", { mode: "number" }).notNull(),
   /** The buying department, so the approval workflow can route a department review.
-      Defaults to '' (no department) — a PO without one routes normally. */
+      Defaults to '' (no department), a PO without one routes normally. */
   department: text("department").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -83,7 +83,7 @@ export const goodsReceipts = pgTable("goods_receipts", {
 });
 
 /**
- * The execution log — the audit trail. Each row = one full pipeline run for one
+ * The execution log, the audit trail. Each row = one full pipeline run for one
  * invoice: its final verdict/outcome and the ordered trace of steps. WRITTEN
  * append-only at the end of every run (see db/runs.ts), read back by the "recent
  * runs" history view, and cleared by the nightly reset (db/reset.ts) so the public

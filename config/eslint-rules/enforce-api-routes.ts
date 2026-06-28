@@ -3,7 +3,7 @@ import { ESLintUtils, type TSESTree } from "@typescript-eslint/utils";
 const createRule = ESLintUtils.RuleCreator((name) => `${name}`);
 
 /**
- * Forbid hardcoded `/api/...` path strings — import from `API_ROUTES`
+ * Forbid hardcoded `/api/...` path strings, import from `API_ROUTES`
  * (`@/lib/api-routes`) instead, so the client and the route handlers share one
  * source of truth and a rename is a single edit. The definition file itself and
  * the route handlers (app/api/**) are exempted in the ESLint config.

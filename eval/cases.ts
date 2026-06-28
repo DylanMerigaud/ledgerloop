@@ -7,7 +7,7 @@ import type { Investigation } from "@/lib/schema";
  * paired with the recommendation a human would defend after reading the same
  * vendor records the agent gets ([`lib/vendor-context.ts`](../lib/vendor-context.ts)).
  * The eval runs the REAL agent over each and scores its recommendation against
- * this ground truth — so it measures the agent's judgment, not just that the
+ * this ground truth, so it measures the agent's judgment, not just that the
  * deterministic routing fires.
  *
  * Ground truth is deliberately mixed (legitimate / overcharge / unclear) so a
@@ -21,7 +21,7 @@ type Expected = Investigation["recommendation"];
 export type EvalCase = {
   /** Row id in db/seed-data.ts. */
   id: string;
-  /** What this case stresses — printed in the report. */
+  /** What this case stresses, printed in the report. */
   stresses: string;
   /** The recommendation a reviewer would defend from the records. */
   expected: Expected;
@@ -35,14 +35,14 @@ export const EVAL_CASES: EvalCase[] = [
     stresses: "price variance WITH a documented, pre-flagged surcharge",
     expected: "likely_legitimate",
     rationale:
-      "The vendor pre-notified a surcharge in March, the PO note tells AP to expect a few % over, and the price is in line with the market — a legitimate increase, not an overcharge.",
+      "The vendor pre-notified a surcharge in March, the PO note tells AP to expect a few % over, and the price is in line with the market, a legitimate increase, not an overcharge.",
   },
   {
     id: "INV-2045",
     stresses: "arithmetic error on a vendor with a billing-slip history",
     expected: "likely_overcharge",
     rationale:
-      "Prices were flat for 3 quarters, no surcharge on file, and the vendor has prior transcription slips — the line-total error is a billing mistake to push back on.",
+      "Prices were flat for 3 quarters, no surcharge on file, and the vendor has prior transcription slips, the line-total error is a billing mistake to push back on.",
   },
   {
     id: "INV-2046",
@@ -56,6 +56,6 @@ export const EVAL_CASES: EvalCase[] = [
     stresses: "quantity short-received, invoice bills the full amount",
     expected: "likely_overcharge",
     rationale:
-      "Only 80 of 100 were received but the invoice bills 100, and the vendor — who normally flags partial shipments — sent no backorder paperwork. Billing for units not received is an overcharge to push back on (request a credit or clarification).",
+      "Only 80 of 100 were received but the invoice bills 100, and the vendor, who normally flags partial shipments, sent no backorder paperwork. Billing for units not received is an overcharge to push back on (request a credit or clarification).",
   },
 ];

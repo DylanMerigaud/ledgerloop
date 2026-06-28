@@ -4,7 +4,7 @@ const createRule = ESLintUtils.RuleCreator((name) => `${name}`);
 
 /**
  * Prefer `useEventCallback` (from `@/hooks/use-event-callback`) over `useCallback`
- * — it gives a stable identity that always sees the latest closure, avoiding stale
+ *, it gives a stable identity that always sees the latest closure, avoiding stale
  * closures and dependency-array churn.
  */
 export const preferUseEventCallback = createRule({

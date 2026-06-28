@@ -1,13 +1,13 @@
-# Agent brief — read this first
+# Agent brief, read this first
 
 You're working on **ledgerloop**, a procure-to-pay demo built as a job/freelance
 asset for Didero (procurement-AI). Two surfaces: an **onboarding agent** that reads a
 client's HRIS and derives an approval workflow, and a **pipeline** that runs invoices
 through that workflow. This file is the context a fresh session needs so it doesn't
 re-derive or break conventions. (`.product/*.md` has deeper strategy notes but is
-gitignored, so it may be absent in a worktree — this committed brief is the source.)
+gitignored, so it may be absent in a worktree, this committed brief is the source.)
 
-## Current state (the two surfaces are LINKED — done, don't re-derive)
+## Current state (the two surfaces are LINKED, done, don't re-derive)
 
 The "complete loop" is built and on `main`. Key facts a fresh session must know:
 
@@ -39,7 +39,7 @@ The "complete loop" is built and on `main`. Key facts a fresh session must know:
 - **e2e** (`pnpm e2e`, local-only, needs keys): `approval.e2e.ts` (HITL on the default) +
   `onboarding-to-pipeline.e2e.ts` (the flagship loop: discover → dept gate → post).
 
-## Hard conventions (non-negotiable — the user is strict about these)
+## Hard conventions (non-negotiable, the user is strict about these)
 
 - **No `as` casts.** ESLint `@typescript-eslint/no-unsafe-type-assertion` is ON.
   Narrow with a type guard (`isRecord` in `lib/assert.ts`), validate with a Zod
@@ -53,10 +53,10 @@ The "complete loop" is built and on `main`. Key facts a fresh session must know:
 - **The API is oRPC.** Typed procedures in `lib/orpc/router.ts`, shared i/o schemas
   in `lib/orpc/schemas.ts`, browser client + TanStack Query in `lib/orpc/client.ts`,
   one handler at `app/rpc/[[...rest]]/route.ts`. Add a procedure there, not a new
-  `app/api/*` route. (The only plain REST route left is `/api/pdf` — binary.)
+  `app/api/*` route. (The only plain REST route left is `/api/pdf`, binary.)
 - **"AI at the edge, deterministic core."** LLM calls do fuzzy intent (structured
   output); deterministic code does structure. The chat-edit is a hand-written
-  bounded loop (`lib/workflow-edit-agent.ts`) over the Claude SDK — NOT a Mastra
+  bounded loop (`lib/workflow-edit-agent.ts`) over the Claude SDK, NOT a Mastra
   Agent (see its header comment for why). Mastra owns the P2P pipeline
   (`src/mastra/workflows/p2p.ts`) and the exception-investigator agent.
 - **Bounded persistence, not stateless.** The run writes ONE thing: an append-only
@@ -66,7 +66,7 @@ The "complete loop" is built and on `main`. Key facts a fresh session must know:
   A nightly Vercel Cron (`/api/reset`, `vercel.json`) truncates+reseeds Postgres so
   the demo stays pristine; the reset touches Postgres only, never the sandboxes.
   HITL resume stays REPLAY-based (recompute the deterministic prefix from the
-  decisions), NOT Mastra snapshot/suspend — keep it that way (the snapshot path has
+  decisions), NOT Mastra snapshot/suspend, keep it that way (the snapshot path has
   a known Postgres-bloat footgun). Don't reintroduce writes to the document tables.
 - **The recorded HRIS fixture is SEED-BUILT**, not a live capture
   (`scripts/build-recorded-fixture.ts` → `pnpm fixture:build`). recorded == live ==
@@ -83,7 +83,7 @@ pnpm typecheck && pnpm lint && pnpm knip && pnpm test && pnpm format:check && pn
 
 - `pnpm test` = node:test, all faked (free, no API).
 - Evals: `pnpm eval:edit --dry-run` and `pnpm eval:edit-agent --dry-run` are free
-  (stubs). Live evals cost Anthropic tokens — only run a live eval to PROVE a model
+  (stubs). Live evals cost Anthropic tokens, only run a live eval to PROVE a model
   change works, never casually. The user's rule: don't waste tokens.
 - Screenshots: the dev server hits live BambooHR if the key is set (~12s). For fast,
   deterministic screenshots run dev with `BAMBOO_HR_API_KEY= BAMBOO_HR_SUBDOMAIN=`
@@ -100,23 +100,23 @@ pnpm typecheck && pnpm lint && pnpm knip && pnpm test && pnpm format:check && pn
 
 ## Where things are
 
-- `lib/approval-workflow.ts` — the workflow DAG model, conditions, `humanizeCondition`,
+- `lib/approval-workflow.ts`, the workflow DAG model, conditions, `humanizeCondition`,
   `diffWorkflows`.
-- `lib/approval-engine.ts` — executes the DAG (AND-join, skipped = pass-through).
-- `lib/workflow-validate.ts` — structural + AP-best-practice checks (the validator).
-- `lib/workflow-edit.ts` / `-agent.ts` / `-model.ts` — the chat-edit ops, the
+- `lib/approval-engine.ts`, executes the DAG (AND-join, skipped = pass-through).
+- `lib/workflow-validate.ts`, structural + AP-best-practice checks (the validator).
+- `lib/workflow-edit.ts` / `-agent.ts` / `-model.ts`, the chat-edit ops, the
   bounded agent loop, the Claude planner.
-- `lib/onboarding.ts` / `-model.ts` — derive the workflow from an org.
-- `lib/hris.ts` — BambooHR adapter (live + recorded) + the mapper.
-- `lib/erp.ts` — two seams: the reconciliation POST stub (fake-netsuite) AND the
+- `lib/onboarding.ts` / `-model.ts`, derive the workflow from an org.
+- `lib/hris.ts`, BambooHR adapter (live + recorded) + the mapper.
+- `lib/erp.ts`, two seams: the reconciliation POST stub (fake-netsuite) AND the
   PO PULL (QuickBooks live + recorded fixture, same shape as HRIS). `defaultErp()`
   picks live/recorded by env; `loadRunBundle` matches invoices against pulled POs.
-- `src/mastra/` — the P2P pipeline + investigator agent + run-stream generator.
-- `components/` — onboarding, workflow-editor, workflow-graph (React Flow),
+- `src/mastra/`, the P2P pipeline + investigator agent + run-stream generator.
+- `components/`, onboarding, workflow-editor, workflow-graph (React Flow),
   dashboard, trace-timeline.
 
 ## Your task
 
-Ask the user — the link-workflow / department / live-graph work (see "Current state"
+Ask the user, the link-workflow / department / live-graph work (see "Current state"
 above) is done and merged. There may be a `TASK.md` in this folder from a past branch;
 treat it as scaffolding, not a live instruction, unless the user points you at it.

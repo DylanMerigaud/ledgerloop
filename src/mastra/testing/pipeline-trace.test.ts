@@ -60,7 +60,7 @@ const runTrace = async (mastra: Mastra, b: SeedBundle) => {
       purchaseOrder: b.purchaseOrder ?? null,
       goodsReceipt: b.goodsReceipt ?? null,
       priorInvoiceNumbers,
-      // Skip the intake vision call — this test runs offline (no API key) and is
+      // Skip the intake vision call, this test runs offline (no API key) and is
       // about the matching → investigation → routing wiring, not extraction.
       // The intake step + runIntake have their own test (lib/intake.test.ts).
       skipExtraction: true,
@@ -105,7 +105,7 @@ const timelineFrom = (raw: unknown[]): TraceEvent[] => {
 
 test("an exception invokes the investigator agent's real tool, reaching the trace", async () => {
   const mastra = mastraWithMockInvestigator(
-    "The surcharge was flagged in advance and is in line with the market — looks legitimate.",
+    "The surcharge was flagged in advance and is in line with the market, looks legitimate.",
   );
   const price = SEED_BUNDLES.find((x) => x.id === "INV-2042");
   assert.ok(price);

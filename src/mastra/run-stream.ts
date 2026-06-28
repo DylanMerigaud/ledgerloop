@@ -19,7 +19,7 @@ import { PIPELINE_MODEL } from "@/src/mastra/model";
  * ReadableStream in the route).
  *
  * STATELESS BY DESIGN: reads the seeded invoice/PO/receipt, runs the steps, streams
- * the trace, and forgets — never writes to the DB. So every visitor sees the same
+ * the trace, and forgets, never writes to the DB. So every visitor sees the same
  * pristine seeded state. Pipeline failures surface as a red trace event, not a
  * thrown error, so a flaky model degrades the trace instead of blanking the screen.
  */
@@ -30,7 +30,7 @@ export const runPipelineStream = async function* (
   // Optional per-rejected-gate notes, parallel to decisions.
   const reasons = input.reasons ?? {};
   // A resume (decisions present) re-runs from the top but the document was already
-  // read — skip the costly vision call the second time.
+  // read, skip the costly vision call the second time.
   const hasDecisions = Object.keys(decisions).length > 0;
 
   // Load the seeded bundle (READ ONLY). A missing invoice / missing DB config is a
@@ -79,7 +79,7 @@ export const runPipelineStream = async function* (
         decisions,
         reasons,
         skipExtraction: hasDecisions,
-        // The activated workflow IS what the pipeline routes through — this is the
+        // The activated workflow IS what the pipeline routes through, this is the
         // link between onboarding (where it's derived/edited) and the run. It's
         // passed in, never persisted (the run stays stateless). Tolerances stay at
         // the defaults; the workflow is the per-client lever the demo turns. When
@@ -128,7 +128,7 @@ export const runPipelineStream = async function* (
   const durationMs = Date.now() - startedAt;
 
   // Persist the run as an append-only audit row. Best-effort (saveAgentRun never
-  // throws), never touches the document tables or the ERP/HRIS — so it can't
+  // throws), never touches the document tables or the ERP/HRIS, so it can't
   // change a future run's verdict. The nightly reset clears these.
   await saveAgentRun({
     invoiceNumber: bundle.invoice.invoiceNumber,

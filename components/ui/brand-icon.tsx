@@ -7,7 +7,7 @@
 
 type BrandIconProps = { size?: number; className?: string };
 
-/** Slack — the four-petal hash in brand colours. */
+/** Slack, the four-petal hash in brand colours. */
 export const SlackIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
     <svg
@@ -37,7 +37,7 @@ export const SlackIcon = ({ size = 16, className }: BrandIconProps) => {
   );
 };
 
-/** NetSuite — the Oracle-NetSuite "N" mark, in its blue. */
+/** NetSuite, the Oracle-NetSuite "N" mark, in its blue. */
 export const NetSuiteIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
     <svg
@@ -56,7 +56,7 @@ export const NetSuiteIcon = ({ size = 16, className }: BrandIconProps) => {
   );
 };
 
-/** Jira — the Atlassian-Jira stacked chevron mark, in its blue. */
+/** Jira, the Atlassian-Jira stacked chevron mark, in its blue. */
 export const JiraIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
     <svg
@@ -84,7 +84,7 @@ export const JiraIcon = ({ size = 16, className }: BrandIconProps) => {
   );
 };
 
-/** BambooHR — the leaf-green panda-bamboo mark, simplified to its green leaf. */
+/** BambooHR, the leaf-green panda-bamboo mark, simplified to its green leaf. */
 export const BambooHrIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
     <svg

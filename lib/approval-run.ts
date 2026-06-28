@@ -14,15 +14,15 @@ import type { MatchResult } from "@/lib/schema";
 /**
  * The bridge between the conditional-workflow ENGINE and the per-invoice pipeline.
  *
- * The engine (lib/approval-engine.ts) is pure graph logic — it doesn't know about
+ * The engine (lib/approval-engine.ts) is pure graph logic, it doesn't know about
  * invoices or matching. This module builds the engine's `InvoiceContext` from a
  * `MatchResult`, runs the workflow, and summarises the result into the things the
  * pipeline needs: the overall outcome, the currently-pending approval steps, and a
  * one-line narration. Keeping this here (not in the Mastra step) makes it unit-
  * testable without the workflow runtime.
  *
- * A duplicate is handled BEFORE the workflow — it's a control failure, not an
- * approval question — so callers check `match.verdict === "duplicate"` first and
+ * A duplicate is handled BEFORE the workflow, it's a control failure, not an
+ * approval question, so callers check `match.verdict === "duplicate"` first and
  * never run the workflow for it.
  */
 /** Build the engine's evaluation context from a match result. */
@@ -53,7 +53,7 @@ export type ApprovalRun = {
 /**
  * Run the approval workflow for a matched invoice and summarise it. Maps the
  * engine's `approved` (all gates cleared / none needed) to the pipeline's
- * "posted" intent — the reconciliation step does the actual ERP post when this is
+ * "posted" intent, the reconciliation step does the actual ERP post when this is
  * "posted".
  */
 export const runApproval = (
@@ -87,21 +87,21 @@ export const runApproval = (
   return { state, outcome, pending, narration };
 };
 
-/** The rejection line — names WHY when the reviewer left a reason. The rejected
+/** The rejection line, names WHY when the reviewer left a reason. The rejected
     step's detail already reads "Rejected by <who>[: <reason>]"; surface it so the
     reason rides into the always-visible trace narration (not just the step detail). */
 const rejectedNarration = (state: ExecutionState): string => {
   const rejected = state.steps.find((s) => s.status === "rejected");
   if (rejected) return `${rejected.detail} The invoice will not be posted.`;
-  return "An approver rejected the invoice — it will not be posted.";
+  return "An approver rejected the invoice, it will not be posted.";
 };
 
 const approvedNarration = (state: ExecutionState): string => {
   const gates = state.steps.filter((s) => s.status === "approved").length;
   if (gates === 0) {
-    return "No approval gate applied — clean invoice cleared for straight-through posting.";
+    return "No approval gate applied, clean invoice cleared for straight-through posting.";
   }
-  return `All ${gates} required approval${gates === 1 ? "" : "s"} granted — cleared to post.`;
+  return `All ${gates} required approval${gates === 1 ? "" : "s"} granted, cleared to post.`;
 };
 
 const pendingNarration = (pending: StepState[]): string => {

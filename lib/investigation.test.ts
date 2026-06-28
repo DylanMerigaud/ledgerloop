@@ -42,7 +42,7 @@ test("a legitimate verdict isn't flipped by a later 'correction' mention", () =>
 test("genuinely ambiguous prose → unclear", () => {
   assert.equal(
     classify(
-      "It's hard to say from the records — the quantity is short but there may be a backorder; needs follow-up.",
+      "It's hard to say from the records, the quantity is short but there may be a backorder; needs follow-up.",
     ),
     "unclear",
   );

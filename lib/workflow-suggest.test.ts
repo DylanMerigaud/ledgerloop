@@ -16,7 +16,7 @@ import {
  */
 
 test("the schema has no maxItems (structured-output rejects it)", () => {
-  // A 4-element list must still PARSE — the cap is applied after, not in the schema.
+  // A 4-element list must still PARSE, the cap is applied after, not in the schema.
   const parsed = WorkflowSuggestions.parse({
     suggestions: ["a", "b", "c", "d"],
   });

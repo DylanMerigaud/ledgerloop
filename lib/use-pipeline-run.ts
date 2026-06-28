@@ -18,7 +18,7 @@ import type { TraceEvent } from "@/lib/trace";
  * Client hook that runs the pipeline for an invoice and exposes the live trace.
  *
  * It POSTs to /api/run and reads the NDJSON response with
- * fetch + response.body.getReader() — the streaming-read counterpart to the
+ * fetch + response.body.getReader(), the streaming-read counterpart to the
  * route's ReadableStream. Each newline-delimited line is parsed and validated
  * with the SAME `TraceEvent` Zod schema the server stamps, so a malformed line
  * can't corrupt the UI state. Events accrue into `trace`; the run's coarse
@@ -56,8 +56,8 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
   // upsert in place by stepId; reconciliation transitions awaiting → posted).
   const eventsRef = useRef<TraceEvent[]>([]);
   const stepIndexRef = useRef<Map<string, number>>(new Map());
-  // Decisions ACCUMULATE across approval waves. The run is stateless — it recomputes
-  // the whole DAG from the decisions each call — so a workflow with gates behind
+  // Decisions ACCUMULATE across approval waves. The run is stateless, it recomputes
+  // the whole DAG from the decisions each call, so a workflow with gates behind
   // other gates (a later wave reached only once an earlier one is approved) needs the
   // UNION of every decision so far, not just the wave just acted on. Without this, an
   // earlier wave's approval would be lost on the next resume and the bill never posts.
@@ -113,10 +113,10 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
 
         // On a phase-2 RESUME the workflow re-runs end-to-end, so it re-emits the
         // whole front of the pipeline. We've already shown the upstream nodes
-        // (intake/matching/investigation) and they don't advance — drop them and the
+        // (intake/matching/investigation) and they don't advance, drop them and the
         // replayed run markers so there's no second "Pipeline started" or duplicated
         // upstream steps. But KEEP approval + reconciliation: those DO advance (the
-        // approval node updates its per-step states — a just-approved gate, and a
+        // approval node updates its per-step states, a just-approved gate, and a
         // NEXT gate that a wave reached now pends), upserting in place by stepId. This
         // is what lets a multi-wave workflow re-pause instead of silently posting.
         if (
@@ -130,7 +130,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
 
         // UPSERT anything with a stepId (steps AND tool nodes carry stable ids) so a
         // stage is a single node that transitions running → done, and across phases
-        // awaiting → posted — instead of stacking duplicates. Run markers append.
+        // awaiting → posted, instead of stacking duplicates. Run markers append.
         if (e.stepId) {
           const existing = stepIndex.get(e.stepId);
           if (existing !== undefined) {
@@ -154,7 +154,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
         // hands us the decisions for THIS wave (the single button batches every pending
         // gate; the per-node controls send one entry per gate). We MERGE that into the
         // running accumulator and send the union, so an earlier wave's approvals aren't
-        // lost when a later wave is acted on (the run is stateless — it rebuilds the
+        // lost when a later wave is acted on (the run is stateless, it rebuilds the
         // whole DAG from the decisions). Deciding only SOME pending gates leaves the
         // rest unset → the engine keeps them pending and the run re-pauses on them. The
         // active workflow rides along on both phases so the run routes through exactly
@@ -174,7 +174,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
             }
           : { id, workflow: activeWorkflow };
         // The oRPC `run` procedure is an event iterator: a typed async stream of
-        // TraceEvent | StreamDone. No manual reader / NDJSON parse / cast — just
+        // TraceEvent | StreamDone. No manual reader / NDJSON parse / cast, just
         // iterate, fully typed end-to-end.
         const iterator = await client.run(body, { signal: controller.signal });
         let durationMs: number | null = null;
@@ -191,8 +191,8 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
         const awaiting = isAwaitingApproval(eventsRef.current);
 
         // The workflow runs to completion even when reconciliation is HELD, so it
-        // emits a "Pipeline complete" run marker — misleading while paused. Drop the
-        // run markers so the trace ends on the awaiting step, matching the "Paused —
+        // emits a "Pipeline complete" run marker, misleading while paused. Drop the
+        // run markers so the trace ends on the awaiting step, matching the "Paused,
         // needs a decision" banner. Rebuild the stepId→index map afterwards so the
         // upserts on the eventual resume still target the right nodes.
         if (awaiting) {
@@ -238,7 +238,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
       return stream(id, decisions, reasons);
     },
   );
-  // An explicit per-gate map (the inline node controls) — approve one, reject
+  // An explicit per-gate map (the inline node controls), approve one, reject
   // another in the same parallel wave, each with its own optional reject note.
   const decideMany = useEventCallback(
     (
@@ -250,7 +250,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
 
   /**
    * Render a STORED trace from the audit log (the history view), with no pipeline
-   * execution — just drop the persisted events into state so the existing trace +
+   * execution, just drop the persisted events into state so the existing trace +
    * graph components re-render them exactly as they streamed. Aborts any live run
    * first, and seeds the refs so the outcome derives the same as a fresh run.
    */

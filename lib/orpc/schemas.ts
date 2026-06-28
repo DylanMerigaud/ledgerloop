@@ -6,7 +6,7 @@ import { TraceEvent } from "@/lib/trace";
 /**
  * Shared input/output schemas for the oRPC API contract. Defined ONCE here and used
  * by both the server router and the typed client, so a response-shape change is a
- * compile error on both sides — the whole reason for oRPC over hand-rolled
+ * compile error on both sides, the whole reason for oRPC over hand-rolled
  * `res.json() as T`.
  */
 
@@ -69,7 +69,7 @@ export const EditInput = z.object({
   workflow: ApprovalWorkflow,
   instruction: z.string().trim().min(1, "an instruction is required"),
   /** The departments that exist in the client's org, so a department gate can only
-      target a real one (the agent returns a clarify when it can't). Optional —
+      target a real one (the agent returns a clarify when it can't). Optional,
       defaults to none, in which case any department instruction is clarified. */
   departments: z.array(z.string()).default([]),
   /** The vendors present on the invoices/POs, so a vendor gate targets a real one
@@ -79,7 +79,7 @@ export const EditInput = z.object({
   currencies: z.array(z.string()).default([]),
 });
 
-/** The agent asks for a missing piece (e.g. which department) — the UI shows the
+/** The agent asks for a missing piece (e.g. which department), the UI shows the
     question + clickable options; the user's pick re-submits a completed instruction. */
 const ClarificationSchema = z.object({
   question: z.string(),
@@ -96,7 +96,7 @@ export const EditResult = z.object({
 
 /* ── run history (the audit trail) ───────────────────────────────────────────── */
 
-/** One row in the "recent runs" list — light metadata, newest first. */
+/** One row in the "recent runs" list, light metadata, newest first. */
 const RunHistoryItem = z.object({
   id: z.string(),
   invoiceNumber: z.string(),
@@ -113,7 +113,7 @@ export type HistoryResult = z.infer<typeof HistoryResult>;
 
 export const ReplayInput = z.object({ id: z.string() });
 
-/** A stored run replayed from the audit log — its exact trace, re-rendered with no
+/** A stored run replayed from the audit log, its exact trace, re-rendered with no
     model call. `null` when the row is gone (e.g. cleared by the nightly reset). */
 export const ReplayResult = z.object({
   invoiceNumber: z.string(),

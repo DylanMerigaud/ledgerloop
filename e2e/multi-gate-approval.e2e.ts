@@ -3,14 +3,14 @@ import { test, expect, type Page } from "@playwright/test";
 /**
  * Per-gate approve/reject across a PARALLEL wave, end to end in the real browser.
  *
- * The derived (onboarding) workflow has two first-line roots — manager review and
- * department review — so an invoice that is BOTH an exception AND a Product PO pends
+ * The derived (onboarding) workflow has two first-line roots, manager review and
+ * department review, so an invoice that is BOTH an exception AND a Product PO pends
  * both gates at once. INV-2051 is exactly that. This test proves you can decide each
  * gate independently on its node and that a mixed wave (reject one, approve the other)
- * blocks the bill — reject wins.
+ * blocks the bill, reject wins.
  *
  * Needs ANTHROPIC_API_KEY + DATABASE_URL (discovery runs the onboarding agent), so it
- * is NOT in CI — run `pnpm e2e` locally with .env loaded. The recorded HRIS fixture is
+ * is NOT in CI, run `pnpm e2e` locally with .env loaded. The recorded HRIS fixture is
  * fine (no BambooHR keys required).
  */
 

@@ -11,11 +11,11 @@ import {
 import { toModelJsonSchema, type OrgChart } from "@/lib/schema";
 
 /**
- * The real onboarding model — a structured-output Anthropic call that produces an
+ * The real onboarding model, a structured-output Anthropic call that produces an
  * `OnboardingProposal`. Same discipline as `lib/extract.ts`: hand the model a
  * JSON schema derived from the Zod object (single source of truth), then
  * `OnboardingProposal.parse` the result. This is "structured generation", not a
- * tool-using agent — the model emits the fuzzy decisions; deterministic code
+ * tool-using agent, the model emits the fuzzy decisions; deterministic code
  * (lib/onboarding.ts) assembles them into the validated workflow.
  *
  * Sonnet, not Haiku: the title→seniority judgement (which title is genuinely "more
@@ -31,7 +31,7 @@ const PROPOSAL_JSON_SCHEMA = toModelJsonSchema(OnboardingProposal);
 /**
  * The production `ProposalModel`: a structured-output call to Anthropic.
  *
- * @public — the onboarding flow / canvas calls this to derive a workflow from a
+ * @public, the onboarding flow / canvas calls this to derive a workflow from a
  * real org. (Injected as `ProposalModel` into `deriveWorkflow`.)
  */
 export const anthropicProposalModel: ProposalModel = {

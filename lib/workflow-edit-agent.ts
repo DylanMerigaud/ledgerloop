@@ -15,21 +15,21 @@ import {
 } from "@/lib/workflow-validate";
 
 /**
- * The conversational EDIT AGENT — the real agentic layer.
+ * The conversational EDIT AGENT, the real agentic layer.
  *
  * Unlike a single structured-output call, this PLANS an ordered list of edit ops for
  * a (possibly multi-part) instruction, APPLIES them in order, then VALIDATES the
  * result with the validator (the tool). If the validator reports errors, it feeds
  * them back and asks for a correction, looping until the workflow is sound or a step
  * budget is hit. The user's "two parallel reviews, then a final sign-off that waits
- * on both" becomes several ops the agent sequences and checks — not one stateless
+ * on both" becomes several ops the agent sequences and checks, not one stateless
  * guess.
  *
  * Pure orchestration: the model is injected (so it's testable with a fake), and the
- * result is still a PROPOSAL — nothing is applied until the human approves the diff.
+ * result is still a PROPOSAL, nothing is applied until the human approves the diff.
  *
  * Why this loop is hand-written (not a Mastra Agent): Mastra owns the parts that
- * need open-ended orchestration — the P2P pipeline (createWorkflow) and the
+ * need open-ended orchestration, the P2P pipeline (createWorkflow) and the
  * exception investigator (an Agent that freely chooses its tools). This edit loop is
  * the opposite: a BOUNDED, deterministic cycle where the validator MUST run after
  * every plan (a pure function we call, not a tool the model may skip), and the model
@@ -55,7 +55,7 @@ export type PlanModel = {
 };
 
 /** A question the agent asks back when an instruction is missing a piece it won't
-    guess (e.g. which department) — the UI renders it as clickable options. */
+    guess (e.g. which department), the UI renders it as clickable options. */
 type Clarification = { question: string; options: string[] };
 
 export type AgentEditResult = {
@@ -66,7 +66,7 @@ export type AgentEditResult = {
   issues: WorkflowIssue[];
   /** If the agent produced no real change, why (for the UI's "no change" message). */
   reason: string | null;
-  /** Set when the agent needs a missing piece before it can edit — the workflow is
+  /** Set when the agent needs a missing piece before it can edit, the workflow is
       left UNCHANGED and the UI offers the options. null on a normal edit. */
   clarify: Clarification | null;
 };
@@ -116,7 +116,7 @@ export const runEditAgent = async (
     });
 
     // The model is asking for a missing piece (e.g. which department). Surface the
-    // question and stop — nothing is applied, the workflow is unchanged. (A clarify
+    // question and stop, nothing is applied, the workflow is unchanged. (A clarify
     // is meant to be the only op, but if it's mixed in we still honour it first.)
     const clarifyOp = ops.find((o) => o.op === "clarify");
     if (clarifyOp) {

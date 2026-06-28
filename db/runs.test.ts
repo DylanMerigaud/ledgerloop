@@ -63,7 +63,7 @@ test("saveAgentRun writes one row with the run's verdict/outcome/trace", async (
   assert.match(String(row["id"]), /^INV-2042-/);
 });
 
-test("saveAgentRun is best-effort — a failing insert never throws", async () => {
+test("saveAgentRun is best-effort, a failing insert never throws", async () => {
   const exploding = {
     insert: (_table: unknown) => ({
       values: (_row: Record<string, unknown>) => {
@@ -71,7 +71,7 @@ test("saveAgentRun is best-effort — a failing insert never throws", async () =
       },
     }),
   };
-  // Must resolve, not reject — an audit-write failure can't break a live run.
+  // Must resolve, not reject, an audit-write failure can't break a live run.
   await assert.doesNotReject(() => saveAgentRun(input(), exploding));
 });
 

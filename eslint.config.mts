@@ -162,6 +162,7 @@ export default tseslint.config(
       "custom/no-index-files": "error",
       "custom/prefer-use-event-callback": "error",
       "custom/enforce-api-routes": "error",
+      "custom/no-emdash-in-text": "error",
 
       // ── Comments ────────────────────────────────────────────────────────────
       "eslint-comments/require-description": "error",

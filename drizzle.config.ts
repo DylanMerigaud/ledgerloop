@@ -1,7 +1,7 @@
 import { defineConfig } from "drizzle-kit";
 
 /**
- * Drizzle Kit config — drives `pnpm db:generate` (emit SQL migrations from the
+ * Drizzle Kit config, drives `pnpm db:generate` (emit SQL migrations from the
  * schema) and `pnpm db:push` (apply the schema to the database). The connection
  * string comes from the environment so nothing DB-specific is committed.
  */

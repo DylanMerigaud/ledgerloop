@@ -13,13 +13,13 @@ import {
 import { nonNull, assertUnreachable } from "@/lib/assert";
 
 /**
- * Conversational workflow editing — turn a plain-language instruction into a
+ * Conversational workflow editing, turn a plain-language instruction into a
  * PROPOSED workflow, never a direct mutation.
  *
  * Design (learned the hard way): the model does NOT regenerate the whole workflow.
  * Asking it to emit every step + every nested condition both drifted (it silently
  * rewrote unrelated conditions) and blew past Anthropic's structured-output grammar
- * limit. Instead the model emits ONE small, flat `WorkflowEditOp` — the intent —
+ * limit. Instead the model emits ONE small, flat `WorkflowEditOp`, the intent,
  * and deterministic code (`applyEditOp`) applies it. Existing steps and their
  * conditions are copied verbatim; only the targeted step is added/changed/removed.
  * Same "AI for the fuzzy intent, code for the structure" split as onboarding.
@@ -29,7 +29,7 @@ import { nonNull, assertUnreachable } from "@/lib/assert";
  */
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  The edit op — small + flat, so the model schema stays tiny and reliable
+ *  The edit op, small + flat, so the model schema stays tiny and reliable
  * ────────────────────────────────────────────────────────────────────────── */
 
 export const WorkflowEditOp = z.discriminatedUnion("op", [
@@ -74,7 +74,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       op: z.literal("set-condition"),
       /** Id of the existing approval step whose trigger is replaced. */
       stepId: z.string(),
-      /** The whole new trigger — the condition editor owns the tree, so this
+      /** The whole new trigger, the condition editor owns the tree, so this
           REPLACES the gate's `when` (no surgical merge like set-threshold). */
       when: Condition,
     })
@@ -98,7 +98,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     .object({
       op: z.literal("add-approver"),
       stepId: z.string(),
-      /** ONE co-approver to append (the chat grain — "also require X"). No-op if
+      /** ONE co-approver to append (the chat grain, "also require X"). No-op if
           they're already the primary or already on the gate. */
       approverName: z.string(),
     })
@@ -108,7 +108,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       op: z.literal("remove-approver"),
       stepId: z.string(),
       /** ONE co-approver to drop from the gate ("X no longer needs to sign off").
-          No-op if they aren't an extra. Does NOT touch the primary (approverName) —
+          No-op if they aren't an extra. Does NOT touch the primary (approverName),
           use set-approver to change that. */
       approverName: z.string(),
     })
@@ -179,7 +179,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       exceptionCode: z.string().nullable().default(null),
     })
     .strict(),
-  /** The model couldn't map the instruction to a supported edit — change nothing. */
+  /** The model couldn't map the instruction to a supported edit, change nothing. */
   z.object({ op: z.literal("none"), reason: z.string() }).strict(),
   /**
    * The instruction is missing a piece the model won't guess (e.g. "add a department
@@ -198,7 +198,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
 export type WorkflowEditOp = z.infer<typeof WorkflowEditOp>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Apply — pure, deterministic, never touches unrelated steps
+ *  Apply, pure, deterministic, never touches unrelated steps
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Slugify a label into a stable step id. */
@@ -208,7 +208,7 @@ const slug = (label: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "step";
 
-/** The scope fields a gate-creating op can carry — every lever a `when` is built
+/** The scope fields a gate-creating op can carry, every lever a `when` is built
     from. All null = an unconditional gate. */
 type GateScope = {
   amountOver: number | null;
@@ -272,7 +272,7 @@ const conditionFor = (scope: GateScope): Condition => {
 };
 
 /**
- * The ERP "post" step — the join node approvals converge into. Found robustly as
+ * The ERP "post" step, the join node approvals converge into. Found robustly as
  * the integration that approval steps point at (NOT "the integration with no
  * outgoing edge", which breaks once a notification trails after the post). Falls
  * back to the netsuite integration, then any integration.
@@ -303,7 +303,7 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
   switch (op.op) {
     case "none":
     case "clarify":
-      // Neither changes the workflow — `none` declined, `clarify` is a question the
+      // Neither changes the workflow, `none` declined, `clarify` is a question the
       // agent surfaces to the user (handled in runEditAgent, never applied).
       return next;
 
@@ -400,7 +400,7 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       const movedNext = [...moved.next];
       // 1. Unhook the moved step from its old predecessors. Only BYPASS (re-point the
       //    predecessor at the moved step's successors) when that predecessor would
-      //    otherwise be left with NO way forward — i.e. it relied solely on the moved
+      //    otherwise be left with NO way forward, i.e. it relied solely on the moved
       //    step (a linear chain). When the predecessor has OTHER branches (extracting
       //    one branch out of a fan-out), drop the edge cleanly with no bypass, so
       //    "2 parallel → sequential" yields a clean chain, not a stray edge.
@@ -455,7 +455,7 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
     case "add-integration": {
       const id = uniqueId(next, slug(op.label));
       // A notification runs after the ERP post, in PARALLEL with any other
-      // notification (post → slack, post → jira side by side) — they're
+      // notification (post → slack, post → jira side by side), they're
       // independent, so we branch each straight off the post, never chain them.
       const post = postStepId(next);
       const newStep: WorkflowStep = {
@@ -475,7 +475,7 @@ export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 
     case "insert-approval-after": {
       const after = next.steps.find((s) => s.id === op.afterStepId);
-      if (!after) return next; // unknown anchor — no-op
+      if (!after) return next; // unknown anchor, no-op
       const id = uniqueId(next, slug(op.label));
       const newStep: WorkflowStep = {
         id,
@@ -594,7 +594,7 @@ export type EditResult = {
 
 /**
  * Plan an edit (model → op), apply it deterministically, and diff. Applies nothing
- * to the live workflow — the caller shows the diff and the human approves.
+ * to the live workflow, the caller shows the diff and the human approves.
  */
 export const proposeEdit = async (
   model: EditModel,
@@ -608,8 +608,8 @@ export const proposeEdit = async (
 
 export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instruction into ONE structured edit for a procure-to-pay approval workflow. You are given the current workflow's steps (id, label, kind, approver) and the instruction. Return a single edit op:
 
-- add-approval: a new human approval gate. Set "label" to a SHORT title only (e.g. "CFO review" or "VP sign-off") — do NOT put the threshold or department in the label, they're shown separately. Set "approverTitle" (the role, e.g. "CFO"), "amountOver" (the dollar threshold it applies above, or null for every invoice), and "department" (scope to one department like "Product", or null for any).
-- add-integration: a system action — "slack", "jira", or "netsuite" — that runs after the bill posts. Set "label" to a short title (e.g. "Notify on Slack", "Open Jira ticket").
+- add-approval: a new human approval gate. Set "label" to a SHORT title only (e.g. "CFO review" or "VP sign-off"), do NOT put the threshold or department in the label, they're shown separately. Set "approverTitle" (the role, e.g. "CFO"), "amountOver" (the dollar threshold it applies above, or null for every invoice), and "department" (scope to one department like "Product", or null for any).
+- add-integration: a system action, "slack", "jira", or "netsuite", that runs after the bill posts. Set "label" to a short title (e.g. "Notify on Slack", "Open Jira ticket").
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
 - set-approver: set the PRIMARY person on an existing approval step (by "stepId"). Use for "make X the approver" / "assign X".
 - add-approver: add ANOTHER required approver to a gate that already has one (by "stepId" + "approverName"). Use for "also require X" / "add X as a co-approver" / "X should sign off too". The gate keeps its existing approver and also routes to this person.
@@ -621,7 +621,7 @@ export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instr
 - reorder-branches: change the TOP→BOTTOM order of a parent's parallel branches (by "parentStepId" + "order": the branch step ids in the wanted order). Use for "swap the two reviews" / "put the IT review above the director review". This only changes the visual order of parallel branches, nothing structural.
 - insert-approval-after: insert a new approval gate IMMEDIATELY AFTER one existing step (use "afterStepId"). Use this for "add a step between X and Y" or "after the manager, add …". Same label/approverTitle/amountOver/department fields as add-approval.
 - add-parallel-after: a new approval gate that runs only once ALL of the given steps have been approved (use "afterStepIds": a list). Use this for "after the two reviews, require a final sign-off" / "a step that waits for both X and Y". Same label/approverTitle/amountOver/department fields.
-- none: if the instruction doesn't map to any of the above, or asks for something already true — give a short "reason".
+- none: if the instruction doesn't map to any of the above, or asks for something already true, give a short "reason".
 
 Pick the SINGLE op that best matches. If the instruction asks for something the workflow already does, return "none" with a reason. Return only the JSON op.`;
 
@@ -647,10 +647,10 @@ export const parseEditOp = (raw: unknown): WorkflowEditOp =>
   WorkflowEditOp.parse(raw);
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Multi-op planning (the agent) — an ORDERED list of ops for one instruction
+ *  Multi-op planning (the agent), an ORDERED list of ops for one instruction
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** A flat ARRAY of ops — the agent's plan. (Array, not nested, so the grammar
+/** A flat ARRAY of ops, the agent's plan. (Array, not nested, so the grammar
     stays in-bounds; the discriminated union itself is already small + flat.) */
 export const WorkflowEditPlan = z
   .object({ ops: z.array(WorkflowEditOp) })
@@ -683,15 +683,15 @@ Rules:
 - Output the ops in the order they should be applied.
 - For a multi-part instruction ("add a CFO gate over $50k AND a Slack notice"), return one op per part.
 - Don't add something the workflow already has.
-- DEPARTMENTS: a department gate may only target a department that EXISTS in this org (I list them below as AVAILABLE DEPARTMENTS). If the instruction asks to route by department but names NONE, or names one NOT in the list, do NOT guess and do NOT invent one — return a single clarify op whose options are the available departments. If it names a valid one, use it directly.
-- VENDOR / CURRENCY: set "vendor" / "currency" only to a value that appears in AVAILABLE VENDORS / AVAILABLE CURRENCIES below (match a partial name, e.g. "Severn" → the full "Severn Steelworks"). If the instruction names a vendor or currency that is NOT in the list, do NOT invent it — return a single "none" op explaining it isn't a known vendor/currency. (Do NOT clarify for vendor/currency, only for department.)
+- DEPARTMENTS: a department gate may only target a department that EXISTS in this org (I list them below as AVAILABLE DEPARTMENTS). If the instruction asks to route by department but names NONE, or names one NOT in the list, do NOT guess and do NOT invent one, return a single clarify op whose options are the available departments. If it names a valid one, use it directly.
+- VENDOR / CURRENCY: set "vendor" / "currency" only to a value that appears in AVAILABLE VENDORS / AVAILABLE CURRENCIES below (match a partial name, e.g. "Severn" → the full "Severn Steelworks"). If the instruction names a vendor or currency that is NOT in the list, do NOT invent it, return a single "none" op explaining it isn't a known vendor/currency. (Do NOT clarify for vendor/currency, only for department.)
 - MATCH TYPE: "matchType" is "two_way" (services / no goods receipt) or "three_way" only.
 - EXCEPTION CODE: "exceptionCode" is one of: price_variance, qty_variance_po, qty_variance_receipt, unit_price_x_qty, no_po_line, no_receipt_line, duplicate, duplicate_in_erp, vendor_inactive, sku_not_in_catalog. Use it for "send <flag> invoices to ..." style rules.
 - If I send you VALIDATION ISSUES from a previous attempt, return ops that FIX them (e.g. resolve an approver, merge a duplicate, add a second approver on a high-value path).
 Return only the JSON object.`;
 
-/** The real scope values a gate can target — the org's departments, and the vendors
-    + currencies present on the invoices/POs — so the model only ever proposes a real
+/** The real scope values a gate can target, the org's departments, and the vendors
+    + currencies present on the invoices/POs, so the model only ever proposes a real
     one (and clarifies / declines otherwise). */
 export type AvailableScope = {
   departments: string[];
@@ -729,5 +729,5 @@ export const planPrompt = (
   if (!feedback || feedback.issues.length === 0)
     return `${base}\n\nReturn the ordered ops as JSON.`;
   const probs = feedback.issues.map((i) => `- ${i.message}`).join("\n");
-  return `${base}\n\nThe previous attempt left these problems — return ops that FIX them (and nothing that re-introduces them):\n${probs}\n\nReturn the corrected ops as JSON.`;
+  return `${base}\n\nThe previous attempt left these problems, return ops that FIX them (and nothing that re-introduces them):\n${probs}\n\nReturn the corrected ops as JSON.`;
 };

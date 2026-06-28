@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 /**
  * Subscribe to a CSS media query and re-render when it flips. SSR-safe: starts
- * `false` on the server / first paint (no `window`), then syncs on mount — so a
+ * `false` on the server / first paint (no `window`), then syncs on mount, so a
  * server-rendered tree matches the client's initial HTML and updates after hydration.
  */
 export const useMediaQuery = (query: string): boolean => {

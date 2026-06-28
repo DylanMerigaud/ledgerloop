@@ -6,7 +6,7 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import type { Router } from "@/lib/orpc/router";
 
 /**
- * The browser client for the oRPC API — typed entirely from the server `Router`, so
+ * The browser client for the oRPC API, typed entirely from the server `Router`, so
  * `client.onboarding()` / `client.editWorkflow(...)` / `client.run(...)` return the
  * exact server types with zero `res.json() as T`. Talks to the catch-all handler
  * mounted at /rpc.
@@ -21,6 +21,6 @@ const link = new RPCLink({
 
 export const client: RouterClient<Router> = createORPCClient(link);
 
-/** TanStack Query bindings for the client — `orpc.<proc>.queryOptions()` /
+/** TanStack Query bindings for the client, `orpc.<proc>.queryOptions()` /
     `.mutationOptions()`, fully typed from the same Router. */
 export const orpc = createTanstackQueryUtils(client);

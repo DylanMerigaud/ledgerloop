@@ -1,17 +1,17 @@
 /**
- * Seed a curated org into a BambooHR sandbox — and tear it back down.
+ * Seed a curated org into a BambooHR sandbox, and tear it back down.
  *
  *   pnpm hris:seed    create SEED_ORG in BambooHR, all under the SEED_DIVISION
  *   pnpm hris:reset   delete every employee currently in the SEED_DIVISION
  *
  * Why this exists:
- *   • Disaster recovery — the trial key is short-lived. If the account dies, spin
+ *   • Disaster recovery, the trial key is short-lived. If the account dies, spin
  *     a fresh trial and reseed; the demo org is back, identical, in one command.
- *   • Client trials — point it at a prospect's empty sandbox to stand up a
+ *   • Client trials, point it at a prospect's empty sandbox to stand up a
  *     realistic org the onboarding agent can then discover.
  *
  * Scoping by a dedicated Division (not a local file): BambooHR has no isolated
- * environments inside an account, so "what we own" is marked ON THE SERVER —
+ * environments inside an account, so "what we own" is marked ON THE SERVER,
  * every seeded person is placed in the `SEED_DIVISION`, and `reset` reads the org
  * back and deletes ONLY the people in that division. That's correct on any
  * account, from any machine, with nothing to lose locally, and it never clears
@@ -41,13 +41,13 @@ import {
 } from "@/db/fixtures/bamboohr/seed-org";
 import { nonNull } from "@/lib/assert";
 
-/** Same env loading as eval/run.ts — native, no dotenv dep. */
+/** Same env loading as eval/run.ts, native, no dotenv dep. */
 const loadEnv = (): void => {
   for (const f of [".env.local", ".env"]) {
     try {
       process.loadEnvFile(path.join(process.cwd(), f));
     } catch {
-      /* file absent — fine */
+      /* file absent, fine */
     }
   }
 };
@@ -162,9 +162,9 @@ const setJobInfo = async (
   const body: Record<string, string> = {
     date: "2026-01-01",
     department: p.department,
-    division: SEED_DIVISION, // the scoping marker — every seeded person carries it
+    division: SEED_DIVISION, // the scoping marker, every seeded person carries it
   };
-  // Title is a list field — only send it when non-blank (a blank is intentional
+  // Title is a list field, only send it when non-blank (a blank is intentional
   // for the planted orphan and would just be dropped anyway).
   if (p.title) body.jobTitle = p.title;
   // reportsTo takes the manager's display name, not an id.
@@ -232,7 +232,7 @@ const seed = async (): Promise<void> => {
 
   console.log(`Seeding ${SEED_ORG.length} employees into "${SEED_DIVISION}" …`);
 
-  // Pass 1 — create everyone (so manager names exist before we link them).
+  // Pass 1, create everyone (so manager names exist before we link them).
   const created = new Map<string, string>(); // "First Last" → id
   for (const p of SEED_ORG) {
     const id = await createEmployee(c, p);
@@ -240,7 +240,7 @@ const seed = async (): Promise<void> => {
     console.log(`  + ${p.firstName} ${p.lastName} (id ${id})`);
   }
 
-  // Pass 2 — set job info incl. division + the reporting edge.
+  // Pass 2, set job info incl. division + the reporting edge.
   for (const p of SEED_ORG) {
     const id = nonNull(
       created.get(`${p.firstName} ${p.lastName}`),
@@ -264,7 +264,7 @@ const reset = async (): Promise<void> => {
   const c = creds();
   const targets = await seededEmployees(c);
   if (targets.length === 0) {
-    console.log(`Nothing to reset — no employees in "${SEED_DIVISION}".`);
+    console.log(`Nothing to reset, no employees in "${SEED_DIVISION}".`);
     return;
   }
   console.log(`Deleting ${targets.length} employee(s) in "${SEED_DIVISION}":`);

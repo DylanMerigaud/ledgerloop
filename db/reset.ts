@@ -10,12 +10,12 @@ import { SEED_BUNDLES } from "@/db/seed-data";
 import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**
- * Truncate the document tables + `agent_runs`, then re-insert the seeded dataset —
+ * Truncate the document tables + `agent_runs`, then re-insert the seeded dataset,
  * the single source of "reset to pristine", shared by the CLI seed (`pnpm db:seed`)
  * and the nightly cron (`app/api/reset`).
  *
  * IMPORTANT scope: this resets ONLY Postgres. It never touches the ERP/HRIS
- * sandboxes — those are frozen fixtures the pipeline reads, never writes. So a
+ * sandboxes, those are frozen fixtures the pipeline reads, never writes. So a
  * reset can't fail on a rotated QBO token, and it can't desync the external
  * systems. The only stateful thing the app writes is `agent_runs` (an append-only
  * audit log), which this clears so the demo returns to a clean queue each day.
@@ -32,7 +32,7 @@ export type ResetCounts = {
 };
 
 /**
- * The narrow slice of the drizzle handle this function uses — `delete(table)` and
+ * The narrow slice of the drizzle handle this function uses, `delete(table)` and
  * `insert(table).values(row)`. Declaring the parameter as this slice (rather than
  * the full `Database`) means the real handle satisfies it structurally AND a test
  * can pass a tiny fake with no cast. We only need the calls to resolve; the return
@@ -48,7 +48,7 @@ type SeedWritableDb = {
 export const resetAndReseed = async (
   db: SeedWritableDb,
 ): Promise<ResetCounts> => {
-  // Validate the whole corpus up front — fail before touching the DB if the seed
+  // Validate the whole corpus up front, fail before touching the DB if the seed
   // data ever drifts from the schema.
   for (const b of SEED_BUNDLES) {
     Invoice.parse(b.invoice);

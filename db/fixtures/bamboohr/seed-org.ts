@@ -1,7 +1,7 @@
 /**
  * A curated org to SEED into a BambooHR sandbox (see scripts/seed-bamboo.ts).
  *
- * Not a clone of the 91-person sample data — a small, hand-designed org (~14) that
+ * Not a clone of the 91-person sample data, a small, hand-designed org (~14) that
  * (a) forms a believable reporting tree and (b) deliberately plants the exact
  * data-quality problems the discovery pipeline detects, so a fresh seed always
  * gives the onboarding agent something real to find. That makes the demo
@@ -16,14 +16,14 @@
  *
  * The planted issues (what the discovery surfaces):
  *   • a clean CEO → C-suite → manager → IC tree (the healthy backbone)
- *   • ONE second "root" with a blank title (Dana Vance) — looks like a real CEO
+ *   • ONE second "root" with a blank title (Dana Vance), looks like a real CEO
  *     to a naive importer, but has no manager and no title → flagged as a junk
  *     top-level record
  *   • ONE employee pointed at a manager who doesn't exist (Morgan Vega →
  *     "Riley Stone", intentionally absent). NOTE: BambooHR resolves `reportsTo`
  *     by name AT WRITE TIME and silently drops an unmatched name, so Morgan ends
  *     up with NO manager rather than a broken pointer. She therefore surfaces as
- *     an unexpected root (an IC with no manager — suspicious), which is the
+ *     an unexpected root (an IC with no manager, suspicious), which is the
  *     honest shape of this problem when the source is BambooHR. (The mapper still
  *     has dangling-manager detection for sources that DO emit broken ids.)
  */
@@ -52,7 +52,7 @@ export type SeedPerson = {
  */
 export { DEMO_CLIENT_DIVISION as SEED_DIVISION } from "@/lib/hris";
 
-/** A manager name intentionally NOT seeded — BambooHR drops it, leaving an orphan. */
+/** A manager name intentionally NOT seeded, BambooHR drops it, leaving an orphan. */
 const ABSENT_MANAGER_NAME = "Riley Stone";
 
 export const SEED_ORG: SeedPerson[] = [
@@ -146,7 +146,7 @@ export const SEED_ORG: SeedPerson[] = [
   {
     firstName: "Dana",
     lastName: "Vance",
-    title: "", // deliberately blank — the tell of a junk top-level record
+    title: "", // deliberately blank, the tell of a junk top-level record
     department: "Company",
     managerName: null,
   },

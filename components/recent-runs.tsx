@@ -10,7 +10,7 @@ import { client, orpc } from "@/lib/orpc/client";
 import type { TraceEvent } from "@/lib/trace";
 
 /**
- * The "Recent runs" panel — the audit trail made visible.
+ * The "Recent runs" panel, the audit trail made visible.
  *
  * Every pipeline run is persisted append-only (see db/runs.ts); this lists the
  * latest ones (newest first) and lets you REPLAY one: clicking a row fetches its
@@ -19,7 +19,7 @@ import type { TraceEvent } from "@/lib/trace";
  * the nightly reset, so it shows what's been processed since the last reset.
  *
  * Read-only over the typed oRPC `history` / `replayRun` procedures. A failed or
- * empty audit log degrades to a quiet "no runs yet" — it never blocks the queue.
+ * empty audit log degrades to a quiet "no runs yet", it never blocks the queue.
  */
 
 /** Map a stored verdict/outcome to the shared Outcome display vocabulary (the same
@@ -49,7 +49,7 @@ const timeAgo = (iso: string): string => {
 export const RecentRuns = ({
   /** Replay a stored trace into the dashboard's trace pane (no run executed). */
   onReplay,
-  /** Disabled while a live run is in flight — replaying would clobber it. */
+  /** Disabled while a live run is in flight, replaying would clobber it. */
   disabled,
 }: {
   onReplay: (invoiceNumber: string, trace: TraceEvent[]) => void;
@@ -61,7 +61,7 @@ export const RecentRuns = ({
   const runs = history.data?.runs ?? [];
 
   // "N more ↓" scroll affordance: the list scrolls (max-h-56) but gives no cue that
-  // rows continue below. Mirror the queue's pill — measure the hidden rows and offer
+  // rows continue below. Mirror the queue's pill, measure the hidden rows and offer
   // a click that scrolls down. Hidden once at the bottom.
   const listRef = useRef<HTMLUListElement | null>(null);
   const [hiddenBelow, setHiddenBelow] = useState(0);
@@ -109,7 +109,7 @@ export const RecentRuns = ({
       </CardHeader>
       {runs.length === 0 ? (
         <p className="px-4 py-3 text-[12px] text-faint">
-          No runs yet. Run an invoice and it&apos;ll be logged here — the trail
+          No runs yet. Run an invoice and it&apos;ll be logged here. The trail
           resets daily.
         </p>
       ) : (

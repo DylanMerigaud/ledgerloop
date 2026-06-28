@@ -180,7 +180,7 @@ test("the auto-approval step maps to the Approval stage", () => {
 });
 
 test("tool-call events render at the right stage (mapped by tool name, not dropped)", () => {
-  // Tool-call chunks carry a tool name but no workflow step id — they must NOT be
+  // Tool-call chunks carry a tool name but no workflow step id, they must NOT be
   // dropped, and the investigator's tools land under the investigation stage.
   const m = toTraceEvent({
     type: "tool-call",
@@ -200,7 +200,7 @@ test("tool-call events render at the right stage (mapped by tool name, not dropp
 
 test("the internal .map() step is dropped, not surfaced", () => {
   // Mastra inserts a `mapping_<uuid>` normalisation step between the branch and
-  // reconciliation — it's plumbing and must not appear on the timeline.
+  // reconciliation, it's plumbing and must not appear on the timeline.
   assert.equal(
     toTraceEvent({
       type: "workflow-step-start",
@@ -242,7 +242,7 @@ test("run-level events have an empty stepId", () => {
 
 test("approval step output is unwrapped: nested approval summary drives status + data", () => {
   // The approval step emits { approval: { outcome, steps }, match, vendor,
-  // narration } — the status and the rich-render `data` must come from the nested
+  // narration }, the status and the rich-render `data` must come from the nested
   // approval summary, not the wrapper.
   const e = toTraceEvent({
     type: "workflow-step-result",

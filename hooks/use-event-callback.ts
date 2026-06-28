@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 
 /**
  * A stable callback whose identity never changes but which always sees the latest
- * closure — the fix for the `useCallback` stale-closure / re-render churn. Use this
+ * closure, the fix for the `useCallback` stale-closure / re-render churn. Use this
  * for event handlers instead of `useCallback` (enforced by the custom ESLint rule).
  */
 export const useEventCallback = <
@@ -18,7 +18,7 @@ export const useEventCallback = <
   });
 
   // The wrapper has T's exact call signature but TS can't infer it's assignable to
-  // the generic T itself — the one boundary assertion unavoidable in this utility.
+  // the generic T itself, the one boundary assertion unavoidable in this utility.
   // The return is `any` only because T's return is `any` (same generic-callback
   // reason as the disable above); args/return are typed via Parameters/ReturnType.
   const stable = (...args: Parameters<T>): ReturnType<T> =>

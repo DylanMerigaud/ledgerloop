@@ -8,12 +8,12 @@ import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
  * Rich, type-aware detail for a completed stage. Each stage emits a different
  * validated payload (MatchResult / ApprovalDecision / ReconResult); we sniff a
  * discriminating field and render the matching view. This is what turns the trace
- * from a log into something a CTO can read the *reasoning* out of — the exact
+ * from a log into something a CTO can read the *reasoning* out of, the exact
  * exception lines, the approval drivers, the GL posting.
  */
 /**
  * The trace carries each stage's already-Zod-validated output as `unknown`. We
- * narrow it with type guards on the discriminating fields — not casts — so the
+ * narrow it with type guards on the discriminating fields, not casts, so the
  * render branch and the prop type are checked together. (A guard that returns
  * `d is T` documents AND verifies the shape; a cast would only assert it.)
  */
@@ -36,7 +36,7 @@ export const TraceDetail = ({ data }: { data: unknown }) => {
 
   if (isMatch(d)) return <MatchDetail match={d} />;
   if (isInvestigation(d)) return <InvestigationDetail inv={d} />;
-  // The approval-workflow node carries the full graph + per-step status — render
+  // The approval-workflow node carries the full graph + per-step status, render
   // the SAME graph the onboarding screen draws, coloured by this run's path.
   if (isWorkflowRun(d)) return <WorkflowRunDetail data={d} />;
   if (isApprovalSummary(d)) return <ApprovalDetail approval={d} />;
@@ -68,7 +68,7 @@ const WorkflowRunDetail = ({ data }: { data: WorkflowRunData }) => {
   );
 };
 
-/** The exception investigator's recommendation — the one agentic output. */
+/** The exception investigator's recommendation, the one agentic output. */
 const InvestigationDetail = ({ inv }: { inv: Investigation }) => {
   const tone =
     inv.recommendation === "likely_legitimate"
@@ -152,7 +152,7 @@ const ApprovalDetail = ({ approval }: { approval: ApprovalSummary }) => {
       : approval.outcome === "awaiting"
         ? "warn"
         : "danger";
-  // Only the steps that actually mattered — hide the ones that skipped (their
+  // Only the steps that actually mattered, hide the ones that skipped (their
   // condition wasn't met for this invoice), so the trace shows the path taken.
   const shown = approval.steps.filter((s) => s.status !== "skipped");
   return (
@@ -225,7 +225,7 @@ const ReconDetail = ({ recon }: { recon: ReconResult }) => {
           className="mt-2 rounded-lg bg-subtle/40 p-2.5 ring-1 ring-inset ring-line"
           data-testid="vendor-bill-dryrun"
         >
-          {/* The bill we'd POST to the ERP — shown, never sent (the write-back is a
+          {/* The bill we'd POST to the ERP, shown, never sent (the write-back is a
               stub). Labelled as a dry-run so it can't be mistaken for a real post. */}
           <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-ink">
             Bill ready to post → QuickBooks

@@ -20,10 +20,10 @@ import { TraceEvent } from "@/lib/trace";
  *   - { "director-review": "approve", … } → phase 2: resolve those gates; the
  *     bill posts only once every active gate is approved.
  * Recomputing the deterministic prefix from the decisions (rather than persisting
- * a snapshot) is what keeps the human-in-the-loop stateless — see the run route.
+ * a snapshot) is what keeps the human-in-the-loop stateless, see the run route.
  * Clean invoices have no active gate and ignore `decisions`.
  */
-/** @public — a reviewer's decision on one approval gate. */
+/** @public, a reviewer's decision on one approval gate. */
 export const StepDecision = z.enum(["approve", "reject"]);
 export type StepDecision = z.infer<typeof StepDecision>;
 
@@ -35,7 +35,7 @@ export const RunRequest = z.object({
       Sparse (only rejects), so it rides alongside `decisions` rather than folding
       into it. Surfaces in the rejected step's trace detail + the audit history. */
   reasons: z.record(z.string(), z.string()).optional(),
-  /** The approval workflow this run executes — the one the onboarding agent
+  /** The approval workflow this run executes, the one the onboarding agent
       derived and the user edited, passed in (never persisted: the run stays
       stateless). Optional: when absent the run falls back to the default DAG, so a
       visitor who hasn't run discovery still gets a working pipeline. On a phase-2
@@ -45,7 +45,7 @@ export const RunRequest = z.object({
 export type RunRequest = z.infer<typeof RunRequest>;
 
 /**
- * The run streams its trace as an oRPC EVENT ITERATOR (a typed async generator) —
+ * The run streams its trace as an oRPC EVENT ITERATOR (a typed async generator),
  * the procedure yields a sequence of `TraceEvent` and a terminal `StreamDone`, and
  * the client consumes it with `for await`. (This replaced the old NDJSON framing;
  * oRPC now owns the wire, fully typed end to end.)

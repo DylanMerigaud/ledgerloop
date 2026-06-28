@@ -10,7 +10,7 @@ import { SEED_BUNDLES } from "@/db/seed-data";
  * a minimal fake records the delete/insert calls so we can assert it clears the
  * tables and re-inserts the right de-duplicated counts. `resetAndReseed` takes a
  * narrow structural db type (`delete` + `insert().values()`), so the fake satisfies
- * it with no cast — and the real drizzle handle satisfies the same shape.
+ * it with no cast, and the real drizzle handle satisfies the same shape.
  */
 
 type Inserted = { table: string; values: Record<string, unknown> };

@@ -6,12 +6,12 @@ import { log } from "@/lib/logger";
 
 /**
  * Per-IP rate limiting via Upstash, for the public "Run pipeline" endpoint.
- * Configured for 8 runs per 10 minutes — enough to explore every seeded scenario
+ * Configured for 8 runs per 10 minutes, enough to explore every seeded scenario
  * (clean / price / quantity / duplicate, plus an approve/reject) without leaving
  * the door open for a bot to drain the Anthropic budget.
  *
  * Design choice (mirrors the sibling ai-invoice-parser repo): if the Upstash env
- * vars are absent (e.g. local dev without a Redis instance), we FAIL OPEN — the
+ * vars are absent (e.g. local dev without a Redis instance), we FAIL OPEN, the
  * limiter is disabled and a one-time warning is logged. The app stays fully
  * functional; only the abuse guard is off. In production on Vercel you set the
  * two env vars and the guard engages.
@@ -41,7 +41,7 @@ const getLimiter = (): Ratelimit | null => {
   if (!url || !token) {
     log.warn(
       "[ratelimit] No Redis credentials found " +
-        "(UPSTASH_REDIS_REST_URL/_TOKEN or KV_REST_API_URL/_TOKEN) — " +
+        "(UPSTASH_REDIS_REST_URL/_TOKEN or KV_REST_API_URL/_TOKEN), " +
         "rate limiting is DISABLED (failing open).",
     );
     limiter = null;
@@ -76,7 +76,7 @@ export const checkRateLimit = async (ip: string): Promise<RateVerdict> => {
     );
     return { ok: false, limit, reset, retryAfterSeconds };
   } catch (err) {
-    // If Redis itself errors, don't take the whole endpoint down — fail open but
+    // If Redis itself errors, don't take the whole endpoint down, fail open but
     // log it so the operator notices.
     log.error("[ratelimit] Upstash error, failing open:", { err });
     return { ok: true, remaining: null };

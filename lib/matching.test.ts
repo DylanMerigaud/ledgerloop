@@ -5,7 +5,7 @@ import { runMatch, billKey, type MatchInput } from "@/lib/matching";
 import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
 /**
- * Unit tests for the 2/3-way matcher — the deterministic core the matching step
+ * Unit tests for the 2/3-way matcher, the deterministic core the matching step
  * calls and the demo's edge cases depend on. Run with `pnpm test` (Node's
  * built-in runner via tsx, no extra deps). These pin the exact verdicts that
  * drive the workflow's conditional routing.
@@ -215,7 +215,7 @@ test("exceptionAmount accumulates money on exception lines only", () => {
 
 /* ── ERP master-data controls ─────────────────────────────────────────────────
    The matcher checks the invoice against what the client's ERP holds (vendors,
-   catalog, posted bills), pulled by the read layer. All optional — absent means
+   catalog, posted bills), pulled by the read layer. All optional, absent means
    the control doesn't fire (the non-regression test pins that). */
 
 test("ERP context absent → behaves exactly as before (clean stays clean)", () => {
@@ -261,7 +261,7 @@ test("invoiced SKU outside the ERP catalog → sku_not_in_catalog", () => {
   assert.equal(offCatalog[0]?.sku, "NUT-M8");
 });
 
-test("an empty catalog set means 'not pulled' — no SKU is flagged", () => {
+test("an empty catalog set means 'not pulled', no SKU is flagged", () => {
   const r = run({ catalogSkus: new Set() });
   assert.ok(!r.exceptions.some((e) => e.code === "sku_not_in_catalog"));
 });

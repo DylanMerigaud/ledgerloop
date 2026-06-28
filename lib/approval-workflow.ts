@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Conditional approval workflow — the DAG model.
+ * Conditional approval workflow, the DAG model.
  *
  * Procure-to-pay approval is a graph: a manager review fans out to a director
  * step (only when the PO clears a threshold), a department review, an ERP post at
@@ -15,21 +15,21 @@ import { z } from "zod";
  * the org chart (the manager of X, the director above them). The workflow is
  * derived from the HRIS, not typed in by hand.
  *
- * Nothing executes here — execution is the engine (lib/approval-engine.ts). This
+ * Nothing executes here, execution is the engine (lib/approval-engine.ts). This
  * module is types + a side-effect-free `evaluateCondition`, so it's trivially
  * testable and safe to import anywhere (agent, engine, UI).
  *
- * @public — the workflow model is the public vocabulary the engine, the
+ * @public, the workflow model is the public vocabulary the engine, the
  * onboarding agent, and the UI/canvas all speak.
  */
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Conditions — the `when` on a step
+ *  Conditions, the `when` on a step
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
  * The fields a condition can test about an invoice in flight. Kept small and
- * legible on purpose — these are the levers a procurement team actually routes
+ * legible on purpose, these are the levers a procurement team actually routes
  * on, and every one must be explainable on a sales call.
  */
 const ConditionField = z.enum([
@@ -54,11 +54,11 @@ const ConditionField = z.enum([
       flag", `!= code` means "it doesn't". */
   "exceptionCode",
 ]);
-/** @public — the field a condition leaf tests (the routing levers). */
+/** @public, the field a condition leaf tests (the routing levers). */
 export type ConditionField = z.infer<typeof ConditionField>;
 
 const ConditionOp = z.enum([">", ">=", "<", "<=", "==", "!="]);
-/** @public — the comparison operator on a condition leaf. */
+/** @public, the comparison operator on a condition leaf. */
 export type ConditionOp = z.infer<typeof ConditionOp>;
 
 /**
@@ -77,7 +77,7 @@ export type Condition =
   | { kind: "all"; conditions: Condition[] }
   | { kind: "any"; conditions: Condition[] };
 
-/** @public — a single comparison in a condition (the editor's row unit). */
+/** @public, a single comparison in a condition (the editor's row unit). */
 export type ConditionLeaf = Extract<Condition, { kind: "leaf" }>;
 
 export const Condition: z.ZodType<Condition> = z.lazy(() =>
@@ -112,7 +112,7 @@ export const Condition: z.ZodType<Condition> = z.lazy(() =>
  * co-approvers a human added (the primary is never repeated there); the people on
  * the gate are `approversOf(step)`.
  */
-/** @public — an approval gate in the workflow (rendered by the UI/canvas). */
+/** @public, an approval gate in the workflow (rendered by the UI/canvas). */
 export const ApprovalStep = z
   .object({
     id: z.string().min(1),
@@ -130,23 +130,23 @@ export const ApprovalStep = z
   .strict();
 export type ApprovalStep = z.infer<typeof ApprovalStep>;
 
-/** @public — everyone who approves a gate: the primary (if resolved) then the extras,
+/** @public, everyone who approves a gate: the primary (if resolved) then the extras,
     in order. Empty when the gate is unresolved with no extras. */
 export const approversOf = (step: ApprovalStep): string[] =>
   [step.approverName, ...(step.approvers ?? [])].filter(
     (n): n is string => !!n,
   );
 
-/** @public — the system actions an integration step can run. */
+/** @public, the system actions an integration step can run. */
 export const IntegrationKind = z.enum(["slack", "jira", "netsuite"]);
 export type IntegrationKind = z.infer<typeof IntegrationKind>;
 
 /**
  * An integration step: a system action (notify Slack, open a Jira ticket, post
  * the bill to NetSuite). All are simulated like the ERP stub today EXCEPT
- * NetSuite, which has a real adapter — the engine decides how to run each.
+ * NetSuite, which has a real adapter, the engine decides how to run each.
  */
-/** @public — an integration step in the workflow (rendered by the UI/canvas). */
+/** @public, an integration step in the workflow (rendered by the UI/canvas). */
 export const IntegrationStep = z
   .object({
     id: z.string().min(1),
@@ -167,7 +167,7 @@ export type WorkflowStep = z.infer<typeof WorkflowStep>;
 
 /**
  * The whole approval workflow: a set of steps plus the ids of the roots (the
- * steps with no incoming edge, where execution starts). A DAG, not a list — the
+ * steps with no incoming edge, where execution starts). A DAG, not a list, the
  * `next` edges define the shape, `roots` the entry points. The engine walks it;
  * the UI draws it; the agent produces it.
  */
@@ -181,7 +181,7 @@ export const ApprovalWorkflow = z
 export type ApprovalWorkflow = z.infer<typeof ApprovalWorkflow>;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Evaluation — pure, no side effects
+ *  Evaluation, pure, no side effects
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** The facts about an invoice a condition is evaluated against. */
@@ -199,7 +199,7 @@ export type InvoiceContext = {
   exceptionCodes: string[];
 };
 
-/** The scalar value of a comparable field. `exceptionCode` is NOT here — it's a list
+/** The scalar value of a comparable field. `exceptionCode` is NOT here, it's a list
     (set membership), handled directly in `evaluateCondition`. */
 const valueFor = (
   field: Exclude<ConditionField, "exceptionCode">,
@@ -255,7 +255,7 @@ const compare = (
       return l === r;
     case "!=":
       return l !== r;
-    // Ordering on strings isn't meaningful here — treat as false rather than
+    // Ordering on strings isn't meaningful here, treat as false rather than
     // surprising lexicographic results.
     default:
       return false;
@@ -303,7 +303,7 @@ export const describeCondition = (cond: Condition): string => {
 
 /**
  * Format a leaf's value for display. The `amount` field is money, so show it as a
- * dollar figure with thousands separators ("$25,000") — the seed amounts are USD;
+ * dollar figure with thousands separators ("$25,000"), the seed amounts are USD;
  * the threshold itself is currency-agnostic (it's compared to the invoice amount
  * whatever its currency), but "$25,000" reads far better than a bare "25000".
  */
@@ -317,7 +317,7 @@ const describeLeafValue = (
 };
 
 /**
- * Render a condition as a SHORT, plain-English phrase for the UI chip — a business
+ * Render a condition as a SHORT, plain-English phrase for the UI chip, a business
  * rule, not code ("Over $25,000", "IT only") instead of "amount > 25000". Recursive,
  * so nested all/any read naturally ("Exception · over $10,000 or variance ≥ 10%").
  * `describeCondition` stays the canonical machine-ish form (prompts, diff, traces);
@@ -381,7 +381,7 @@ const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Diff — compare two workflows (for the chat-edit preview)
+ *  Diff, compare two workflows (for the chat-edit preview)
  * ────────────────────────────────────────────────────────────────────────── *
  *
  * A conversational edit produces a PROPOSED workflow; nothing is applied until a
@@ -424,7 +424,7 @@ export const diffWorkflows = (
   const prop = new Map(proposed.steps.map((s) => [s.id, s]));
   const changes: StepChange[] = [];
 
-  // Added / changed / unchanged — iterate the proposal (the new shape).
+  // Added / changed / unchanged, iterate the proposal (the new shape).
   for (const [id, p] of prop) {
     const c = cur.get(id);
     if (!c) {
@@ -438,7 +438,7 @@ export const diffWorkflows = (
         : { kind: "unchanged", id, label: p.label },
     );
   }
-  // Removed — in current but not in the proposal.
+  // Removed, in current but not in the proposal.
   for (const [id, c] of cur) {
     if (!prop.has(id)) changes.push({ kind: "removed", id, label: c.label });
   }
@@ -450,13 +450,13 @@ export const diffWorkflows = (
  * ────────────────────────────────────────────────────────────────────────── *
  *
  * The DAG STRUCTURE is a deterministic P2P template (manager → director-gated →
- * department-review-gated → post). What's genuinely fuzzy — and the only thing
- * the model is asked for — is: who in THIS org sits at each approval level, what
+ * department-review-gated → post). What's genuinely fuzzy, and the only thing
+ * the model is asked for, is: who in THIS org sits at each approval level, what
  * amount threshold makes sense, and how to explain it all in plain language. The
  * model returns these decisions; deterministic code assembles them into a
  * validated `ApprovalWorkflow` (lib/onboarding.ts). This keeps the model off the
  * graph plumbing (edge ids, validity) and on the judgement, where it earns its
- * place — and keeps the structure unit-testable.
+ * place, and keeps the structure unit-testable.
  */
 
 /** The model's resolution of one approval role to a person in the org. @public */
@@ -474,7 +474,7 @@ export const RoleResolution = z
   .strict();
 export type RoleResolution = z.infer<typeof RoleResolution>;
 
-/** The full structured output of the onboarding agent — the fuzzy parts only. */
+/** The full structured output of the onboarding agent, the fuzzy parts only. */
 export const OnboardingProposal = z
   .object({
     /** Amount above which a director must also approve (the "PO > $X" lever). */
@@ -483,7 +483,7 @@ export const OnboardingProposal = z
     roles: z.array(RoleResolution),
     /**
      * Plain-language read of the org's data-quality issues (the OrgIssues), for
-     * the human reviewer — one entry per issue the model was shown, in order.
+     * the human reviewer, one entry per issue the model was shown, in order.
      */
     issueNotes: z.array(z.string()),
     /** A short overall summary of the proposed workflow for the reviewer. */

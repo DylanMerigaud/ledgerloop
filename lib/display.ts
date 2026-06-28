@@ -2,7 +2,7 @@ import type { BadgeTone } from "@/components/ui/badge";
 import type { TraceStatus, TraceStage } from "@/lib/trace";
 
 /**
- * The shared visual vocabulary — the single place that maps pipeline concepts
+ * The shared visual vocabulary, the single place that maps pipeline concepts
  * (a trace status, a stage, a final outcome) to a colour tone and a label. The
  * queue (left pane) and the trace timeline (right pane) both import from here so
  * they always agree: an "exception" is the same amber in both places. Keeping
@@ -64,13 +64,13 @@ export const outcomeDot = (outcome: Outcome): string => {
 };
 
 /**
- * How a SEEDED scenario should be signposted in the queue BEFORE it's run — so a
+ * How a SEEDED scenario should be signposted in the queue BEFORE it's run, so a
  * first-time visitor's eye goes straight to the interesting cases instead of a
  * flat list. Derived from the scenario label (already on every QueueItem), not a
  * new query. Three kinds, deliberately coarse:
- *   • "exception" — a flagged invoice (variance / control) that routes to a human
- *   • "blocked"   — a duplicate that's stopped before approval
- *   • "clean"     — a straight-through match (gets NO badge; only the noteworthy
+ *   • "exception", a flagged invoice (variance / control) that routes to a human
+ *   • "blocked"  , a duplicate that's stopped before approval
+ *   • "clean"    , a straight-through match (gets NO badge; only the noteworthy
  *                   rows are marked, so the marks mean something)
  */
 export type ScenarioKind = "exception" | "blocked" | "clean";
@@ -90,7 +90,7 @@ export const scenarioKind = (scenario: string | null): ScenarioKind => {
 };
 
 /** The badge tone + short label for a signposted scenario kind (queue, pre-run).
- *  `clean` returns null — clean rows stay unmarked so the marks draw the eye. */
+ *  `clean` returns null, clean rows stay unmarked so the marks draw the eye. */
 export const scenarioBadge = (
   kind: ScenarioKind,
 ): { tone: BadgeTone; label: string } | null => {

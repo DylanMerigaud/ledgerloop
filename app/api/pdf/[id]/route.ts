@@ -2,7 +2,7 @@ import { loadInvoiceById } from "@/db/client";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 
 /**
- * GET /api/pdf/[id] — render the seeded invoice as a PDF on demand.
+ * GET /api/pdf/[id], render the seeded invoice as a PDF on demand.
  *
  * The PDF isn't stored: it's generated deterministically from the seeded invoice
  * row each request (same invoice → same bytes), so there's no extra DB column,
@@ -10,13 +10,13 @@ import { renderInvoicePdf } from "@/lib/invoice-pdf";
  * extraction reveal (and the queue hover preview) fetch this, render it with
  * pdf.js, and the model reads the same bytes.
  *
- * Only the invoice is loaded (`loadInvoiceById`), not the whole run bundle — the
+ * Only the invoice is loaded (`loadInvoiceById`), not the whole run bundle, the
  * document doesn't need the PO / receipt / ledger. Because the bytes are
  * deterministic and the data is read-only seed data, the response is cacheable,
  * so re-hovering or re-selecting an invoice is served from the browser cache
  * instead of regenerating the PDF.
  *
- * Node runtime — pdf-lib runs in Node, not Edge.
+ * Node runtime, pdf-lib runs in Node, not Edge.
  */
 
 export const runtime = "nodejs";

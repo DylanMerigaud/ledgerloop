@@ -8,28 +8,28 @@ import { env } from "@/lib/env";
 import { Employee, OrgChart, type OrgIssue } from "@/lib/schema";
 
 /**
- * HRIS adapter — the onboarding side's integration seam.
+ * HRIS adapter, the onboarding side's integration seam.
  *
  * The onboarding discovery agent needs one thing from a client's HR system: the
  * org, normalised. Who works here, their title/department, and who they report
  * to. From that the agent derives an approval matrix (no HRIS stores "approval
- * authority" natively). Everything vendor-specific stops at this file — the agent
+ * authority" natively). Everything vendor-specific stops at this file, the agent
  * imports `HrisAdapter` and `OrgChart`, never a BambooHR field name. Swap
  * `bambooHris` for a `workdayHris` implementing the same interface and nothing
  * downstream changes. This is the exact mirror of the ERP seam in `erp.ts`.
  *
  * Two implementations, both PURE (no env reads, no knowledge of each other):
- *   • `bambooHris(creds)`  — live HTTP against the real BambooHR API, scoped to the
+ *   • `bambooHris(creds)` , live HTTP against the real BambooHR API, scoped to the
  *     demo division.
- *   • `recordedHris()`     — replays a fixture from disk through the SAME mapper and
+ *   • `recordedHris()`    , replays a fixture from disk through the SAME mapper and
  *     the SAME division scope.
  *
  * The recorded fixture (`db/fixtures/bamboohr/report.json`) is BUILT from the seed
  * definition (`scripts/build-recorded-fixture.ts` renders `SEED_ORG` into BambooHR's
- * report shape) — NOT a live capture. So recorded and live read the exact same demo
+ * report shape), NOT a live capture. So recorded and live read the exact same demo
  * org: the same ~13 people, the same planted data-quality issues, the same shape,
  * the same mapper. That's what lets the demo run without a trial key (and CI with no
- * key at all) while staying honest — the fixture's `_meta` says it's seed-built, not
+ * key at all) while staying honest, the fixture's `_meta` says it's seed-built, not
  * captured. (`scripts/capture-bamboo.ts` still exists to snapshot a REAL scoped
  * response if you have a key, but the committed fixture is the seed-built one so it
  * never drifts from the seed.)
@@ -43,11 +43,11 @@ export type HrisAdapter = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  The vendor's wire shape (BambooHR) — confined to this file
+ *  The vendor's wire shape (BambooHR), confined to this file
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * What BambooHR's `POST /reports/custom` returns for the fields we request — one
+ * What BambooHR's `POST /reports/custom` returns for the fields we request, one
  * call yields the whole org with ID-based reporting edges. Validated with Zod (the
  * payload is parsed JSON) so the mapper reads it without an `as` cast. BambooHR
  * returns numbers as strings and empty values as `null` (not absent), so every
@@ -65,7 +65,7 @@ const BambooReportRow = z.object({
   division: nullishStr,
   supervisorEId: nullishStr,
   supervisorEmail: nullishStr,
-  /** "Active" | "Inactive" — terminated staff would pollute the hierarchy. */
+  /** "Active" | "Inactive", terminated staff would pollute the hierarchy. */
   status: nullishStr,
 });
 
@@ -88,14 +88,14 @@ const BAMBOO_REPORT_FIELDS = [
 ] as const;
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  The shared mapper — vendor shape → internal OrgChart
+ *  The shared mapper, vendor shape → internal OrgChart
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
  * Turn a raw BambooHR custom-report payload into our `OrgChart`. This is the ONE
  * place BambooHR's shape becomes our shape; it runs identically on live bytes and
  * on replayed fixture bytes, so the two adapters can't drift. Pure and
- * synchronous — easy to test against the captured fixture.
+ * synchronous, easy to test against the captured fixture.
  *
  * Two real-world cleanups happen here, both deliberate:
  *   1. Drop non-active rows. The report returns terminated employees (status !=
@@ -103,7 +103,7 @@ const BAMBOO_REPORT_FIELDS = [
  *   2. Resolve reporting edges by ID and FLAG what doesn't resolve, rather than
  *      guessing. A `supervisorEId` pointing at an id that isn't in the active set
  *      (a dangling edge), a self-reference, or a non-root with no manager all
- *      become `OrgIssue`s for a human — the forward-deployed-engineer's actual
+ *      become `OrgIssue`s for a human, the forward-deployed-engineer's actual
  *      onboarding work, made explicit.
  */
 export const mapBambooReport = (
@@ -111,13 +111,13 @@ export const mapBambooReport = (
   source: string,
   division?: string,
 ): OrgChart => {
-  // `raw` is unknown (a parsed JSON payload) — validate with Zod so we read
+  // `raw` is unknown (a parsed JSON payload), validate with Zod so we read
   // `employees` without a cast (a malformed payload yields no rows, not a throw).
   const parsed = BambooReport.safeParse(raw);
   const rows = parsed.success ? (parsed.data.employees ?? []) : [];
 
   // 1. Keep active rows that have an id; normalise each field. When a division
-  //    scope is given, keep only that division — this is how one client's org is
+  //    scope is given, keep only that division, this is how one client's org is
   //    isolated from the rest of the sandbox.
   const active = rows.filter(
     (r) =>
@@ -173,8 +173,8 @@ export const mapBambooReport = (
   }
 
   // Roots = people with no manager. Exactly one is healthy (the CEO). The
-  // deterministic layer can't know WHICH of several roots is the real top — that
-  // judgement (by title/seniority) is the agent's job — so when there's more than
+  // deterministic layer can't know WHICH of several roots is the real top, that
+  // judgement (by title/seniority) is the agent's job, so when there's more than
   // one it surfaces them all for resolution. A blank title on a root is called out
   // explicitly: it's the clearest tell of a junk top-level record, as opposed to a
   // genuine second executive the agent will have to reason about.
@@ -187,8 +187,8 @@ export const mapBambooReport = (
         employeeName: r.name,
         kind: "orphan",
         detail: blank
-          ? `${r.name} has no manager and no job title — likely a junk top-level record (1 of ${roots.length} roots; an org should have one).`
-          : `${r.name} (${r.title}) has no manager — 1 of ${roots.length} roots; only the CEO should be at the top, so this needs review.`,
+          ? `${r.name} has no manager and no job title, likely a junk top-level record (1 of ${roots.length} roots; an org should have one).`
+          : `${r.name} (${r.title}) has no manager, 1 of ${roots.length} roots; only the CEO should be at the top, so this needs review.`,
       });
     }
   }
@@ -197,14 +197,14 @@ export const mapBambooReport = (
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Live adapter — real BambooHR
+ *  Live adapter, real BambooHR
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** @public — credentials a live BambooHR adapter needs. */
+/** @public, credentials a live BambooHR adapter needs. */
 export type BambooCreds = {
   /** Company subdomain: the `neige` in `neige.bamboohr.com`. */
   subdomain: string;
-  /** API key — sent as the Basic-auth username, password is any value. */
+  /** API key, sent as the Basic-auth username, password is any value. */
   key: string;
 };
 
@@ -213,7 +213,7 @@ export type BambooCreds = {
  * ID-based reporting edges (far cheaper than per-employee calls). Auth is HTTP
  * Basic with the API key as username and any password (BambooHR's scheme).
  *
- * @public — the integration seam: swap this for a `workdayHris` implementing
+ * @public, the integration seam: swap this for a `workdayHris` implementing
  * `HrisAdapter` and nothing downstream changes (cf. `erp.ts`).
  */
 export const bambooHris = (
@@ -253,7 +253,7 @@ export const fetchBambooReport = async (
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Recorded adapter — replays the captured real payload
+ *  Recorded adapter, replays the captured real payload
  * ────────────────────────────────────────────────────────────────────────── */
 
 const FIXTURE_PATH = path.join(
@@ -268,7 +268,7 @@ const FIXTURE_PATH = path.join(
  * Replays the recorded BambooHR payload from disk through the SAME mapper (and the
  * SAME division scope) the live adapter uses, so recorded and live read the exact
  * same demo org. The fixture is built from the seed definition (see the file's
- * `_meta` and scripts/build-recorded-fixture.ts) — not a live capture.
+ * `_meta` and scripts/build-recorded-fixture.ts), not a live capture.
  */
 export const recordedHris = (
   fixturePath: string = FIXTURE_PATH,
@@ -276,7 +276,7 @@ export const recordedHris = (
   return {
     name: "bamboohr (recorded)",
     // Reads the fixture synchronously, but the adapter contract is async (the live
-    // one does HTTP) — return a resolved promise rather than an await-less `async`.
+    // one does HTTP), return a resolved promise rather than an await-less `async`.
     fetchOrg() {
       const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
       return Promise.resolve(
@@ -294,18 +294,18 @@ export const recordedHris = (
  * The division a demo client's org lives under in the shared BambooHR sandbox.
  * The live adapter scopes to it so onboarding reads ONE clean client org (the
  * seeded tree) instead of the whole account's sample staff. The seed script
- * stamps every seeded employee with this division — same constant, one source.
+ * stamps every seeded employee with this division, same constant, one source.
  */
 export const DEMO_CLIENT_DIVISION = "LedgerLoop Demo";
 
 /**
  * The ONLY place the live-vs-recorded choice is made. Live (scoped to the demo
  * client's division) when both creds are present (you, with the trial key);
- * recorded — the full captured sample org — otherwise (CI, a teammate, after the
- * trial expires). Everything else in the app calls this and is oblivious — that's
+ * recorded, the full captured sample org, otherwise (CI, a teammate, after the
+ * trial expires). Everything else in the app calls this and is oblivious, that's
  * what keeps the fallback from leaking `if (key)` across the codebase.
  *
- * @public — the entry point the onboarding flow uses to read an org.
+ * @public, the entry point the onboarding flow uses to read an org.
  */
 export const defaultHris = (): HrisAdapter => {
   const key = env.BAMBOO_HR_API_KEY;

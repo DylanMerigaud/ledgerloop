@@ -7,7 +7,7 @@ import { GET } from "@/app/api/reset/route";
  * The reset endpoint truncates + reseeds the database, so its auth guard is
  * security-critical: only the Vercel Cron (carrying `Authorization: Bearer
  * $CRON_SECRET`) may trigger it. These pin the 401 paths, which short-circuit
- * BEFORE any DB call — so they need no database. (The 200 path runs the real
+ * BEFORE any DB call, so they need no database. (The 200 path runs the real
  * reset and is verified live, not here.)
  *
  * The suite runs with SKIP_ENV_VALIDATION and no CRON_SECRET set, which is itself

@@ -5,7 +5,7 @@
  * live BambooHR API via the SAME `fetchBambooReport` the production adapter uses,
  * then writes the raw response (plus a dated `_meta` provenance block) to
  * `db/fixtures/bamboohr/report.json`. `recordedHris` later replays that exact
- * payload through the same mapper. So the fixture is not a hand-written mock — it
+ * payload through the same mapper. So the fixture is not a hand-written mock, it
  * is BambooHR's own output, frozen on the date below.
  *
  * Why this exists: the BambooHR trial key is short-lived. Capturing the fixture
@@ -21,13 +21,13 @@ import path from "node:path";
 import { isRecord } from "@/lib/assert";
 import { fetchBambooReport, mapBambooReport } from "@/lib/hris";
 
-/** Same env loading as eval/run.ts — native, no dotenv dep. */
+/** Same env loading as eval/run.ts, native, no dotenv dep. */
 const loadEnv = (): void => {
   for (const f of [".env.local", ".env"]) {
     try {
       process.loadEnvFile(path.join(process.cwd(), f));
     } catch {
-      /* file absent — fine */
+      /* file absent, fine */
     }
   }
 };
@@ -39,7 +39,7 @@ const main = async (): Promise<void> => {
   if (!key || !subdomain) {
     console.error(
       "Missing BAMBOO_HR_API_KEY and/or BAMBOO_HR_SUBDOMAIN. Set them in .env.\n" +
-        "(This script needs the LIVE trial key — it is the only step that does.)",
+        "(This script needs the LIVE trial key, it is the only step that does.)",
     );
     process.exit(1);
   }
@@ -47,7 +47,7 @@ const main = async (): Promise<void> => {
   console.log(`Fetching org from ${subdomain}.bamboohr.com …`);
   const raw = await fetchBambooReport({ key, subdomain });
 
-  // Validate the capture is usable BEFORE writing — a fixture that can't be
+  // Validate the capture is usable BEFORE writing, a fixture that can't be
   // mapped is worse than no fixture. mapBambooReport throws on a bad shape.
   const org = mapBambooReport(raw, "bamboohr (recorded)");
   console.log(
@@ -55,10 +55,10 @@ const main = async (): Promise<void> => {
   );
 
   // Provenance: the snapshot is real data; record exactly when/where from. The
-  // subdomain and key are NOT written — only that a capture happened.
+  // subdomain and key are NOT written, only that a capture happened.
   const payload = {
     _meta: {
-      source: "BambooHR API — POST /reports/custom",
+      source: "BambooHR API, POST /reports/custom",
       note: "Real API response captured from the live trial. Replayed offline by recordedHris(). Not a mock.",
       capturedAt: new Date().toISOString(),
     },

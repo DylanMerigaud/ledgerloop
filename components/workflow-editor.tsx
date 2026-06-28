@@ -18,14 +18,14 @@ import {
 } from "@/lib/workflow-validate";
 
 /**
- * The conversational workflow editor — the layer competitors don't have.
+ * The conversational workflow editor, the layer competitors don't have.
  *
  * You type what you want ("above $10k add a CFO approval") and a structured-output
  * model maps it to one edit op, which deterministic code applies to PROPOSE a
  * rewrite (it's plain-language editing, not an open-ended agent). Nothing applies
  * until you APPROVE: the graph shows the proposal with the diff (added / changed /
  * removed), and you keep it (the proposal becomes current) or revert (discard it).
- * The current workflow is the only thing that drives the pipeline — proposal is
+ * The current workflow is the only thing that drives the pipeline, proposal is
  * preview-only.
  *
  * Holds two workflows: `current` (the approved one) and an optional `proposal`
@@ -49,17 +49,17 @@ export const WorkflowEditor = ({
   initial: ApprovalWorkflow;
   /** AI-generated next-edit suggestions for the initial workflow (may be empty). */
   suggestions?: string[];
-  /** The departments that exist in the org — offered in the node-edit condition
+  /** The departments that exist in the org, offered in the node-edit condition
       editor and the "What can I change?" doc, and sent to the edit agent so it only
       ever proposes a real one. */
   departments?: string[];
-  /** The vendors / currencies present on the invoices — sent to the edit agent so a
+  /** The vendors / currencies present on the invoices, sent to the edit agent so a
       vendor/currency gate targets a real one (it declines an unknown value). */
   vendors?: string[];
   currencies?: string[];
-  /** The org's people — for the node panel's approver picker (click a gate to edit). */
+  /** The org's people, for the node panel's approver picker (click a gate to edit). */
   people?: OrgEmployee[];
-  /** Called with the CURRENT (approved) workflow whenever it changes — the initial
+  /** Called with the CURRENT (approved) workflow whenever it changes, the initial
       one, then each kept edit. Never the pending proposal (preview-only). Lets a
       parent (AppView) run the pipeline against exactly what's on screen here. */
   onCurrentChange?: (workflow: ApprovalWorkflow) => void;
@@ -81,7 +81,7 @@ export const WorkflowEditor = ({
   // chip never lingers after it's been used.
   const [chips, setChips] = useState<string[]>(suggestions);
 
-  // Surface the current (approved) workflow to the parent whenever it changes —
+  // Surface the current (approved) workflow to the parent whenever it changes,
   // the initial derived one and every kept edit, so the pipeline runs against
   // exactly this. Stable callback (useEventCallback) so the effect keys only on
   // `current`. The proposal never flows here: it's preview-only until approved.
@@ -107,7 +107,7 @@ export const WorkflowEditor = ({
         vendors,
         currencies,
       });
-      // The agent needs a missing piece (e.g. which department) — offer the options
+      // The agent needs a missing piece (e.g. which department), offer the options
       // instead of an edit. Remember the instruction so a pick can complete it.
       if (data.clarify) {
         setClarify({ ...data.clarify, instruction: value });
@@ -117,11 +117,11 @@ export const WorkflowEditor = ({
       setClarify(null);
       const realChanges = data.changes.filter((c) => c.kind !== "unchanged");
       if (realChanges.length === 0) {
-        // The agent declined (redundant / off-topic) — say so, don't offer a no-op.
+        // The agent declined (redundant / off-topic), say so, don't offer a no-op.
         setError(
           data.reason
             ? `No change: ${data.reason}`
-            : "No change — the workflow already does that.",
+            : "No change. The workflow already does that.",
         );
         return;
       }
@@ -155,9 +155,9 @@ export const WorkflowEditor = ({
     setProposal(null);
   };
   const revert = () => {
-    setProposal(null); // discard — current is untouched
+    setProposal(null); // discard, current is untouched
   };
-  // Reset = restore the originally-derived workflow (NOT recompute — that's the
+  // Reset = restore the originally-derived workflow (NOT recompute, that's the
   // left pane's "Re-run discovery"). Instant, deterministic.
   const isEdited = current !== initial;
   const reset = () => {
@@ -175,7 +175,7 @@ export const WorkflowEditor = ({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* The graph — proposal (with diff) when one is pending, else the current
+      {/* The graph, proposal (with diff) when one is pending, else the current
           workflow. React Flow owns pan/zoom, so give it height (min-h-0) and let
           it handle overflow rather than a scroll container. */}
       {/* The canvas fills the remaining height on desktop; on mobile the column is
@@ -183,7 +183,7 @@ export const WorkflowEditor = ({
           real minimum so the graph stays legible (pan/zoom by touch). */}
       <div className="relative min-h-[420px] flex-1 overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:min-h-[360px]">
         {proposal ? (
-          // Previewing an edit — no node-editing while a proposal is pending (approve
+          // Previewing an edit, no node-editing while a proposal is pending (approve
           // or revert first), so the two edit paths can't collide.
           <WorkflowGraph
             workflow={proposal.proposed}
@@ -212,7 +212,7 @@ export const WorkflowEditor = ({
         )}
       </div>
 
-      {/* Validation summary — "sound" or the list of issues (errors block apply). */}
+      {/* Validation summary, "sound" or the list of issues (errors block apply). */}
       <ValidationPanel issues={issues} />
 
       {/* Pending-edit bar: approve / revert */}
@@ -245,7 +245,7 @@ export const WorkflowEditor = ({
             {error}
           </div>
         )}
-        {/* The agent asked for a missing piece (e.g. which department) — show its
+        {/* The agent asked for a missing piece (e.g. which department), show its
             question + the choices as chips. Clicking one re-submits the completed
             instruction. Takes over the chip area while it's pending. */}
         {!proposal && clarify && (
@@ -266,7 +266,7 @@ export const WorkflowEditor = ({
           </div>
         )}
         {/* AI-suggested next edits for this workflow. Only shown before a pending
-            proposal, and only when the model returned some — no fixed chips, so a
+            proposal, and only when the model returned some, no fixed chips, so a
             suggestion is always a real, applicable next step. A used chip is
             removed (consumed) once it produces a proposal. */}
         {!proposal && !clarify && chips.length > 0 && (
@@ -390,7 +390,7 @@ const SparkIcon = () => {
 };
 
 /**
- * Stable decorative hue from a label (not semantic — it must NOT reuse ok/danger
+ * Stable decorative hue from a label (not semantic, it must NOT reuse ok/danger
  * tones, which carry meaning). Same name → same colour across renders, so the org's
  * departments read as a consistent little palette.
  */
@@ -403,7 +403,7 @@ const hueFor = (label: string): number => {
 /**
  * A clarification chip: the app's interactive accent chip plus a small coloured dot
  * keyed to the label, so a row of options looks alive without inventing a semantic
- * colour scale. Used for the agent's "which department?" choices — clicking one
+ * colour scale. Used for the agent's "which department?" choices, clicking one
  * re-submits the completed instruction.
  */
 const DeptChip = ({

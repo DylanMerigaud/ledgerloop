@@ -11,14 +11,14 @@ import { runMatch } from "@/lib/matching";
 import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 /**
- * Pipeline sanity check — `tsx src/mastra/sanity.ts [--dry-run]`.
+ * Pipeline sanity check, `tsx src/mastra/sanity.ts [--dry-run]`.
  *
  * In `--dry-run` mode (the default in CI) it runs the DETERMINISTIC pipeline
- * path — the exact runMatch → approval workflow engine → reconcile functions the
- * Mastra steps use — over every seeded invoice, prints the routing each takes, and
+ * path, the exact runMatch → approval workflow engine → reconcile functions the
+ * Mastra steps use, over every seeded invoice, prints the routing each takes, and
  * exits non-zero if the three headline edge cases don't land on their intended
  * verdicts. This validates the orchestration logic offline, with NO LLM calls
- * (no key, no tokens) — safe to run in CI.
+ * (no key, no tokens), safe to run in CI.
  *
  * Without `--dry-run` it would additionally exercise the live agent; that path
  * needs ANTHROPIC_API_KEY and is intentionally NOT run in CI. (The streaming
@@ -55,7 +55,7 @@ const routeOf = async (bundle: SeedBundle, decisions: Decisions = {}) => {
 };
 
 const main = async () => {
-  console.log(`ledgerloop pipeline sanity — model: ${PIPELINE_MODEL}`);
+  console.log(`ledgerloop pipeline sanity, model: ${PIPELINE_MODEL}`);
   console.log(
     DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n",
   );

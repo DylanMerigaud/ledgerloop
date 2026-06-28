@@ -1,11 +1,11 @@
 /**
- * Explicit invariant assertions — the honest alternative to a silent `!`.
+ * Explicit invariant assertions, the honest alternative to a silent `!`.
  *
  * Some values are provably non-null to a human (a Map key we just populated, the
  * head of a queue inside a `while (queue.length)`) but not to the type checker. A
  * bare `x!` asserts that without a word of why and crashes opaquely if it's ever
  * wrong. `nonNull(x, why)` states the invariant, and if it's violated throws a
- * message that names the cause — so a logic bug surfaces clearly instead of as a
+ * message that names the cause, so a logic bug surfaces clearly instead of as a
  * downstream `undefined`.
  */
 export const nonNull = <T>(value: T | null | undefined, why: string): T => {
@@ -18,7 +18,7 @@ export const nonNull = <T>(value: T | null | undefined, why: string): T => {
 /**
  * Exhaustiveness guard for a discriminated union. Put it in the `default` of a
  * switch (or the else of an if-chain): the parameter is typed `never`, so if a new
- * variant is ever added without a branch, the TYPE CHECK fails — the bug is caught
+ * variant is ever added without a branch, the TYPE CHECK fails, the bug is caught
  * at compile time. If somehow reached at runtime, it throws clearly.
  */
 export const assertUnreachable = (value: never): never => {

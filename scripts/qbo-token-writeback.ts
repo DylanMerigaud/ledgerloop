@@ -6,7 +6,7 @@
  * Both scripts call this at the end: if a rotation happened, rewrite the
  * QBO_REFRESH_TOKEN line in .env.local (or .env) so the next run reuses it.
  *
- * Only the local file is touched, and only that one line — never printed, never
+ * Only the local file is touched, and only that one line, never printed, never
  * committed (.env* is gitignored).
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -32,7 +32,7 @@ export const persistRotatedRefreshToken = (): void => {
   if (next !== original) {
     writeFileSync(file, next, "utf8");
     console.log(
-      `Refresh token rotated — updated QBO_REFRESH_TOKEN in ${path.basename(file)}.`,
+      `Refresh token rotated, updated QBO_REFRESH_TOKEN in ${path.basename(file)}.`,
     );
   }
 };

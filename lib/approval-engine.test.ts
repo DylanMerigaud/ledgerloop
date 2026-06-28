@@ -11,7 +11,7 @@ import {
  * The engine drives payment routing, so it's tested exhaustively. The fixture is
  * the template the onboarding agent produces: manager (always) fans out to a
  * director (amount > 5000) and a department review (dept == IT); both gates feed
- * the NetSuite post. There is NO direct manager→post edge — the post is reached
+ * the NetSuite post. There is NO direct manager→post edge, the post is reached
  * for a small/non-IT invoice because skipped gates pass through (AND-join).
  */
 const wf: ApprovalWorkflow = {
@@ -193,7 +193,7 @@ test("every step is accounted for in the snapshot", () => {
 });
 
 /* The workflowFromPolicy topology: the manager gate is itself conditional
-   (verdict == exception), not always. A CLEAN invoice skips every gate — and the
+   (verdict == exception), not always. A CLEAN invoice skips every gate, and the
    post must STILL run (a skipped gate is a pass-through, not a dead branch). This
    is the case the naive "all parents skipped → skip" rule got wrong. */
 test("clean invoice through a conditional-manager workflow still posts", () => {

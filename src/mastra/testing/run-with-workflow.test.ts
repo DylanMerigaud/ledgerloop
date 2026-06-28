@@ -13,7 +13,7 @@ import { p2pWorkflow } from "@/src/mastra/workflows/p2p";
 /**
  * The link this branch adds: the workflow passed into a run is the one the
  * pipeline ROUTES through, not a fixed default. We prove it with a CLEAN invoice
- * — under the default DAG every gate's condition is false, so it posts
+ *, under the default DAG every gate's condition is false, so it posts
  * straight-through. Pass a workflow whose first gate is `when: always` and the
  * SAME clean invoice must instead PAUSE on that gate. Different workflow in →
  * different routing out, on identical invoice + matching.
@@ -109,7 +109,7 @@ test("a passed-in always-gate workflow pauses a CLEAN invoice that would otherwi
   const profile: ClientProfile = {
     id: "active",
     name: ALWAYS_GATE.name,
-    // Default tolerances — keep the verdict clean; only the workflow changes.
+    // Default tolerances, keep the verdict clean; only the workflow changes.
     tolerances: { pricePct: 0.01, lineAmountAbs: 0.01, qtyAbs: 0 },
     approvalPolicy: {
       manager: { amount: 1_000, variancePct: 0.05 },

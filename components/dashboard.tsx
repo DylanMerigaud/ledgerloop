@@ -38,8 +38,8 @@ import { usePipelineRun } from "@/lib/use-pipeline-run";
 
 /**
  * The split-view dashboard.
- *   LEFT  — the invoice queue, each row a seeded invoice with a status pill.
- *   RIGHT — the live agent execution trace for the selected invoice.
+ *   LEFT , the invoice queue, each row a seeded invoice with a status pill.
+ *   RIGHT, the live agent execution trace for the selected invoice.
  *
  * Selecting a row resets the trace; "Run pipeline" streams a fresh run. The live
  * trace state is per-visitor and ephemeral, but each completed run is persisted as
@@ -76,7 +76,7 @@ const readIntake = (
 
 /**
  * Pull the approval workflow + each step's live status out of the trace, so the
- * Pipeline can render the SAME graph the onboarding screen draws — lit up by this
+ * Pipeline can render the SAME graph the onboarding screen draws, lit up by this
  * invoice's path (a gate "In review", "Approved", "Skipped"). The approval node
  * carries `{ workflow, steps: [{id, status}] }`; we validate the workflow off the
  * trace (no cast) and map the step statuses into the shape WorkflowGraph wants.
@@ -146,8 +146,8 @@ const QueueHint = ({
 
 /**
  * Once the document has been READ and the run moves on, the big extraction reveal
- * (its moment is over) collapses into this one-line node at the top of the trace —
- * "Intake · INV-2042 · 3 lines · $730 · reconciled with PO" — expandable to re-show
+ * (its moment is over) collapses into this one-line node at the top of the trace,
+ * "Intake · INV-2042 · 3 lines · $730 · reconciled with PO", expandable to re-show
  * the document + extracted fields. Keeps the AI-reads-the-doc proof one click away
  * while handing the pane to the workflow (the hero).
  */
@@ -223,7 +223,7 @@ const Spinner = () => {
 };
 
 /**
- * "Running against: <workflow>" — the line that makes the link to onboarding
+ * "Running against: <workflow>", the line that makes the link to onboarding
  * visible: the pipeline routes every invoice through this exact workflow. Shows
  * the active workflow's name once discovery/edits have produced one; otherwise a
  * quiet note that the default DAG is in use until the user derives theirs.
@@ -239,13 +239,13 @@ const RunningAgainst = ({
   if (!workflow) {
     return (
       <p className="mt-1 text-[11px] text-faint">
-        Default workflow —{" "}
+        Default workflow.{" "}
         <button
           type="button"
           onClick={onBuildWorkflow}
           className="font-medium text-accent underline-offset-2 hover:underline"
         >
-          build your own
+          Build your own
         </button>{" "}
         to route against it.
       </p>
@@ -269,7 +269,7 @@ export const Dashboard = ({
 }: {
   queue: QueueItem[];
   /** The active approval workflow this pipeline runs against (lifted from
-      onboarding via AppView). null until discovery has run — the server then falls
+      onboarding via AppView). null until discovery has run, the server then falls
       back to its default DAG. */
   workflow: TApprovalWorkflow | null;
   /** Switch to the "Build the workflow" tab (the trace's no-workflow hint links here). */
@@ -283,7 +283,7 @@ export const Dashboard = ({
   const queryClient = useQueryClient();
 
   // When a run reaches a terminal state (done/blocked, not a mid-run pause), a new
-  // audit row exists — refresh the Recent runs list so it shows up. Keyed off the
+  // audit row exists, refresh the Recent runs list so it shows up. Keyed off the
   // status transition so we invalidate once per completion, not on every event.
   const lastStatusRef = useRef(state.status);
   useEffect(() => {
@@ -309,7 +309,7 @@ export const Dashboard = ({
 
   // Right pane (trace) scroll. The trace reads top-down like a log and the key
   // info (document, extraction, first steps) is at the top, so we DON'T auto-
-  // scroll — the user keeps their place and the "more ↓" affordance signals
+  // scroll, the user keeps their place and the "more ↓" affordance signals
   // there's content below to scroll to at their own pace.
   const traceScrollRef = useRef<HTMLDivElement | null>(null);
   const [traceMore, setTraceMore] = useState(false);
@@ -361,7 +361,7 @@ export const Dashboard = ({
     : Math.max(1, Math.round(scroll.hiddenBelow / ROW_PX));
 
   const selected = queue.find((q) => q.id === selectedId) ?? null;
-  // Lock the queue while a run is in flight — switching invoices mid-run would
+  // Lock the queue while a run is in flight, switching invoices mid-run would
   // abort the stream and is confusing. (Awaiting a human decision still locks:
   // resolve it with Approve/Reject first.)
   const locked = state.status === "running" || state.status === "awaiting";
@@ -383,8 +383,8 @@ export const Dashboard = ({
   const graphStatuses = runGraph?.statuses;
 
   // Has the document been READ and the run moved on? The extraction reveal is a
-  // MOMENT (the AI reading a real PDF): it owns the pane while it happens, then —
-  // once matching/a later stage has started — it collapses to a one-line "Intake"
+  // MOMENT (the AI reading a real PDF): it owns the pane while it happens, then,
+  // once matching/a later stage has started, it collapses to a one-line "Intake"
   // node at the top of the trace, handing the pane to the workflow (the hero).
   // `doneIntake` is the read document ONCE the run is past intake (else null), so
   // it both flags the phase and carries the data the collapsed node needs.
@@ -459,10 +459,10 @@ export const Dashboard = ({
 
   return (
     // Desktop: fill the parent's flex-1 slot (the page is viewport-tall), so the
-    // two panes sit side by side and scroll INTERNALLY — no competing page
+    // two panes sit side by side and scroll INTERNALLY, no competing page
     // scroll. Mobile: stack at natural height.
     <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,380px)_1fr]">
-      {/* LEFT — queue (fills the column) + the Recent runs audit panel below it. */}
+      {/* LEFT, queue (fills the column) + the Recent runs audit panel below it. */}
       <div className="flex min-h-0 flex-col gap-4 lg:h-full">
         <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:min-h-0 lg:max-h-none lg:flex-1">
           <CardHeader className="flex items-center justify-between">
@@ -472,7 +472,7 @@ export const Dashboard = ({
             </span>
           </CardHeader>
           {/* relative wrapper so the fade + "N more" pill can overlay the scroll
-        area — on macOS the overlay scrollbar is hidden, so these are the cue
+        area, on macOS the overlay scrollbar is hidden, so these are the cue
         that the list continues below. Both hide once scrolled to the end. */}
           <div className="relative min-h-0 flex-1">
             <ul
@@ -532,7 +532,7 @@ export const Dashboard = ({
                           {/* Once a run is active for the selected row, show its live
                       outcome badge; otherwise signpost the seeded scenario so the
                       eye goes to the interesting cases. Only exception/blocked rows
-                      get a coloured badge — clean rows stay unmarked, so the marks
+                      get a coloured badge, clean rows stay unmarked, so the marks
                       mean something. INV-2042 (price mismatch → investigator +
                       pause: the full wow) also gets a single "Start here" chip. */}
                           {isSelected && state.status !== "idle" ? (
@@ -553,7 +553,7 @@ export const Dashboard = ({
               })}
             </ul>
             {/* "N more" scroll affordance: a pill that scrolls the list when clicked.
-          Hidden once the list is at the bottom. (No fade — the rows are short and it
+          Hidden once the list is at the bottom. (No fade, the rows are short and it
           ate into the last row.) */}
             {moreCount > 0 && (
               <button
@@ -577,7 +577,7 @@ export const Dashboard = ({
         <RecentRuns onReplay={replayRun} disabled={locked} />
       </div>
 
-      {/* RIGHT — trace */}
+      {/* RIGHT, trace */}
       <Card className="flex flex-col overflow-hidden">
         <CardHeader className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -594,7 +594,7 @@ export const Dashboard = ({
             />
           </div>
           {state.status === "awaiting" && selected && gates.length >= 2 ? (
-            // Several gates pend in parallel — decide each on its node in the graph,
+            // Several gates pend in parallel, decide each on its node in the graph,
             // then submit the wave. Approve/Reject all are shortcuts.
             <div
               className="flex shrink-0 items-center gap-2"
@@ -626,7 +626,7 @@ export const Dashboard = ({
               </Button>
             </div>
           ) : state.status === "awaiting" && selected ? (
-            // A single gate — decide it straight from the header. Reject first arms a
+            // A single gate, decide it straight from the header. Reject first arms a
             // reason input (optional note) before confirming, so a blocked bill carries
             // a why into the trace + the audit history.
             <div
@@ -712,13 +712,13 @@ export const Dashboard = ({
           )}
         </CardHeader>
         {/* relative so the bottom fade + "more" affordance can overlay the scroll
-        area — the cue that the trace continues below (esp. on macOS where the
+        area, the cue that the trace continues below (esp. on macOS where the
         scrollbar is hidden). */}
         <div className="relative min-h-0 flex-1">
           {/* Three phases, so the most important thing always owns the pane:
-              • IDLE / READING — the extraction reveal (the AI reading the real PDF)
+              • IDLE / READING, the extraction reveal (the AI reading the real PDF)
                 is the MOMENT; it gets the full width, centered.
-              • PAST INTAKE — the document's been read, so the reveal collapses to a
+              • PAST INTAKE, the document's been read, so the reveal collapses to a
                 one-line "Intake ✓" node and the pane becomes two columns: the
                 WORKFLOW GRAPH (the hero) on the left, the trace on the right (with
                 that collapsed intake as its first node).
@@ -737,8 +737,8 @@ export const Dashboard = ({
             {!pastIntake && previewId && (
               <ExtractionReveal
                 pdfSrc={API_ROUTES.pdf(previewId)}
-                // Show the scanning state the instant Run is clicked — even before
-                // the first stream event lands — so the UI feels immediate.
+                // Show the scanning state the instant Run is clicked, even before
+                // the first stream event lands, so the UI feels immediate.
                 state={
                   intake?.state ??
                   (state.status === "running"
@@ -749,7 +749,7 @@ export const Dashboard = ({
               />
             )}
 
-            {/* Past intake: LEFT column — the workflow graph, the HERO. Given a
+            {/* Past intake: LEFT column, the workflow graph, the HERO. Given a
             generous explicit height on desktop (not flex, which never fills a grid
             row reliably) so React Flow's fitView frames the DAG large instead of
             clustering it in a short box. The trace column scrolls beside it. */}
@@ -781,7 +781,7 @@ export const Dashboard = ({
               </div>
             )}
 
-            {/* Past intake: RIGHT column — the trace, led by the collapsed Intake
+            {/* Past intake: RIGHT column, the trace, led by the collapsed Intake
             node (expandable to re-show the document + extracted fields). */}
             {doneIntake && (
               <div className="scrollbar-slim lg:h-full lg:overflow-y-auto lg:pl-1">
@@ -801,7 +801,7 @@ export const Dashboard = ({
               </div>
             )}
           </div>
-          {/* "more ↓" is a trace affordance — only meaningful once a run is
+          {/* "more ↓" is a trace affordance, only meaningful once a run is
           underway, never on the static PDF preview. */}
           {traceMore && state.status !== "idle" && (
             <>

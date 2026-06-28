@@ -9,13 +9,13 @@ import { DEFAULT_APPROVAL_POLICY } from "@/lib/client-profile";
 import type { OrgChart } from "@/lib/schema";
 
 /**
- * Onboarding discovery — turn a client's org into an approval workflow.
+ * Onboarding discovery, turn a client's org into an approval workflow.
  *
  * This is the forward-deployed-engineer piece: connect the HRIS, and out comes a
  * conditional approval DAG ready for a human to validate. The split is the same
  * "AI at the edges, deterministic core" discipline as the rest of the repo:
  *
- *   • The DAG STRUCTURE is a deterministic P2P template — manager review (always),
+ *   • The DAG STRUCTURE is a deterministic P2P template, manager review (always),
  *     a director step gated on amount, a department-review step gated on
  *     department, and a final NetSuite post. Code builds this; it's unit-testable
  *     and the edge/id plumbing is never the model's problem.
@@ -28,18 +28,18 @@ import type { OrgChart } from "@/lib/schema";
  * (pure) stitches the proposal + org into a validated `ApprovalWorkflow`. The
  * model is injected, so the eval and tests run it identically with a fake.
  *
- * The output is a PROPOSAL a human validates — the agent decides nothing on its
+ * The output is a PROPOSAL a human validates, the agent decides nothing on its
  * own. Unresolved roles (`employeeName: null`) and flagged org issues are exactly
  * what the reviewer fixes before the workflow goes live.
  */
 
-/** Anything that can produce a structured proposal from a prompt — real model or fake. */
+/** Anything that can produce a structured proposal from a prompt, real model or fake. */
 export type ProposalModel = {
   propose: (org: OrgChart) => Promise<TProposal>;
 };
 
 /* ────────────────────────────────────────────────────────────────────────── *
- *  Deterministic assembly — proposal + org → validated ApprovalWorkflow
+ *  Deterministic assembly, proposal + org → validated ApprovalWorkflow
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Step ids are fixed by the template, so the engine and UI can refer to them. */
@@ -81,7 +81,7 @@ export const assembleWorkflow = (
 
   // The manager sees an invoice when it's NOT trivial: any exception, or any clean
   // bill over a floor. So a small clean invoice posts straight through (the
-  // automation win), while anything material or flagged gets a human — the standard
+  // automation win), while anything material or flagged gets a human, the standard
   // AP control, not "a manager clicks approve on every $50 bill".
   //
   // The floor SCALES with the org: it's an order of magnitude below the director
@@ -111,7 +111,7 @@ export const assembleWorkflow = (
       when: managerReview,
       approverTitle: manager.title,
       approverName: manager.name,
-      // Fan-out to the director gate — NOT straight to the post (a direct
+      // Fan-out to the director gate, NOT straight to the post (a direct
       // manager→post edge reads as "the manager can post without the other gates").
       // The post still runs for small invoices because a gate whose condition is
       // false is a transparent pass-through in the engine (AND-join), so director
@@ -123,7 +123,7 @@ export const assembleWorkflow = (
     {
       id: STEP.director,
       kind: "approval",
-      // No threshold in the label — the `when amount > N` chip already shows it.
+      // No threshold in the label, the `when amount > N` chip already shows it.
       label: "Director review",
       when: amountOverThreshold,
       approverTitle: director.title,
@@ -171,7 +171,7 @@ export type OnboardingResult = {
   workflow: ApprovalWorkflow;
   proposal: TProposal;
   /** The org issues paired with the model's plain-language note for each.
-      `employeeName` is the issue's SUBJECT (for precise UI highlighting — so the
+      `employeeName` is the issue's SUBJECT (for precise UI highlighting, so the
       tree flags the person the issue is ABOUT, not anyone merely mentioned). */
   issues: { employeeName: string; detail: string; note: string }[];
 };
@@ -198,12 +198,12 @@ export const deriveWorkflow = async (
  *  The prompt + a parser for a raw structured-output string
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** Compact view of the org handed to the model — titles + reporting, no noise. */
+/** Compact view of the org handed to the model, titles + reporting, no noise. */
 export const orgForPrompt = (org: OrgChart): string => {
   const byId = new Map(org.employees.map((e) => [e.id, e]));
   const people = org.employees
     .map((e) => {
-      const mgr = e.managerId ? (byId.get(e.managerId)?.name ?? "?") : "—";
+      const mgr = e.managerId ? (byId.get(e.managerId)?.name ?? "?") : "-";
       return `- ${e.name} | ${e.title || "(no title)"} | dept: ${e.department || "?"} | manager: ${mgr}`;
     })
     .join("\n");
@@ -220,7 +220,7 @@ export const ONBOARDING_SYSTEM_PROMPT = `You configure procure-to-pay approval w
    - "manager": the front-line approver an invoice first goes to.
    - "director": the senior approver for larger amounts. Pick a genuinely more senior title than the manager (e.g. a VP or C-level), resolved to a real person.
    - "department-head": who reviews department-specific (e.g. Product) purchases.
-   For each, give the title, the person's exact name from the org (or null if no one fits), and a one-line rationale. If you cannot find a sensible person, set the name to null — do not invent one.
+   For each, give the title, the person's exact name from the org (or null if no one fits), and a one-line rationale. If you cannot find a sensible person, set the name to null, do not invent one.
 
 2. Propose "directorThreshold": the invoice amount above which the director must also approve. Choose a sensible round number for a company this size.
 

@@ -7,11 +7,11 @@ import { log } from "@/lib/logger";
 import { TraceEvent } from "@/lib/trace";
 
 /**
- * The audit log — the ONE place the app writes (append-only). At the end of every
+ * The audit log, the ONE place the app writes (append-only). At the end of every
  * run the stream calls `saveAgentRun` with the collected trace + the run's final
  * verdict/outcome; the "recent runs" history view reads them back, and the nightly
  * reset clears them. Writing is BEST-EFFORT: a failure is swallowed (logged) so a
- * DB hiccup degrades the audit trail instead of breaking the live run — the same
+ * DB hiccup degrades the audit trail instead of breaking the live run, the same
  * graceful-degradation discipline as the rate-limiter.
  *
  * It never writes the document tables or the ERP/HRIS, so a saved run can't change
@@ -21,16 +21,16 @@ import { TraceEvent } from "@/lib/trace";
 
 export type SaveAgentRunInput = {
   invoiceNumber: string;
-  /** "clean" / "exception" / "duplicate" — the matching verdict. */
+  /** "clean" / "exception" / "duplicate", the matching verdict. */
   verdict: string;
-  /** "posted" / "awaiting" / "rejected" / "blocked" — the reconciliation outcome. */
+  /** "posted" / "awaiting" / "rejected" / "blocked", the reconciliation outcome. */
   outcome: string;
   trace: TraceEvent[];
   durationMs: number;
   model: string;
 };
 
-/** The narrow slice `saveAgentRun` uses — `insert(table).values(row)`. Declaring it
+/** The narrow slice `saveAgentRun` uses, `insert(table).values(row)`. Declaring it
  *  structurally (not the full `Database`) lets a test pass a tiny fake with no cast,
  *  while the real handle satisfies the same shape. */
 type AuditWritableDb = {
@@ -45,7 +45,7 @@ export const saveAgentRun = async (
 ): Promise<void> => {
   try {
     await db.insert(agentRuns).values({
-      // A unique id per run — the invoice number (readable) plus a UUID so two
+      // A unique id per run, the invoice number (readable) plus a UUID so two
       // concurrent visitors running the same invoice can't collide.
       id: `${input.invoiceNumber}-${crypto.randomUUID()}`,
       invoiceNumber: input.invoiceNumber,
@@ -63,7 +63,7 @@ export const saveAgentRun = async (
   }
 };
 
-/** A recent-run row for the history view — light, list-shaped. */
+/** A recent-run row for the history view, light, list-shaped. */
 export type RunHistoryItem = {
   id: string;
   invoiceNumber: string;
@@ -75,7 +75,7 @@ export type RunHistoryItem = {
 
 /** Map a stored row to the list-shaped history item: the DB calls the outcome
  *  column `tier` (a legacy name), the UI wants `outcome`; the timestamp becomes an
- *  ISO string. Pure — extracted so it can be unit-tested without a DB. */
+ *  ISO string. Pure, extracted so it can be unit-tested without a DB. */
 export const toHistoryItem = (
   r: Pick<
     AgentRunRow,
@@ -91,7 +91,7 @@ export const toHistoryItem = (
 });
 
 /** Validate a stored trace blob back to `TraceEvent[]`, or `null` if it's drifted/
- *  garbage — the Zod gate at the DB read boundary. Pure, unit-testable. */
+ *  garbage, the Zod gate at the DB read boundary. Pure, unit-testable. */
 export const parseStoredTrace = (raw: unknown): TraceEvent[] | null => {
   const parsed = TraceEvent.array().safeParse(raw);
   return parsed.success ? parsed.data : null;
@@ -121,7 +121,7 @@ export const listRecentRuns = async (
 };
 
 /**
- * Load one stored run's full trace for replay — the history view re-renders this
+ * Load one stored run's full trace for replay, the history view re-renders this
  * exact `TraceEvent[]` with no model call (zero tokens). Validates the stored
  * trace through Zod at the DB boundary (same single-source-of-truth discipline as
  * the read layer); a drifted row yields `null` rather than a bad render.

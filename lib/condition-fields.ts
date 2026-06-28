@@ -6,7 +6,7 @@ import type {
 import { MatchExceptionCode } from "@/lib/schema";
 
 /**
- * Field metadata for the condition editor — the ONE place that knows how each routing
+ * Field metadata for the condition editor, the ONE place that knows how each routing
  * lever is edited (its value type, which operators make sense, and the fixed value
  * choices when it's an enum). The editor is purely declarative off this, the same way
  * `valueFor`/`humanizeLeaf` in approval-workflow centralize per-field logic for eval and

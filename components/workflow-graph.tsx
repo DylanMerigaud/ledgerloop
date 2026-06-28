@@ -34,7 +34,7 @@ import type { WorkflowIssue } from "@/lib/workflow-validate";
  * dagre. The category convention is a node-and-edge canvas; this is that, in the
  * app's own card style. Nodes are VARIABLE height (a 2-line title or a `when` chip
  * makes a card taller), so we render them hidden first, let React Flow MEASURE each
- * card, then run dagre with the real heights and reveal — the measured pattern from
+ * card, then run dagre with the real heights and reveal, the measured pattern from
  * reactflow-auto-layout. Wiring `onNodesChange` (via useNodesState) is what lets the
  * measurements flow back so `useNodesInitialized` flips and the layout runs.
  *
@@ -45,7 +45,7 @@ import type { WorkflowIssue } from "@/lib/workflow-validate";
 
 export type StepStatuses = Record<string, string>;
 
-/** Target statuses that mean "the invoice reached this node" — so the edge into it is
+/** Target statuses that mean "the invoice reached this node", so the edge into it is
     on the realized path (skipped/blocked are dead branches, not part of the flow). */
 const REACHED = new Set(["pending", "approved", "done", "rejected"]);
 
@@ -117,12 +117,12 @@ type NodeData = {
   change?: StepChange["kind"];
   /** A validation issue flagged on this step (rings it warn/danger). */
   issue?: "error" | "warning";
-  /** Stacked top→bottom (narrow screens) instead of left→right — moves the edge
+  /** Stacked top→bottom (narrow screens) instead of left→right, moves the edge
       handles to Top/Bottom so the connectors meet the cards correctly. */
   vertical?: boolean;
-  /** This node is the one selected for editing — gets an accent halo. */
+  /** This node is the one selected for editing, gets an accent halo. */
   selected?: boolean;
-  /** This pending gate accepts a human decision right now (run paused on it) —
+  /** This pending gate accepts a human decision right now (run paused on it),
       renders inline Approve / Reject. */
   decidable?: boolean;
   /** The decision staged on this gate (before the reviewer submits the wave). */
@@ -142,7 +142,7 @@ const issueRing = (sev: "error" | "warning" | undefined): string => {
   return "ring-line";
 };
 
-/** A workflow step rendered as the app's card — used as a React Flow custom node. */
+/** A workflow step rendered as the app's card, used as a React Flow custom node. */
 const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const {
     step,
@@ -176,7 +176,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
         : null;
   const ring = choiceRing ?? (change ? changeRing(change) : issueRing(issue));
   // Edges enter the top / leave the bottom when stacked vertically, the left / right
-  // when laid out horizontally — so the connectors meet the right edge of each card.
+  // when laid out horizontally, so the connectors meet the right edge of each card.
   const targetPos = vertical ? Position.Top : Position.Left;
   const sourcePos = vertical ? Position.Bottom : Position.Right;
 
@@ -280,7 +280,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
         </div>
       )}
 
-      {/* Inline decision — only on a gate the paused run is waiting on. `nodrag
+      {/* Inline decision, only on a gate the paused run is waiting on. `nodrag
           nopan` so the click lands on the button instead of starting a canvas pan.
           The staged choice stays editable (flip approve↔reject before submitting). */}
       {decidable && onDecide && (
@@ -312,7 +312,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
         </div>
       )}
 
-      {/* Reject note — appears on a gate staged "reject" so the blocked bill carries
+      {/* Reject note, appears on a gate staged "reject" so the blocked bill carries
           a why into the trace + audit. Optional. */}
       {decidable && onReason && choice === "reject" && (
         <input
@@ -337,7 +337,7 @@ const nodeTypes = { step: StepNode };
 /* ── layout ────────────────────────────────────────────────────────────────── */
 
 // Card width is fixed (244px). Heights are VARIABLE (a 2-line title or a `when`
-// chip makes a card taller), and guessing them is what threw the centering off —
+// chip makes a card taller), and guessing them is what threw the centering off,
 // so we lay out with REAL measured heights (React Flow's ResizeObserver fills
 // `node.measured.height`). `estimateHeight` is only the pre-measurement fallback
 // for the very first paint, before measurements land.
@@ -358,7 +358,7 @@ const RANK_SEP = 110; // horizontal gap between columns (generous, Pivot-like)
  * that sits each parent on the vertical MIDDLE of its children's bounding box (top of
  * the topmost child to bottom of the bottommost) and each join node on its parents'
  * box. dagre's `tight-tree` alone centers on the barycenter, which drifts when
- * siblings have different heights (a tall 2-line `Director` card vs a short one) —
+ * siblings have different heights (a tall 2-line `Director` card vs a short one),
  * bounding-box centering with the true heights is what makes the parent sit dead
  * center, the Pivot look.
  */
@@ -372,7 +372,7 @@ const layout = (
   const g = new dagre.graphlib.Graph();
   g.setGraph({
     // Horizontal (LR) on desktop; vertical (TB) on a narrow screen, where a wide
-    // left-to-right DAG can't fit — stacked, each node gets the full column width.
+    // left-to-right DAG can't fit, stacked, each node gets the full column width.
     rankdir: vertical ? "TB" : "LR",
     nodesep: NODE_SEP,
     ranksep: RANK_SEP,
@@ -414,7 +414,7 @@ const layout = (
   // dagre's crossing-minimisation (which can reshuffle). We keep the exact slots
   // dagre computed for a parent's children (so spacing + measured sizes are
   // respected), but RE-ASSIGN those slots to the children in `next` order. Only for
-  // siblings that belong to a single parent (true fan-out branches) — a shared join
+  // siblings that belong to a single parent (true fan-out branches), a shared join
   // node like the post isn't reordered.
   for (const [, children] of childrenOf) {
     const branches = children.filter(
@@ -466,7 +466,7 @@ const Inner = ({
   focusIds,
 }: WorkflowGraphProps) => {
   // Stack the DAG vertically below the `sm` breakpoint (640px), where a wide
-  // left→right layout can't fit — each node then gets the full column width.
+  // left→right layout can't fit, each node then gets the full column width.
   const vertical = useMediaQuery("(max-width: 639px)");
 
   const changeOf = useMemo(
@@ -484,7 +484,7 @@ const Inner = ({
     return m;
   }, [issues]);
 
-  // Removed steps aren't in `steps` — synthesize a node from the diff so the
+  // Removed steps aren't in `steps`, synthesize a node from the diff so the
   // preview shows what's going away.
   const removed = useMemo(
     () => (changes ?? []).filter((c) => c.kind === "removed"),
@@ -526,7 +526,7 @@ const Inner = ({
   }, [workflow, statuses, changeOf, removed, issueOf, vertical]);
 
   // Structural edges only (no status) so the layout/reset path never re-fires on a
-  // status change — the live "flow" styling is patched separately below.
+  // status change, the live "flow" styling is patched separately below.
   const edges = useMemo<Edge[]>(() => {
     const out: Edge[] = [];
     for (const s of workflow.steps)
@@ -545,7 +545,7 @@ const Inner = ({
 
   const { fitView } = useReactFlow<Node<NodeData>>();
 
-  // Controlled node/edge state with React Flow's own reducers — this wires
+  // Controlled node/edge state with React Flow's own reducers, this wires
   // `onNodesChange`, so the ResizeObserver's measurements flow back into the store
   // and `useNodesInitialized` actually flips to true (without onNodesChange it
   // never does, and the layout never runs). Nodes start HIDDEN at 0,0.
@@ -560,7 +560,7 @@ const Inner = ({
   // When the source graph changes (new discovery / edit), reset to the new nodes
   // HIDDEN so they get re-measured, and mark that this set still needs a layout.
   const laidOutFor = useRef<string>("");
-  // The graph's container — observed so we can re-fit when it resizes (the editor's
+  // The graph's container, observed so we can re-fit when it resizes (the editor's
   // bottom stack growing/shrinking, a window resize). fitView otherwise runs once per
   // graph, so without this a node could sit clipped off the edge after a resize.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -616,7 +616,7 @@ const Inner = ({
     };
   }, [initialized, fitView]);
 
-  // Patch the `selected` halo on the live nodes when the selection changes — cheap,
+  // Patch the `selected` halo on the live nodes when the selection changes, cheap,
   // no re-layout (kept out of the layout pipeline so a click doesn't reflow the graph).
   useEffect(() => {
     setNodes((cur) =>
@@ -629,7 +629,7 @@ const Inner = ({
   }, [selectedId, setNodes]);
 
   // Patch the per-gate decision state (decidable + staged choice + the handler) onto
-  // live nodes — also cheap, no re-layout, so deciding a gate doesn't reflow the graph.
+  // live nodes, also cheap, no re-layout, so deciding a gate doesn't reflow the graph.
   // Kept out of `initialNodes` for the same reason (its identity changing forces a
   // re-measure). Keyed on stable strings so it only runs when the inputs change.
   const decidableKey = (decidableIds ?? []).join("|");
@@ -705,7 +705,7 @@ const Inner = ({
     void fitView({ nodes: ids, duration: 400, padding: 0.3 });
   }, [focusKey, initialized, graphKey, fitView]);
 
-  // Patch edge "flow" styling from the live statuses — cheap, no relayout (kept out of
+  // Patch edge "flow" styling from the live statuses, cheap, no relayout (kept out of
   // the structural `edges` so a status tick never resets/re-measures the graph). An edge
   // animates + goes accent when the invoice flowed along it: source passed
   // (approved/done) and target was reached. Keyed on a status signature so it only runs
@@ -759,7 +759,7 @@ const Inner = ({
         edgesFocusable={false}
         minZoom={0.4}
         maxZoom={1.5}
-        // On touch, don't swallow the page scroll — the graph is pan-by-drag and the
+        // On touch, don't swallow the page scroll, the graph is pan-by-drag and the
         // page scrolls past it, so a phone user isn't trapped on the canvas. (The
         // graph is a secondary view on mobile; the text timeline carries the detail.)
         preventScrolling={false}
@@ -780,7 +780,7 @@ type WorkflowGraphProps = {
   issues?: WorkflowIssue[];
   onNodeSelect?: (stepId: string | null) => void;
   selectedId?: string | null;
-  /** Gates the run is waiting on, with their staged choice — renders inline
+  /** Gates the run is waiting on, with their staged choice, renders inline
       Approve / Reject on those nodes. Omitted everywhere except a paused run. */
   decisions?: Record<string, "approve" | "reject" | null>;
   /** When set, a node here accepts a decision now (a paused gate). */

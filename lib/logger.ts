@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 
 /**
- * The app logger — one shape for all logging, one place to wire Sentry/PostHog.
+ * The app logger, one shape for all logging, one place to wire Sentry/PostHog.
  *
  * App code uses `log.info("...", { meta })` instead of `console.*` (enforced by
  * ESLint). In development it prints to the console; in production it's the single

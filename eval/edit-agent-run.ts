@@ -1,5 +1,5 @@
 /**
- * Edit-AGENT eval — `tsx eval/edit-agent-run.ts [--dry-run]`.
+ * Edit-AGENT eval, `tsx eval/edit-agent-run.ts [--dry-run]`.
  *
  * Proves the multi-instruction agent end to end: it plans an ordered op list,
  * applies it, self-corrects against the validator, and the FINAL workflow validates
@@ -7,7 +7,7 @@
  * the individual op kinds (that's the single-op edit eval's job).
  *
  * `--dry-run` (CI) drives `runEditAgent` with a fake planner returning each case's
- * stub ops — exercises the apply+validate loop with ZERO API calls. Live (no flag)
+ * stub ops, exercises the apply+validate loop with ZERO API calls. Live (no flag)
  * uses the real Sonnet planner; needs ANTHROPIC_API_KEY.
  */
 import { join } from "node:path";
@@ -35,7 +35,7 @@ const loadEnv = (): void => {
     try {
       process.loadEnvFile(join(process.cwd(), f));
     } catch {
-      /* absent — fine */
+      /* absent, fine */
     }
   }
 };
@@ -68,7 +68,7 @@ const score = (c: AgentCase, r: AgentEditResult): Row => {
 
 const main = async (): Promise<void> => {
   loadEnv();
-  console.log(`edit-agent eval — ${dryRun ? "dry-run (no API)" : "live"}\n`);
+  console.log(`edit-agent eval, ${dryRun ? "dry-run (no API)" : "live"}\n`);
 
   if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
     console.error(
@@ -86,7 +86,7 @@ const main = async (): Promise<void> => {
 
   // The fixture is sound to start (sanity) so any final error is the agent's doing.
   if (!isActivatable(validateWorkflow(EDIT_FIXTURE))) {
-    console.error("✖ The eval fixture itself isn't sound — fix the fixture.");
+    console.error("✖ The eval fixture itself isn't sound, fix the fixture.");
     process.exit(1);
   }
 
@@ -100,9 +100,7 @@ const main = async (): Promise<void> => {
     });
     const row = score(c, result);
     rows.push(row);
-    console.log(
-      `${row.pass ? "✓" : "✗"} ${row.id} — ${row.detail}  (${c.why})`,
-    );
+    console.log(`${row.pass ? "✓" : "✗"} ${row.id}, ${row.detail}  (${c.why})`);
   }
 
   const passed = rows.filter((r) => r.pass).length;

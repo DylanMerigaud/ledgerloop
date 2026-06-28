@@ -10,13 +10,13 @@ const config: Config = {
     extend: {
       colors: {
         // Light product palette in the Attio register: white surfaces separated by
-        // CRISP 1px borders (not soft shadows — that read "baveux"), an almost-white
+        // CRISP 1px borders (not soft shadows, that read "baveux"), an almost-white
         // page, and a neutral ramp. Primary actions are INK (black), so the accent
         // is demoted to a thin highlight (focus ring, selected state, small marks).
-        canvas: "#FCFCFC", // page — effectively white, a hair off so cards read
+        canvas: "#FCFCFC", // page, effectively white, a hair off so cards read
         surface: "#FFFFFF",
-        subtle: "#F7F7F8", // nested fills (chips, inputs, hover) — barely there
-        line: "#E8E8EC", // default hairline — VISIBLE and crisp (the Attio look)
+        subtle: "#F7F7F8", // nested fills (chips, inputs, hover), barely there
+        line: "#E8E8EC", // default hairline, VISIBLE and crisp (the Attio look)
         "line-strong": "#DCDCE1", // dividers / input borders that must read
         ink: "#101113", // near-black, neutral (not blue-tinted)
         muted: "#6B6F76", // secondary text
@@ -30,13 +30,13 @@ const config: Config = {
         },
         // Pipeline-stage colors. Each procure-to-pay stage gets a stable hue so
         // the queue (left pane) and the trace timeline (right pane) agree at a
-        // glance — this color language is the whole point of the dashboard.
+        // glance, this color language is the whole point of the dashboard.
         stage: {
-          intake: "#6B7280", // gray  — parsed, not yet matched
-          matched: "#047857", // green — clean 2/3-way match, straight-through
-          approval: "#B45309", // amber — variance caught, routed to a human
-          reconciled: "#4F46E5", // indigo — posted to the (fake) ERP
-          blocked: "#B91C1C", // red   — duplicate / hard-stopped
+          intake: "#6B7280", // gray , parsed, not yet matched
+          matched: "#047857", // green, clean 2/3-way match, straight-through
+          approval: "#B45309", // amber, variance caught, routed to a human
+          reconciled: "#4F46E5", // indigo, posted to the (fake) ERP
+          blocked: "#B91C1C", // red  , duplicate / hard-stopped
         },
         // Generic severity colors for trace steps and badges.
         warn: {

@@ -1,22 +1,22 @@
 /**
- * Seed the scenario's purchase orders into a QuickBooks Online sandbox — and tear
+ * Seed the scenario's purchase orders into a QuickBooks Online sandbox, and tear
  * them back down. The procurement mirror of scripts/seed-bamboo.ts.
  *
  *   pnpm erp:seed     create the scenario vendors + items + POs in QBO
  *   pnpm erp:reset    delete the seeded POs and deactivate the seeded vendors/items
  *
  * Why this exists (same rationale as the HRIS seed):
- *   • Disaster recovery — the sandbox/token is short-lived. If it dies, spin a
+ *   • Disaster recovery, the sandbox/token is short-lived. If it dies, spin a
  *     fresh sandbox and reseed; the demo POs are back, identical, in one command.
  *   • It makes the demo HONEST: the pipeline pulls the client's POs from a real
  *     ERP (lib/erp.ts) and matches invoices against them. For that to mean
- *     anything, the POs the matcher pulls must BE the scenario's POs — so we push
+ *     anything, the POs the matcher pulls must BE the scenario's POs, so we push
  *     the scenario into QBO here, then `pnpm erp:capture` records what comes back.
  *
  * Scoping (the equivalent of the HRIS SEED_DIVISION): every seeded vendor and item
  * name carries a `SEED_TAG` prefix, so `reset` finds and removes only what we
  * created and never touches the sandbox's own sample data. QBO doesn't hard-delete
- * vendors/items (you make them inactive), but POs delete cleanly — so reset deletes
+ * vendors/items (you make them inactive), but POs delete cleanly, so reset deletes
  * the POs and deactivates the vendors/items.
  *
  * The QBO write recipe (verified against the live sandbox):
@@ -42,13 +42,13 @@ import { qboPostEntity, qboQuery, type QboCreds } from "@/lib/erp";
 import type { LineItem, PurchaseOrder } from "@/lib/schema";
 import { persistRotatedRefreshToken } from "@/scripts/qbo-token-writeback";
 
-/** Same env loading as eval/run.ts — native, no dotenv dep. */
+/** Same env loading as eval/run.ts, native, no dotenv dep. */
 const loadEnv = (): void => {
   for (const f of [".env.local", ".env"]) {
     try {
       process.loadEnvFile(path.join(process.cwd(), f));
     } catch {
-      /* file absent — fine */
+      /* file absent, fine */
     }
   }
 };
@@ -82,8 +82,8 @@ const SEED_TAG = "LL-DEMO";
 const tagged = (name: string): string => `${SEED_TAG} ${name}`;
 
 /* ── Account resolution ─────────────────────────────────────────────────────
-   Items of type Service need an ExpenseAccountRef. We don't create accounts —
-   the sandbox ships a standard chart — we resolve an existing expense account by
+   Items of type Service need an ExpenseAccountRef. We don't create accounts,
+   the sandbox ships a standard chart, we resolve an existing expense account by
    classification, preferring a Cost-of-Goods-Sold account, else any Expense. */
 const QboAccount = z.object({
   Id: z.string(),
@@ -141,7 +141,7 @@ const ensureItem = async (
   sku: string,
   expenseAccountId: string,
 ): Promise<string> => {
-  // The item NAME is the scenario SKU — that's what the matcher joins on once the
+  // The item NAME is the scenario SKU, that's what the matcher joins on once the
   // PO is pulled back (mapQboPurchaseOrders keys sku on ItemRef.name).
   const existing = await qboQuery(
     c,
@@ -209,7 +209,7 @@ const deactivateVendor = async (c: QboCreds, name: string): Promise<void> => {
 
 /**
  * Post a Bill in the ERP (an already-paid invoice) so the historical-duplicate
- * control has real data to catch. Minimal account-based line — the control keys
+ * control has real data to catch. Minimal account-based line, the control keys
  * only on vendor + DocNumber.
  */
 const postBill = async (
@@ -219,7 +219,7 @@ const postBill = async (
   expenseAccountId: string,
   amount: number,
 ): Promise<void> => {
-  if (await seededBill(c, docNumber)) return; // idempotent — don't post twice
+  if (await seededBill(c, docNumber)) return; // idempotent, don't post twice
   await qboPostEntity(c, "bill", {
     DocNumber: docNumber,
     VendorRef: { value: vendorId },
@@ -347,11 +347,11 @@ const seed = async (): Promise<void> => {
     }
     await createPo(c, po, vendorId, itemIds);
     console.log(
-      `  + ${po.poNumber} — ${po.vendor} (${po.lineItems.length} line${po.lineItems.length === 1 ? "" : "s"})`,
+      `  + ${po.poNumber}, ${po.vendor} (${po.lineItems.length} line${po.lineItems.length === 1 ? "" : "s"})`,
     );
   }
 
-  // ERP master-data control artifacts (exact vendor names — the matcher compares
+  // ERP master-data control artifacts (exact vendor names, the matcher compares
   // them, so no SEED_TAG here):
   //  • an inactive vendor → drives the vendor_inactive control.
   //  • a posted bill for an already-paid invoice number → drives duplicate_in_erp.
@@ -383,7 +383,7 @@ const reset = async (): Promise<void> => {
   const docNumbers = scenarioPurchaseOrders().map((p) => p.poNumber);
   const targets = await seededPoIds(c, docNumbers);
   if (targets.length === 0) {
-    console.log("Nothing to reset — no scenario POs found in QBO.");
+    console.log("Nothing to reset, no scenario POs found in QBO.");
     return;
   }
   console.log(`Deleting ${targets.length} seeded PO(s):`);
@@ -420,7 +420,7 @@ const reset = async (): Promise<void> => {
   }
 
   // Vendors/items aren't hard-deleted by QBO (only deactivated); leaving them is
-  // harmless — re-seeding reuses them. So we stop at the POs + the bill.
+  // harmless, re-seeding reuses them. So we stop at the POs + the bill.
   console.log(
     failed === 0
       ? `Removed ${targets.length} PO(s) + the seeded bill. (Vendors/items left in place; tagged "${SEED_TAG}" or named exactly.)`
@@ -472,7 +472,7 @@ const main = async (): Promise<void> => {
 main()
   .then(() => persistRotatedRefreshToken())
   .catch((err: unknown) => {
-    // Persist any rotation even on failure — the token may have rotated before
+    // Persist any rotation even on failure, the token may have rotated before
     // the error, and we don't want to lose it.
     persistRotatedRefreshToken();
     console.error("Failed:", err instanceof Error ? err.message : err);

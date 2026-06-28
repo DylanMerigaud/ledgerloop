@@ -9,14 +9,14 @@ import {
 import { nonNull } from "@/lib/assert";
 
 /**
- * Approval workflow engine — walk the DAG for one invoice and compute the state
+ * Approval workflow engine, walk the DAG for one invoice and compute the state
  * of every step. Pure and deterministic: (workflow, invoice context, the human
  * decisions so far) → an execution snapshot. No side effects here; actually
  * posting to NetSuite / firing a Slack message is the caller's job (the workflow
  * step), driven off this snapshot. That keeps the routing logic exhaustively
  * unit-testable and the I/O at the edge.
  *
- * Execution model — parallel fan-out with collect-all human gates:
+ * Execution model, parallel fan-out with collect-all human gates:
  *   • A step is REACHED when all its incoming edges come from steps that have
  *     completed (approved / skipped / done). Roots are reached immediately.
  *   • A reached step whose `when` condition is false is SKIPPED (and so are the
@@ -34,7 +34,7 @@ import { nonNull } from "@/lib/assert";
 type StepStatus =
   | "pending" // approval step waiting on a human (the parallel "In progress" nodes)
   | "approved" // approval step a human approved
-  | "rejected" // approval step a human rejected — blocks downstream
+  | "rejected" // approval step a human rejected, blocks downstream
   | "skipped" // condition was false (or upstream didn't activate it)
   | "done" // integration step that ran
   | "blocked"; // couldn't run because an upstream step was rejected
@@ -49,7 +49,7 @@ export type StepState = {
 /** The human's decision on a given approval step id. */
 type StepDecision = "approve" | "reject";
 export type Decisions = Record<string, StepDecision>;
-/** An optional note the reviewer attached when rejecting a gate, by step id. Sparse —
+/** An optional note the reviewer attached when rejecting a gate, by step id. Sparse,
     only rejects carry one. Kept parallel to `Decisions` so the decision stays a bare
     enum everywhere it flows. */
 export type Reasons = Record<string, string>;
@@ -90,7 +90,7 @@ export const executeWorkflow = (
   //
   // Join semantics (AND-join, which is what the fan-out-then-rejoin template
   // means): a step waits for ALL its predecessor PATHS to settle. A predecessor
-  // is "settled-passed" when it's approved/done/skipped — a skipped gate is a
+  // is "settled-passed" when it's approved/done/skipped, a skipped gate is a
   // transparent pass-through (the gate didn't apply), NOT a dead branch, so flow
   // continues past it. A predecessor that is pending/blocked means not-yet; a
   // rejected predecessor hard-stops everything behind it.
@@ -111,7 +111,7 @@ export const executeWorkflow = (
       return {
         id: step.id,
         status: "blocked",
-        detail: "Blocked — an upstream approval was rejected.",
+        detail: "Blocked, an upstream approval was rejected.",
       };
     }
     // Any predecessor still pending/blocked → not reached yet; recompute after the
@@ -131,7 +131,7 @@ export const executeWorkflow = (
       return {
         id: step.id,
         status: "skipped",
-        detail: `Skipped — condition not met (${condText}).`,
+        detail: `Skipped, condition not met (${condText}).`,
       };
     }
 

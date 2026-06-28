@@ -7,18 +7,18 @@ import { formatMoney } from "@/lib/format";
 import type { Invoice } from "@/lib/schema";
 
 /**
- * The intake "extraction reveal" — the visible proof that the AI reads the real
+ * The intake "extraction reveal", the visible proof that the AI reads the real
  * document. Left: the actual invoice PDF (the same bytes the vision model reads),
  * rendered with pdf.js and swept by a scan band while reading. Right: the
  * structured fields the model pulled out, revealed one by one.
  *
  * Two states, driven by the intake trace node:
- *   • running  — scanning: the sweep animates, fields are still "reading…"
- *   • done     — the extracted fields are shown; a badge says whether the header
+ *   • running , scanning: the sweep animates, fields are still "reading…"
+ *   • done    , the extracted fields are shown; a badge says whether the header
  *                reconciled with the PO record.
  *
  * The extracted invoice is what the rest of the pipeline runs on (matching joins
- * it against the PO) — the data on screen is the data that drives the verdicts.
+ * it against the PO), the data on screen is the data that drives the verdicts.
  */
 
 export type ExtractionState = {
@@ -51,7 +51,7 @@ export const ExtractionReveal = ({
 
   // Reveal fields one by one once extraction is done (sequential pop-in).
   const fields = extractedInvoice ? buildFields(extractedInvoice) : [];
-  // The rows to render — always the full label set, so the panel keeps its shape
+  // The rows to render, always the full label set, so the panel keeps its shape
   // from preview through done; values fill in from `fields` as they arrive.
   const rows = FIELD_LABELS;
   const [revealed, setRevealed] = useState(0);
@@ -83,7 +83,7 @@ export const ExtractionReveal = ({
         data-testid="extraction-reveal"
         data-status="preview"
         // `border` (not an inset ring) so the frame sits OUTSIDE the canvas and
-        // isn't painted over by it. No padding — the page meets the frame cleanly.
+        // isn't painted over by it. No padding, the page meets the frame cleanly.
         className="mx-auto w-full max-w-[680px] overflow-hidden rounded-lg border border-line bg-white shadow-card"
       >
         <PdfDocument src={pdfSrc} dim={false} />
@@ -188,7 +188,7 @@ const buildFields = (inv: Invoice): { value: string }[] => {
   return [
     { value: inv.vendor },
     { value: inv.invoiceNumber },
-    { value: inv.poNumber ?? "—" },
+    { value: inv.poNumber ?? "-" },
     { value: inv.issueDate },
     { value: String(inv.lineItems.length) },
     { value: formatMoney(inv.total, inv.currency) },

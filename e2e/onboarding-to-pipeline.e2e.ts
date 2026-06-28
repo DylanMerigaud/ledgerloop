@@ -3,10 +3,10 @@ import { test, expect, type Page } from "@playwright/test";
 /**
  * The flagship loop, through the REAL browser + backend: derive a workflow from the
  * HRIS, switch to the pipeline, and confirm an invoice routes through THAT workflow
- * — specifically the department gate, which only exists in the derived workflow.
+ *, specifically the department gate, which only exists in the derived workflow.
  *
  * This is the parcours most likely to regress (shared state across the two tabs, the
- * activated workflow flowing into the run), and the one the unit tests can't cover —
+ * activated workflow flowing into the run), and the one the unit tests can't cover,
  * it needs the discovery model + the streamed run as a user drives them. Like
  * approval.e2e.ts it needs ANTHROPIC_API_KEY + DATABASE_URL, so it's local-only
  * (`pnpm e2e`), not CI.
@@ -40,21 +40,21 @@ test("a derived workflow drives the run, department gate and all", async ({
   await page.getByRole("button", { name: /Run it on invoices/ }).click();
   await expect(page.getByText(/Running against/)).toBeVisible();
 
-  // 3. Switch BACK to onboarding and forward again — the discovery must SURVIVE the
+  // 3. Switch BACK to onboarding and forward again, the discovery must SURVIVE the
   //    tab switch (both tabs stay mounted). If it reset, the editor would be empty.
   await page.getByRole("button", { name: /Build the workflow/ }).click();
   await expect(page.getByText(/Department head review/).first()).toBeVisible();
   await page.getByRole("button", { name: /Run it on invoices/ }).click();
 
   // 4. Run INV-2044 (clean, PO department = Product). A clean invoice under the
-  //    manager floor would post straight through — but the Product department gate
+  //    manager floor would post straight through, but the Product department gate
   //    fires, so it PAUSES.
   await page.getByTestId("queue-row-INV-2044").click();
   await page.getByTestId("run-btn").click();
   await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
-  // The pending narration names the department gate — proof it's the derived
+  // The pending narration names the department gate, proof it's the derived
   // workflow's Product gate that fired, not a generic default.
   await expect(page.getByText(/department == Product/)).toBeVisible();
 

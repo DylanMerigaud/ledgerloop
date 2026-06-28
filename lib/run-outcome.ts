@@ -6,7 +6,7 @@ import type { TraceEvent } from "@/lib/trace";
 /**
  * Pure helpers that derive the coarse per-invoice state from the streamed trace.
  * Kept out of the React hook so they're unit-testable (and because the queue
- * pill's colour depends on getting these exactly right — see `lib/run-outcome.test.ts`).
+ * pill's colour depends on getting these exactly right, see `lib/run-outcome.test.ts`).
  */
 
 /** A recognized stage output carried on a trace event's `data`. */
@@ -48,7 +48,7 @@ export const decisionsForPending = (
   return out;
 };
 
-/** One gate the run is currently waiting on — the fields the node needs to render
+/** One gate the run is currently waiting on, the fields the node needs to render
     its inline approve/reject. */
 export type PendingGate = {
   id: string;
@@ -92,7 +92,7 @@ export const deriveOutcome = (
     const data = dataOf(e);
     if (!data) continue;
 
-    // Approval / reconciliation outcome — the definitive resolution.
+    // Approval / reconciliation outcome, the definitive resolution.
     if (data["outcome"] === "awaiting") return "needs-approval"; // paused for a human
     if (data["outcome"] === "rejected" || data["outcome"] === "blocked")
       return "blocked";

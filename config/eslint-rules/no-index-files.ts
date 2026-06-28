@@ -6,7 +6,7 @@ const createRule = ESLintUtils.RuleCreator((name) => `${name}`);
 
 /**
  * Disallow `index.ts(x)` barrel files. Export directly from the module file
- * instead — barrels obscure where things live and create import cycles. (One
+ * instead, barrels obscure where things live and create import cycles. (One
  * exception: the ESLint custom-rules directory needs its own index.)
  */
 const ALLOWED = new Set([

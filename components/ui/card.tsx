@@ -43,7 +43,7 @@ export const CardHeader = ({
 };
 
 /**
- * The card's title — a real, readable heading (not the old 11px gray uppercase
+ * The card's title, a real, readable heading (not the old 11px gray uppercase
  * eyebrow). Use <Eyebrow> for the small all-caps label where that's wanted.
  */
 export const CardTitle = ({

@@ -3,11 +3,11 @@ import { renderInvoicePdfBase64 } from "@/lib/invoice-pdf";
 import type { Invoice } from "@/lib/schema";
 
 /**
- * The intake core — render the source document to a PDF, read it back with the
+ * The intake core, render the source document to a PDF, read it back with the
  * vision model, and return the structured invoice the pipeline will run on.
  *
  * This is what makes the extraction REAL: the downstream matching runs on what
- * the model extracted, not on the seeded record. Like production — the document
+ * the model extracted, not on the seeded record. Like production, the document
  * is the source of truth; if the read fails, you don't invent data, the run
  * can't proceed (the caller surfaces an error). The seeded record is only the
  * thing we render the PDF from (our stand-in for "a vendor PDF arrived").

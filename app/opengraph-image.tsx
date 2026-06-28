@@ -9,7 +9,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
 export const alt =
-  "ledgerloop — an onboarding agent that reads a client's HRIS, derives their approval workflow, and runs procure-to-pay against it";
+  "ledgerloop: an onboarding agent that reads a client's HRIS, derives their approval workflow, and runs procure-to-pay against it";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

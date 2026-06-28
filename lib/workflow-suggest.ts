@@ -6,19 +6,19 @@ import {
 } from "@/lib/approval-workflow";
 
 /**
- * Suggested next edits for the chat editor — generated, never hardcoded.
+ * Suggested next edits for the chat editor, generated, never hardcoded.
  *
  * The editor used to ship three fixed example chips ("Route Marketing purchases
  * through a marketing lead") that often made no sense for the workflow on screen.
  * Instead the model looks at THIS workflow and proposes up to three short, clickable
- * instructions that would genuinely change it — and is told to return NOTHING if it
+ * instructions that would genuinely change it, and is told to return NOTHING if it
  * can't find anything sensible. So a chip is always a real, applicable next step.
  *
  * Each suggestion is phrased exactly as the user would type it (it's fed straight
  * back into the same chat-edit flow when clicked).
  */
 
-// NOTE: no `.max()` here — structured-output JSON schema rejects `maxItems`. The
+// NOTE: no `.max()` here, structured-output JSON schema rejects `maxItems`. The
 // "up to three" cap is enforced in code (`parseSuggestions`) after validation.
 export const WorkflowSuggestions = z
   .object({
@@ -33,10 +33,10 @@ export type SuggestModel = {
   suggest: (current: TWorkflow) => Promise<string[]>;
 };
 
-export const WORKFLOW_SUGGEST_SYSTEM_PROMPT = `You help a finance ops user refine a procure-to-pay approval workflow by suggesting their next edit. You are shown the current workflow's steps. Propose UP TO THREE short instructions the user could click to improve it — phrased exactly as they would type them (e.g. "Above $50k, also require CFO approval", "Add a Slack notification when an invoice posts").
+export const WORKFLOW_SUGGEST_SYSTEM_PROMPT = `You help a finance ops user refine a procure-to-pay approval workflow by suggesting their next edit. You are shown the current workflow's steps. Propose UP TO THREE short instructions the user could click to improve it, phrased exactly as they would type them (e.g. "Above $50k, also require CFO approval", "Add a Slack notification when an invoice posts").
 
 Rules:
-- Keep each suggestion SHORT — under ~7 words, phrased like the examples above. No conditional clauses ("...if X is already required").
+- Keep each suggestion SHORT, under ~7 words, phrased like the examples above. No conditional clauses ("...if X is already required").
 - Only suggest edits that genuinely apply to THIS workflow. Do NOT suggest something it already does.
 - Supported edits: add an approval gate (optionally above an amount or for a department), add a Slack/Jira/NetSuite integration, change an existing threshold, change an approver, remove a step.
 - Prefer the most useful, realistic refinements for a workflow like this one.

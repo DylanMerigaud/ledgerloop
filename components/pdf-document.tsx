@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * Renders the real invoice PDF (the same bytes the vision model reads) to a
- * canvas with pdf.js — the document shown in the right pane's extraction reveal.
+ * canvas with pdf.js, the document shown in the right pane's extraction reveal.
  * An actual PDF, not an HTML mock.
  *
  * The canvas fills its parent's width and keeps A4 ratio; size the document by
@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from "react";
  * (not a text spinner) so the layout doesn't jump. Failure falls back to a note.
  */
 
-// A4 portrait aspect ratio (height / width) — sizes the skeleton to match the
+// A4 portrait aspect ratio (height / width), sizes the skeleton to match the
 // rendered page so the layout never shifts.
 const A4_RATIO = 841.89 / 595.28;
 
@@ -27,7 +27,7 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
   useEffect(() => {
     // Cancellation flag for the async load. Read via `isCancelled()` (a function,
     // not the variable) inside the IIFE: TS narrows a bare boolean to `false` after
-    // the first check and can't see the cleanup flip it across awaits — a function
+    // the first check and can't see the cleanup flip it across awaits, a function
     // call isn't narrowed, so each check is honest (not flagged as "always false").
     let cancelled = false;
     const isCancelled = () => cancelled;
@@ -67,7 +67,7 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
     };
 
     const ro = new ResizeObserver(() => {
-      // Serialise renders — pdf.js throws if a render starts while one is live.
+      // Serialise renders, pdf.js throws if a render starts while one is live.
       rendering = (rendering ?? Promise.resolve())
         .catch(() => {})
         .then(renderAtCurrentWidth)

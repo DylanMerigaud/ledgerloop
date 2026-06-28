@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
  *
  * After discovery the editor shows the org's REAL departments as chips. An ambiguous
  * instruction ("add a department review", no department named) makes the agent ask
- * which one instead of inventing a dead gate — the clarifying turn the model chooses
+ * which one instead of inventing a dead gate, the clarifying turn the model chooses
  * only when a slot is missing. Picking an option completes the instruction and the
  * gate is proposed. Needs ANTHROPIC_API_KEY + DATABASE_URL (discovery + edit model),
  * so it's local-only (`pnpm e2e`), recorded HRIS (BAMBOO_HR_API_KEY= unset) is fine.

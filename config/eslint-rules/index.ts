@@ -3,6 +3,7 @@
 // disabled for this dir in the config.)
 import { enforceApiRoutes } from "./enforce-api-routes";
 import { noConsoleUseLogger } from "./no-console-use-logger";
+import { noEmdashInText } from "./no-emdash-in-text";
 import { noIndexFiles } from "./no-index-files";
 import { preferUseEventCallback } from "./prefer-use-event-callback";
 
@@ -13,5 +14,6 @@ export const customRules = {
     "no-index-files": noIndexFiles,
     "prefer-use-event-callback": preferUseEventCallback,
     "enforce-api-routes": enforceApiRoutes,
+    "no-emdash-in-text": noEmdashInText,
   },
 };
