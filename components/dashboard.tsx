@@ -637,39 +637,34 @@ export const Dashboard = ({
             </button>
           )}
 
-          {/* Idle: the graph IS the hero (the workflow this invoice will route
-              through), with a centered Run over it. No PDF, that's the run's moment. */}
-          {state.status === "idle" && selected && (
-            <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
-              <div className="pointer-events-auto grid place-items-center gap-2 rounded-2xl bg-surface/80 px-6 py-5 shadow-lift ring-1 ring-inset ring-line backdrop-blur">
-                <p className="text-[12px] text-muted">
-                  Run {selected.invoiceNumber} through the workflow
-                </p>
-                <Button data-testid="run-btn" onClick={() => run(selected.id)}>
-                  <PlayIcon />
-                  Run pipeline
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Reading: while the run is scanning the PDF (before matching starts), the
-              extraction reveal owns a centered card, the MOMENT the agent reads a real
-              PDF. Once past intake it's gone and the lit graph is the whole story. */}
-          {state.status === "running" && !pastIntake && previewId && (
+          {/* Before the run is past intake, the INVOICE owns the pane: the selected
+              document on idle (with Run), then the live scan as the agent reads it.
+              Once past intake it's gone and the lit graph is the whole story (the
+              document stays one click away in the trace drawer). */}
+          {!pastIntake && previewId && (
             <div className="absolute inset-0 z-10 grid place-items-center bg-canvas/70 p-5 backdrop-blur-sm">
               <div className="max-h-full w-full max-w-2xl overflow-y-auto">
                 <ExtractionReveal
                   pdfSrc={API_ROUTES.pdf(previewId)}
                   state={
-                    intake?.state ?? {
-                      status: "running",
-                      extracted: null,
-                      matches: false,
-                    }
+                    intake?.state ??
+                    (state.status === "running"
+                      ? { status: "running", extracted: null, matches: false }
+                      : null)
                   }
                   extractedInvoice={intake?.document ?? null}
                 />
+                {state.status === "idle" && selected && (
+                  <div className="mt-4 grid place-items-center">
+                    <Button
+                      data-testid="run-btn"
+                      onClick={() => run(selected.id)}
+                    >
+                      <PlayIcon />
+                      Run pipeline
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
