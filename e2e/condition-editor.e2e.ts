@@ -17,7 +17,10 @@ test("edit a gate's trigger: add a condition and a nested group", async ({
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
   // Discovery done once the derived workflow has rendered its gates.
-  await expect(page.getByTestId("graph-node-manager-review")).toBeVisible({
+  // Both tabs stay mounted and share the workflow, so scope to the VISIBLE graph.
+  await expect(
+    page.getByTestId("graph-node-manager-review").locator("visible=true"),
+  ).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 

@@ -23,6 +23,14 @@ const RUN_TIMEOUT = 40_000;
 const step = (page: Page, stage: string) =>
   page.locator(`[data-testid="trace-step-${stage}"]`);
 
+/** The trace lives in a drawer over the graph; open it for trace asserts. */
+const openTrace = (page: Page) =>
+  page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
+const closeTrace = async (page: Page) => {
+  const close = page.getByTestId("trace-close");
+  if (await close.isVisible().catch(() => false)) await close.click();
+};
+
 test("a derived workflow drives the run, department gate and all", async ({
   page,
 }) => {
@@ -54,16 +62,25 @@ test("a derived workflow drives the run, department gate and all", async ({
   await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
-  // The pending narration names the department gate, proof it's the derived
-  // workflow's Product gate that fired, not a generic default.
+  // The pending narration (in the trace) names the department gate, proof it's the
+  // derived workflow's Product gate that fired, not a generic default.
+  await openTrace(page);
   await expect(page.getByText(/department == Product/)).toBeVisible();
+  await closeTrace(page);
 
-  // 5. One Approve clears the first-wave gates → it posts.
-  await page.getByTestId("approve-btn").click();
+  // 5. Approve the Product gate on its node + submit → it posts.
+  await page
+    .getByTestId("graph-pane")
+    .getByTestId("gate-approve-department-review")
+    .click();
+  await page.getByTestId("submit-decisions").click();
+  await expect(page.getByTestId("approval-gate")).toHaveCount(0, {
+    timeout: RUN_TIMEOUT,
+  });
+  await openTrace(page);
   await expect(step(page, "reconciliation")).toHaveAttribute(
     "data-status",
     "ok",
     { timeout: RUN_TIMEOUT },
   );
-  await expect(page.getByTestId("approval-gate")).toHaveCount(0);
 });

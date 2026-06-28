@@ -23,9 +23,37 @@ const selectAndRun = async (page: Page, rowId: string) => {
   await page.getByTestId("run-btn").click();
 };
 
-/** A trace step node for a stage, with its status exposed via data-status. */
+/** The graph is the hero; the step-by-step trace lives in a drawer over it. Open it
+    so the trace-step assertions can see the nodes. */
+const openTrace = async (page: Page) => {
+  await page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
+};
+
+/** A trace step node for a stage (inside the drawer), status via data-status. */
 const step = (page: Page, stage: string) => {
   return page.locator(`[data-testid="trace-step-${stage}"]`);
+};
+
+/** Decide a paused gate on its node, then submit. The decision is ON the canvas, so
+    close the trace drawer first if it's open (the gate is behind it). */
+const decideGate = async (
+  page: Page,
+  stepId: string,
+  choice: "approve" | "reject",
+  reason?: string,
+) => {
+  const close = page.getByTestId("trace-close");
+  if (await close.isVisible().catch(() => false)) await close.click();
+  await page.getByTestId(`gate-${choice}-${stepId}`).click();
+  if (choice === "reject" && reason) {
+    // The reason input only appears once the gate is staged "reject".
+    const field = page.getByTestId(`gate-reason-${stepId}`);
+    await field.waitFor();
+    await field.fill(reason);
+  }
+  const submit = page.getByTestId("submit-decisions");
+  await expect(submit).toBeEnabled();
+  await submit.click();
 };
 
 test.beforeEach(async ({ page }) => {
@@ -42,7 +70,12 @@ test("clean invoice runs straight through, no approval gate", async ({
 }) => {
   await selectAndRun(page, "INV-2040");
 
-  // Reconciliation resolves to ok (posted), and the approval gate never appears.
+  // A clean invoice trips no gate, so the decision bar never appears.
+  await expect(page.getByTestId("approval-gate")).toHaveCount(0, {
+    timeout: RUN_TIMEOUT,
+  });
+  // Open the trace: reconciliation resolves to ok (posted).
+  await openTrace(page);
   await expect(step(page, "reconciliation")).toHaveAttribute(
     "data-status",
     "ok",
@@ -50,7 +83,6 @@ test("clean invoice runs straight through, no approval gate", async ({
       timeout: RUN_TIMEOUT,
     },
   );
-  await expect(page.getByTestId("approval-gate")).toHaveCount(0);
   await expect(page.getByText("Pipeline complete")).toBeVisible();
 });
 
@@ -59,49 +91,41 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
 }) => {
   await selectAndRun(page, "INV-2042");
 
-  // 1. Matching catches the variance (amber).
-  await expect(step(page, "matching")).toHaveAttribute("data-status", "warn", {
+  // 1. The run PAUSES on the manager gate: the decision bar appears on the canvas.
+  await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
 
-  // 2. The run PAUSES: reconciliation is "waiting", the gate + banner appear.
+  // 2. Open the trace: matching caught the variance (amber), reconciliation waits,
+  //    and nothing posted yet.
+  await openTrace(page);
+  await expect(step(page, "matching")).toHaveAttribute("data-status", "warn");
   await expect(step(page, "reconciliation")).toHaveAttribute(
     "data-status",
     "waiting",
-    {
-      timeout: RUN_TIMEOUT,
-    },
   );
-  await expect(page.getByTestId("approval-gate")).toBeVisible();
   await expect(page.getByText(/Paused/)).toBeVisible();
-  // It has NOT posted yet, no ERP reference on the trace.
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
 
-  // 3. Approve → reconciliation transitions to posted, gate disappears.
-  await page.getByTestId("approve-btn").click();
+  // 3. Approve the gate on its node + submit → reconciliation posts, bar disappears.
+  await decideGate(page, "manager-review", "approve");
+  await expect(page.getByTestId("approval-gate")).toHaveCount(0, {
+    timeout: RUN_TIMEOUT,
+  });
+  await openTrace(page);
   await expect(step(page, "reconciliation")).toHaveAttribute(
     "data-status",
     "ok",
-    {
-      timeout: RUN_TIMEOUT,
-    },
+    { timeout: RUN_TIMEOUT },
   );
-  // The ERP ref shows up (both in the narration and the detail row), assert at
-  // least one match rather than a single visible node.
   await expect(page.getByText(/NETSUITE-BILL-/).first()).toBeVisible();
-  await expect(page.getByTestId("approval-gate")).toHaveCount(0);
 
-  // 4. No duplicated stage nodes after the resume (this is the audit-bug guard,
-  //    a phase-2 resume must upsert the stages in place, not stack a second set).
-  //    Exactly one node per stage. (Once past intake the extraction collapses to a
-  //    single "Intake" node at the top of the trace, assert it's present once.)
+  // 4. No duplicated stage nodes after the resume (the audit-bug guard: a phase-2
+  //    resume must upsert the stages in place, not stack a second set).
   await expect(page.getByTestId("intake-collapsed")).toHaveCount(1);
   await expect(step(page, "matching")).toHaveCount(1);
   await expect(step(page, "approval")).toHaveCount(1);
   await expect(step(page, "reconciliation")).toHaveCount(1);
-  // No stray "Pipeline started" duplicated by the resume. (Run markers are pruned
-  // at the pause and the resume adds none, so the count is 0 here, the bug we're
-  // guarding against would make it ≥ 1 from a re-emitted phase-2 marker.)
   await expect(page.getByText("Pipeline started")).toHaveCount(0);
 });
 
@@ -113,12 +137,16 @@ test("price-mismatch REJECT (with a reason) leaves it un-posted", async ({
   await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
-  // Reject arms a reason field; type a note, then confirm.
-  await page.getByTestId("reject-btn").click();
-  await page.getByTestId("reject-reason").fill("price too high, renegotiate");
-  await page.getByTestId("reject-confirm").click();
+  // Reject the gate on its node with a reason, then submit.
+  await decideGate(
+    page,
+    "manager-review",
+    "reject",
+    "price too high, renegotiate",
+  );
 
   // Reconciliation ends in error (rejected), and nothing was posted.
+  await openTrace(page);
   await expect(step(page, "reconciliation")).toHaveAttribute(
     "data-status",
     "error",

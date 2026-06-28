@@ -24,9 +24,12 @@ const RUN_TIMEOUT = 30_000;
 const selectAndRun = async (page: Page, rowId: string) => {
   await page.getByTestId(`queue-row-${rowId}`).click();
   await page.getByTestId("run-btn").click();
+  // The graph is the hero; the step-by-step trace lives in a drawer over it. Open it
+  // so the trace-step assertions can see the nodes.
+  await page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
 };
 
-/** A trace step node for a stage, with its status exposed via data-status. */
+/** A trace step node for a stage (inside the trace drawer), status via data-status. */
 const step = (page: Page, stage: string) =>
   page.locator(`[data-testid="trace-step-${stage}"]`);
 
@@ -47,14 +50,22 @@ test("a completed run is logged in Recent runs and replays without re-running", 
   await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
-  // Approve so the run reaches a final outcome (posted), that's when the dashboard
-  // refreshes the Recent runs list.
-  await page.getByTestId("approve-btn").click();
+  // Approve the gate on its node + submit so the run reaches a final outcome (posted),
+  // that's when the dashboard refreshes the Recent runs list. (The decision is on the
+  // canvas, so close the trace drawer first.)
+  await page.getByTestId("trace-close").click();
+  await page
+    .getByTestId("graph-pane")
+    .getByTestId("gate-approve-manager-review")
+    .click();
+  await page.getByTestId("submit-decisions").click();
+  await page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
   await expect(step(page, "reconciliation")).toHaveAttribute(
     "data-status",
     "ok",
     { timeout: RUN_TIMEOUT },
   );
+  await page.getByTestId("trace-close").click();
 
   // 1. The run now appears in the Recent runs panel (id is invoiceNumber + a UUID,
   //    so match by prefix). Poll: the list refetches on completion.
@@ -67,9 +78,11 @@ test("a completed run is logged in Recent runs and replays without re-running", 
   //    is kicked off, the Run button never shows "Running…", and the approval
   //    gate does not reappear (a replay is a finished, read-only render).
   await historyRow.click();
+  await expect(page.getByText("Running…")).toHaveCount(0);
+  await expect(page.getByTestId("approval-gate")).toHaveCount(0);
+  await page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
   await expect(step(page, "matching")).toBeVisible();
   await expect(step(page, "reconciliation")).toBeVisible();
-  await expect(page.getByText("Running…")).toHaveCount(0);
   // Exactly one node per stage, a replay sets the trace, it doesn't stack a run.
   await expect(step(page, "matching")).toHaveCount(1);
 });

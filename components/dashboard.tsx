@@ -22,6 +22,10 @@ import {
 } from "@/lib/approval-workflow";
 import { isRecord } from "@/lib/assert";
 import {
+  DEFAULT_APPROVAL_POLICY,
+  workflowFromPolicy,
+} from "@/lib/client-profile";
+import {
   outcomeDot,
   outcomeLabel,
   outcomeTone,
@@ -278,8 +282,7 @@ export const Dashboard = ({
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
   );
-  const { state, run, decide, decideMany, reset, replay } =
-    usePipelineRun(workflow);
+  const { state, run, decideMany, reset, replay } = usePipelineRun(workflow);
   const queryClient = useQueryClient();
 
   // When a run reaches a terminal state (done/blocked, not a mid-run pause), a new
@@ -306,30 +309,6 @@ export const Dashboard = ({
   // explicit "N more" pill + fade until the list is scrolled to the bottom.
   const listRef = useRef<HTMLUListElement | null>(null);
   const [scroll, setScroll] = useState({ hiddenBelow: 0, atBottom: true });
-
-  // Right pane (trace) scroll. The trace reads top-down like a log and the key
-  // info (document, extraction, first steps) is at the top, so we DON'T auto-
-  // scroll, the user keeps their place and the "more ↓" affordance signals
-  // there's content below to scroll to at their own pace.
-  const traceScrollRef = useRef<HTMLDivElement | null>(null);
-  const [traceMore, setTraceMore] = useState(false);
-
-  const measureTrace = () => {
-    const el = traceScrollRef.current;
-    if (!el) return;
-    const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
-    setTraceMore(remaining > 24);
-  };
-
-  useEffect(() => {
-    const el = traceScrollRef.current;
-    if (!el) return;
-    // A fresh run resets the scroll to the top (start of the trace); otherwise
-    // leave the user's position alone.
-    if (state.status === "idle" || state.trace.length <= 1) el.scrollTop = 0;
-    const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
-    setTraceMore(state.status !== "idle" && remaining > 24);
-  }, [state.trace, state.status]);
 
   const measureScroll = () => {
     const el = listRef.current;
@@ -379,7 +358,13 @@ export const Dashboard = ({
   // that (or on a run with no active workflow) we draw the active workflow idle, so
   // the user sees their workflow waiting to route. Null when there's nothing to draw.
   const runGraph = readRunGraph(state.trace);
-  const graphToShow = runGraph?.workflow ?? workflow;
+  // The graph is the hero and always drawn: the run's lit workflow if a run has
+  // reached approval, else the active derived workflow, else the default DAG (so a
+  // cold visit with no onboarding still shows what an invoice will route through).
+  const graphToShow =
+    runGraph?.workflow ??
+    workflow ??
+    workflowFromPolicy(DEFAULT_APPROVAL_POLICY);
   const graphStatuses = runGraph?.statuses;
 
   // Has the document been READ and the run moved on? The extraction reveal is a
@@ -399,7 +384,7 @@ export const Dashboard = ({
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.
   const gates =
-    state.status === "awaiting" && graphStatuses && graphToShow
+    state.status === "awaiting" && graphStatuses
       ? pendingGates(graphStatuses, graphToShow.steps)
       : [];
   const pendingIds = gates.map((g) => g.id);
@@ -411,9 +396,9 @@ export const Dashboard = ({
   >({});
   // Reject notes staged per gate (multi-gate), keyed by step id.
   const [gateReasons, setGateReasons] = useState<Record<string, string>>({});
-  // Single-gate header: clicking Reject arms a reason input before confirming.
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
+  // The trace drawer (the step-by-step log) slides over the graph on demand, so the
+  // graph stays the full-width hero and the trace gets real width when you open it.
+  const [traceOpen, setTraceOpen] = useState(false);
   // Clear all staged decision/reason state whenever the run leaves the awaiting
   // state (resolved, re-run, or a new wave streams in fresh) so nothing leaks.
   const awaiting = state.status === "awaiting";
@@ -422,8 +407,6 @@ export const Dashboard = ({
     if (wasAwaitingRef.current && !awaiting) {
       setGateChoices({});
       setGateReasons({});
-      setRejecting(false);
-      setRejectReason("");
     }
     wasAwaitingRef.current = awaiting;
   }, [awaiting]);
@@ -452,9 +435,15 @@ export const Dashboard = ({
     setSelectedId(id);
     setGateChoices({});
     setGateReasons({});
-    setRejecting(false);
-    setRejectReason("");
+    setTraceOpen(false);
     reset();
+  };
+
+  // Submit the staged gate decisions (one gate or several). decideMany rebuilds the
+  // stateless run from the union of decisions, so it covers the single-gate case too.
+  const submitDecisions = () => {
+    if (!selected || !allDecided) return;
+    void decideMany(selected.id, gateChoices, rejectReasons());
   };
 
   return (
@@ -488,6 +477,15 @@ export const Dashboard = ({
                 // While a run is in flight the queue is locked: the active row stays
                 // highlighted, the others dim and stop responding to clicks.
                 const dimmed = locked && !isSelected;
+                // Hovering an exception/blocked row reveals WHY (the seeded scenario),
+                // so the queue explains itself before you run anything. Clean rows have
+                // nothing to explain.
+                const kind = scenarioKind(item.scenario);
+                const explain =
+                  (kind === "exception" || kind === "blocked") && item.scenario
+                    ? item.scenario
+                    : null;
+                const showExplain = explain && hoveredId === item.id && !locked;
                 return (
                   <li key={item.id}>
                     <button
@@ -509,6 +507,15 @@ export const Dashboard = ({
                           aria-hidden
                           className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-accent"
                         />
+                      )}
+                      {showExplain && (
+                        <span
+                          role="tooltip"
+                          data-testid={`why-${item.id}`}
+                          className="pointer-events-none absolute inset-x-2 bottom-full z-30 mb-1 rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-medium leading-snug text-white shadow-lift"
+                        >
+                          {explain}
+                        </span>
                       )}
                       <span
                         aria-hidden
@@ -577,256 +584,234 @@ export const Dashboard = ({
         <RecentRuns onReplay={replayRun} disabled={locked} />
       </div>
 
-      {/* RIGHT, trace */}
-      <Card className="flex flex-col overflow-hidden">
-        <CardHeader className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <CardTitle>Agent execution trace</CardTitle>
-            {previewItem && (
-              <p className="mt-0.5 truncate text-[12px] text-faint">
-                {previewItem.vendor} ·{" "}
-                <span className="font-mono">{previewItem.invoiceNumber}</span>
-              </p>
-            )}
-            <RunningAgainst
-              workflow={workflow}
-              onBuildWorkflow={onBuildWorkflow}
-            />
-          </div>
-          {state.status === "awaiting" && selected && gates.length >= 2 ? (
-            // Several gates pend in parallel, decide each on its node in the graph,
-            // then submit the wave. Approve/Reject all are shortcuts.
-            <div
-              className="flex shrink-0 items-center gap-2"
-              data-testid="approval-gate-multi"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAllGates("reject")}
-              >
-                Reject all
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAllGates("approve")}
-              >
-                Approve all
-              </Button>
-              <Button
-                size="sm"
-                data-testid="submit-decisions"
-                disabled={!allDecided}
-                onClick={() =>
-                  decideMany(selected.id, gateChoices, rejectReasons())
-                }
-              >
-                Submit decisions
-              </Button>
-            </div>
-          ) : state.status === "awaiting" && selected ? (
-            // A single gate, decide it straight from the header. Reject first arms a
-            // reason input (optional note) before confirming, so a blocked bill carries
-            // a why into the trace + the audit history.
-            <div
-              className="flex shrink-0 items-center gap-2"
-              data-testid="approval-gate"
-            >
-              {rejecting ? (
-                <>
-                  <input
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter")
-                        void decide(selected.id, "reject", rejectReason);
-                      if (e.key === "Escape") setRejecting(false);
-                    }}
-                    placeholder="Reason (optional)"
-                    data-testid="reject-reason"
-                    className="h-8 w-48 rounded-lg bg-surface px-2.5 text-[12px] text-ink outline-none ring-1 ring-inset ring-line-strong transition-shadow focus:ring-2 focus:ring-accent-ring"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setRejecting(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    data-testid="reject-confirm"
-                    onClick={() => decide(selected.id, "reject", rejectReason)}
-                  >
-                    Reject
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    data-testid="reject-btn"
-                    onClick={() => setRejecting(true)}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    variant="ok"
-                    size="sm"
-                    data-testid="approve-btn"
-                    onClick={() => decide(selected.id, "approve")}
-                  >
-                    Approve
-                  </Button>
-                </>
+      {/* RIGHT: the workflow graph is the hero and owns the whole pane. No header,
+          its controls live ON the canvas: a centered Run before a run, inline
+          Approve/Reject on the gate nodes when it pauses, a floating Submit bar to
+          resume, and a "View trace" button that opens the step log in a drawer. */}
+      <Card className="relative flex flex-col overflow-hidden">
+        {/* The graph, full-bleed. Always drawn (the active or default workflow), so
+            even idle the user sees the DAG their invoice will route through. */}
+        <div className="relative min-h-0 flex-1" data-testid="graph-pane">
+          <WorkflowGraph
+            workflow={graphToShow}
+            statuses={graphStatuses}
+            // The awaiting gate(s) accept a decision inline; one gate or several, the
+            // node carries Approve / Reject (+ a reason on a staged reject).
+            decidableIds={awaiting ? pendingIds : undefined}
+            decisions={awaiting ? gateChoices : undefined}
+            reasons={awaiting ? gateReasons : undefined}
+            onDecide={awaiting ? setGate : undefined}
+            onReason={awaiting ? setGateReason : undefined}
+            // Pan to frame the waiting gate(s) the moment the run pauses.
+            focusIds={awaiting ? pendingIds : undefined}
+          />
+
+          {/* Top-left overlay: the context a header used to carry (which workflow,
+              which invoice), as a quiet caption over the canvas. */}
+          <div className="pointer-events-none absolute left-4 top-3 max-w-[60%]">
+            <p className="truncate text-[12px] font-medium text-ink">
+              {previewItem ? previewItem.vendor : "Invoice pipeline"}
+              {previewItem && (
+                <span className="ml-1.5 font-mono text-[11px] text-faint">
+                  {previewItem.invoiceNumber}
+                </span>
               )}
-            </div>
-          ) : (
-            // Run lives in the header at all times a row is selected: "Run
-            // pipeline" before the first run, "Running…" while in flight, "Run
-            // again" after. (Approval is the only state that swaps it for the gate.)
-            selected && (
-              <Button
-                size="sm"
-                data-testid="run-btn"
-                className="shrink-0 whitespace-nowrap"
-                disabled={state.status === "running"}
-                onClick={() => run(selected.id)}
-              >
-                {state.status === "running" ? (
-                  <>
-                    <Spinner />
-                    Running…
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon />
-                    {state.status === "idle" ? "Run pipeline" : "Run again"}
-                  </>
-                )}
-              </Button>
-            )
-          )}
-        </CardHeader>
-        {/* relative so the bottom fade + "more" affordance can overlay the scroll
-        area, the cue that the trace continues below (esp. on macOS where the
-        scrollbar is hidden). */}
-        <div className="relative min-h-0 flex-1">
-          {/* Three phases, so the most important thing always owns the pane:
-              • IDLE / READING, the extraction reveal (the AI reading the real PDF)
-                is the MOMENT; it gets the full width, centered.
-              • PAST INTAKE, the document's been read, so the reveal collapses to a
-                one-line "Intake ✓" node and the pane becomes two columns: the
-                WORKFLOW GRAPH (the hero) on the left, the trace on the right (with
-                that collapsed intake as its first node).
-              Mobile stacks everything into one scrolling column. */}
-          <div
-            ref={traceScrollRef}
-            onScroll={measureTrace}
-            className={`scrollbar-slim h-full overflow-y-auto px-5 py-4 ${
-              pastIntake
-                ? "lg:grid lg:grid-cols-[1.35fr_minmax(300px,1fr)] lg:gap-5 lg:overflow-hidden"
-                : ""
-            }`}
-          >
-            {/* Before we're past intake: the extraction reveal owns the pane (idle
-            preview, or the live scan). Always mounted so there's no flash. */}
-            {!pastIntake && previewId && (
-              <ExtractionReveal
-                pdfSrc={API_ROUTES.pdf(previewId)}
-                // Show the scanning state the instant Run is clicked, even before
-                // the first stream event lands, so the UI feels immediate.
-                state={
-                  intake?.state ??
-                  (state.status === "running"
-                    ? { status: "running", extracted: null, matches: false }
-                    : null)
-                }
-                extractedInvoice={intake?.document ?? null}
+            </p>
+            <div className="pointer-events-auto">
+              <RunningAgainst
+                workflow={workflow}
+                onBuildWorkflow={onBuildWorkflow}
               />
-            )}
+            </div>
+          </div>
 
-            {/* Past intake: LEFT column, the workflow graph, the HERO. Given a
-            generous explicit height on desktop (not flex, which never fills a grid
-            row reliably) so React Flow's fitView frames the DAG large instead of
-            clustering it in a short box. The trace column scrolls beside it. */}
-            {pastIntake && graphToShow && (
-              <div className="mb-4 lg:mb-0">
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
-                  Routing through {graphToShow.name}
+          {/* Top-right overlay: "View trace" once a run has produced any trace. */}
+          {state.status !== "idle" && (
+            <button
+              type="button"
+              data-testid="view-trace"
+              onClick={() => setTraceOpen(true)}
+              className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur transition-colors hover:text-ink"
+            >
+              View trace
+            </button>
+          )}
+
+          {/* Idle: the graph IS the hero (the workflow this invoice will route
+              through), with a centered Run over it. No PDF, that's the run's moment. */}
+          {state.status === "idle" && selected && (
+            <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+              <div className="pointer-events-auto grid place-items-center gap-2 rounded-2xl bg-surface/80 px-6 py-5 shadow-lift ring-1 ring-inset ring-line backdrop-blur">
+                <p className="text-[12px] text-muted">
+                  Run {selected.invoiceNumber} through the workflow
                 </p>
-                <div
-                  data-testid="live-graph"
-                  className="h-[440px] overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line sm:h-64 lg:h-[340px]"
-                >
-                  <WorkflowGraph
-                    workflow={graphToShow}
-                    statuses={graphStatuses}
-                    // When >1 gate pends in parallel, each pending node gets inline
-                    // Approve/Reject (decide one, reject another) + a reason input on a
-                    // node staged reject. A single gate uses the header buttons, so the
-                    // graph stays read-only there.
-                    decidableIds={gates.length >= 2 ? pendingIds : undefined}
-                    decisions={gates.length >= 2 ? gateChoices : undefined}
-                    reasons={gates.length >= 2 ? gateReasons : undefined}
-                    onDecide={gates.length >= 2 ? setGate : undefined}
-                    onReason={gates.length >= 2 ? setGateReason : undefined}
-                    // Pan to frame the waiting gate(s) the moment the run pauses.
-                    focusIds={awaiting ? pendingIds : undefined}
-                  />
-                </div>
+                <Button data-testid="run-btn" onClick={() => run(selected.id)}>
+                  <PlayIcon />
+                  Run pipeline
+                </Button>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Past intake: RIGHT column, the trace, led by the collapsed Intake
-            node (expandable to re-show the document + extracted fields). */}
-            {doneIntake && (
-              <div className="scrollbar-slim lg:h-full lg:overflow-y-auto lg:pl-1">
-                {previewId && (
-                  <CollapsedIntake
-                    pdfSrc={API_ROUTES.pdf(previewId)}
-                    document={doneIntake.document}
-                    state={doneIntake.state}
-                  />
-                )}
-                <TraceTimeline
-                  state={state}
-                  invoiceLabel={selected?.invoiceNumber ?? null}
-                  canRun={!!selected}
-                  onRun={() => selected && run(selected.id)}
+          {/* Reading: while the run is scanning the PDF (before matching starts), the
+              extraction reveal owns a centered card, the MOMENT the agent reads a real
+              PDF. Once past intake it's gone and the lit graph is the whole story. */}
+          {state.status === "running" && !pastIntake && previewId && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-canvas/70 p-5 backdrop-blur-sm">
+              <div className="max-h-full w-full max-w-2xl overflow-y-auto">
+                <ExtractionReveal
+                  pdfSrc={API_ROUTES.pdf(previewId)}
+                  state={
+                    intake?.state ?? {
+                      status: "running",
+                      extracted: null,
+                      matches: false,
+                    }
+                  }
+                  extractedInvoice={intake?.document ?? null}
                 />
               </div>
-            )}
-          </div>
-          {/* "more ↓" is a trace affordance, only meaningful once a run is
-          underway, never on the static PDF preview. */}
-          {traceMore && state.status !== "idle" && (
-            <>
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 rounded-b-xl bg-gradient-to-t from-surface via-surface/80 to-transparent"
-              />
-              <button
-                type="button"
-                aria-label="Scroll down"
-                onClick={() =>
-                  traceScrollRef.current?.scrollBy({
-                    top: traceScrollRef.current.clientHeight * 0.8,
-                    behavior: "smooth",
-                  })
-                }
-                className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
+            </div>
+          )}
+
+          {/* Floating action bar while a run is paused on gate(s): the resume control
+              that used to live in the header. Decide on the nodes, submit here. */}
+          {awaiting && selected && (
+            <div
+              data-testid={
+                gates.length >= 2 ? "approval-gate-multi" : "approval-gate"
+              }
+              className="absolute inset-x-0 bottom-4 z-10 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink/90 px-2 py-1.5 shadow-lift backdrop-blur"
+            >
+              {gates.length >= 2 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setAllGates("reject")}
+                    className="rounded-full px-2.5 py-1 text-[12px] font-medium text-white/80 hover:text-white"
+                  >
+                    Reject all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllGates("approve")}
+                    className="rounded-full px-2.5 py-1 text-[12px] font-medium text-white/80 hover:text-white"
+                  >
+                    Approve all
+                  </button>
+                </>
+              )}
+              <span className="px-1 text-[12px] text-white/60">
+                {gates.length >= 2
+                  ? `${pendingIds.filter((id) => gateChoices[id]).length}/${gates.length} decided`
+                  : "Decide on the gate"}
+              </span>
+              <Button
+                size="sm"
+                variant="ok"
+                data-testid="submit-decisions"
+                disabled={!allDecided}
+                onClick={submitDecisions}
               >
-                more
-                <span aria-hidden>↓</span>
-              </button>
-            </>
+                {gates.length >= 2 ? "Submit decisions" : "Submit"}
+              </Button>
+            </div>
+          )}
+
+          {/* The running indicator (the centered Run is gone once a run starts). */}
+          {state.status === "running" && pastIntake && (
+            <div className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur">
+              <Spinner />
+              Running…
+            </div>
           )}
         </div>
+
+        {/* The trace drawer: slides over the graph, the full step log at real width. */}
+        <TraceDrawer
+          open={traceOpen}
+          onClose={() => setTraceOpen(false)}
+          invoiceLabel={previewItem?.invoiceNumber ?? null}
+        >
+          {doneIntake && previewId && (
+            <CollapsedIntake
+              pdfSrc={API_ROUTES.pdf(previewId)}
+              document={doneIntake.document}
+              state={doneIntake.state}
+            />
+          )}
+          <TraceTimeline
+            state={state}
+            invoiceLabel={selected?.invoiceNumber ?? null}
+            canRun={!!selected}
+            onRun={() => selected && run(selected.id)}
+          />
+        </TraceDrawer>
       </Card>
+    </div>
+  );
+};
+
+/** A minimal right-side drawer that slides over the graph with the trace log. Scrim
+    closes it, Esc closes it, body scroll is locked while open. */
+const TraceDrawer = ({
+  open,
+  onClose,
+  invoiceLabel,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  invoiceLabel: string | null;
+  children: React.ReactNode;
+}) => {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return (
+    <div className="absolute inset-0 z-30">
+      <button
+        type="button"
+        aria-label="Close trace"
+        onClick={onClose}
+        className="absolute inset-0 bg-ink/20 backdrop-blur-[1px]"
+      />
+      <div
+        data-testid="trace-drawer"
+        className="absolute inset-y-0 right-0 flex w-full max-w-[420px] flex-col bg-surface shadow-lift ring-1 ring-inset ring-line"
+      >
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-ink">
+              Agent execution trace
+            </p>
+            {invoiceLabel && (
+              <p className="truncate font-mono text-[11px] text-faint">
+                {invoiceLabel}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            data-testid="trace-close"
+            onClick={onClose}
+            className="grid size-7 place-items-center rounded-full text-faint hover:bg-subtle hover:text-ink"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          {children}
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { WorkflowGraph } from "@/components/workflow-graph";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { formatMoney, formatPct, humanize } from "@/lib/format";
 import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
@@ -57,14 +56,35 @@ type WorkflowRunData = {
   outcome: string;
 };
 
+/** A per-step status dot colour for the workflow run summary (matches the queue dots). */
+const stepDot = (status: string): string => {
+  if (status === "approved" || status === "done" || status === "posted")
+    return "#047857";
+  if (status === "rejected" || status === "blocked") return "#B91C1C";
+  if (status === "pending" || status === "awaiting") return "#B45309";
+  return "#D1D5DB"; // skipped / neutral
+};
+
+// The graph itself is the hero on the pane, so the trace just SUMMARISES the run as
+// a compact per-step list (status + the engine's detail line). No second graph here,
+// that nested canvas overflowed its column.
 const WorkflowRunDetail = ({ data }: { data: WorkflowRunData }) => {
-  const statuses: Record<string, string> = {};
-  for (const s of data.steps) statuses[s.id] = s.status;
   return (
-    // React Flow needs a definite height; the trace node gives it a fixed canvas.
-    <div className="h-64 w-full overflow-hidden rounded-xl bg-subtle/30 ring-1 ring-inset ring-line">
-      <WorkflowGraph workflow={data.workflow} statuses={statuses} />
-    </div>
+    <ul className="space-y-1.5 rounded-xl bg-subtle/30 px-3 py-2.5 ring-1 ring-inset ring-line">
+      {data.steps.map((s) => (
+        <li key={s.id} className="flex gap-2 text-[12px] leading-snug">
+          <span
+            aria-hidden
+            className="mt-1 h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: stepDot(s.status) }}
+          />
+          <span className="min-w-0">
+            <span className="font-medium text-ink">{humanize(s.status)}</span>
+            <span className="text-muted"> {s.detail}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 };
 

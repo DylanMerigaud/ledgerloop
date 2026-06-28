@@ -10,7 +10,10 @@ import { test, expect, type Page } from "@playwright/test";
 
 const DISCOVERY_TIMEOUT = 90_000;
 
-const node = (page: Page, id: string) => page.getByTestId(`graph-node-${id}`);
+// Both tabs stay mounted and share the derived workflow, so a node id exists in the
+// (hidden) pipeline graph too. Scope to the VISIBLE one (the onboarding editor here).
+const node = (page: Page, id: string) =>
+  page.getByTestId(`graph-node-${id}`).locator("visible=true");
 
 test("clicking a gate opens the panel and the approver picker resolves it", async ({
   page,
@@ -18,7 +21,7 @@ test("clicking a gate opens the panel and the approver picker resolves it", asyn
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
   // Discovery done once the derived workflow has rendered its gates.
-  await expect(page.getByTestId("graph-node-manager-review")).toBeVisible({
+  await expect(node(page, "manager-review")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 
@@ -45,13 +48,12 @@ test("the pipeline graph is read-only, clicking a node does nothing", async ({
   await page.getByRole("button", { name: /Run it on invoices/ }).click();
   await page.getByTestId("queue-row-INV-2042").click();
   await page.getByTestId("run-btn").click();
-  // Scope to the live routing graph (the trace timeline draws the same nodes lower
-  // down, so the bare testid isn't unique on this screen).
+  // The pipeline graph (the hero pane) is read-only: clicking a node does NOT open
+  // the editor (that's an onboarding-only affordance).
   const liveNode = page
-    .getByTestId("live-graph")
+    .getByTestId("graph-pane")
     .getByTestId("graph-node-manager-review");
   await expect(liveNode).toBeVisible({ timeout: 45_000 });
   await liveNode.click();
-  // No edit panel appears in the pipeline (the condition editor's heading is absent).
   await expect(page.getByText(/Triggers when/)).toHaveCount(0);
 });

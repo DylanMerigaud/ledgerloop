@@ -184,11 +184,19 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const selectedRing = selected
     ? "ring-2 ring-accent ring-offset-2 ring-offset-subtle shadow-lift"
     : `ring-1 ring-inset ${ring}`;
+  // A skipped gate didn't fire on this run, fade it so the realized path reads first
+  // (kept in the graph, not hidden, so the audit shows every gate was considered).
+  const dim =
+    change === "removed"
+      ? "opacity-60"
+      : status === "skipped"
+        ? "opacity-45"
+        : "";
 
   return (
     <div
       data-testid={`graph-node-${step.id}`}
-      className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ${selectedRing} ${change === "removed" ? "opacity-60" : ""}`}
+      className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ${selectedRing} ${dim}`}
     >
       <Handle
         type="target"
