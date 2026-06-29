@@ -24,7 +24,7 @@ importers:
         specifier: ^1.14.6
         version: 1.14.6(@orpc/client@1.14.6)(@tanstack/query-core@5.101.1)
       '@radix-ui/react-tooltip':
-        specifier: ^1.2.10
+        specifier: 1.2.10
         version: 1.2.10(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/react-query':
         specifier: ^5.101.1
