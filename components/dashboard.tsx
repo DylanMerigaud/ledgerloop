@@ -12,6 +12,12 @@ import { TraceTimeline } from "@/components/trace-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { WorkflowGraph, type StepStatuses } from "@/components/workflow-graph";
 import type { QueueItem } from "@/db/client";
 import { useEventCallback } from "@/hooks/use-event-callback";
@@ -30,6 +36,7 @@ import {
   outcomeLabel,
   outcomeTone,
   scenarioBadge,
+  scenarioExplain,
   scenarioKind,
   type Outcome,
 } from "@/lib/display";
@@ -450,44 +457,41 @@ export const Dashboard = ({
     // Desktop: fill the parent's flex-1 slot (the page is viewport-tall), so the
     // two panes sit side by side and scroll INTERNALLY, no competing page
     // scroll. Mobile: stack at natural height.
-    <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,380px)_1fr]">
-      {/* LEFT, queue (fills the column) + the Recent runs audit panel below it. */}
-      <div className="flex min-h-0 flex-col gap-4 lg:h-full">
-        <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:min-h-0 lg:max-h-none lg:flex-1">
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle>Invoice queue</CardTitle>
-            <span className="text-[11px] text-muted tnum">
-              {queue.length} invoices
-            </span>
-          </CardHeader>
-          {/* relative wrapper so the fade + "N more" pill can overlay the scroll
+    <TooltipProvider delayDuration={200}>
+      <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,380px)_1fr]">
+        {/* LEFT, queue (fills the column) + the Recent runs audit panel below it. */}
+        <div className="flex min-h-0 flex-col gap-4 lg:h-full">
+          <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:min-h-0 lg:max-h-none lg:flex-1">
+            <CardHeader className="flex items-center justify-between">
+              <CardTitle>Invoice queue</CardTitle>
+              <span className="text-[11px] text-muted tnum">
+                {queue.length} invoices
+              </span>
+            </CardHeader>
+            {/* relative wrapper so the fade + "N more" pill can overlay the scroll
         area, on macOS the overlay scrollbar is hidden, so these are the cue
         that the list continues below. Both hide once scrolled to the end. */}
-          <div className="relative min-h-0 flex-1">
-            <ul
-              ref={listRef}
-              onScroll={measureScroll}
-              className="scrollbar-slim h-full divide-y divide-line overflow-y-auto"
-            >
-              {queue.map((item) => {
-                const isSelected = item.id === selectedId;
-                // The pill reflects the live run only for the selected row; others
-                // show their seeded scenario hint as a neutral label.
-                const outcome: Outcome = isSelected ? state.outcome : "pending";
-                // While a run is in flight the queue is locked: the active row stays
-                // highlighted, the others dim and stop responding to clicks.
-                const dimmed = locked && !isSelected;
-                // Hovering an exception/blocked row reveals WHY (the seeded scenario),
-                // so the queue explains itself before you run anything. Clean rows have
-                // nothing to explain.
-                const kind = scenarioKind(item.scenario);
-                const explain =
-                  (kind === "exception" || kind === "blocked") && item.scenario
-                    ? item.scenario
-                    : null;
-                const showExplain = explain && hoveredId === item.id && !locked;
-                return (
-                  <li key={item.id}>
+            <div className="relative min-h-0 flex-1">
+              <ul
+                ref={listRef}
+                onScroll={measureScroll}
+                className="scrollbar-slim h-full divide-y divide-line overflow-y-auto"
+              >
+                {queue.map((item) => {
+                  const isSelected = item.id === selectedId;
+                  // The pill reflects the live run only for the selected row; others
+                  // show their seeded scenario hint as a neutral label.
+                  const outcome: Outcome = isSelected
+                    ? state.outcome
+                    : "pending";
+                  // While a run is in flight the queue is locked: the active row stays
+                  // highlighted, the others dim and stop responding to clicks.
+                  const dimmed = locked && !isSelected;
+                  // Hovering a flagged row reveals WHY in plain English (a Radix tooltip),
+                  // so the queue explains itself before you run anything. Clean rows have
+                  // nothing to explain.
+                  const explain = scenarioExplain(item.scenario);
+                  const row = (
                     <button
                       type="button"
                       data-testid={`queue-row-${item.id}`}
@@ -507,15 +511,6 @@ export const Dashboard = ({
                           aria-hidden
                           className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-accent"
                         />
-                      )}
-                      {showExplain && (
-                        <span
-                          role="tooltip"
-                          data-testid={`why-${item.id}`}
-                          className="pointer-events-none absolute inset-x-2 bottom-full z-30 mb-1 rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-medium leading-snug text-white shadow-lift"
-                        >
-                          {explain}
-                        </span>
                       )}
                       <span
                         aria-hidden
@@ -555,195 +550,213 @@ export const Dashboard = ({
                         </span>
                       </span>
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-            {/* "N more" scroll affordance: a pill that scrolls the list when clicked.
+                  );
+                  return (
+                    <li key={item.id}>
+                      {explain && !locked ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>{row}</TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            align="end"
+                            data-testid={`why-${item.id}`}
+                          >
+                            {explain}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        row
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              {/* "N more" scroll affordance: a pill that scrolls the list when clicked.
           Hidden once the list is at the bottom. (No fade, the rows are short and it
           ate into the last row.) */}
-            {moreCount > 0 && (
-              <button
-                type="button"
-                onClick={() =>
-                  listRef.current?.scrollBy({
-                    top: listRef.current.clientHeight * 0.8,
-                    behavior: "smooth",
-                  })
-                }
-                className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
-              >
-                {moreCount} more
-                <span aria-hidden>↓</span>
-              </button>
-            )}
-          </div>
-        </Card>
+              {moreCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    listRef.current?.scrollBy({
+                      top: listRef.current.clientHeight * 0.8,
+                      behavior: "smooth",
+                    })
+                  }
+                  className="absolute inset-x-0 bottom-2 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium text-white shadow-lift backdrop-blur transition-opacity hover:bg-ink"
+                >
+                  {moreCount} more
+                  <span aria-hidden>↓</span>
+                </button>
+              )}
+            </div>
+          </Card>
 
-        {/* The audit trail: recent runs, each replayable into the trace pane. */}
-        <RecentRuns onReplay={replayRun} disabled={locked} />
-      </div>
+          {/* The audit trail: recent runs, each replayable into the trace pane. */}
+          <RecentRuns onReplay={replayRun} disabled={locked} />
+        </div>
 
-      {/* RIGHT: the workflow graph is the hero and owns the whole pane. No header,
+        {/* RIGHT: the workflow graph is the hero and owns the whole pane. No header,
           its controls live ON the canvas: a centered Run before a run, inline
           Approve/Reject on the gate nodes when it pauses, a floating Submit bar to
           resume, and a "View trace" button that opens the step log in a drawer. */}
-      <Card className="relative flex flex-col overflow-hidden">
-        {/* The graph, full-bleed. Always drawn (the active or default workflow), so
+        <Card className="relative flex flex-col overflow-hidden">
+          {/* The graph, full-bleed. Always drawn (the active or default workflow), so
             even idle the user sees the DAG their invoice will route through. */}
-        <div className="relative min-h-0 flex-1" data-testid="graph-pane">
-          <WorkflowGraph
-            workflow={graphToShow}
-            statuses={graphStatuses}
-            // The awaiting gate(s) accept a decision inline; one gate or several, the
-            // node carries Approve / Reject (+ a reason on a staged reject).
-            decidableIds={awaiting ? pendingIds : undefined}
-            decisions={awaiting ? gateChoices : undefined}
-            reasons={awaiting ? gateReasons : undefined}
-            onDecide={awaiting ? setGate : undefined}
-            onReason={awaiting ? setGateReason : undefined}
-            // Pan to frame the waiting gate(s) the moment the run pauses.
-            focusIds={awaiting ? pendingIds : undefined}
-          />
+          <div className="relative min-h-0 flex-1" data-testid="graph-pane">
+            <WorkflowGraph
+              workflow={graphToShow}
+              statuses={graphStatuses}
+              // The awaiting gate(s) accept a decision inline; one gate or several, the
+              // node carries Approve / Reject (+ a reason on a staged reject).
+              decidableIds={awaiting ? pendingIds : undefined}
+              decisions={awaiting ? gateChoices : undefined}
+              reasons={awaiting ? gateReasons : undefined}
+              onDecide={awaiting ? setGate : undefined}
+              onReason={awaiting ? setGateReason : undefined}
+              // Pan to frame the waiting gate(s) the moment the run pauses.
+              focusIds={awaiting ? pendingIds : undefined}
+            />
 
-          {/* Top-left overlay: the context a header used to carry (which workflow,
+            {/* Top-left overlay: the context a header used to carry (which workflow,
               which invoice), as a quiet caption over the canvas. */}
-          <div className="pointer-events-none absolute left-4 top-3 max-w-[60%]">
-            <p className="truncate text-[12px] font-medium text-ink">
-              {previewItem ? previewItem.vendor : "Invoice pipeline"}
-              {previewItem && (
-                <span className="ml-1.5 font-mono text-[11px] text-faint">
-                  {previewItem.invoiceNumber}
-                </span>
-              )}
-            </p>
-            <div className="pointer-events-auto">
-              <RunningAgainst
-                workflow={workflow}
-                onBuildWorkflow={onBuildWorkflow}
-              />
+            <div className="pointer-events-none absolute left-4 top-3 max-w-[60%]">
+              <p className="truncate text-[12px] font-medium text-ink">
+                {previewItem ? previewItem.vendor : "Invoice pipeline"}
+                {previewItem && (
+                  <span className="ml-1.5 font-mono text-[11px] text-faint">
+                    {previewItem.invoiceNumber}
+                  </span>
+                )}
+              </p>
+              <div className="pointer-events-auto">
+                <RunningAgainst
+                  workflow={workflow}
+                  onBuildWorkflow={onBuildWorkflow}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Top-right overlay: "View trace" once a run has produced any trace. */}
-          {state.status !== "idle" && (
-            <button
-              type="button"
-              data-testid="view-trace"
-              onClick={() => setTraceOpen(true)}
-              className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur transition-colors hover:text-ink"
-            >
-              View trace
-            </button>
-          )}
+            {/* Top-right overlay: "View trace" once a run has produced any trace. */}
+            {state.status !== "idle" && (
+              <button
+                type="button"
+                data-testid="view-trace"
+                onClick={() => setTraceOpen(true)}
+                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur transition-colors hover:text-ink"
+              >
+                View trace
+              </button>
+            )}
 
-          {/* Before the run is past intake, the INVOICE owns the pane: the selected
+            {/* Before the run is past intake, the INVOICE owns the pane: the selected
               document on idle (with Run), then the live scan as the agent reads it.
               Once past intake it's gone and the lit graph is the whole story (the
               document stays one click away in the trace drawer). */}
-          {!pastIntake && previewId && (
-            <div className="absolute inset-0 z-10 grid place-items-center bg-canvas/70 p-5 backdrop-blur-sm">
-              <div className="max-h-full w-full max-w-2xl overflow-y-auto">
-                <ExtractionReveal
-                  pdfSrc={API_ROUTES.pdf(previewId)}
-                  state={
-                    intake?.state ??
-                    (state.status === "running"
-                      ? { status: "running", extracted: null, matches: false }
-                      : null)
-                  }
-                  extractedInvoice={intake?.document ?? null}
-                />
-                {state.status === "idle" && selected && (
-                  <div className="mt-4 grid place-items-center">
-                    <Button
-                      data-testid="run-btn"
-                      onClick={() => run(selected.id)}
-                    >
-                      <PlayIcon />
-                      Run pipeline
-                    </Button>
-                  </div>
-                )}
+            {!pastIntake && previewId && (
+              <div className="absolute inset-0 z-10 grid place-items-center bg-canvas/70 p-5 backdrop-blur-sm">
+                <div className="max-h-full w-full max-w-2xl overflow-y-auto">
+                  <ExtractionReveal
+                    pdfSrc={API_ROUTES.pdf(previewId)}
+                    state={
+                      intake?.state ??
+                      (state.status === "running"
+                        ? { status: "running", extracted: null, matches: false }
+                        : null)
+                    }
+                    extractedInvoice={intake?.document ?? null}
+                  />
+                  {state.status === "idle" && selected && (
+                    <div className="mt-4 grid place-items-center">
+                      <Button
+                        data-testid="run-btn"
+                        onClick={() => run(selected.id)}
+                      >
+                        <PlayIcon />
+                        Run pipeline
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Floating action bar while a run is paused on gate(s): the resume control
+            {/* Floating action bar while a run is paused on gate(s): the resume control
               that used to live in the header. Decide on the nodes, submit here. */}
-          {awaiting && selected && (
-            <div
-              data-testid={
-                gates.length >= 2 ? "approval-gate-multi" : "approval-gate"
-              }
-              className="absolute inset-x-0 bottom-4 z-10 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink/90 px-2 py-1.5 shadow-lift backdrop-blur"
-            >
-              {gates.length >= 2 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setAllGates("reject")}
-                    className="rounded-full px-2.5 py-1 text-[12px] font-medium text-white/80 hover:text-white"
-                  >
-                    Reject all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAllGates("approve")}
-                    className="rounded-full px-2.5 py-1 text-[12px] font-medium text-white/80 hover:text-white"
-                  >
-                    Approve all
-                  </button>
-                </>
-              )}
-              <span className="px-1 text-[12px] text-white/60">
-                {gates.length >= 2
-                  ? `${pendingIds.filter((id) => gateChoices[id]).length}/${gates.length} decided`
-                  : "Decide on the gate"}
-              </span>
-              <Button
-                size="sm"
-                variant="ok"
-                data-testid="submit-decisions"
-                disabled={!allDecided}
-                onClick={submitDecisions}
+            {awaiting && selected && (
+              <div
+                data-testid={
+                  gates.length >= 2 ? "approval-gate-multi" : "approval-gate"
+                }
+                className="absolute inset-x-0 bottom-4 z-10 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink/90 px-2 py-1.5 shadow-lift backdrop-blur"
               >
-                {gates.length >= 2 ? "Submit decisions" : "Submit"}
-              </Button>
-            </div>
-          )}
+                {gates.length >= 2 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setAllGates("reject")}
+                      className="rounded-full px-2.5 py-1 text-[12px] font-medium text-white/80 hover:text-white"
+                    >
+                      Reject all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAllGates("approve")}
+                      className="rounded-full px-2.5 py-1 text-[12px] font-medium text-white/80 hover:text-white"
+                    >
+                      Approve all
+                    </button>
+                  </>
+                )}
+                <span className="px-1 text-[12px] text-white/60">
+                  {gates.length >= 2
+                    ? `${pendingIds.filter((id) => gateChoices[id]).length}/${gates.length} decided`
+                    : "Decide on the gate"}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ok"
+                  data-testid="submit-decisions"
+                  disabled={!allDecided}
+                  onClick={submitDecisions}
+                >
+                  {gates.length >= 2 ? "Submit decisions" : "Submit"}
+                </Button>
+              </div>
+            )}
 
-          {/* The running indicator (the centered Run is gone once a run starts). */}
-          {state.status === "running" && pastIntake && (
-            <div className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur">
-              <Spinner />
-              Running…
-            </div>
-          )}
-        </div>
+            {/* The running indicator (the centered Run is gone once a run starts). */}
+            {state.status === "running" && pastIntake && (
+              <div className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur">
+                <Spinner />
+                Running…
+              </div>
+            )}
+          </div>
 
-        {/* The trace drawer: slides over the graph, the full step log at real width. */}
-        <TraceDrawer
-          open={traceOpen}
-          onClose={() => setTraceOpen(false)}
-          invoiceLabel={previewItem?.invoiceNumber ?? null}
-        >
-          {doneIntake && previewId && (
-            <CollapsedIntake
-              pdfSrc={API_ROUTES.pdf(previewId)}
-              document={doneIntake.document}
-              state={doneIntake.state}
+          {/* The trace drawer: slides over the graph, the full step log at real width. */}
+          <TraceDrawer
+            open={traceOpen}
+            onClose={() => setTraceOpen(false)}
+            invoiceLabel={previewItem?.invoiceNumber ?? null}
+          >
+            {doneIntake && previewId && (
+              <CollapsedIntake
+                pdfSrc={API_ROUTES.pdf(previewId)}
+                document={doneIntake.document}
+                state={doneIntake.state}
+              />
+            )}
+            <TraceTimeline
+              state={state}
+              invoiceLabel={selected?.invoiceNumber ?? null}
+              canRun={!!selected}
+              onRun={() => selected && run(selected.id)}
             />
-          )}
-          <TraceTimeline
-            state={state}
-            invoiceLabel={selected?.invoiceNumber ?? null}
-            canRun={!!selected}
-            onRun={() => selected && run(selected.id)}
-          />
-        </TraceDrawer>
-      </Card>
-    </div>
+          </TraceDrawer>
+        </Card>
+      </div>
+    </TooltipProvider>
   );
 };
 

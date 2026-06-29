@@ -104,6 +104,29 @@ export const scenarioBadge = (
   }
 };
 
+/**
+ * A one-line plain-English WHY for a flagged scenario, for the queue hover. The
+ * seeded `scenario` field is a terse label ("Duplicate invoice"); this turns it into
+ * the reason an AP reviewer actually wants. Null for a clean row (nothing to explain).
+ */
+export const scenarioExplain = (scenario: string | null): string | null => {
+  const s = (scenario ?? "").toLowerCase();
+  if (s.includes("already paid"))
+    return "A bill with this number is already posted in the ERP.";
+  if (s.includes("duplicate"))
+    return "This invoice number was already submitted in the queue.";
+  if (s.includes("price mismatch"))
+    return "Invoiced unit price is over the PO price.";
+  if (s.includes("quantity mismatch"))
+    return "Invoiced quantity exceeds what was received.";
+  if (s.includes("arithmetic") || s.includes("error"))
+    return "A line's amount doesn't equal unit price times quantity.";
+  if (s.includes("not on po"))
+    return "A billed line isn't on the purchase order.";
+  if (s.includes("inactive")) return "The ERP marks this vendor inactive.";
+  return null;
+};
+
 /** Map a trace step's status to a badge tone (for the timeline). */
 export const statusTone = (status: TraceStatus): BadgeTone => {
   switch (status) {
