@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
 import { z } from "zod";
 
+import recordedErpPayload from "@/db/fixtures/quickbooks/erp.json";
 import { env } from "@/lib/env";
 import {
   PurchaseOrder,
@@ -663,14 +661,6 @@ export const liveQuickBooksErp = (creds: QboCreds): PoSourceAdapter => {
  *  Recorded adapter, replays the captured QBO payload
  * ────────────────────────────────────────────────────────────────────────── */
 
-const ERP_FIXTURE_PATH = path.join(
-  process.cwd(),
-  "db",
-  "fixtures",
-  "quickbooks",
-  "erp.json",
-);
-
 /**
  * The recorded fixture holds the raw QBO query response for each entity under its
  * own key (`purchaseOrders`/`vendors`/`items`/`bills`), captured from the live
@@ -685,19 +675,21 @@ const ErpFixture = z.object({
 });
 
 /**
- * Replays the captured QBO payloads from disk through the SAME mappers the live
- * adapter uses, so recorded and live read the exact same data. The fixture is a
- * REAL capture (see `scripts/capture-quickbooks.ts`), its `_meta` records
- * when/where from.
+ * Replays the captured QBO payloads through the SAME mappers the live adapter
+ * uses, so recorded and live read the exact same data. The fixture is a REAL
+ * capture (see `scripts/capture-quickbooks.ts`), its `_meta` records when/where
+ * from.
+ *
+ * The payload is `import`ed as a JSON module, NOT read from disk with
+ * `readFileSync(process.cwd() + path)`: on Vercel/serverless a dynamically-built
+ * disk path isn't traced into the function bundle, so a disk-read fixture is
+ * silently absent in prod (empty lists). An import is traced and inlined, working
+ * identically local and in prod. Same reasoning as `recordedHris` in lib/hris.ts.
  */
-export const recordedErp = (
-  fixturePath: string = ERP_FIXTURE_PATH,
-): PoSourceAdapter => {
-  // Read + parse once; each method maps its slice. Sync read, async contract.
-  const load = (): z.infer<typeof ErpFixture> => {
-    const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
-    return ErpFixture.parse(raw);
-  };
+export const recordedErp = (): PoSourceAdapter => {
+  // Parse once; each method maps its slice. Async contract, in-memory payload.
+  const load = (): z.infer<typeof ErpFixture> =>
+    ErpFixture.parse(recordedErpPayload);
   return {
     name: "quickbooks (recorded)",
     pullPurchaseOrders() {

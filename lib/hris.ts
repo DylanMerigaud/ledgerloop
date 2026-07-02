@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
 import { z } from "zod";
 
+import recordedReport from "@/db/fixtures/bamboohr/report.json";
 import { nonNull } from "@/lib/assert";
 import { env } from "@/lib/env";
 import { Employee, OrgChart, type OrgIssue } from "@/lib/schema";
@@ -256,31 +254,31 @@ export const fetchBambooReport = async (
  *  Recorded adapter, replays the captured real payload
  * ────────────────────────────────────────────────────────────────────────── */
 
-const FIXTURE_PATH = path.join(
-  process.cwd(),
-  "db",
-  "fixtures",
-  "bamboohr",
-  "report.json",
-);
-
 /**
- * Replays the recorded BambooHR payload from disk through the SAME mapper (and the
- * SAME division scope) the live adapter uses, so recorded and live read the exact
- * same demo org. The fixture is built from the seed definition (see the file's
- * `_meta` and scripts/build-recorded-fixture.ts), not a live capture.
+ * Replays the recorded BambooHR payload through the SAME mapper (and the SAME
+ * division scope) the live adapter uses, so recorded and live read the exact same
+ * demo org. The fixture is built from the seed definition (see the file's `_meta`
+ * and scripts/build-recorded-fixture.ts), not a live capture.
+ *
+ * The payload is `import`ed as a JSON module, NOT read from disk with
+ * `readFileSync(process.cwd() + path)`. On Vercel/serverless the bundler only ships
+ * files it can trace, and a dynamically-built disk path isn't traced, so a
+ * `readFileSync` fixture is silently absent in prod (the recorded fallback returns
+ * zero employees). An import is traced and inlined into the function bundle, so it
+ * works identically local and in prod.
  */
-export const recordedHris = (
-  fixturePath: string = FIXTURE_PATH,
-): HrisAdapter => {
+export const recordedHris = (): HrisAdapter => {
   return {
     name: "bamboohr (recorded)",
-    // Reads the fixture synchronously, but the adapter contract is async (the live
-    // one does HTTP), return a resolved promise rather than an await-less `async`.
+    // The adapter contract is async (the live one does HTTP); the recorded payload
+    // is already in memory, so return a resolved promise rather than an async fn.
     fetchOrg() {
-      const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
       return Promise.resolve(
-        mapBambooReport(raw, "bamboohr (recorded)", DEMO_CLIENT_DIVISION),
+        mapBambooReport(
+          recordedReport,
+          "bamboohr (recorded)",
+          DEMO_CLIENT_DIVISION,
+        ),
       );
     },
   };
