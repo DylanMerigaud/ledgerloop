@@ -121,6 +121,17 @@ const readRunGraph = (
       }
     }
   }
+  // A BLOCKED run (duplicate) never entered the workflow: a control failed at intake
+  // before any gate could route, so the block step emits an empty `steps`. Drawing the
+  // full workflow with no statuses reads as if the bill routed normally, which is
+  // wrong. Grey EVERY node (status "skipped") so the canvas shows the workflow was not
+  // taken, and let the red outcome banner carry the why. Detected from the outcome
+  // (approval `blocked`) or the matching verdict (`duplicate`).
+  if (isBlockedRun(trace, approval.data)) {
+    const skipped: StepStatuses = {};
+    for (const s of parsed.data.steps) skipped[s.id] = "skipped";
+    return { workflow: parsed.data, statuses: skipped };
+  }
   // Resolve the LINEAR path THIS invoice takes: evaluate each gate's condition
   // against the matched invoice and drop the ones that don't apply (rewiring edges),
   // so the reviewer sees Manager → Post, not an ambiguous Manager → Director AND
@@ -129,6 +140,19 @@ const readRunGraph = (
   // gates get decided. If matching data isn't on the trace yet, draw the full graph.
   const ctx = readMatchContext(trace);
   return { workflow: resolvePath(parsed.data, ctx), statuses };
+};
+
+/** True when the run was blocked at a pre-workflow control (a duplicate), so nothing
+    routed. Reads the approval event's `outcome` (blocked) or the matching verdict. */
+const isBlockedRun = (
+  trace: TraceEvent[],
+  approvalData: Record<string, unknown>,
+): boolean => {
+  if (approvalData["outcome"] === "blocked") return true;
+  const matching = trace.find(
+    (e) => e.stage === "matching" && e.kind === "step",
+  );
+  return isRecord(matching?.data) && matching.data["verdict"] === "duplicate";
 };
 
 /** Build the approval engine's InvoiceContext from the matching trace event, so the
