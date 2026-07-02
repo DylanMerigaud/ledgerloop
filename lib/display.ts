@@ -47,6 +47,22 @@ export const outcomeLabel = (outcome: Outcome): string => {
   }
 };
 
+/** A one-line "why" for a resolved outcome, for the pane's outcome banner. Null for
+    the transient/idle states (nothing worth explaining yet). */
+export const outcomeExplain = (outcome: Outcome): string | null => {
+  switch (outcome) {
+    case "reconciled":
+      return "Cleared the 3-way match and posted to NetSuite.";
+    case "needs-approval":
+      return "An exception routed this to a human before it can post.";
+    case "blocked":
+      return "A control failed (duplicate); not posted, held for AP review.";
+    case "running":
+    case "pending":
+      return null;
+  }
+};
+
 /** Hex dot color per outcome (for the queue's leading status dot). */
 export const outcomeDot = (outcome: Outcome): string => {
   switch (outcome) {

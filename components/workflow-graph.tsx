@@ -599,13 +599,20 @@ const Inner = ({
   // bottom stack growing/shrinking, a window resize). fitView otherwise runs once per
   // graph, so without this a node could sit clipped off the edge after a resize.
   const wrapRef = useRef<HTMLDivElement>(null);
+  // The pending set is part of the layout key: when a gate becomes decidable it grows
+  // (inline Approve / Reject appear), so its measured height changes and the graph
+  // must re-lay-out or the edges stay pinned to the pre-buttons position (a visible
+  // kink at the join). This flips only at the pause/resume boundary, not per-render.
+  const decidableKey = (decidableIds ?? []).join("|");
   const graphKey = useMemo(
     () =>
       initialNodes.map((n) => n.id).join("|") +
       "::" +
       edges.length +
-      (vertical ? "::v" : "::h"),
-    [initialNodes, edges, vertical],
+      (vertical ? "::v" : "::h") +
+      "::" +
+      decidableKey,
+    [initialNodes, edges, vertical, decidableKey],
   );
   useEffect(() => {
     setNodes(
@@ -667,7 +674,7 @@ const Inner = ({
   // live nodes, also cheap, no re-layout, so deciding a gate doesn't reflow the graph.
   // Kept out of `initialNodes` for the same reason (its identity changing forces a
   // re-measure). Keyed on stable strings so it only runs when the inputs change.
-  const decidableKey = (decidableIds ?? []).join("|");
+  // (`decidableKey` is defined above, it also feeds the layout key.)
   const choiceKey = decisions
     ? Object.entries(decisions)
         .map(([k, v]) => `${k}:${v ?? ""}`)
