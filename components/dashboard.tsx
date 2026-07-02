@@ -519,7 +519,17 @@ export const Dashboard = ({
   // each step's status, so we light up the SAME canvas onboarding draws. Before
   // that (or on a run with no active workflow) we draw the active workflow idle, so
   // the user sees their workflow waiting to route. Null when there's nothing to draw.
-  const runGraph = readRunGraph(state.trace);
+  const runGraphNow = readRunGraph(state.trace);
+  // LATCH the resolved run graph across a resume. On Approve+Submit the trace
+  // re-streams from the top, so for a beat `readRunGraph` finds no approval event yet
+  // and would fall back to the generic full workflow (the graph visibly "swaps" to the
+  // default DAG mid-resume). Keep the last resolved graph until a new one arrives or
+  // the run resets, so the lit path stays put through the re-stream.
+  const runGraphLatch = useRef<ReturnType<typeof readRunGraph>>(null);
+  if (runGraphNow) runGraphLatch.current = runGraphNow;
+  if (state.status === "idle" || state.trace.length === 0)
+    runGraphLatch.current = null;
+  const runGraph = runGraphNow ?? runGraphLatch.current;
   // The graph is the hero and always drawn: the run's lit workflow if a run has
   // reached approval, else the active derived workflow, else the default DAG (so a
   // cold visit with no onboarding still shows what an invoice will route through).
