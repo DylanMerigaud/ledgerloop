@@ -693,6 +693,9 @@ const Inner = ({
   // The measured heights the current layout was computed from, so a later drift (a
   // few-px settle) can be detected and corrected with a single re-layout.
   const laidOutHeights = useRef<Map<string, number | null>>(new Map());
+  // True while the NEXT layout run is a silent drift correction (re-position only, no
+  // re-fit), so straightening an edge doesn't zoom the pane on a staged decision.
+  const driftRelayout = useRef(false);
   // The graph's container, observed so we can re-fit when it resizes (the editor's
   // bottom stack growing/shrinking, a window resize). fitView otherwise runs once per
   // graph, so without this a node could sit clipped off the edge after a resize.
@@ -740,6 +743,15 @@ const Inner = ({
         vertical,
       ).map((n) => ({ ...n, style: { visibility: "visible" } }));
     });
+    // A DRIFT re-layout only nudges node positions a few px to straighten edges; it
+    // must NOT re-fit the view. Otherwise staging a decision (which tints the card and
+    // can drift its measured height by a px) would re-fit and the pane would visibly
+    // zoom on the click. The view re-frames only on a real focus change (the initial
+    // appearance here, or the next gate after Submit via the focus effect below).
+    if (driftRelayout.current) {
+      driftRelayout.current = false;
+      return;
+    }
     const focus = focusIds ?? [];
     requestAnimationFrame(
       () =>
@@ -783,6 +795,7 @@ const Inner = ({
     });
   useEffect(() => {
     if (!drifted) return;
+    driftRelayout.current = true; // silent: straighten edges, don't re-fit the view
     laidOutFor.current = "";
     setRelayoutTick((t) => t + 1);
   }, [drifted, graphKey]);
