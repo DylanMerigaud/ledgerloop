@@ -2,16 +2,14 @@ import type Anthropic from "@anthropic-ai/sdk";
 
 import { anthropic } from "@/lib/anthropic";
 import { type ApprovalWorkflow as TWorkflow } from "@/lib/approval-workflow";
-import { toModelJsonSchema } from "@/lib/schema";
 import {
   WORKFLOW_EDIT_SYSTEM_PROMPT,
   WORKFLOW_PLAN_SYSTEM_PROMPT,
-  WorkflowEditOp,
-  WorkflowEditPlan,
   editPrompt,
   planPrompt,
   parseEditOp,
   parseEditPlan,
+  jsonFromModelText,
   type EditModel,
 } from "@/lib/workflow-edit";
 import type { PlanModel } from "@/lib/workflow-edit-agent";
@@ -26,7 +24,6 @@ import type { PlanModel } from "@/lib/workflow-edit-agent";
  */
 
 const EDIT_MODEL = "claude-sonnet-4-6";
-const EDIT_OP_JSON_SCHEMA = toModelJsonSchema(WorkflowEditOp);
 
 export const anthropicEditModel: EditModel = {
   async planEdit(current: TWorkflow, instruction: string) {
@@ -34,9 +31,9 @@ export const anthropicEditModel: EditModel = {
       model: EDIT_MODEL,
       max_tokens: 512,
       system: WORKFLOW_EDIT_SYSTEM_PROMPT,
-      output_config: {
-        format: { type: "json_schema", schema: EDIT_OP_JSON_SCHEMA },
-      },
+      // No structured output (same reason as planOps below): the op's recursive
+      // `Condition` blows past Anthropic's 16-union-param schema limit. The prompt
+      // asks for JSON and `parseEditOp` Zod-validates it.
       messages: [{ role: "user", content: editPrompt(current, instruction) }],
     });
     if (message.stop_reason === "refusal") {
@@ -47,7 +44,7 @@ export const anthropicEditModel: EditModel = {
       .map((b) => b.text)
       .join("")
       .trim();
-    return parseEditOp(JSON.parse(raw));
+    return parseEditOp(jsonFromModelText(raw));
   },
 };
 
@@ -56,17 +53,17 @@ export const anthropicEditModel: EditModel = {
  * instruction, and on a correction pass takes the validation issues as feedback.
  * `runEditAgent` drives the loop (apply → validate → correct). Same Sonnet model.
  */
-const PLAN_JSON_SCHEMA = toModelJsonSchema(WorkflowEditPlan);
-
 export const anthropicPlanModel: PlanModel = {
   async planOps({ current, instruction, available, feedback }) {
     const message = await anthropic().messages.create({
       model: EDIT_MODEL,
       max_tokens: 1024,
       system: WORKFLOW_PLAN_SYSTEM_PROMPT,
-      output_config: {
-        format: { type: "json_schema", schema: PLAN_JSON_SCHEMA },
-      },
+      // No `output_config` structured output here: the ops carry the recursive
+      // `Condition` (all/any/leaf/always), which expands to >16 union-typed params
+      // and Anthropic REJECTS the schema (400: too many union parameters). The system
+      // prompt already asks for JSON and `parseEditPlan` Zod-validates the reply, so we
+      // parse the text ourselves and keep the same safety.
       messages: [
         {
           role: "user",
@@ -82,6 +79,6 @@ export const anthropicPlanModel: PlanModel = {
       .map((b) => b.text)
       .join("")
       .trim();
-    return parseEditPlan(JSON.parse(raw));
+    return parseEditPlan(jsonFromModelText(raw));
   },
 };

@@ -642,6 +642,34 @@ export const editPrompt = (current: TWorkflow, instruction: string): string => {
   return `CURRENT STEPS:\n${steps}\n\nINSTRUCTION:\n${instruction}\n\nIf the workflow already satisfies the instruction (a step with that role/threshold/condition already exists), return op "none". Otherwise return one edit op as JSON.`;
 };
 
+/** Parse a JSON value out of the model's text reply. Without structured output the
+    model often wraps the JSON in a ```json fence or adds a stray sentence; strip the
+    fence, then fall back to the first `{`…`}` slice, so `JSON.parse` doesn't choke. */
+export const jsonFromModelText = (text: string): unknown => {
+  const t = text.trim();
+  const tryParse = (s: string): unknown => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return undefined;
+    }
+  };
+  const direct = tryParse(t);
+  if (direct !== undefined) return direct;
+  const fenced = t.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced?.[1]) {
+    const inner = tryParse(fenced[1]);
+    if (inner !== undefined) return inner;
+  }
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    const sliced = tryParse(t.slice(start, end + 1));
+    if (sliced !== undefined) return sliced;
+  }
+  throw new Error("Model reply was not valid JSON.");
+};
+
 /** Validate a raw model JSON value into a WorkflowEditOp (or throw). */
 export const parseEditOp = (raw: unknown): WorkflowEditOp =>
   WorkflowEditOp.parse(raw);
@@ -650,12 +678,10 @@ export const parseEditOp = (raw: unknown): WorkflowEditOp =>
  *  Multi-op planning (the agent), an ORDERED list of ops for one instruction
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** A flat ARRAY of ops, the agent's plan. (Array, not nested, so the grammar
-    stays in-bounds; the discriminated union itself is already small + flat.) */
-export const WorkflowEditPlan = z
-  .object({ ops: z.array(WorkflowEditOp) })
-  .strict();
-export type WorkflowEditPlan = z.infer<typeof WorkflowEditPlan>;
+/** A flat ARRAY of ops, the agent's plan. Internal now (the edit models parse the
+    model's text with `jsonFromModelText` + `parseEditPlan`, no structured-output
+    schema is derived from it anymore). */
+const WorkflowEditPlan = z.object({ ops: z.array(WorkflowEditOp) }).strict();
 
 export const parseEditPlan = (raw: unknown): WorkflowEditOp[] =>
   WorkflowEditPlan.parse(raw).ops;
