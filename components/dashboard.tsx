@@ -714,34 +714,46 @@ export const Dashboard = ({
               Once past intake it's gone and the lit graph is the whole story (the
               document stays one click away in the trace drawer). */}
             {!pastIntake && previewId && (
-              <div className="absolute inset-0 z-10 grid place-items-center overflow-y-auto bg-canvas p-5">
-                {/* `relative` so the Run CTA can float over the document card's own
-                    corner (an anchored overlay, NOT a button stranded below the
-                    card). The card owns the pane; the action sits on it. */}
-                <div className="relative w-full max-w-2xl">
-                  <ExtractionReveal
-                    pdfSrc={API_ROUTES.pdf(previewId)}
-                    state={
-                      intake?.state ??
-                      (state.status === "running"
-                        ? { status: "running", extracted: null, matches: false }
-                        : null)
-                    }
-                    extractedInvoice={intake?.document ?? null}
-                  />
-                  {state.status === "idle" && selected && (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center">
-                      <Button
-                        data-testid="run-btn"
-                        onClick={() => run(selected.id)}
-                        className="pointer-events-auto shadow-lift"
-                      >
-                        <PlayIcon />
-                        Run pipeline
-                      </Button>
-                    </div>
-                  )}
+              // The overlay is the positioning context (`inset-0`), and it does NOT
+              // scroll, only the inner document does. So the Run CTA, anchored to the
+              // overlay's vertical center below, stays put no matter how far the PDF
+              // is scrolled (previously it sat at the bottom of the tall, scrolling
+              // card and was pushed off-screen).
+              <div className="absolute inset-0 z-10 bg-canvas">
+                <div className="h-full overflow-y-auto p-5">
+                  <div className="mx-auto w-full max-w-2xl pb-20">
+                    <ExtractionReveal
+                      pdfSrc={API_ROUTES.pdf(previewId)}
+                      state={
+                        intake?.state ??
+                        (state.status === "running"
+                          ? {
+                              status: "running",
+                              extracted: null,
+                              matches: false,
+                            }
+                          : null)
+                      }
+                      extractedInvoice={intake?.document ?? null}
+                    />
+                  </div>
                 </div>
+                {/* Run CTA: pinned to the overlay's VERTICAL CENTER over the scroll,
+                    so it's always in the same reachable spot no matter how far the
+                    document is scrolled (was stranded at the bottom of the tall
+                    scrolling card before). */}
+                {state.status === "idle" && selected && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <Button
+                      data-testid="run-btn"
+                      onClick={() => run(selected.id)}
+                      className="pointer-events-auto shadow-lift"
+                    >
+                      <PlayIcon />
+                      Run pipeline
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
