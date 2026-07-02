@@ -223,8 +223,10 @@ const OutcomeBanner = ({ outcome }: { outcome: Outcome }) => {
         className="h-2 w-2 shrink-0 rounded-full"
         style={{ backgroundColor: c.dot }}
       />
-      <span className={`font-medium ${c.text}`}>{outcomeLabel(outcome)}</span>
-      {why && <span className="truncate text-ink/70">{why}</span>}
+      <span className={`shrink-0 font-medium ${c.text}`}>
+        {outcomeLabel(outcome)}
+      </span>
+      {why && <span className="text-ink/70">{why}</span>}
     </div>
   );
 };
@@ -555,7 +557,16 @@ export const Dashboard = ({
   // completed run opened for viewing: skip the reveal entirely and go straight to the
   // graph/result (the document stays one click away in the trace drawer), so opening
   // a past run never looks like it re-reads the PDF.
-  const pastIntake = state.replayed || (doneIntake !== null && !revealHeld);
+  const pastIntakeNow = state.replayed || (doneIntake !== null && !revealHeld);
+  // LATCH it: once a run has handed the pane to the graph it must not flicker back to
+  // the reveal mid-run. During the matching→approval transition `doneIntake` can blink
+  // null for a render (events reshuffle), which briefly flashed the document overlay
+  // back over the graph. The latch clears when the trace empties (reset / new invoice).
+  const pastIntakeLatch = useRef(false);
+  if (pastIntakeNow) pastIntakeLatch.current = true;
+  if (state.status === "idle" || state.trace.length === 0)
+    pastIntakeLatch.current = false;
+  const pastIntake = pastIntakeNow || pastIntakeLatch.current;
 
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.
@@ -793,8 +804,11 @@ export const Dashboard = ({
             />
 
             {/* Top-left overlay: the context a header used to carry (which workflow,
-              which invoice), as a quiet caption over the canvas. */}
-            <div className="pointer-events-none absolute left-4 top-3 max-w-[60%]">
+              which invoice) plus, once resolved, the outcome banner, stacked on their
+              own lines so nothing overlaps the caption or the View-trace button. Width
+              is bounded (leaving room for View-trace on the right) so the banner's why
+              wraps instead of overflowing the pane. */}
+            <div className="pointer-events-none absolute left-4 right-28 top-3">
               <p className="truncate text-[12px] font-medium text-ink">
                 {previewItem ? previewItem.vendor : "Invoice pipeline"}
                 {previewItem && (
@@ -809,16 +823,12 @@ export const Dashboard = ({
                   onBuildWorkflow={onBuildWorkflow}
                 />
               </div>
+              {pastIntake && (
+                <div className="mt-2 w-fit max-w-full">
+                  <OutcomeBanner outcome={state.outcome} />
+                </div>
+              )}
             </div>
-
-            {/* Outcome banner: the result made obvious at the PANE level (a blocked
-              run otherwise looks like a normal graph with one easy-to-miss badge).
-              Centered up top, clear of the caption and the View-trace button. */}
-            {pastIntake && (
-              <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-40">
-                <OutcomeBanner outcome={state.outcome} />
-              </div>
-            )}
 
             {/* Top-right overlay: "View trace" once a run has produced any trace. */}
             {state.status !== "idle" && (
@@ -843,7 +853,9 @@ export const Dashboard = ({
               // is scrolled (previously it sat at the bottom of the tall, scrolling
               // card and was pushed off-screen).
               <div className="absolute inset-0 z-10 bg-canvas">
-                <div className="h-full overflow-y-auto p-5">
+                {/* pt-3 matches the graph pane's caption inset (top-3) so the document
+                    top lines up with where the workflow starts, not ~20px below it. */}
+                <div className="h-full overflow-y-auto px-5 pb-5 pt-3">
                   <div className="mx-auto w-full max-w-2xl pb-20">
                     <ExtractionReveal
                       pdfSrc={API_ROUTES.pdf(previewId)}
@@ -867,14 +879,19 @@ export const Dashboard = ({
                     scrolling card before). */}
                 {state.status === "idle" && selected && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <Button
-                      data-testid="run-btn"
-                      onClick={() => run(selected.id)}
-                      className="pointer-events-auto shadow-lift"
-                    >
-                      <PlayIcon />
-                      Run pipeline
-                    </Button>
+                    {/* A soft blurred halo behind the CTA so it reads clearly over the
+                        document text it floats on (the button otherwise collided with
+                        an invoice line and was hard to read). */}
+                    <div className="pointer-events-auto rounded-full bg-canvas/40 p-3 backdrop-blur-md">
+                      <Button
+                        data-testid="run-btn"
+                        onClick={() => run(selected.id)}
+                        className="shadow-lift"
+                      >
+                        <PlayIcon />
+                        Run pipeline
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
