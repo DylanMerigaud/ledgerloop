@@ -17,7 +17,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "dagre";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { SlackIcon, NetSuiteIcon, JiraIcon } from "@/components/ui/brand-icon";
@@ -664,6 +664,9 @@ const Inner = ({
     initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
   );
   const [rfEdges, setEdges, onEdgesChange] = useEdgesState<Edge>(edges);
+  // Bumped to force one more layout pass when a node's measured height drifts after the
+  // initial layout (see the drift effect below); a dep of the layout effect.
+  const [relayoutTick, setRelayoutTick] = useState(0);
 
   // True once every current node has been measured. Resets when the set changes.
   const initialized = useNodesInitialized();
@@ -671,6 +674,9 @@ const Inner = ({
   // When the source graph changes (new discovery / edit), reset to the new nodes
   // HIDDEN so they get re-measured, and mark that this set still needs a layout.
   const laidOutFor = useRef<string>("");
+  // The measured heights the current layout was computed from, so a later drift (a
+  // few-px settle) can be detected and corrected with a single re-layout.
+  const laidOutHeights = useRef<Map<string, number | null>>(new Map());
   // The graph's container, observed so we can re-fit when it resizes (the editor's
   // bottom stack growing/shrinking, a window resize). fitView otherwise runs once per
   // graph, so without this a node could sit clipped off the edge after a resize.
@@ -703,6 +709,14 @@ const Inner = ({
     laidOutFor.current = graphKey;
     setNodes((cur) => {
       const measured = new Map(cur.map((n) => [n.id, n.measured?.height]));
+      // Remember the heights this layout is based on. If a node's measured height
+      // later drifts (a badge/font/when-chip settling a few px after the one-shot
+      // layout), the re-layout effect below notices and lays out again, so the node
+      // centers, and therefore the edge handles, don't end up a few px off (which a
+      // smoothstep edge renders as a visible stair-step "kink").
+      laidOutHeights.current = new Map(
+        cur.map((n) => [n.id, n.measured?.height ?? null]),
+      );
       return layout(
         initialNodes,
         edges,
@@ -733,7 +747,29 @@ const Inner = ({
     fitView,
     vertical,
     focusIds,
+    relayoutTick,
   ]);
+
+  // Correct post-layout height DRIFT. React Flow keeps re-measuring nodes; if one's
+  // height settles a few px AFTER the one-shot layout (a badge/font/when-chip), the
+  // node centers computed from the old heights are now slightly wrong, and the edge
+  // handles sit a few px apart, which a smoothstep edge draws as a stair-step kink.
+  // Detect any drift > 1px from the heights the layout used, then force one re-layout
+  // (reset the guard + bump the tick). Bounded: after the re-layout the heights match,
+  // so it settles and can't loop.
+  const drifted =
+    initialized &&
+    laidOutFor.current === graphKey &&
+    nodes.some((n) => {
+      const used = laidOutHeights.current.get(n.id);
+      const now = n.measured?.height;
+      return used != null && now != null && Math.abs(used - now) > 1;
+    });
+  useEffect(() => {
+    if (!drifted) return;
+    laidOutFor.current = "";
+    setRelayoutTick((t) => t + 1);
+  }, [drifted, graphKey]);
 
   // Re-fit when the container resizes so nodes never sit clipped past an edge after a
   // layout reflow or window resize. RAF-debounced; skipped until the nodes exist.
