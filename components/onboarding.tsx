@@ -135,7 +135,10 @@ export const Onboarding = ({
             />
           )}
         </CardHeader>
-        <div className="flex-1 overflow-hidden p-5">
+        {/* scroll when a proposal + its warnings + the input exceed the pane height,
+            so the "Describe a change" box is never pushed off-screen unreachable. The
+            editor's graph keeps a min-height, so it doesn't collapse in the scroll. */}
+        <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto p-5">
           {state.status === "done" ? (
             // Key by the discovered workflow so a re-run resets the editor state.
             <WorkflowEditor

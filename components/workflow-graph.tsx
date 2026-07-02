@@ -178,30 +178,53 @@ const VERDICT_META: Record<
   unclear: { label: "Unclear", text: "text-warn", dot: "bg-warn" },
 };
 
-/** The AI investigator's call, a small spark button beside Approve; on hover it shows
-    the verdict + the full reasoning. Tinted by the verdict so a glance already hints
-    the direction, the detail is one hover away, no trace drawer needed. */
-const RecommendationSpark = ({
+/** A gate decision button (Reject / Approve). When it carries the AI recommendation it
+    wears a ✦ prefix and, on hover, a tooltip with the verdict + reasoning, so the AI's
+    suggested action IS the button (not a separate control beside it). */
+const GateButton = ({
+  choiceKind,
+  label,
+  testId,
+  active,
+  onClick,
   recommendation,
-  stepId,
 }: {
-  recommendation: NonNullable<NodeData["recommendation"]>;
-  stepId: string;
+  choiceKind: "approve" | "reject";
+  label: string;
+  testId: string;
+  active: boolean;
+  onClick: () => void;
+  recommendation: NonNullable<NodeData["recommendation"]> | null;
 }) => {
+  const tone =
+    choiceKind === "approve"
+      ? active
+        ? "bg-ok text-white ring-transparent"
+        : "bg-surface text-ok ring-ok-line hover:bg-ok-soft"
+      : active
+        ? "bg-danger text-white ring-transparent"
+        : "bg-surface text-danger ring-danger-line hover:bg-danger-soft";
+  const btn = (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={onClick}
+      className={`inline-flex h-7 flex-1 items-center justify-center gap-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${tone}`}
+    >
+      {recommendation && (
+        <span aria-hidden className="text-[13px]">
+          ✦
+        </span>
+      )}
+      {label}
+    </button>
+  );
+  if (!recommendation) return btn;
   const meta = VERDICT_META[recommendation.verdict];
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            data-testid={`gate-ai-${stepId}`}
-            aria-label={`AI recommendation: ${meta.label}`}
-            className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[13px] ring-1 ring-inset ring-line transition-colors hover:bg-subtle ${meta.text}`}
-          >
-            <span aria-hidden>✦</span>
-          </button>
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{btn}</TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[280px]">
           <span className="flex items-center gap-1.5 font-medium">
             <span
@@ -398,39 +421,34 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           className="nodrag nopan flex w-[244px] flex-col gap-1.5 rounded-xl bg-surface p-2 shadow-lift ring-1 ring-inset ring-line"
         >
           <div className="flex gap-1.5">
-            <button
-              type="button"
-              data-testid={`gate-reject-${step.id}`}
+            {/* The AI's take lives ON the button it suggests (a ✦ prefix), and hovering
+                that button reveals the verdict + reasoning. `likely_legitimate` marks
+                Approve, `likely_overcharge` marks Reject, `unclear` marks neither, so
+                the recommendation reads as "the AI leans this way", not a 3rd control. */}
+            <GateButton
+              choiceKind="reject"
+              label="Reject"
+              testId={`gate-reject-${step.id}`}
+              active={choice === "reject"}
               onClick={() => onDecide("reject")}
-              className={`h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
-                choice === "reject"
-                  ? "bg-danger text-white ring-transparent"
-                  : "bg-surface text-danger ring-danger-line hover:bg-danger-soft"
-              }`}
-            >
-              Reject
-            </button>
-            <button
-              type="button"
-              data-testid={`gate-approve-${step.id}`}
+              recommendation={
+                recommendation?.verdict === "likely_overcharge"
+                  ? recommendation
+                  : null
+              }
+            />
+            <GateButton
+              choiceKind="approve"
+              label="Approve"
+              testId={`gate-approve-${step.id}`}
+              active={choice === "approve"}
               onClick={() => onDecide("approve")}
-              className={`h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
-                choice === "approve"
-                  ? "bg-ok text-white ring-transparent"
-                  : "bg-surface text-ok ring-ok-line hover:bg-ok-soft"
-              }`}
-            >
-              Approve
-            </button>
-            {/* The AI investigator's take, a spark to the right of Approve; hover
-                reveals the verdict + reasoning. Quiet by default so it informs the
-                decision without shouting over the buttons. */}
-            {recommendation && (
-              <RecommendationSpark
-                recommendation={recommendation}
-                stepId={step.id}
-              />
-            )}
+              recommendation={
+                recommendation?.verdict === "likely_legitimate"
+                  ? recommendation
+                  : null
+              }
+            />
           </div>
           {onReason && choice === "reject" && (
             <input
@@ -951,11 +969,13 @@ const Inner = ({
         const live =
           (src === "approved" || src === "done") &&
           REACHED.has(st[e.target] ?? "");
+        // A traversed edge reads as a SOLID accent line (no marching-ants animation,
+        // which drew the eye and looked busy); an untraversed edge stays quiet grey.
         const stroke = live ? "#5B53D6" : "#CBCDD4";
         const strokeWidth = live ? 2 : 1.5;
         const prev = e.style ?? {};
         if (
-          e.animated === live &&
+          e.animated === false &&
           prev.stroke === stroke &&
           prev.strokeWidth === strokeWidth
         ) {
@@ -963,7 +983,7 @@ const Inner = ({
         }
         return {
           ...e,
-          animated: live,
+          animated: false,
           style: { ...prev, stroke, strokeWidth },
         };
       }),
