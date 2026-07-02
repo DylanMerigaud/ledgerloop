@@ -347,6 +347,38 @@ test("reorder-branches: omitted children are kept (no edge dropped)", () => {
   assert.equal(mgr?.next.length, 2, "no edge dropped or duplicated");
 });
 
+test("adding a parallel gate orders the shared join (post) LAST in the parent", () => {
+  // base: manager → [director, post]. Adding a gate makes manager fan out to it too,
+  // and both director and the new gate feed post. The pass-through manager→post must
+  // sort after the gates so it doesn't split the fan-out visually (a lone node wedged
+  // between the parallel gates). Order-only: the routing (each gate's `when`) is intact.
+  const next = applyEditOp(base, {
+    op: "add-approval",
+    label: "CFO approval",
+    approverTitle: "CFO",
+    amountOver: 50000,
+    department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
+  });
+  const mgr = next.steps.find((s) => s.id === "manager");
+  assert.ok(mgr, "manager present");
+  const post = mgr.next.find((n) => {
+    const step = next.steps.find((s) => s.id === n);
+    return step?.kind === "integration";
+  });
+  assert.ok(post, "manager still reaches post directly");
+  assert.equal(
+    mgr.next[mgr.next.length - 1],
+    post,
+    "the shared join (post) is ordered last, gates first",
+  );
+  // Every edge is preserved (nothing dropped by the reorder).
+  assert.equal(mgr.next.length, 3, "director + new gate + post");
+});
+
 test("rename-step: changes only the label, nothing else", () => {
   const next = applyEditOp(base, {
     op: "rename-step",

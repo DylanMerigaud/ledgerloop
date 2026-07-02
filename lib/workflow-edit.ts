@@ -293,10 +293,52 @@ const postStepId = (wf: TWorkflow): string | null => {
 };
 
 /**
+ * Order each step's `next` so the true PARALLEL siblings come first and a shared
+ * downstream target (a join like the post, or any child that another sibling also
+ * feeds) comes LAST. The graph lays siblings out in `next` order, so a pass-through
+ * edge (e.g. Manager -> Post, the under-threshold path) that jumps over the gate rank
+ * would otherwise sit BETWEEN the gates and split the fan-out visually. Pushing it to
+ * the end keeps the gates contiguous and routes the pass-through cleanly along an edge.
+ * Order-only: it changes no routing (a step fires on its `when`, not its position).
+ */
+const orderNextForLayout = (wf: TWorkflow): TWorkflow => {
+  const parentsOf = new Map<string, Set<string>>();
+  for (const s of wf.steps)
+    for (const n of s.next) {
+      const set = parentsOf.get(n) ?? new Set<string>();
+      set.add(s.id);
+      parentsOf.set(n, set);
+    }
+  for (const s of wf.steps) {
+    if (s.next.length < 2) continue;
+    const siblings = new Set(s.next);
+    // A child is a "join/pass-through" if it also has a parent that is ANOTHER of this
+    // step's children (so an edge to it skips over the sibling rank). Those go last.
+    const isJoin = (id: string): boolean => {
+      const parents = parentsOf.get(id);
+      if (!parents) return false;
+      for (const p of parents) if (p !== s.id && siblings.has(p)) return true;
+      return false;
+    };
+    // Stable partition: keep the given order within each group, joins after gates.
+    s.next = [...s.next.filter((n) => !isJoin(n)), ...s.next.filter(isJoin)];
+  }
+  return wf;
+};
+
+/**
  * Apply one edit op to a workflow, returning a NEW workflow (input untouched).
- * Unlisted steps and their conditions are carried over byte-for-byte.
+ * Unlisted steps and their conditions are carried over byte-for-byte. After a
+ * structural op the child order is normalised for a clean layout (gates before a
+ * shared join, see `orderNextForLayout`), EXCEPT `reorder-branches`, which is an
+ * EXPLICIT user-set order that must win over the automatic normalisation.
  */
 export const applyEditOp = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
+  const result = applyEditOpInner(wf, op);
+  return op.op === "reorder-branches" ? result : orderNextForLayout(result);
+};
+
+const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
   // Deep clone so we never mutate the caller's current workflow.
   const next: TWorkflow = structuredClone(wf);
 
