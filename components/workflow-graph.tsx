@@ -21,6 +21,12 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { SlackIcon, NetSuiteIcon, JiraIcon } from "@/components/ui/brand-icon";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   type ApprovalWorkflow,
@@ -139,6 +145,12 @@ type NodeData = {
   onDecide?: (choice: "approve" | "reject") => void;
   /** Record the reviewer's reject note for this gate. */
   onReason?: (reason: string) => void;
+  /** The AI investigator's call for this run (verdict + reasoning), shown in the gate
+      toolbar so it informs the decision without opening the trace. */
+  recommendation?: {
+    verdict: "likely_legitimate" | "likely_overcharge" | "unclear";
+    rationale: string | null;
+  };
 };
 
 /** Ring/bg for a validation issue on a node (only used when there's no diff change). */
@@ -146,6 +158,56 @@ const issueRing = (sev: "error" | "warning" | undefined): string => {
   if (sev === "error") return "ring-danger-line bg-danger-soft/20";
   if (sev === "warning") return "ring-warn-line bg-warn-soft/20";
   return "ring-line";
+};
+
+/** The label + tone for the AI investigator's verdict. */
+const VERDICT_META: Record<
+  "likely_legitimate" | "likely_overcharge" | "unclear",
+  { label: string; text: string; dot: string }
+> = {
+  likely_legitimate: {
+    label: "Likely legitimate",
+    text: "text-ok",
+    dot: "bg-ok",
+  },
+  likely_overcharge: {
+    label: "Likely overcharge",
+    text: "text-danger",
+    dot: "bg-danger",
+  },
+  unclear: { label: "Unclear", text: "text-warn", dot: "bg-warn" },
+};
+
+/** The AI investigator's call on the paused gate: a compact verdict chip (with a
+    sparkle so it reads as the AI's take, not a status), and the full reasoning on
+    hover, so the human sees what the agent concluded right where they decide. */
+const RecommendationChip = ({
+  recommendation,
+}: {
+  recommendation: NonNullable<NodeData["recommendation"]>;
+}) => {
+  const meta = VERDICT_META[recommendation.verdict];
+  const chip = (
+    <span
+      className={`inline-flex w-full items-center gap-1.5 rounded-lg bg-subtle/60 px-2 py-1 text-[11px] font-medium ${meta.text}`}
+    >
+      <span aria-hidden>✦</span>
+      <span className="text-faint">AI:</span>
+      <span className={`inline-block size-1.5 rounded-full ${meta.dot}`} />
+      {meta.label}
+    </span>
+  );
+  if (!recommendation.rationale) return chip;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{chip}</TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[280px]">
+          {recommendation.rationale}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 };
 
 /** A workflow step rendered as the app's card, used as a React Flow custom node. */
@@ -164,6 +226,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
     reason,
     onDecide,
     onReason,
+    recommendation,
   } = data;
   const st = statusTone(status);
   const cb = changeBadge(change);
@@ -324,6 +387,9 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           position={Position.Bottom}
           className="nodrag nopan flex w-[244px] flex-col gap-1.5 rounded-xl bg-surface p-2 shadow-lift ring-1 ring-inset ring-line"
         >
+          {recommendation && (
+            <RecommendationChip recommendation={recommendation} />
+          )}
           <div className="flex gap-1.5">
             <button
               type="button"
@@ -496,6 +562,7 @@ const Inner = ({
   reasons,
   onDecide,
   onReason,
+  recommendation,
   focusIds,
 }: WorkflowGraphProps) => {
   // Stack the DAG vertically below the `sm` breakpoint (640px), where a wide
@@ -732,12 +799,16 @@ const Inner = ({
           isDecidable && onReason
             ? (r: string) => onReason(n.id, r)
             : undefined;
+        // The AI recommendation rides only on a decidable gate (where it helps the
+        // decision); other nodes carry none.
+        const rec = isDecidable ? (recommendation ?? undefined) : undefined;
         if (
           n.data.decidable === isDecidable &&
           n.data.choice === choice &&
           n.data.reason === reason &&
           n.data.onDecide === handler &&
-          n.data.onReason === reasonHandler
+          n.data.onReason === reasonHandler &&
+          n.data.recommendation === rec
         ) {
           return n;
         }
@@ -750,6 +821,7 @@ const Inner = ({
             reason: reason ?? undefined,
             onDecide: handler,
             onReason: reasonHandler,
+            recommendation: rec,
           },
         };
       }),
@@ -763,6 +835,7 @@ const Inner = ({
     reasons,
     onDecide,
     onReason,
+    recommendation,
     setNodes,
   ]);
 
@@ -871,6 +944,13 @@ type WorkflowGraphProps = {
   onDecide?: (stepId: string, choice: "approve" | "reject") => void;
   /** Record a per-gate reject note (the inline node reason input). */
   onReason?: (stepId: string, reason: string) => void;
+  /** The AI investigator's call for THIS run, shown on the paused gate(s) so the human
+      sees what the agent concluded (verdict + reasoning on hover) right where they
+      decide. Null when there's no investigation (a clean run) or not paused. */
+  recommendation?: {
+    verdict: "likely_legitimate" | "likely_overcharge" | "unclear";
+    rationale: string | null;
+  } | null;
   /** Smoothly pan/zoom to frame these nodes (the pending group, or one on hover). */
   focusIds?: string[];
 };

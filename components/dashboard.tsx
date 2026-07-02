@@ -155,6 +155,29 @@ const isBlockedRun = (
   return isRecord(matching?.data) && matching.data["verdict"] === "duplicate";
 };
 
+/** The exception investigator's recommendation, pulled from the trace, so the paused
+    gate can show what the AI concluded right where the human decides (verdict + the
+    reasoning on hover), instead of only in the trace drawer. Null until the agent has
+    produced a recommendation. */
+type Recommendation = {
+  verdict: "likely_legitimate" | "likely_overcharge" | "unclear";
+  rationale: string | null;
+};
+const readRecommendation = (trace: TraceEvent[]): Recommendation | null => {
+  const inv = trace.find((e) => e.stage === "investigation" && e.data != null);
+  if (!inv || !isRecord(inv.data)) return null;
+  const rec = inv.data["recommendation"];
+  const verdict =
+    rec === "likely_legitimate"
+      ? "likely_legitimate"
+      : rec === "likely_overcharge"
+        ? "likely_overcharge"
+        : "unclear";
+  const rationale =
+    typeof inv.data["rationale"] === "string" ? inv.data["rationale"] : null;
+  return { verdict, rationale };
+};
+
 /** Build the approval engine's InvoiceContext from the matching trace event, so the
     run graph's path can be resolved client-side. Returns undefined (draw the full
     graph) if the matching event isn't present/valid yet.
@@ -833,6 +856,9 @@ export const Dashboard = ({
               reasons={awaiting ? gateReasons : undefined}
               onDecide={awaiting ? setGate : undefined}
               onReason={awaiting ? setGateReason : undefined}
+              // The AI investigator's call, shown on the paused gate where the human
+              // decides (verdict + reasoning on hover), not only in the trace drawer.
+              recommendation={awaiting ? readRecommendation(state.trace) : null}
               // Pan to frame the waiting gate(s) the moment the run pauses.
               focusIds={awaiting ? pendingIds : undefined}
             />
