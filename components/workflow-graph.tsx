@@ -4,6 +4,7 @@ import {
   ReactFlow,
   Background,
   Handle,
+  NodeToolbar,
   Position,
   useReactFlow,
   useNodesInitialized,
@@ -300,49 +301,56 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
         </div>
       )}
 
-      {/* Inline decision, only on a gate the paused run is waiting on. `nodrag
-          nopan` so the click lands on the button instead of starting a canvas pan.
-          The staged choice stays editable (flip approve↔reject before submitting). */}
+      {/* Decision UI in a floating toolbar BELOW the node, not inside the card, so a
+          gate becoming decidable never changes the card's height. That's what keeps
+          the layout stable (no reflow, handles stay aligned) when a run pauses. The
+          staged choice stays editable (flip approve↔reject before submitting); a
+          staged reject reveals an optional reason that rides into the trace + audit.
+          `nodrag nopan` so a click lands on the control instead of panning the canvas. */}
       {decidable && onDecide && (
-        <div className="mt-2.5 flex gap-1.5 border-t border-line pt-2.5">
-          <button
-            type="button"
-            data-testid={`gate-reject-${step.id}`}
-            onClick={() => onDecide("reject")}
-            className={`nodrag nopan h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
-              choice === "reject"
-                ? "bg-danger text-white ring-transparent"
-                : "bg-surface text-danger ring-danger-line hover:bg-danger-soft"
-            }`}
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            data-testid={`gate-approve-${step.id}`}
-            onClick={() => onDecide("approve")}
-            className={`nodrag nopan h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
-              choice === "approve"
-                ? "bg-ok text-white ring-transparent"
-                : "bg-surface text-ok ring-ok-line hover:bg-ok-soft"
-            }`}
-          >
-            Approve
-          </button>
-        </div>
+        <NodeToolbar
+          isVisible
+          position={Position.Bottom}
+          className="nodrag nopan flex w-[244px] flex-col gap-1.5 rounded-xl bg-surface p-2 shadow-lift ring-1 ring-inset ring-line"
+        >
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              data-testid={`gate-reject-${step.id}`}
+              onClick={() => onDecide("reject")}
+              className={`h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
+                choice === "reject"
+                  ? "bg-danger text-white ring-transparent"
+                  : "bg-surface text-danger ring-danger-line hover:bg-danger-soft"
+              }`}
+            >
+              Reject
+            </button>
+            <button
+              type="button"
+              data-testid={`gate-approve-${step.id}`}
+              onClick={() => onDecide("approve")}
+              className={`h-7 flex-1 rounded-lg text-[12px] font-medium ring-1 ring-inset transition-colors ${
+                choice === "approve"
+                  ? "bg-ok text-white ring-transparent"
+                  : "bg-surface text-ok ring-ok-line hover:bg-ok-soft"
+              }`}
+            >
+              Approve
+            </button>
+          </div>
+          {onReason && choice === "reject" && (
+            <input
+              value={reason ?? ""}
+              onChange={(e) => onReason(e.target.value)}
+              placeholder="Reason (optional)"
+              data-testid={`gate-reason-${step.id}`}
+              className="h-7 w-full rounded-lg bg-surface px-2 text-[12px] text-ink outline-none ring-1 ring-inset ring-danger-line transition-shadow focus:ring-2 focus:ring-accent-ring"
+            />
+          )}
+        </NodeToolbar>
       )}
 
-      {/* Reject note, appears on a gate staged "reject" so the blocked bill carries
-          a why into the trace + audit. Optional. */}
-      {decidable && onReason && choice === "reject" && (
-        <input
-          value={reason ?? ""}
-          onChange={(e) => onReason(e.target.value)}
-          placeholder="Reason (optional)"
-          data-testid={`gate-reason-${step.id}`}
-          className="nodrag nopan mt-1.5 h-7 w-full rounded-lg bg-surface px-2 text-[12px] text-ink outline-none ring-1 ring-inset ring-danger-line transition-shadow focus:ring-2 focus:ring-accent-ring"
-        />
-      )}
       {/* Only render the outgoing handle when a real edge leaves this node, so the
           terminal "Post" node doesn't show a dangling connector stub. */}
       {hasOutgoing !== false && (
@@ -599,20 +607,13 @@ const Inner = ({
   // bottom stack growing/shrinking, a window resize). fitView otherwise runs once per
   // graph, so without this a node could sit clipped off the edge after a resize.
   const wrapRef = useRef<HTMLDivElement>(null);
-  // The pending set is part of the layout key: when a gate becomes decidable it grows
-  // (inline Approve / Reject appear), so its measured height changes and the graph
-  // must re-lay-out or the edges stay pinned to the pre-buttons position (a visible
-  // kink at the join). This flips only at the pause/resume boundary, not per-render.
-  const decidableKey = (decidableIds ?? []).join("|");
   const graphKey = useMemo(
     () =>
       initialNodes.map((n) => n.id).join("|") +
       "::" +
       edges.length +
-      (vertical ? "::v" : "::h") +
-      "::" +
-      decidableKey,
-    [initialNodes, edges, vertical, decidableKey],
+      (vertical ? "::v" : "::h"),
+    [initialNodes, edges, vertical],
   );
   useEffect(() => {
     setNodes(
@@ -624,7 +625,11 @@ const Inner = ({
 
   // Once measured, lay out with the REAL (measured) heights, reveal, and fit. The
   // ref guard makes this run once per graph (its own setNodes re-renders but won't
-  // re-enter, since the key is already marked done).
+  // re-enter, since the key is already marked done). If the graph appears with a
+  // FOCUS group (a paused gate awaiting a decision), frame THAT group instead of the
+  // whole graph, so the node you need to act on lands centered the moment the graph
+  // shows, not off to one side. The separate focus effect below handles later focus
+  // changes (the next gate after an approve); this handles the initial appearance.
   useEffect(() => {
     if (!initialized || laidOutFor.current === graphKey) return;
     laidOutFor.current = graphKey;
@@ -637,8 +642,30 @@ const Inner = ({
         vertical,
       ).map((n) => ({ ...n, style: { visibility: "visible" } }));
     });
-    requestAnimationFrame(() => void fitView({ padding: 0.18, duration: 200 }));
-  }, [initialized, graphKey, initialNodes, edges, setNodes, fitView, vertical]);
+    const focus = focusIds ?? [];
+    requestAnimationFrame(
+      () =>
+        void fitView(
+          focus.length > 0
+            ? {
+                nodes: focus.map((id) => ({ id })),
+                padding: 0.6,
+                maxZoom: 1,
+                duration: 200,
+              }
+            : { padding: 0.18, duration: 200 },
+        ),
+    );
+  }, [
+    initialized,
+    graphKey,
+    initialNodes,
+    edges,
+    setNodes,
+    fitView,
+    vertical,
+    focusIds,
+  ]);
 
   // Re-fit when the container resizes so nodes never sit clipped past an edge after a
   // layout reflow or window resize. RAF-debounced; skipped until the nodes exist.
@@ -673,8 +700,10 @@ const Inner = ({
   // Patch the per-gate decision state (decidable + staged choice + the handler) onto
   // live nodes, also cheap, no re-layout, so deciding a gate doesn't reflow the graph.
   // Kept out of `initialNodes` for the same reason (its identity changing forces a
-  // re-measure). Keyed on stable strings so it only runs when the inputs change.
-  // (`decidableKey` is defined above, it also feeds the layout key.)
+  // re-measure). Keyed on stable strings so it only runs when the inputs change. The
+  // decision UI is a floating NodeToolbar (not in the card), so the decidable state no
+  // longer changes node height, hence it doesn't feed the layout key anymore.
+  const decidableKey = (decidableIds ?? []).join("|");
   const choiceKey = decisions
     ? Object.entries(decisions)
         .map(([k, v]) => `${k}:${v ?? ""}`)
@@ -736,15 +765,23 @@ const Inner = ({
     setNodes,
   ]);
 
-  // Smoothly frame the focused nodes (the pending group, or one on hover). Runs only
-  // AFTER the initial per-graph layout+fit (the `laidOutFor === graphKey` guard) so it
-  // never fights that one-shot fit; keyed on `focusKey` so it animates once per change.
+  // Smoothly frame the focused nodes (the pending group awaiting a decision, or one on
+  // hover), so the node you must act on lands centered. Runs after the per-graph layout
+  // (`laidOutFor === graphKey`) so it doesn't fight the one-shot fit; keyed on `focusKey`
+  // so it animates once per change (the next gate after an approve re-centers here).
+  // `maxZoom` lets it actually zoom IN on a single gate (fitView otherwise caps the
+  // zoom and, on a 2-node graph, would just frame both and leave the gate off-center);
+  // a rAF lets the just-laid-out node measurements settle before we measure their box.
   const focusKey = (focusIds ?? []).join("|");
   useEffect(() => {
     if (!initialized || laidOutFor.current !== graphKey || focusKey === "")
       return;
     const ids = focusKey.split("|").map((id) => ({ id }));
-    void fitView({ nodes: ids, duration: 400, padding: 0.3 });
+    const raf = requestAnimationFrame(
+      () =>
+        void fitView({ nodes: ids, duration: 400, padding: 0.6, maxZoom: 1 }),
+    );
+    return () => cancelAnimationFrame(raf);
   }, [focusKey, initialized, graphKey, fitView]);
 
   // Patch edge "flow" styling from the live statuses, cheap, no relayout (kept out of
