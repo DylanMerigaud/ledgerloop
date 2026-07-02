@@ -1,10 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { isStreamDone } from "@/lib/api-types";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+import { isRecord } from "@/lib/assert";
 import type { Outcome } from "@/lib/display";
 import { client } from "@/lib/orpc/client";
 import {
@@ -214,12 +216,20 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
         }));
       } catch (err) {
         if (controller.signal.aborted) return;
+        const message =
+          err instanceof Error ? err.message : "Network error during run.";
+        // Rate-limit (the demo guard) is expected traffic, not a crash: surface it
+        // as a toast the user actually sees, rather than a silent `error` state.
+        const rateLimited =
+          isRecord(err) && err["code"] === "TOO_MANY_REQUESTS";
+        if (rateLimited) {
+          toast.warning("Demo limit reached", { description: message });
+        }
         setState((s) => ({
           ...s,
           status: "error",
           outcome: "pending",
-          error:
-            err instanceof Error ? err.message : "Network error during run.",
+          error: message,
         }));
       }
     },

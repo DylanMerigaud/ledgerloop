@@ -1,6 +1,7 @@
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 import "@/app/globals.css";
 
 import { QueryProvider } from "@/components/query-provider";
@@ -45,6 +46,7 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="min-h-full font-sans">
         <QueryProvider>{children}</QueryProvider>
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );

@@ -13,7 +13,7 @@ import {
   ReplayInput,
   ReplayResult,
 } from "@/lib/orpc/schemas";
-import { checkRateLimit, clientIpFrom } from "@/lib/ratelimit";
+import { checkRateLimit, clientIpFrom, type RateTier } from "@/lib/ratelimit";
 import { type TraceEvent } from "@/lib/trace";
 import { runEditAgent } from "@/lib/workflow-edit-agent";
 import { anthropicPlanModel } from "@/lib/workflow-edit-model";
@@ -33,9 +33,9 @@ import { runPipelineStream } from "@/src/mastra/run-stream";
 
 const base = os.$context<{ headers: Headers }>();
 
-/** Rate-limit by client IP (each call spends model tokens). */
-const rateLimited = base.use(async ({ context, next }) => {
-  const verdict = await checkRateLimit(clientIpFrom(context.headers));
+/** Throw the standard demo-limit error from a failed verdict. */
+const enforce = async (headers: Headers, tier: RateTier): Promise<void> => {
+  const verdict = await checkRateLimit(clientIpFrom(headers), tier);
   if (!verdict.ok) {
     throw new ORPCError("TOO_MANY_REQUESTS", {
       message: `You've hit the demo limit. Try again in about ${Math.max(
@@ -44,6 +44,15 @@ const rateLimited = base.use(async ({ context, next }) => {
       )} minute(s).`,
     });
   }
+};
+
+/**
+ * Rate-limit by client IP, on the "sonnet" bucket, for the expensive Sonnet calls
+ * (onboarding, first-run vision, workflow edit). The `run` procedure does NOT use
+ * this, it picks its bucket dynamically (a resume is cheap, see below).
+ */
+const rateLimited = base.use(async ({ context, next }) => {
+  await enforce(context.headers, "sonnet");
   return next();
 });
 
@@ -117,9 +126,16 @@ const editWorkflow = rateLimited
 
 /* ── run (streaming) ─────────────────────────────────────────────────────────── */
 
-const run = rateLimited.input(RunRequest).handler(async function* ({
+const run = base.input(RunRequest).handler(async function* ({
   input,
+  context,
 }): AsyncGenerator<TraceEvent | StreamDone> {
+  // A resume (decisions present) re-runs from the top but SKIPS extraction, so it
+  // only spends a cheap Haiku investigator call (the "cheap" bucket). A first run
+  // does the Sonnet vision extraction (the "sonnet" bucket). This is what keeps an
+  // Approve/Reject from ever hitting the tight vision limit.
+  const isResume = Object.keys(input.decisions ?? {}).length > 0;
+  await enforce(context.headers, isResume ? "cheap" : "sonnet");
   yield* runPipelineStream(input);
 });
 

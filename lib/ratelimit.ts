@@ -5,10 +5,16 @@ import { env } from "@/lib/env";
 import { log } from "@/lib/logger";
 
 /**
- * Per-IP rate limiting via Upstash, for the public "Run pipeline" endpoint.
- * Configured for 8 runs per 10 minutes, enough to explore every seeded scenario
- * (clean / price / quantity / duplicate, plus an approve/reject) without leaving
- * the door open for a bot to drain the Anthropic budget.
+ * Per-IP rate limiting via Upstash, for the public demo endpoints.
+ *
+ * TWO buckets, because the calls cost wildly different amounts. The "sonnet"
+ * bucket guards the expensive Sonnet calls (invoice vision, onboarding derivation,
+ * workflow edit) at 15 per 10 minutes, enough to explore every seeded scenario in a
+ * live demo without letting a bot drain the Anthropic budget. The "cheap" bucket
+ * guards the resume path (an approve/reject re-run that skips extraction and only
+ * spends a Haiku investigator call) at a very high 100 per 10 minutes, so a human
+ * clicking Approve never hits it, but a bot spamming resumes still gets cut.
+ * Read-only calls (history / replay) aren't rate-limited at all (no model tokens).
  *
  * Design choice (mirrors the sibling ai-invoice-parser repo): if the Upstash env
  * vars are absent (e.g. local dev without a Redis instance), we FAIL OPEN, the
@@ -18,18 +24,25 @@ import { log } from "@/lib/logger";
  */
 
 const WINDOW = "10 m" as const;
-const LIMIT = 8;
+
+/** The rate-limit buckets, by cost tier. Each has its own per-IP counter. */
+export type RateTier = "sonnet" | "cheap";
+const LIMITS: Record<RateTier, number> = {
+  sonnet: 15, // vision / onboarding / edit: the real Anthropic spend
+  cheap: 100, // resume (approve/reject), Haiku only; high enough to never hit by hand
+};
 
 export type RateVerdict =
   | { ok: true; remaining: number | null }
   | { ok: false; limit: number; reset: number; retryAfterSeconds: number };
 
-let limiter: Ratelimit | null = null;
-let initialized = false;
+const limiters = new Map<RateTier, Ratelimit | null>();
+let redis: Redis | null = null;
+let redisResolved = false;
 
-const getLimiter = (): Ratelimit | null => {
-  if (initialized) return limiter;
-  initialized = true;
+const getRedis = (): Redis | null => {
+  if (redisResolved) return redis;
+  redisResolved = true;
 
   // Accept either naming convention so it works however you provision Redis:
   //   • Upstash directly  → UPSTASH_REDIS_REST_URL / _TOKEN
@@ -44,22 +57,35 @@ const getLimiter = (): Ratelimit | null => {
         "(UPSTASH_REDIS_REST_URL/_TOKEN or KV_REST_API_URL/_TOKEN), " +
         "rate limiting is DISABLED (failing open).",
     );
-    limiter = null;
-    return limiter;
+    redis = null;
+    return redis;
   }
+  redis = new Redis({ url, token });
+  return redis;
+};
 
-  limiter = new Ratelimit({
-    redis: new Redis({ url, token }),
-    limiter: Ratelimit.slidingWindow(LIMIT, WINDOW),
-    prefix: "ledgerloop",
-    analytics: false,
-  });
+/** One limiter per tier, each with its own Redis key prefix so counters don't share. */
+const getLimiter = (tier: RateTier): Ratelimit | null => {
+  if (limiters.has(tier)) return limiters.get(tier) ?? null;
+  const r = getRedis();
+  const limiter = r
+    ? new Ratelimit({
+        redis: r,
+        limiter: Ratelimit.slidingWindow(LIMITS[tier], WINDOW),
+        prefix: `ledgerloop:${tier}`,
+        analytics: false,
+      })
+    : null;
+  limiters.set(tier, limiter);
   return limiter;
 };
 
-/** Check (and consume) one unit of the rate budget for the given IP. */
-export const checkRateLimit = async (ip: string): Promise<RateVerdict> => {
-  const rl = getLimiter();
+/** Check (and consume) one unit of the given tier's rate budget for the IP. */
+export const checkRateLimit = async (
+  ip: string,
+  tier: RateTier,
+): Promise<RateVerdict> => {
+  const rl = getLimiter(tier);
   if (!rl) {
     // Failing open: always allow.
     return { ok: true, remaining: null };

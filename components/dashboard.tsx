@@ -654,8 +654,11 @@ export const Dashboard = ({
               Once past intake it's gone and the lit graph is the whole story (the
               document stays one click away in the trace drawer). */}
             {!pastIntake && previewId && (
-              <div className="absolute inset-0 z-10 grid place-items-center bg-canvas/70 p-5 backdrop-blur-sm">
-                <div className="max-h-full w-full max-w-2xl overflow-y-auto">
+              <div className="absolute inset-0 z-10 grid place-items-center overflow-y-auto bg-canvas p-5">
+                {/* `relative` so the Run CTA can float over the document card's own
+                    corner (an anchored overlay, NOT a button stranded below the
+                    card). The card owns the pane; the action sits on it. */}
+                <div className="relative w-full max-w-2xl">
                   <ExtractionReveal
                     pdfSrc={API_ROUTES.pdf(previewId)}
                     state={
@@ -667,10 +670,11 @@ export const Dashboard = ({
                     extractedInvoice={intake?.document ?? null}
                   />
                   {state.status === "idle" && selected && (
-                    <div className="mt-4 grid place-items-center">
+                    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center">
                       <Button
                         data-testid="run-btn"
                         onClick={() => run(selected.id)}
+                        className="pointer-events-auto shadow-lift"
                       >
                         <PlayIcon />
                         Run pipeline
