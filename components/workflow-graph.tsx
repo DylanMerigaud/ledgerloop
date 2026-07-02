@@ -178,32 +178,42 @@ const VERDICT_META: Record<
   unclear: { label: "Unclear", text: "text-warn", dot: "bg-warn" },
 };
 
-/** The AI investigator's call on the paused gate: a compact verdict chip (with a
-    sparkle so it reads as the AI's take, not a status), and the full reasoning on
-    hover, so the human sees what the agent concluded right where they decide. */
-const RecommendationChip = ({
+/** The AI investigator's call, a small spark button beside Approve; on hover it shows
+    the verdict + the full reasoning. Tinted by the verdict so a glance already hints
+    the direction, the detail is one hover away, no trace drawer needed. */
+const RecommendationSpark = ({
   recommendation,
+  stepId,
 }: {
   recommendation: NonNullable<NodeData["recommendation"]>;
+  stepId: string;
 }) => {
   const meta = VERDICT_META[recommendation.verdict];
-  const chip = (
-    <span
-      className={`inline-flex w-full items-center gap-1.5 rounded-lg bg-subtle/60 px-2 py-1 text-[11px] font-medium ${meta.text}`}
-    >
-      <span aria-hidden>✦</span>
-      <span className="text-faint">AI:</span>
-      <span className={`inline-block size-1.5 rounded-full ${meta.dot}`} />
-      {meta.label}
-    </span>
-  );
-  if (!recommendation.rationale) return chip;
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{chip}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            data-testid={`gate-ai-${stepId}`}
+            aria-label={`AI recommendation: ${meta.label}`}
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[13px] ring-1 ring-inset ring-line transition-colors hover:bg-subtle ${meta.text}`}
+          >
+            <span aria-hidden>✦</span>
+          </button>
+        </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[280px]">
-          {recommendation.rationale}
+          <span className="flex items-center gap-1.5 font-medium">
+            <span
+              className={`inline-block size-1.5 rounded-full ${meta.dot}`}
+            />
+            AI: {meta.label}
+          </span>
+          {recommendation.rationale && (
+            <span className="mt-1 block text-muted">
+              {recommendation.rationale}
+            </span>
+          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -387,9 +397,6 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           position={Position.Bottom}
           className="nodrag nopan flex w-[244px] flex-col gap-1.5 rounded-xl bg-surface p-2 shadow-lift ring-1 ring-inset ring-line"
         >
-          {recommendation && (
-            <RecommendationChip recommendation={recommendation} />
-          )}
           <div className="flex gap-1.5">
             <button
               type="button"
@@ -415,6 +422,15 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
             >
               Approve
             </button>
+            {/* The AI investigator's take, a spark to the right of Approve; hover
+                reveals the verdict + reasoning. Quiet by default so it informs the
+                decision without shouting over the buttons. */}
+            {recommendation && (
+              <RecommendationSpark
+                recommendation={recommendation}
+                stepId={step.id}
+              />
+            )}
           </div>
           {onReason && choice === "reject" && (
             <input
@@ -731,8 +747,8 @@ const Inner = ({
           focus.length > 0
             ? {
                 nodes: focus.map((id) => ({ id })),
-                padding: 0.6,
-                maxZoom: 1,
+                padding: 0.25,
+                maxZoom: 1.1,
                 duration: 200,
               }
             : { padding: 0.18, duration: 200 },
@@ -887,9 +903,18 @@ const Inner = ({
     if (!initialized || laidOutFor.current !== graphKey || focusKey === "")
       return;
     const ids = focusKey.split("|").map((id) => ({ id }));
+    // Frame the pending gate itself, tightly. A large padding made fitView zoom out
+    // until the WHOLE graph fit (the gate no longer looked focused); a small padding
+    // keeps the gate centered and legible. maxZoom caps how far it zooms in on a lone
+    // node so it doesn't blow up. A rAF lets the just-laid-out measurements settle.
     const raf = requestAnimationFrame(
       () =>
-        void fitView({ nodes: ids, duration: 400, padding: 0.6, maxZoom: 1 }),
+        void fitView({
+          nodes: ids,
+          duration: 400,
+          padding: 0.25,
+          maxZoom: 1.1,
+        }),
     );
     return () => cancelAnimationFrame(raf);
   }, [focusKey, initialized, graphKey, fitView]);
