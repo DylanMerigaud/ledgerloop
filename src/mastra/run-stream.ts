@@ -127,10 +127,14 @@ export const runPipelineStream = async function* (
 
   const durationMs = Date.now() - startedAt;
 
-  // Persist the run as an append-only audit row. Best-effort (saveAgentRun never
-  // throws), never touches the document tables or the ERP/HRIS, so it can't
-  // change a future run's verdict. The nightly reset clears these.
+  // Persist the run as an audit row, keyed by the run INSTANCE id. Best-effort
+  // (saveAgentRun never throws), never touches the document tables or the ERP/HRIS,
+  // so it can't change a future run's verdict. A resume reuses the same runId and
+  // upserts. The nightly reset clears these.
   await saveAgentRun({
+    // Client-provided instance id (drives the URL); saveAgentRun generates one when
+    // absent, for any caller that doesn't persist to the URL.
+    runId: input.runId,
     invoiceNumber: bundle.invoice.invoiceNumber,
     verdict,
     outcome,

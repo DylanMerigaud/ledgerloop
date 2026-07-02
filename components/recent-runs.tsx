@@ -6,8 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { outcomeDot, type Outcome } from "@/lib/display";
 import { formatDuration } from "@/lib/format";
-import { client, orpc } from "@/lib/orpc/client";
-import type { TraceEvent } from "@/lib/trace";
+import { orpc } from "@/lib/orpc/client";
 
 /**
  * The "Recent runs" panel, the audit trail made visible.
@@ -47,16 +46,16 @@ const timeAgo = (iso: string): string => {
 };
 
 export const RecentRuns = ({
-  /** Replay a stored trace into the dashboard's trace pane (no run executed). */
-  onReplay,
-  /** Disabled while a live run is in flight, replaying would clobber it. */
+  /** Open a stored run by navigating to its `?run=<id>`. The dashboard's URL effect
+      does the actual fetch + replay, so a click here is just navigation. */
+  onOpen,
+  /** Disabled while a live run is in flight, opening one would clobber it. */
   disabled,
 }: {
-  onReplay: (invoiceNumber: string, trace: TraceEvent[]) => void;
+  onOpen: (id: string) => void;
   disabled: boolean;
 }) => {
   const history = useQuery(orpc.history.queryOptions());
-  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const runs = history.data?.runs ?? [];
 
@@ -84,19 +83,9 @@ export const RecentRuns = ({
   const moreCount =
     hiddenBelow > 0 ? Math.max(1, Math.round(hiddenBelow / ROW_PX)) : 0;
 
-  const replay = async (id: string) => {
-    if (disabled || loadingId) return;
-    setLoadingId(id);
-    try {
-      const stored = await client.replayRun({ id });
-      onReplay(stored.invoiceNumber, stored.trace);
-    } catch {
-      // The run may have been cleared by the nightly reset between list + click;
-      // refetch so the stale row drops out, and let the user pick another.
-      await history.refetch();
-    } finally {
-      setLoadingId(null);
-    }
+  const open = (id: string) => {
+    if (disabled) return;
+    onOpen(id);
   };
 
   return (
@@ -121,18 +110,17 @@ export const RecentRuns = ({
           >
             {runs.map((r) => {
               const outcome = toOutcome(r.verdict, r.outcome);
-              const isLoading = loadingId === r.id;
               return (
                 <li key={r.id}>
                   <button
                     type="button"
                     data-testid={`run-history-${r.id}`}
-                    onClick={() => void replay(r.id)}
-                    disabled={disabled || loadingId !== null}
-                    aria-disabled={disabled || loadingId !== null}
+                    onClick={() => open(r.id)}
+                    disabled={disabled}
+                    aria-disabled={disabled}
                     className={`flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-subtle/70 ${
                       disabled ? "cursor-not-allowed opacity-40" : ""
-                    } ${isLoading ? "opacity-60" : ""}`}
+                    }`}
                   >
                     <span
                       aria-hidden

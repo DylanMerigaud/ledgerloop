@@ -29,6 +29,12 @@ export type StepDecision = z.infer<typeof StepDecision>;
 
 export const RunRequest = z.object({
   id: z.string().min(1, "an invoice id is required"),
+  /** Client-generated identity for THIS run instance (stable across the phase-1 run
+      and its phase-2 resume). The server saves the audit row under it, so the client
+      can put it in the URL (`?run=<runId>`) and re-hydrate the run on refresh / a
+      shared link. Optional: when absent the server generates its own id (any caller
+      that doesn't drive the URL still works). */
+  runId: z.string().optional(),
   /** Reviewer decisions keyed by workflow step id. Omitted on the first run. */
   decisions: z.record(z.string(), StepDecision).optional(),
   /** Optional note the reviewer attached when REJECTING a gate, keyed by step id.

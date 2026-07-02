@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import type { PgTable } from "drizzle-orm/pg-core";
+import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 
 import { getDb, type Database } from "@/db/client";
 import { agentRuns, type AgentRunRow } from "@/db/schema";
@@ -21,6 +21,12 @@ import { TraceEvent } from "@/lib/trace";
 
 export type SaveAgentRunInput = {
   invoiceNumber: string;
+  /** The run INSTANCE id (client-generated, stable across a run and its resume), so
+      the browser can address it in the URL. Optional: absent → generate one, for any
+      caller that doesn't drive the URL. A phase-2 resume reuses the same id, so the
+      write UPSERTS in place (the instance is one audit row, updated as it advances)
+      rather than appending a duplicate. */
+  runId?: string;
   /** "clean" / "exception" / "duplicate", the matching verdict. */
   verdict: string;
   /** "posted" / "awaiting" / "rejected" / "blocked", the reconciliation outcome. */
@@ -30,12 +36,17 @@ export type SaveAgentRunInput = {
   model: string;
 };
 
-/** The narrow slice `saveAgentRun` uses, `insert(table).values(row)`. Declaring it
- *  structurally (not the full `Database`) lets a test pass a tiny fake with no cast,
- *  while the real handle satisfies the same shape. */
+/** The narrow slice `saveAgentRun` uses: `insert(table).values(row).onConflictDoUpdate`.
+ *  Declaring it structurally (not the full `Database`) lets a test pass a tiny fake
+ *  with no cast, while the real handle satisfies the same shape. */
 type AuditWritableDb = {
   insert: (table: PgTable) => {
-    values: (row: Record<string, unknown>) => unknown;
+    values: (row: Record<string, unknown>) => {
+      onConflictDoUpdate: (config: {
+        target: PgColumn | PgColumn[];
+        set: Record<string, unknown>;
+      }) => unknown;
+    };
   };
 };
 
@@ -44,17 +55,23 @@ export const saveAgentRun = async (
   db: AuditWritableDb = getDb(),
 ): Promise<void> => {
   try {
-    await db.insert(agentRuns).values({
-      // A unique id per run, the invoice number (readable) plus a UUID so two
-      // concurrent visitors running the same invoice can't collide.
-      id: `${input.invoiceNumber}-${crypto.randomUUID()}`,
+    // The instance id: the client's when it drives the URL, else a generated one
+    // (invoice number, readable, plus a UUID so concurrent visitors can't collide).
+    const id = input.runId ?? `${input.invoiceNumber}-${crypto.randomUUID()}`;
+    const row = {
       invoiceNumber: input.invoiceNumber,
       verdict: input.verdict,
       tier: input.outcome,
       trace: input.trace,
       durationMs: input.durationMs,
       model: input.model,
-    });
+    };
+    // Upsert by id: a phase-2 resume writes under the SAME instance id and must
+    // update that row (the advanced trace/outcome) rather than insert a duplicate.
+    await db
+      .insert(agentRuns)
+      .values({ id, ...row })
+      .onConflictDoUpdate({ target: agentRuns.id, set: row });
   } catch (err) {
     // Never let an audit-write failure surface to the visitor mid-run.
     log.warn("saveAgentRun failed (audit log skipped)", {

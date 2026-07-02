@@ -40,17 +40,20 @@ const input = (over: Partial<SaveAgentRunInput> = {}): SaveAgentRunInput => ({
   ...over,
 });
 
+/** A capturing fake: records the inserted row, and swallows the upsert chain (the
+    real write is `insert().values().onConflictDoUpdate()`). */
+const capturingDb = (rows: Record<string, unknown>[]) => ({
+  insert: (_table: unknown) => ({
+    values: (row: Record<string, unknown>) => {
+      rows.push(row);
+      return { onConflictDoUpdate: (_c: unknown) => Promise.resolve() };
+    },
+  }),
+});
+
 test("saveAgentRun writes one row with the run's verdict/outcome/trace", async () => {
   const rows: Record<string, unknown>[] = [];
-  const fake = {
-    insert: (_table: unknown) => ({
-      values: (row: Record<string, unknown>) => {
-        rows.push(row);
-        return Promise.resolve();
-      },
-    }),
-  };
-  await saveAgentRun(input(), fake);
+  await saveAgentRun(input(), capturingDb(rows));
   assert.equal(rows.length, 1);
   const row = rows[0]!;
   assert.equal(row["invoiceNumber"], "INV-2042");
@@ -59,16 +62,27 @@ test("saveAgentRun writes one row with the run's verdict/outcome/trace", async (
   assert.equal(row["tier"], "awaiting");
   assert.equal(row["durationMs"], 1234);
   assert.deepEqual(row["trace"], sampleTrace);
-  // The id is unique-per-run and carries the invoice number for readability.
+  // No client runId → a generated id carrying the invoice number for readability.
   assert.match(String(row["id"]), /^INV-2042-/);
+});
+
+test("saveAgentRun uses the client-provided runId as the row id (URL persistence)", async () => {
+  const rows: Record<string, unknown>[] = [];
+  await saveAgentRun(
+    { ...input(), runId: "INV-2042-fixed-instance" },
+    capturingDb(rows),
+  );
+  assert.equal(rows[0]!["id"], "INV-2042-fixed-instance");
 });
 
 test("saveAgentRun is best-effort, a failing insert never throws", async () => {
   const exploding = {
     insert: (_table: unknown) => ({
-      values: (_row: Record<string, unknown>) => {
-        throw new Error("db down");
-      },
+      values: (_row: Record<string, unknown>) => ({
+        onConflictDoUpdate: (_c: unknown) => {
+          throw new Error("db down");
+        },
+      }),
     }),
   };
   // Must resolve, not reject, an audit-write failure can't break a live run.

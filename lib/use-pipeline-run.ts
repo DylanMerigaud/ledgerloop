@@ -33,6 +33,10 @@ export type PipelineRunState = {
   outcome: Outcome;
   durationMs: number | null;
   error: string | null;
+  /** True when this trace was REPLAYED from a stored run (not streamed live). The UI
+      uses it to skip the live-only reveal-hold, so opening a past run doesn't look
+      like it re-reads the document. */
+  replayed: boolean;
 };
 
 const IDLE: PipelineRunState = {
@@ -41,11 +45,23 @@ const IDLE: PipelineRunState = {
   outcome: "pending",
   durationMs: null,
   error: null,
+  replayed: false,
 };
 
-export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
+export const usePipelineRun = (
+  workflow: ApprovalWorkflow | null,
+  /** Fired when a fresh (phase-1) run starts, with its generated instance id, so the
+      caller can persist it in the URL (`?run=<runId>`). */
+  onRunStart?: (runId: string) => void,
+) => {
   const [state, setState] = useState<PipelineRunState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
+  // The run INSTANCE id: generated on the phase-1 run, reused on the phase-2 resume
+  // (so the server upserts the same audit row), cleared on reset/replay. This is the
+  // id the URL carries.
+  const runIdRef = useRef<string | null>(null);
+  const onRunStartRef = useRef(onRunStart);
+  onRunStartRef.current = onRunStart;
   // The active workflow the run executes against, kept in a ref so the stable
   // `stream` callback always reads the latest without re-creating. null → the
   // server falls back to its default DAG. The phase-2 resume sends the SAME
@@ -75,6 +91,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
     stepIndexRef.current = new Map();
     decisionsRef.current = {};
     reasonsRef.current = {};
+    runIdRef.current = null;
     setState(IDLE);
   });
 
@@ -94,18 +111,23 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      // Phase 1 starts a fresh trace; phase 2 keeps the existing one.
+      // Phase 1 starts a fresh trace AND a fresh instance id; phase 2 keeps both (the
+      // resume upserts the same audit row). The id is surfaced so the caller can put
+      // it in the URL before the run even finishes.
       if (!decisions) {
         eventsRef.current = [];
         stepIndexRef.current = new Map();
         decisionsRef.current = {};
         reasonsRef.current = {};
+        runIdRef.current = `${id}-${crypto.randomUUID()}`;
+        onRunStartRef.current?.(runIdRef.current);
       }
       setState((s) => ({
         ...s,
         status: "running",
         outcome: "running",
         error: null,
+        replayed: false, // a live run, not a replayed stored trace
       }));
 
       const resuming = decisions !== undefined;
@@ -167,14 +189,18 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
           if (reasons)
             reasonsRef.current = { ...reasonsRef.current, ...reasons };
         }
+        // The instance id rides on both phases so the server upserts the same audit
+        // row (phase 2 advances the phase-1 row rather than inserting a duplicate).
+        const runId = runIdRef.current ?? undefined;
         const body = decisions
           ? {
               id,
+              runId,
               decisions: decisionsRef.current,
               reasons: reasonsRef.current,
               workflow: activeWorkflow,
             }
-          : { id, workflow: activeWorkflow };
+          : { id, runId, workflow: activeWorkflow };
         // The oRPC `run` procedure is an event iterator: a typed async stream of
         // TraceEvent | StreamDone. No manual reader / NDJSON parse / cast, just
         // iterate, fully typed end-to-end.
@@ -264,7 +290,7 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
    * graph components re-render them exactly as they streamed. Aborts any live run
    * first, and seeds the refs so the outcome derives the same as a fresh run.
    */
-  const replay = useEventCallback((trace: TraceEvent[]) => {
+  const replay = useEventCallback((trace: TraceEvent[], runId: string) => {
     abortRef.current?.abort();
     abortRef.current = null;
     eventsRef.current = [...trace];
@@ -273,12 +299,16 @@ export const usePipelineRun = (workflow: ApprovalWorkflow | null) => {
       if (e.stepId) stepIndexRef.current.set(e.stepId, i);
     });
     decisionsRef.current = {};
+    // Adopt the replayed instance's id: if this stored run is still awaiting and the
+    // reviewer then approves, the resume upserts THIS row (not a new instance).
+    runIdRef.current = runId;
     setState({
       status: "done",
       trace: [...trace],
       outcome: deriveOutcome(trace, true),
       durationMs: null,
       error: null,
+      replayed: true, // stored run opened for viewing, not streamed live
     });
   });
 

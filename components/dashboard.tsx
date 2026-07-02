@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -44,7 +45,7 @@ import {
   type Outcome,
 } from "@/lib/display";
 import { formatMoney } from "@/lib/format";
-import { orpc } from "@/lib/orpc/client";
+import { client, orpc } from "@/lib/orpc/client";
 import { pendingGates } from "@/lib/run-outcome";
 import { MatchResult, type Invoice } from "@/lib/schema";
 import type { TraceEvent } from "@/lib/trace";
@@ -316,7 +317,37 @@ export const Dashboard = ({
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
   );
-  const { state, run, decideMany, reset, replay } = usePipelineRun(workflow);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlRunId = searchParams.get("run");
+
+  // The URL is the source of truth for WHICH run instance is on screen. A fresh run
+  // writes its generated id into `?run=` the moment it starts (so a mid-run refresh
+  // re-hydrates), and the read-effect below turns any `?run=` into a replay. Both the
+  // "Recent runs" click and a shared link funnel through the SAME URL path.
+  //
+  // `ownRunRef` records an id THIS tab is running live (not yet saved to the audit
+  // log until it finishes). The read-effect skips it, so we don't try to replay our
+  // own in-flight run (which would 404, it isn't stored yet) and don't clobber the URL.
+  const loadedRunRef = useRef<string | null>(null);
+  const ownRunRef = useRef<string | null>(null);
+  const setRunUrl = useEventCallback(
+    (runId: string | null, own: boolean = false) => {
+      if (own && runId) ownRunRef.current = runId;
+      const url = runId
+        ? `${pathname}?run=${encodeURIComponent(runId)}`
+        : pathname;
+      router.push(url, { scroll: false });
+    },
+  );
+
+  const { state, run, decideMany, reset, replay } = usePipelineRun(
+    workflow,
+    // On a fresh run start, put its instance id in the URL (refresh-safe, shareable),
+    // flagged `own` so the read-effect doesn't try to replay our own live run.
+    (runId) => setRunUrl(runId, true),
+  );
   const queryClient = useQueryClient();
 
   // When a run reaches a terminal state (done/blocked, not a mid-run pause), a new
@@ -331,13 +362,38 @@ export const Dashboard = ({
     }
   }, [state.status, queryClient]);
 
-  // Replaying a stored run drops its trace into the pane AND selects its invoice,
-  // so the header/PDF match what's shown. Ignored while a live run is locked.
-  const replayRun = (invoiceNumber: string, trace: TraceEvent[]) => {
-    const row = queue.find((q) => q.invoiceNumber === invoiceNumber);
-    if (row) setSelectedId(row.id);
-    replay(trace);
-  };
+  // URL → replay. When `?run=<id>` points at a STORED run we haven't loaded (a
+  // refresh, a shared link, a "Recent runs" click), fetch its trace and render it.
+  // Skip our own live run (`ownRunRef`): it isn't in the audit log until it finishes,
+  // so replaying it would 404 (the live stream already owns the screen). `loadedRunRef`
+  // dedupes so a re-render doesn't re-fetch the same id.
+  useEffect(() => {
+    if (
+      !urlRunId ||
+      urlRunId === loadedRunRef.current ||
+      urlRunId === ownRunRef.current
+    )
+      return;
+    loadedRunRef.current = urlRunId;
+    let cancelled = false;
+    void client
+      .replayRun({ id: urlRunId })
+      .then((stored) => {
+        if (cancelled) return;
+        const row = queue.find((q) => q.invoiceNumber === stored.invoiceNumber);
+        if (row) setSelectedId(row.id);
+        replay(stored.trace, urlRunId);
+      })
+      .catch(() => {
+        // Not found (a stale/expired id, or reset since): let the id go so a retry can
+        // re-fetch, but leave the URL alone rather than yanking it out from under a
+        // shared link the user may just be early to.
+        if (!cancelled) loadedRunRef.current = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [urlRunId, queue, replay]);
 
   // Queue scroll affordance: macOS hides overlay scrollbars, so we show an
   // explicit "N more" pill + fade until the list is scrolled to the bottom.
@@ -426,7 +482,11 @@ export const Dashboard = ({
   const REVEAL_HOLD_MS = 3500;
   const intakeDoneAtRef = useRef<{ key: string; at: number } | null>(null);
   const [, forceTick] = useState(0);
-  const doneKey = doneIntake?.document.invoiceNumber ?? null;
+  // Only hold for a LIVE run's read. A replayed stored run jumps straight to `done`
+  // with a full trace, nothing was read live, so holding the reveal there just makes
+  // opening a past run look like it re-parses the document (it doesn't).
+  const doneKey =
+    doneIntake && !state.replayed ? doneIntake.document.invoiceNumber : null;
   useEffect(() => {
     if (doneKey === null) {
       intakeDoneAtRef.current = null;
@@ -445,8 +505,11 @@ export const Dashboard = ({
     Date.now() - holdRec.at < REVEAL_HOLD_MS;
 
   // Past intake once the read is done AND its reveal grace window has elapsed. Until
-  // then the reveal owns the pane so the figures can be read.
-  const pastIntake = doneIntake !== null && !revealHeld;
+  // then the reveal owns the pane so the figures can be read. A REPLAYED run is a
+  // completed run opened for viewing: skip the reveal entirely and go straight to the
+  // graph/result (the document stays one click away in the trace drawer), so opening
+  // a past run never looks like it re-reads the PDF.
+  const pastIntake = state.replayed || (doneIntake !== null && !revealHeld);
 
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.
@@ -504,6 +567,9 @@ export const Dashboard = ({
     setGateReasons({});
     setTraceOpen(false);
     reset();
+    // Leaving a run for a fresh invoice: drop `?run=` so a refresh starts clean.
+    loadedRunRef.current = null;
+    if (urlRunId) setRunUrl(null);
   };
 
   // Submit the staged gate decisions (one gate or several). decideMany rebuilds the
@@ -652,8 +718,10 @@ export const Dashboard = ({
             </div>
           </Card>
 
-          {/* The audit trail: recent runs, each replayable into the trace pane. */}
-          <RecentRuns onReplay={replayRun} disabled={locked} />
+          {/* The audit trail: recent runs. Clicking one navigates to its `?run=<id>`,
+              and the URL read-effect replays it, so a click, a refresh, and a shared
+              link all take the exact same path. */}
+          <RecentRuns onOpen={(id) => setRunUrl(id)} disabled={locked} />
         </div>
 
         {/* RIGHT: the workflow graph is the hero and owns the whole pane. No header,
