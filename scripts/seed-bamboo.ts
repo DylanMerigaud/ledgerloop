@@ -82,12 +82,16 @@ const ListOption = z.object({
 });
 type ListOption = z.infer<typeof ListOption>;
 
-/** Shape of GET /meta/lists we rely on (extra fields ignored). */
+/** Shape of GET /meta/lists we rely on (extra fields ignored). Many list fields
+    carry NO `alias` (e.g. "Termination Type") and some no `options`, depending on
+    the account, so both are nullish; we only care about the one aliased "division",
+    which does have both. A strict `alias: string` here 400s the whole parse on any
+    aliasless list, which aborts the seed before it can touch the division. */
 const MetaLists = z.array(
   z.object({
-    alias: z.string(),
+    alias: z.string().nullish(),
     fieldId: z.number(),
-    options: z.array(ListOption),
+    options: z.array(ListOption).nullish(),
   }),
 );
 
@@ -105,14 +109,15 @@ const ensureDivision = async (c: Creds): Promise<void> => {
   const lists = MetaLists.parse(await res.json());
   const division = lists.find((l) => l.alias === "division");
   if (!division) throw new Error("no 'division' list field on this account");
+  const existingOptions = division.options ?? [];
 
-  if (division.options.some((o) => o.name === SEED_DIVISION)) {
+  if (existingOptions.some((o) => o.name === SEED_DIVISION)) {
     console.log(`Division "${SEED_DIVISION}" already exists.`);
     return;
   }
 
   // Echo existing options by id (so the replace-PUT doesn't drop them), append ours.
-  const options: Record<string, unknown>[] = division.options
+  const options: Record<string, unknown>[] = existingOptions
     .filter((o) => o.name !== null) // skip any prior junk/blank options
     .map((o) => ({ id: o.id, value: o.name, archived: o.archived }));
   options.push({ value: SEED_DIVISION });
@@ -207,8 +212,11 @@ const seededEmployees = async (
       employees: z.array(
         z.object({
           id: z.string(),
-          displayName: z.string().optional(),
-          division: z.string().optional(),
+          displayName: z.string().nullish(),
+          // The account's demo employees can carry `division: null`; nullish (not
+          // just optional) so the read-back doesn't 400 on them. We filter to
+          // SEED_DIVISION next, so a null division is simply out of scope.
+          division: z.string().nullish(),
         }),
       ),
     })
