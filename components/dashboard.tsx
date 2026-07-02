@@ -22,9 +22,12 @@ import { WorkflowGraph, type StepStatuses } from "@/components/workflow-graph";
 import type { QueueItem } from "@/db/client";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { API_ROUTES } from "@/lib/api-routes";
+import { contextFromMatch } from "@/lib/approval-run";
 import {
   ApprovalWorkflow,
+  resolvePath,
   type ApprovalWorkflow as TApprovalWorkflow,
+  type InvoiceContext,
 } from "@/lib/approval-workflow";
 import { isRecord } from "@/lib/assert";
 import {
@@ -43,7 +46,7 @@ import {
 import { formatMoney } from "@/lib/format";
 import { orpc } from "@/lib/orpc/client";
 import { pendingGates } from "@/lib/run-outcome";
-import type { Invoice } from "@/lib/schema";
+import { MatchResult, type Invoice } from "@/lib/schema";
 import type { TraceEvent } from "@/lib/trace";
 import { usePipelineRun } from "@/lib/use-pipeline-run";
 
@@ -116,7 +119,31 @@ const readRunGraph = (
       }
     }
   }
-  return { workflow: parsed.data, statuses };
+  // Resolve the LINEAR path THIS invoice takes: evaluate each gate's condition
+  // against the matched invoice and drop the ones that don't apply (rewiring edges),
+  // so the reviewer sees Manager → Post, not an ambiguous Manager → Director AND
+  // Manager → Post diamond. Keyed on the invoice (from the matching event), NOT on
+  // approval order, so it's fixed the moment matching resolves and never re-routes as
+  // gates get decided. If matching data isn't on the trace yet, draw the full graph.
+  const ctx = readMatchContext(trace);
+  return { workflow: resolvePath(parsed.data, ctx), statuses };
+};
+
+/** Build the approval engine's InvoiceContext from the matching trace event, so the
+    run graph's path can be resolved client-side. Returns undefined (draw the full
+    graph) if the matching event isn't present/valid yet.
+
+    The matching step emits the MatchResult PLUS run-plumbing (`decisions`, `profile`,
+    `narration`, …), so we validate only the MatchResult fields and `.passthrough()`
+    the extras, rather than strict-parsing the whole event (which would reject it). */
+const MatchResultLoose = MatchResult.passthrough();
+const readMatchContext = (trace: TraceEvent[]): InvoiceContext | undefined => {
+  const matching = trace.find(
+    (e) => e.stage === "matching" && e.kind === "step",
+  );
+  if (!matching || !isRecord(matching.data)) return undefined;
+  const parsed = MatchResultLoose.safeParse(matching.data);
+  return parsed.success ? contextFromMatch(parsed.data) : undefined;
 };
 
 /** Solid play triangle for the Run button. */

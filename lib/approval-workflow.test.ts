@@ -3,12 +3,14 @@ import { test } from "node:test";
 
 import {
   ApprovalWorkflow,
+  type ApprovalWorkflow as TApprovalWorkflow,
   type ApprovalStep,
   type Condition,
   approversOf,
   evaluateCondition,
   describeCondition,
   humanizeCondition,
+  resolvePath,
   type InvoiceContext,
 } from "@/lib/approval-workflow";
 
@@ -329,4 +331,76 @@ test("approversOf: drops an unresolved primary but keeps the extras", () => {
 
 test("approversOf: empty when unresolved with no extras", () => {
   assert.deepEqual(approversOf(gate({ approverName: null })), []);
+});
+
+/* resolvePath: evaluate each gate's `when` against the invoice and prune the gates
+   that don't apply, so the run graph is the LINEAR path this invoice takes. */
+
+/** The Manager → (Director) → Post diamond: manager fans out to BOTH director and
+    post, director also goes to post. Director is CONDITIONAL (variance >= 10%), so a
+    low-variance invoice bypasses it (Manager → Post); a high-variance one keeps it
+    (Manager → Director → Post). This is the exact shape of the default policy. */
+const diamond = (): TApprovalWorkflow => ({
+  name: "Test policy",
+  roots: ["manager"],
+  steps: [
+    {
+      id: "manager",
+      kind: "approval",
+      label: "Manager review",
+      when: { kind: "always" },
+      approverTitle: "Manager",
+      approverName: "Manager",
+      next: ["director", "post"],
+    },
+    {
+      id: "director",
+      kind: "approval",
+      label: "Director review",
+      when: { kind: "leaf", field: "variancePct", op: ">=", value: 0.1 },
+      approverTitle: "Director",
+      approverName: "Director",
+      next: ["post"],
+    },
+    {
+      id: "post",
+      kind: "integration",
+      label: "Post",
+      when: { kind: "always" },
+      integration: "netsuite",
+      next: [],
+    },
+  ],
+});
+
+test("resolvePath: no ctx returns the workflow unchanged (template view)", () => {
+  const wf = diamond();
+  assert.equal(resolvePath(wf, undefined), wf);
+});
+
+test("resolvePath: high-variance invoice keeps the whole Manager → Director → Post", () => {
+  const wf = diamond();
+  // Director's condition (variance >= 10%) is TRUE → nothing dropped → same ref.
+  assert.equal(resolvePath(wf, ctx({ variancePct: 0.12 })), wf);
+});
+
+test("resolvePath: low-variance invoice bypasses Director to a linear Manager → Post", () => {
+  // variance 9% < 10% → Director's condition is false → it doesn't apply → dropped.
+  const pruned = resolvePath(diamond(), ctx({ variancePct: 0.09 }));
+  assert.deepEqual(
+    pruned.steps.map((s) => s.id),
+    ["manager", "post"],
+  );
+  // Manager's edge to the dropped director rewires to director's target (post),
+  // deduped against manager's own direct edge to post. No dangling 'director'.
+  const manager = pruned.steps.find((s) => s.id === "manager");
+  assert.deepEqual(manager?.next, ["post"]);
+  const post = pruned.steps.find((s) => s.id === "post");
+  assert.deepEqual(post?.next, []);
+});
+
+test("resolvePath: an `always` terminal node is never dropped", () => {
+  // Even with a ctx that fails every conditional gate, the unconditional post stays.
+  const pruned = resolvePath(diamond(), ctx({ variancePct: 0 }));
+  assert.ok(pruned.steps.some((s) => s.id === "post"));
 });

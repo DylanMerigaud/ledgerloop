@@ -120,6 +120,11 @@ type NodeData = {
   /** Stacked top→bottom (narrow screens) instead of left→right, moves the edge
       handles to Top/Bottom so the connectors meet the cards correctly. */
   vertical?: boolean;
+  /** Whether this node actually has an incoming / outgoing edge in the rendered
+      graph. A leaf (the terminal "Post") has no outgoing handle; a root (the first
+      gate) has no incoming handle, so we don't render a dangling connector stub. */
+  hasIncoming?: boolean;
+  hasOutgoing?: boolean;
   /** This node is the one selected for editing, gets an accent halo. */
   selected?: boolean;
   /** This pending gate accepts a human decision right now (run paused on it),
@@ -150,6 +155,8 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
     change,
     issue,
     vertical,
+    hasIncoming,
+    hasOutgoing,
     selected,
     decidable,
     choice,
@@ -198,11 +205,16 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
       data-testid={`graph-node-${step.id}`}
       className={`w-[244px] rounded-xl bg-surface px-3.5 py-3 shadow-card ${selectedRing} ${dim}`}
     >
-      <Handle
-        type="target"
-        position={targetPos}
-        className="!size-1.5 !border-0 !bg-line-strong"
-      />
+      {/* Only render the incoming handle when a real edge feeds this node, so a
+          root gate doesn't show a dangling connector stub. Default true when
+          undefined (template views that don't compute connectivity). */}
+      {hasIncoming !== false && (
+        <Handle
+          type="target"
+          position={targetPos}
+          className="!size-1.5 !border-0 !bg-line-strong"
+        />
+      )}
 
       {/* status / change badge on top, like the reference card */}
       {badge && (
@@ -331,11 +343,15 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           className="nodrag nopan mt-1.5 h-7 w-full rounded-lg bg-surface px-2 text-[12px] text-ink outline-none ring-1 ring-inset ring-danger-line transition-shadow focus:ring-2 focus:ring-accent-ring"
         />
       )}
-      <Handle
-        type="source"
-        position={sourcePos}
-        className="!size-1.5 !border-0 !bg-line-strong"
-      />
+      {/* Only render the outgoing handle when a real edge leaves this node, so the
+          terminal "Post" node doesn't show a dangling connector stub. */}
+      {hasOutgoing !== false && (
+        <Handle
+          type="source"
+          position={sourcePos}
+          className="!size-1.5 !border-0 !bg-line-strong"
+        />
+      )}
     </div>
   );
 };
@@ -500,6 +516,15 @@ const Inner = ({
   );
 
   const initialNodes = useMemo<Node<NodeData>[]>(() => {
+    // Connectivity from the rendered node set: a node HAS an incoming edge if some
+    // present step lists it in `next`; HAS an outgoing edge if its own `next` points
+    // at a present node. Used to drop the dangling handle on roots (no incoming) and
+    // leaves like the terminal Post (no outgoing).
+    const present = new Set(workflow.steps.map((s) => s.id));
+    const targets = new Set<string>();
+    for (const s of workflow.steps)
+      for (const n of s.next) if (present.has(n)) targets.add(n);
+
     const real = workflow.steps.map((step) => ({
       id: step.id,
       type: "step",
@@ -510,6 +535,8 @@ const Inner = ({
         change: changeOf.get(step.id),
         issue: issueOf.get(step.id),
         vertical,
+        hasIncoming: targets.has(step.id),
+        hasOutgoing: step.next.some((n) => present.has(n)),
       },
     }));
     const gone = removed.map((c) => ({

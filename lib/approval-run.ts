@@ -25,8 +25,9 @@ import type { MatchResult } from "@/lib/schema";
  * approval question, so callers check `match.verdict === "duplicate"` first and
  * never run the workflow for it.
  */
-/** Build the engine's evaluation context from a match result. */
-const contextFromMatch = (match: MatchResult): InvoiceContext => {
+/** Build the engine's evaluation context from a match result. Exported so the
+    dashboard can resolve the run graph's path from the matching trace event. */
+export const contextFromMatch = (match: MatchResult): InvoiceContext => {
   return {
     amount: match.invoiceTotal,
     exceptionAmount: match.exceptionAmount,

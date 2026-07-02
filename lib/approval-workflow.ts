@@ -491,3 +491,71 @@ export const OnboardingProposal = z
   })
   .strict();
 export type OnboardingProposal = z.infer<typeof OnboardingProposal>;
+
+/**
+ * Drop the steps `shouldDrop` selects and rewire the edges so a removed node hands
+ * its outgoing edges down to its first KEPT descendants, leaving a clean chain
+ * (Manager → Post) instead of an ambiguous diamond (Manager → Director AND
+ * Manager → Post). Pure; if nothing is dropped the workflow is returned unchanged.
+ */
+const pruneWorkflow = (
+  workflow: ApprovalWorkflow,
+  shouldDrop: (id: string) => boolean,
+): ApprovalWorkflow => {
+  if (!workflow.steps.some((s) => shouldDrop(s.id))) return workflow;
+  const byId = new Map(workflow.steps.map((s) => [s.id, s]));
+
+  // Follow `next` through dropped nodes to the first kept descendants.
+  const keptTargets = (start: readonly string[]): string[] => {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const walk = (ids: readonly string[]): void => {
+      for (const id of ids) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const step = byId.get(id);
+        if (!step) continue;
+        if (shouldDrop(id))
+          walk(step.next); // bypass: inherit the node's targets
+        else if (!out.includes(id)) out.push(id);
+      }
+    };
+    walk(start);
+    return out;
+  };
+
+  const steps = workflow.steps
+    .filter((s) => !shouldDrop(s.id))
+    .map((s) => ({ ...s, next: keptTargets(s.next) }));
+  const roots = workflow.roots.flatMap((r) =>
+    shouldDrop(r) ? keptTargets(byId.get(r)?.next ?? []) : [r],
+  );
+  return { ...workflow, steps, roots };
+};
+
+/**
+ * Resolve a workflow to the LINEAR path THIS invoice takes, by evaluating each
+ * gate's `when` against the invoice context. A gate whose condition is false does
+ * not apply to this invoice, so it's DROPPED and the edges rewired.
+ *
+ * This is the STRUCTURE of the path (which gates apply), not the EXECUTION state
+ * (who approved). It depends only on (workflow, invoice), NOT on human decisions or
+ * topological order, so it's fixed the moment matching resolves and never changes as
+ * gates get approved. That's the point: the reviewer sees the path taken, resolved
+ * once, and the run only lights it up. `always` gates (e.g. the terminal post) are
+ * never dropped. Pure.
+ *
+ * The onboarding/template graph passes no ctx (drawn whole) so every conditional
+ * branch is visible while you build the policy.
+ */
+export const resolvePath = (
+  workflow: ApprovalWorkflow,
+  ctx: InvoiceContext | undefined,
+): ApprovalWorkflow => {
+  if (!ctx) return workflow;
+  const byId = new Map(workflow.steps.map((s) => [s.id, s]));
+  return pruneWorkflow(workflow, (id) => {
+    const step = byId.get(id);
+    return step ? !evaluateCondition(step.when, ctx) : false;
+  });
+};
