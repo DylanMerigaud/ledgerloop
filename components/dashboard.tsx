@@ -413,7 +413,40 @@ export const Dashboard = ({
   );
   const doneIntake =
     intake && intake.state.status === "done" && movedPastIntake ? intake : null;
-  const pastIntake = doneIntake !== null;
+
+  // Hold the full-screen extraction reveal for a beat AFTER the read completes, so
+  // the extracted figures are actually READABLE before the pane collapses to the
+  // one-line intake node and hands over to the graph. Matching fires almost
+  // instantly, so without this grace window the reveal flashes and is gone.
+  //
+  // `intakeDoneAtRef` records WHEN the read first completed (keyed on the invoice, so
+  // a re-render mid-hold doesn't reset it); a one-shot timer re-renders once the
+  // window elapses. `revealHeld` is derived from the ref each render, so React state
+  // stays a single boolean tick and can't get stuck.
+  const REVEAL_HOLD_MS = 3500;
+  const intakeDoneAtRef = useRef<{ key: string; at: number } | null>(null);
+  const [, forceTick] = useState(0);
+  const doneKey = doneIntake?.document.invoiceNumber ?? null;
+  useEffect(() => {
+    if (doneKey === null) {
+      intakeDoneAtRef.current = null;
+      return;
+    }
+    if (intakeDoneAtRef.current?.key === doneKey) return; // already timing
+    intakeDoneAtRef.current = { key: doneKey, at: Date.now() };
+    const t = setTimeout(() => forceTick((n) => n + 1), REVEAL_HOLD_MS);
+    return () => clearTimeout(t);
+  }, [doneKey]);
+
+  const holdRec = intakeDoneAtRef.current;
+  const revealHeld =
+    holdRec !== null &&
+    holdRec.key === doneKey &&
+    Date.now() - holdRec.at < REVEAL_HOLD_MS;
+
+  // Past intake once the read is done AND its reveal grace window has elapsed. Until
+  // then the reveal owns the pane so the figures can be read.
+  const pastIntake = doneIntake !== null && !revealHeld;
 
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.
