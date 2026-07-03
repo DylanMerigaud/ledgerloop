@@ -6,7 +6,7 @@ The two halves are one loop: the workflow you derive and edit on the left is **e
 
 AI is used in the places it earns its keep, and nowhere else. **Extraction** reads the messy vendor PDF into structured data (vision). **Onboarding discovery** maps an org's titles to approval authority (genuinely fuzzy judgement). **Investigation** judges a flagged exception against unstructured records and recommends. Everything else, matching, the workflow engine, reconciliation, is deterministic code, because a payment decision must be exact and repeatable, never a model's guess. Nothing posts until a human approves. Built with [Mastra](https://mastra.ai).
 
-The differentiator vs the workflow builders (Ramp, Zip, Pivot): you don't draw the approval graph on a canvas by hand. **The agent derives it from the HRIS, and you maintain it in plain language**, "above $25k also require CFO approval", "the director review also needs the controller to sign off", with a preview you approve or revert. A gate isn't limited to one signer: it can route to several named co-approvers, each added or dropped by name.
+The differentiator vs the workflow builders (Ramp, Zip): you don't draw the approval graph on a canvas by hand. **The agent derives it from the HRIS, and you maintain it in plain language**, "above $25k also require CFO approval", "the director review also needs the controller to sign off", with a preview you approve or revert. A gate isn't limited to one signer: it can route to several named co-approvers, each added or dropped by name.
 
 ### ▶︎ [Try the live demo →](https://ledgerloop-eta.vercel.app/)
 
