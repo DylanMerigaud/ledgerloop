@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Dashboard } from "@/components/dashboard";
@@ -32,7 +33,14 @@ import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 type View = "onboarding" | "pipeline";
 
 export const AppView = ({ queue }: { queue: QueueItem[] }) => {
-  const [view, setView] = useState<View>("onboarding");
+  // A `?run=<id>` in the URL is a shared/refreshed RUN, which lives on the pipeline tab.
+  // Open straight there so the run shows without a manual tab switch (the Dashboard's
+  // own URL effect then replays it). Read once for the initial tab; the user can still
+  // switch tabs afterwards.
+  const searchParams = useSearchParams();
+  const [view, setView] = useState<View>(
+    searchParams.get("run") ? "pipeline" : "onboarding",
+  );
   // The single approval workflow shared across both tabs. null until the user
   // runs discovery; the pipeline falls back to its default DAG meanwhile.
   const [workflow, setWorkflow] = useState<ApprovalWorkflow | null>(null);

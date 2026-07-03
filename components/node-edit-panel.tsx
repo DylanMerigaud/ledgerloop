@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ConditionEditor } from "@/components/condition-editor";
 import { Button } from "@/components/ui/button";
@@ -272,25 +273,48 @@ const PanelShell = ({
   title: string;
   onClose: () => void;
   children: React.ReactNode;
-}) => (
-  // Overlay on the right edge of the graph; the canvas stays full width behind it.
-  // On a narrow screen it spans the bottom instead of a thin right column.
-  <div className="absolute inset-x-0 bottom-0 z-20 max-h-[70%] overflow-y-auto rounded-t-xl bg-surface p-4 shadow-lift ring-1 ring-inset ring-line sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[320px] sm:rounded-l-xl sm:rounded-tr-none">
-    <div className="mb-3 flex items-center justify-between gap-2">
-      <span className="truncate text-[13px] font-semibold text-ink">
-        {title}
-      </span>
+}) => {
+  // A full-page portal drawer (not anchored inside the graph box, where it was clipped
+  // and cramped). A dimmed backdrop covers the page; the panel is a right-side sheet
+  // that owns its own scroll, so a tall condition editor is never cut off. Escape and a
+  // backdrop click close it. Portalled to <body> after mount (SSR-safe).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  if (!mounted) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex justify-end">
       <button
+        type="button"
+        aria-label="Close panel"
         onClick={onClose}
-        aria-label="Close"
-        className="grid size-6 shrink-0 place-items-center rounded-md text-faint ring-1 ring-inset ring-line-strong transition-colors hover:text-ink"
-      >
-        ×
-      </button>
-    </div>
-    <div className="space-y-3">{children}</div>
-  </div>
-);
+        className="absolute inset-0 bg-ink/20 backdrop-blur-[1px]"
+      />
+      <div className="relative flex h-full w-full max-w-[380px] flex-col overflow-y-auto bg-surface p-5 shadow-lift ring-1 ring-inset ring-line">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <span className="truncate text-[14px] font-semibold text-ink">
+            {title}
+          </span>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="grid size-6 shrink-0 place-items-center rounded-md text-faint ring-1 ring-inset ring-line-strong transition-colors hover:text-ink"
+          >
+            ×
+          </button>
+        </div>
+        <div className="space-y-3">{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
 
 const Field = ({
   label,
