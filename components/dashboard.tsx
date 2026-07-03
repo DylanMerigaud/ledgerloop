@@ -195,12 +195,17 @@ export const Dashboard = ({
   // Lock the queue while a run is in flight, switching invoices mid-run would
   // abort the stream and is confusing. (Awaiting a human decision still locks:
   // resolve it with Approve/Reject first.)
-  const locked = state.status === "running" || state.status === "awaiting";
+  // A run is on screen (live, awaiting a decision, or a replayed one) whenever the trace
+  // has events. Selecting another invoice is always allowed, it aborts the stream and
+  // starts clean; what we DON'T do while a run is shown is let a hover swap the pane out
+  // from under it.
+  const runShown = state.trace.length > 0;
 
-  // Hovering a row previews its PDF on the right (idle only). Falls back to the
-  // selected row; ignored while locked so a hover can't replace a live run.
+  // Hovering a row previews its PDF on the right, but only when NO run is shown (idle):
+  // once a run is on the pane the header + document stay on the selected invoice, a hover
+  // over another row doesn't override them. Falls back to the selected row.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const previewId = (!locked && hoveredId) || selectedId;
+  const previewId = (!runShown && hoveredId) || selectedId;
   // The trace-pane title follows whatever document is shown (hover preview or the
   // selected/running invoice) so the header never contradicts the PDF on screen.
   const previewItem = queue.find((q) => q.id === previewId) ?? selected;
@@ -350,7 +355,7 @@ export const Dashboard = ({
     );
 
   const select = (id: string) => {
-    if (id === selectedId || locked) return;
+    if (id === selectedId) return;
     setSelectedId(id);
     setGateChoices({});
     setGateReasons({});
@@ -399,9 +404,6 @@ export const Dashboard = ({
                   const outcome: Outcome = isSelected
                     ? state.outcome
                     : "pending";
-                  // While a run is in flight the queue is locked: the active row stays
-                  // highlighted, the others dim and stop responding to clicks.
-                  const dimmed = locked && !isSelected;
                   // Hovering a flagged row reveals WHY in plain English (a Radix tooltip),
                   // so the queue explains itself before you run anything. Clean rows have
                   // nothing to explain.
@@ -415,11 +417,9 @@ export const Dashboard = ({
                       onMouseLeave={() =>
                         setHoveredId((h) => (h === item.id ? null : h))
                       }
-                      disabled={dimmed}
-                      aria-disabled={dimmed}
                       className={`relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
                         isSelected ? "bg-accent-soft/50" : "hover:bg-subtle/70"
-                      } ${dimmed ? "cursor-not-allowed opacity-40" : ""}`}
+                      }`}
                     >
                       {isSelected && (
                         <span
@@ -468,7 +468,7 @@ export const Dashboard = ({
                   );
                   return (
                     <li key={item.id}>
-                      {explain && !locked ? (
+                      {explain ? (
                         <Tooltip>
                           <TooltipTrigger asChild>{row}</TooltipTrigger>
                           <TooltipContent
@@ -510,7 +510,7 @@ export const Dashboard = ({
           {/* The audit trail: recent runs. Clicking one navigates to its `?run=<id>`,
               and the URL read-effect replays it, so a click, a refresh, and a shared
               link all take the exact same path. */}
-          <RecentRuns onOpen={(id) => setRunUrl(id)} disabled={locked} />
+          <RecentRuns onOpen={(id) => setRunUrl(id)} />
         </div>
 
         {/* RIGHT: the workflow graph is the hero and owns the whole pane. No header,

@@ -47,13 +47,11 @@ const timeAgo = (iso: string): string => {
 
 export const RecentRuns = ({
   /** Open a stored run by navigating to its `?run=<id>`. The dashboard's URL effect
-      does the actual fetch + replay, so a click here is just navigation. */
+      does the actual fetch + replay, so a click here is just navigation. Opening one
+      while a live run streams is fine: the replay aborts the stream. */
   onOpen,
-  /** Disabled while a live run is in flight, opening one would clobber it. */
-  disabled,
 }: {
   onOpen: (id: string) => void;
-  disabled: boolean;
 }) => {
   const history = useQuery(orpc.history.queryOptions());
 
@@ -83,10 +81,7 @@ export const RecentRuns = ({
   const moreCount =
     hiddenBelow > 0 ? Math.max(1, Math.round(hiddenBelow / ROW_PX)) : 0;
 
-  const open = (id: string) => {
-    if (disabled) return;
-    onOpen(id);
-  };
+  const open = (id: string) => onOpen(id);
 
   return (
     <Card className="flex flex-col overflow-hidden">
@@ -116,11 +111,7 @@ export const RecentRuns = ({
                     type="button"
                     data-testid={`run-history-${r.id}`}
                     onClick={() => open(r.id)}
-                    disabled={disabled}
-                    aria-disabled={disabled}
-                    className={`flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-subtle/70 ${
-                      disabled ? "cursor-not-allowed opacity-40" : ""
-                    }`}
+                    className="flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-subtle/70"
                   >
                     <span
                       aria-hidden
