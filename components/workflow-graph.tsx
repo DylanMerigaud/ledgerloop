@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useEventCallback } from "@/hooks/use-event-callback";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   type ApprovalWorkflow,
@@ -697,7 +698,33 @@ const Inner = ({
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(
     initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
   );
+  // Live mirror of `nodes` so the focus effect can read the current positions (to pick
+  // the topmost pending gate) without listing `nodes` as a dep (which would re-fire it).
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
   const [rfEdges, setEdges, onEdgesChange] = useEdgesState<Edge>(edges);
+
+  // The one framing rule, shared by the initial layout fit and the later focus effect:
+  //   pending gate(s) present → frame the SINGLE topmost one (smallest y, or x when
+  //   stacked), tight + zoomed, so the next thing to approve is centered; none present
+  //   → fit the WHOLE workflow. Topmost is read from the live node positions.
+  const frameForFocus = useEventCallback((pending: string[], ms: number) => {
+    if (pending.length > 0) {
+      const axis = (id: string): number => {
+        const pos = nodesRef.current.find((m) => m.id === id)?.position;
+        return pos ? (vertical ? pos.x : pos.y) : Number.POSITIVE_INFINITY;
+      };
+      const top = [...pending].sort((a, b) => axis(a) - axis(b))[0];
+      void fitView({
+        nodes: top ? [{ id: top }] : pending.map((id) => ({ id })),
+        duration: ms,
+        padding: 0.25,
+        maxZoom: 1.1,
+      });
+    } else {
+      void fitView({ duration: ms, padding: 0.18 });
+    }
+  });
   // Bumped to force one more layout pass when a node's measured height drifts after the
   // initial layout (see the drift effect below); a dep of the layout effect.
   const [relayoutTick, setRelayoutTick] = useState(0);
@@ -770,20 +797,7 @@ const Inner = ({
       driftRelayout.current = false;
       return;
     }
-    const focus = focusIds ?? [];
-    requestAnimationFrame(
-      () =>
-        void fitView(
-          focus.length > 0
-            ? {
-                nodes: focus.map((id) => ({ id })),
-                padding: 0.25,
-                maxZoom: 1.1,
-                duration: 200,
-              }
-            : { padding: 0.18, duration: 200 },
-        ),
-    );
+    requestAnimationFrame(() => frameForFocus(focusIds ?? [], 200));
   }, [
     initialized,
     graphKey,
@@ -793,6 +807,7 @@ const Inner = ({
     fitView,
     vertical,
     focusIds,
+    frameForFocus,
     relayoutTick,
   ]);
 
@@ -922,33 +937,22 @@ const Inner = ({
     setNodes,
   ]);
 
-  // Smoothly frame the focused nodes (the pending group awaiting a decision, or one on
-  // hover), so the node you must act on lands centered. Runs after the per-graph layout
-  // (`laidOutFor === graphKey`) so it doesn't fight the one-shot fit; keyed on `focusKey`
-  // so it animates once per change (the next gate after an approve re-centers here).
-  // `maxZoom` lets it actually zoom IN on a single gate (fitView otherwise caps the
-  // zoom and, on a 2-node graph, would just frame both and leave the gate off-center);
-  // a rAF lets the just-laid-out node measurements settle before we measure their box.
+  // Re-frame the view when a run state ARRIVES (not while staging a decision). The rule:
+  //   • can approve now (pending gates) → frame the SINGLE topmost pending gate, so the
+  //     next thing to act on is centered and zoomed in;
+  //   • otherwise (a run just resolved / a replay loaded / posted) → fit the WHOLE
+  //     workflow, so the finished path reads at a glance.
+  // Keyed on `focusKey` (the pending set), so it fires once when the gate set changes
+  // (a run pauses, a resume reaches the next gate, a run completes to none). Clicking
+  // Approve/Reject doesn't change the pending set, so the view stays put on a click.
   const focusKey = (focusIds ?? []).join("|");
   useEffect(() => {
-    if (!initialized || laidOutFor.current !== graphKey || focusKey === "")
-      return;
-    const ids = focusKey.split("|").map((id) => ({ id }));
-    // Frame the pending gate itself, tightly. A large padding made fitView zoom out
-    // until the WHOLE graph fit (the gate no longer looked focused); a small padding
-    // keeps the gate centered and legible. maxZoom caps how far it zooms in on a lone
-    // node so it doesn't blow up. A rAF lets the just-laid-out measurements settle.
-    const raf = requestAnimationFrame(
-      () =>
-        void fitView({
-          nodes: ids,
-          duration: 400,
-          padding: 0.25,
-          maxZoom: 1.1,
-        }),
+    if (!initialized || laidOutFor.current !== graphKey) return;
+    const raf = requestAnimationFrame(() =>
+      frameForFocus(focusKey ? focusKey.split("|") : [], 400),
     );
     return () => cancelAnimationFrame(raf);
-  }, [focusKey, initialized, graphKey, fitView]);
+  }, [focusKey, initialized, graphKey, frameForFocus]);
 
   // Patch edge "flow" styling from the live statuses, cheap, no relayout (kept out of
   // the structural `edges` so a status tick never resets/re-measures the graph). An edge
