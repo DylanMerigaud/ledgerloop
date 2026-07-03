@@ -52,6 +52,9 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       matchType: z.enum(["two_way", "three_way"]).nullable().default(null),
       /** An exception code it fires on (e.g. "vendor_inactive"); null = any. */
       exceptionCode: z.string().nullable().default(null),
+      /** True = fire on ANY flagged exception ("for all exceptions"). Prefer this over
+          inventing a condition; a specific exceptionCode narrows it further. */
+      onException: z.boolean().optional(),
     })
     .strict(),
   z
@@ -162,6 +165,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       currency: z.string().nullable().default(null),
       matchType: z.enum(["two_way", "three_way"]).nullable().default(null),
       exceptionCode: z.string().nullable().default(null),
+      onException: z.boolean().optional(),
     })
     .strict(),
   z
@@ -177,6 +181,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       currency: z.string().nullable().default(null),
       matchType: z.enum(["two_way", "three_way"]).nullable().default(null),
       exceptionCode: z.string().nullable().default(null),
+      onException: z.boolean().optional(),
     })
     .strict(),
   /** The model couldn't map the instruction to a supported edit, change nothing. */
@@ -209,7 +214,7 @@ const slug = (label: string): string =>
     .replace(/^-+|-+$/g, "") || "step";
 
 /** The scope fields a gate-creating op can carry, every lever a `when` is built
-    from. All null = an unconditional gate. */
+    from. All null/false = an unconditional gate. */
 type GateScope = {
   amountOver: number | null;
   department: string | null;
@@ -217,6 +222,9 @@ type GateScope = {
   currency?: string | null;
   matchType?: "two_way" | "three_way" | null;
   exceptionCode?: string | null;
+  /** Fire on ANY flagged exception (verdict == exception), the "for all exceptions"
+      scope. A specific `exceptionCode` narrows further; this is the catch-all. */
+  onException?: boolean;
 };
 
 /** A condition from a gate's scope (mirrors the onboarding template). Each non-null
@@ -264,6 +272,15 @@ const conditionFor = (scope: GateScope): Condition => {
       field: "exceptionCode",
       op: "==",
       value: scope.exceptionCode,
+    });
+  // "for all exceptions": fire whenever the invoice was flagged (any exception),
+  // unless a more specific exceptionCode was already given (that narrows it).
+  if (scope.onException === true && scope.exceptionCode == null)
+    leaves.push({
+      kind: "leaf",
+      field: "verdict",
+      op: "==",
+      value: "exception",
     });
   if (leaves.length === 0) return { kind: "always" };
   if (leaves.length === 1)
@@ -650,7 +667,7 @@ export const proposeEdit = async (
 
 export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instruction into ONE structured edit for a procure-to-pay approval workflow. You are given the current workflow's steps (id, label, kind, approver) and the instruction. Return a single edit op:
 
-- add-approval: a new human approval gate. Set "label" to a SHORT title only (e.g. "CFO review" or "VP sign-off"), do NOT put the threshold or department in the label, they're shown separately. Set "approverTitle" (the role, e.g. "CFO"), "amountOver" (the dollar threshold it applies above, or null for every invoice), and "department" (scope to one department like "Product", or null for any).
+- add-approval: a new human approval gate. ALWAYS use this to ADD a new approver/role as its own step (e.g. "require CFO approval", "add a VP sign-off"), a new role is a NEW gate, NOT a co-approver on an existing one. Set "label" to a SHORT title only (e.g. "CFO review"), do NOT put the threshold or department in the label, they're shown separately. Set "approverTitle" (the role, e.g. "CFO"). Scope it with ONLY these fields (use null/false when not applicable, never invent others): "amountOver" (dollar threshold it applies above, or null for every invoice), "department" (one department like "Product", or null), "onException" (true = fire on ALL flagged exceptions, the "for all exceptions" case; use this rather than a made-up condition), "exceptionCode" (a single specific code like "vendor_inactive", or null), "vendor", "currency", "matchType".
 - add-integration: a system action that runs after the bill posts. Set "integration" to exactly one of "slack" | "jira" | "netsuite" (the field is named "integration", NOT "kind"), and "label" to a short title (e.g. "Notify on Slack", "Open Jira ticket").
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
 - set-approver: set the PRIMARY person on an existing approval step (by "stepId"). Use for "make X the approver" / "assign X".

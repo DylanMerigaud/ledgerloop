@@ -88,6 +88,16 @@ export const EDIT_CASES: EditCase[] = [
     why: "a NEW CFO gate, not raising the existing director's threshold (the phrasing without 'also' must still add, not mutate)",
   },
   {
+    id: "require-cfo-exceptions",
+    instruction: "Require CFO approval for all exceptions",
+    expectedOp: "add-approval",
+    check: (op) =>
+      op.op === "add-approval" &&
+      op.onException === true &&
+      /cfo|chief financial/i.test(op.approverTitle),
+    why: "a NEW CFO gate scoped to any exception via onException (not a made-up 'condition' field, not a co-approver on an existing gate)",
+  },
+  {
     id: "add-slack",
     instruction: "Send a Slack message whenever an invoice is posted",
     expectedOp: "add-integration",

@@ -146,6 +146,44 @@ test("add-approval: builds a vendor / currency / matchType / exceptionCode condi
   );
 });
 
+test("add-approval: onException scopes the gate to any flagged exception", () => {
+  const next = applyEditOp(base, {
+    op: "add-approval",
+    label: "CFO review",
+    approverTitle: "CFO",
+    amountOver: null,
+    department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: null,
+    onException: true,
+  });
+  const cfo = next.steps.find((s) => s.label === "CFO review");
+  assert.ok(cfo);
+  assert.equal(describeCondition(cfo.when), "verdict == exception");
+
+  // A specific exceptionCode narrows it: onException does NOT also add the catch-all.
+  const narrowed = applyEditOp(base, {
+    op: "add-approval",
+    label: "Fraud review",
+    approverTitle: "Controller",
+    amountOver: null,
+    department: null,
+    vendor: null,
+    currency: null,
+    matchType: null,
+    exceptionCode: "vendor_inactive",
+    onException: true,
+  });
+  const fraud = narrowed.steps.find((s) => s.label === "Fraud review");
+  assert.ok(fraud);
+  assert.equal(
+    describeCondition(fraud.when),
+    "exceptionCode == vendor_inactive",
+  );
+});
+
 test("add-integration: runs after the post, doesn't alter other conditions", () => {
   const next = applyEditOp(base, {
     op: "add-integration",
