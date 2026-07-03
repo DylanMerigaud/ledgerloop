@@ -31,6 +31,9 @@ export const EDIT_FIXTURE: ApprovalWorkflow = {
       when: { kind: "leaf", field: "amount", op: ">", value: 10000 },
       approverTitle: "Director",
       approverName: "Cameron Diaz",
+      // Jordan Ellis is a co-approver here so the remove-co-approver case has a real
+      // one to drop; the add-co-approver case adds a DIFFERENT person (Taylor Nguyen).
+      approvers: ["Jordan Ellis"],
       next: ["post-netsuite"],
     },
     {
@@ -75,6 +78,16 @@ export const EDIT_CASES: EditCase[] = [
     why: "a new gate above a NEW threshold (50k ≠ the existing 10k director)",
   },
   {
+    id: "require-cfo-over",
+    instruction: "Require CFO approval for all invoices over $50k",
+    expectedOp: "add-approval",
+    check: (op) =>
+      op.op === "add-approval" &&
+      op.amountOver === 50000 &&
+      /cfo|chief financial/i.test(op.approverTitle),
+    why: "a NEW CFO gate, not raising the existing director's threshold (the phrasing without 'also' must still add, not mutate)",
+  },
+  {
     id: "add-slack",
     instruction: "Send a Slack message whenever an invoice is posted",
     expectedOp: "add-integration",
@@ -108,13 +121,13 @@ export const EDIT_CASES: EditCase[] = [
   {
     id: "add-director-co-approver",
     instruction:
-      "The director review should also require Jordan Ellis to sign off",
+      "The director review should also require Taylor Nguyen to sign off",
     expectedOp: "add-approver",
     check: (op) =>
       op.op === "add-approver" &&
       op.stepId === "director-review" &&
-      /jordan ellis/i.test(op.approverName),
-    why: "ADD a co-approver to the director gate (keep Cameron Diaz), not replace the approver",
+      /taylor nguyen/i.test(op.approverName),
+    why: "ADD a co-approver to the director gate (keep Cameron Diaz + Jordan Ellis), not replace the approver",
   },
   {
     id: "remove-director-co-approver",

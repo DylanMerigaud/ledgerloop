@@ -62,11 +62,23 @@ const main = async (): Promise<void> => {
 
   const results: Result[] = [];
   for (const c of EDIT_CASES) {
-    const op =
-      dryRun || !planEdit
-        ? stubOp(c)
-        : await planEdit(EDIT_FIXTURE, c.instruction);
-    results.push(scoreOne(c, op));
+    // A model reply that fails to parse (bad JSON, or an op the schema rejects) is a
+    // FAILURE for that case, not a crash of the whole run, so one flaky reply doesn't
+    // hide the other nine cases' results.
+    try {
+      const op =
+        dryRun || !planEdit
+          ? stubOp(c)
+          : await planEdit(EDIT_FIXTURE, c.instruction);
+      results.push(scoreOne(c, op));
+    } catch (err) {
+      results.push({
+        id: c.id,
+        pass: false,
+        got: "error",
+        why: `${c.why}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
   }
 
   const idW = Math.max(8, ...results.map((r) => r.id.length));
@@ -127,7 +139,7 @@ const stubOp = (c: EditCase): WorkflowEditOp => {
       return {
         op: "add-approver",
         stepId: "director-review",
-        approverName: "Jordan Ellis",
+        approverName: "Taylor Nguyen",
       };
     case "remove-approver":
       return {

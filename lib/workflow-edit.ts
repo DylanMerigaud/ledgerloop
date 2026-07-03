@@ -651,7 +651,7 @@ export const proposeEdit = async (
 export const WORKFLOW_EDIT_SYSTEM_PROMPT = `You translate a plain-language instruction into ONE structured edit for a procure-to-pay approval workflow. You are given the current workflow's steps (id, label, kind, approver) and the instruction. Return a single edit op:
 
 - add-approval: a new human approval gate. Set "label" to a SHORT title only (e.g. "CFO review" or "VP sign-off"), do NOT put the threshold or department in the label, they're shown separately. Set "approverTitle" (the role, e.g. "CFO"), "amountOver" (the dollar threshold it applies above, or null for every invoice), and "department" (scope to one department like "Product", or null for any).
-- add-integration: a system action, "slack", "jira", or "netsuite", that runs after the bill posts. Set "label" to a short title (e.g. "Notify on Slack", "Open Jira ticket").
+- add-integration: a system action that runs after the bill posts. Set "integration" to exactly one of "slack" | "jira" | "netsuite" (the field is named "integration", NOT "kind"), and "label" to a short title (e.g. "Notify on Slack", "Open Jira ticket").
 - set-threshold: change an existing approval step's amount threshold. Use the step's "stepId" from the current workflow.
 - set-approver: set the PRIMARY person on an existing approval step (by "stepId"). Use for "make X the approver" / "assign X".
 - add-approver: add ANOTHER required approver to a gate that already has one (by "stepId" + "approverName"). Use for "also require X" / "add X as a co-approver" / "X should sign off too". The gate keeps its existing approver and also routes to this person.
