@@ -167,7 +167,12 @@ export const workflowFromPolicy = (
       when: managerReview,
       approverTitle: "Manager",
       approverName: "Manager",
-      next: ["director-review", "post-netsuite"],
+      // Linear escalation: Manager → Director → Post. NO direct Manager → Post edge:
+      // the graph shows a clean chain, and `resolvePath` short-circuits it per invoice
+      // (Director's condition false → Director is pruned and the edge rewires straight
+      // to Post). So a small bill resolves to Manager → Post at RUN time, without the
+      // base workflow carrying a confusing conditional fork.
+      next: ["director-review"],
     },
     {
       id: "director-review",
