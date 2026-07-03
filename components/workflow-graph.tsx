@@ -101,7 +101,11 @@ const Inner = ({
       position: { x: 0, y: 0 },
       data: {
         step,
-        status: statuses?.[step.id],
+        // `status` is NOT set here: it's patched onto live nodes by a separate effect
+        // (like `selected`), so a status arriving mid-run does not rebuild initialNodes
+        // and re-run the layout. The status badge row has a FIXED height (reserved in
+        // StepNode) so the badge appearing never changes the card height, which is what
+        // let a stale re-layout drift the edge handles a few px (the connector kink).
         change: changeOf.get(step.id),
         issue: issueOf.get(step.id),
         vertical,
@@ -128,7 +132,7 @@ const Inner = ({
       },
     }));
     return [...real, ...gone];
-  }, [workflow, statuses, changeOf, removed, issueOf, vertical]);
+  }, [workflow, changeOf, removed, issueOf, vertical]);
 
   // Structural edges only (no status) so the layout/reset path never re-fires on a
   // status change, the live "flow" styling is patched separately below.
@@ -324,6 +328,28 @@ const Inner = ({
       ),
     );
   }, [selectedId, setNodes]);
+
+  // Patch the per-step `status` onto live nodes, same as `selected`: no re-layout, so a
+  // status arriving mid-run (a live run painting In review, Approved, Done) only repaints
+  // the badge. The badge row is a fixed height, so this never shifts a card's centre and
+  // the edges stay straight.
+  const statusPatchKey = statuses
+    ? Object.entries(statuses)
+        .map(([k, v]) => `${k}:${v}`)
+        .sort()
+        .join("|")
+    : "";
+  useEffect(() => {
+    setNodes((cur) =>
+      cur.map((n) => {
+        const next = statuses?.[n.id];
+        return n.data.status === next
+          ? n
+          : { ...n, data: { ...n.data, status: next } };
+      }),
+    );
+    // statusPatchKey is the change signal; statuses read inside.
+  }, [statusPatchKey, statuses, setNodes]);
 
   // Patch the per-gate decision state (decidable + staged choice + the handler) onto
   // live nodes, also cheap, no re-layout, so deciding a gate doesn't reflow the graph.

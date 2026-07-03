@@ -139,6 +139,21 @@ test.describe("graph layout: handles never kink", () => {
     expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
   });
 
+  test("linear chain stays straight when statuses arrive AFTER layout", async ({
+    page,
+  }) => {
+    // case-linear-lit renders the chain, then applies Approved/Done badges a beat later
+    // (a live run's sequence). The status is patched onto nodes without a re-layout and
+    // the badge row is a fixed height, so the handles must still line up, no kink from a
+    // late badge growing a card. Wait past the harness's status delay first.
+    await page.waitForTimeout(1600);
+    const mgr = await handleY(page, "case-linear-lit", "manager-review");
+    const post = await handleY(page, "case-linear-lit", "post-netsuite");
+    expect(mgr.src, "manager source handle").not.toBeNull();
+    expect(post.tgt, "post target handle").not.toBeNull();
+    expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
+  });
+
   test("fan-out: branches straddle a straight Manager ↔ Post spine", async ({
     page,
   }) => {

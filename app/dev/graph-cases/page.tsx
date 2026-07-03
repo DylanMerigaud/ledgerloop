@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { resolvePath, type InvoiceContext } from "@/lib/approval-workflow";
 import {
@@ -33,17 +35,38 @@ const mgrOnlyCtx: InvoiceContext = {
 };
 const linear = resolvePath(base, mgrOnlyCtx);
 
+// Renders the linear chain, then applies status badges a beat later, to reproduce a
+// live run's sequence (layout on plain cards, then the badges grow them).
+const LinearLit = () => {
+  const [statuses, setStatuses] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const t = setTimeout(
+      () =>
+        setStatuses({ "manager-review": "approved", "post-netsuite": "done" }),
+      1200,
+    );
+    return () => clearTimeout(t);
+  }, []);
+  return <WorkflowGraph workflow={linear} statuses={statuses} />;
+};
+
 export default function GraphCases() {
   return (
     <div style={{ height: "100vh", width: "100vw", background: "#fafafa" }}>
-      <div style={{ height: "34%" }} data-testid="case-linear">
+      <div style={{ height: "25%" }} data-testid="case-linear">
         <WorkflowGraph workflow={linear} />
       </div>
-      <div style={{ height: "33%" }} data-testid="case-diamond">
+      <div style={{ height: "25%" }} data-testid="case-linear-lit">
+        {/* The #51 case: statuses arrive AFTER the initial layout (like a live run), so
+            the status badges grow the cards a beat later. Renders with no statuses, then
+            sets them, to reproduce the exact sequence. */}
+        <LinearLit />
+      </div>
+      <div style={{ height: "25%" }} data-testid="case-diamond">
         {/* The base workflow with conditions: Manager → {Director, Post}. */}
         <WorkflowGraph workflow={base} />
       </div>
-      <div style={{ height: "33%" }} data-testid="case-fanout">
+      <div style={{ height: "25%" }} data-testid="case-fanout">
         {/* A pure fan-out that all rejoin the post (no direct fall-through), so the two
             branches straddle the spine symmetrically. */}
         <WorkflowGraph workflow={fanout} />

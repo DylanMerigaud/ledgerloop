@@ -89,12 +89,14 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           />
         )}
 
-        {/* status / change badge on top, like the reference card */}
-        {badge && (
-          <div className="mb-1.5">
-            <Badge tone={badge.tone}>{badge.label}</Badge>
-          </div>
-        )}
+        {/* status / change badge on top. The row is ALWAYS rendered (a fixed height,
+            empty when there's no badge) so a status arriving mid-run, e.g. a live run
+            painting "Approved"/"Done" after the initial layout, does NOT grow the card
+            and shift its center: the edge handles stay put and the connector never
+            kinks. */}
+        <div className="mb-1.5 h-5">
+          {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
+        </div>
 
         {/* the step title */}
         <div
