@@ -63,6 +63,10 @@ export default tseslint.config(
       // The new JSX transform — no `import React` needed.
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
+      // Effects are the top source of subtle bugs here: a missing dep silently stales
+      // a closure, an extra dep re-fires. Recommended ships this as a warning, which
+      // the gate ignores; make it a hard error so a stale/over-broad dep set can't land.
+      "react-hooks/exhaustive-deps": "error",
     },
   },
 

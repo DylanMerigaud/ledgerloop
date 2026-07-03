@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 import {
   ExtractionReveal,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { WorkflowGraph, type StepStatuses } from "@/components/workflow-graph";
 import type { QueueItem } from "@/db/client";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { API_ROUTES } from "@/lib/api-routes";
 import { contextFromMatch } from "@/lib/approval-run";
@@ -48,7 +50,7 @@ import {
 import { formatMoney } from "@/lib/format";
 import { client, orpc } from "@/lib/orpc/client";
 import { pendingGates } from "@/lib/run-outcome";
-import { MatchResult, type Invoice } from "@/lib/schema";
+import { Invoice, MatchResult } from "@/lib/schema";
 import type { TraceEvent } from "@/lib/trace";
 import { usePipelineRun } from "@/lib/use-pipeline-run";
 
@@ -83,16 +85,23 @@ const findLastEvent = (
  * once done; we render the document twin + scan from that. Returns null until an
  * intake event exists (i.e. before a run starts, or on a resume).
  */
+const IntakeData = z
+  .object({
+    document: Invoice.optional(),
+    extracted: Invoice.optional(),
+    matches: z.boolean().optional(),
+  })
+  .passthrough();
 const readIntake = (
   trace: TraceEvent[],
 ): { document: Invoice; state: ExtractionState } | null => {
   const intake = trace.find((e) => e.stage === "intake" && e.kind === "step");
   if (!intake) return null;
-  const data = (intake.data ?? {}) as {
-    document?: Invoice;
-    extracted?: Invoice;
-    matches?: boolean;
-  };
+  // Validate the intake payload (a `.safeParse`, like the other trace reads) rather
+  // than casting `unknown`, so a drifted event yields null instead of garbage fields.
+  const parsed = IntakeData.safeParse(intake.data ?? {});
+  if (!parsed.success) return null;
+  const data = parsed.data;
   const document = data.extracted ?? data.document;
   if (!document) return null;
   return {
@@ -153,12 +162,13 @@ const readRunGraph = (
     for (const s of parsed.data.steps) skipped[s.id] = "skipped";
     return { workflow: parsed.data, statuses: skipped };
   }
-  // Resolve the LINEAR path THIS invoice takes: evaluate each gate's condition
-  // against the matched invoice and drop the ones that don't apply (rewiring edges),
-  // so the reviewer sees Manager → Post, not an ambiguous Manager → Director AND
-  // Manager → Post diamond. Keyed on the invoice (from the matching event), NOT on
-  // approval order, so it's fixed the moment matching resolves and never re-routes as
-  // gates get decided. If matching data isn't on the trace yet, draw the full graph.
+  // Resolve the LINEAR path THIS invoice takes: evaluate each gate's condition against
+  // the matched invoice and drop the ones that don't apply (rewiring edges), so the
+  // reviewer sees the realized chain (e.g. Manager → Post when Director's threshold
+  // isn't met), not every conditional gate. Keyed on the invoice (from the matching
+  // event), NOT on approval order, so it's fixed the moment matching resolves and never
+  // re-routes as gates get decided. If matching data isn't on the trace yet, draw the
+  // full workflow.
   const ctx = readMatchContext(trace);
   return { workflow: resolvePath(parsed.data, ctx), statuses };
 };
@@ -1086,15 +1096,7 @@ const TraceDrawer = ({
   invoiceLabel: string | null;
   children: React.ReactNode;
 }) => {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
+  useEscapeKey(open, onClose);
   if (!open) return null;
   return (
     <div className="absolute inset-0 z-30">

@@ -9,7 +9,10 @@ import { test, expect, type Page } from "@playwright/test";
 
 const DISCOVERY_TIMEOUT = 90_000;
 
-const node = (page: Page, id: string) => page.getByTestId(`graph-node-${id}`);
+// Both tabs stay mounted and render the same node ids, so scope to the VISIBLE graph
+// (the onboarding canvas here) to avoid a strict-mode double match.
+const node = (page: Page, id: string) =>
+  page.getByTestId(`graph-node-${id}`).locator("visible=true");
 
 test("edit a gate's trigger: add a condition and a nested group", async ({
   page,

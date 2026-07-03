@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
 import { WorkflowGraph } from "@/components/workflow-graph";
+import { useClickOutside } from "@/hooks/use-click-outside";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { orpc } from "@/lib/orpc/client";
 import { type OnboardingResult, type OrgEmployee } from "@/lib/orpc/schemas";
@@ -219,20 +220,7 @@ const WhatCanIChange = ({
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const target = e.target;
-      if (
-        target instanceof Node &&
-        ref.current &&
-        !ref.current.contains(target)
-      )
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  useClickOutside(ref, open, () => setOpen(false));
 
   return (
     <div ref={ref} className="relative">

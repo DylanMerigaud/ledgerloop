@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { ConditionEditor } from "@/components/condition-editor";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
 import type { AvailableValues } from "@/lib/condition-fields";
 import type { OrgEmployee } from "@/lib/orpc/schemas";
@@ -279,24 +280,18 @@ const PanelShell = ({
   // that owns its own scroll, so a tall condition editor is never cut off. Escape and a
   // backdrop click close it. Portalled to <body> after mount (SSR-safe).
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEffect(() => setMounted(true), []); // portal to <body> only after mount (SSR-safe)
+  useEscapeKey(mounted, onClose);
   if (!mounted) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button
-        type="button"
-        aria-label="Close panel"
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/20 backdrop-blur-[1px]"
-      />
-      <div className="relative flex h-full w-full max-w-[380px] flex-col overflow-y-auto bg-surface p-5 shadow-lift ring-1 ring-inset ring-line">
+    // The wrapper lets clicks pass THROUGH (pointer-events-none) so the graph behind
+    // stays interactive: clicking another node just switches the panel to it, rather
+    // than the panel being a modal that traps you. A faint, non-interactive scrim hints
+    // focus without blocking. The panel itself re-enables pointer events. Close with
+    // Escape or the X.
+    <div className="pointer-events-none fixed inset-0 z-50 flex justify-end">
+      <div aria-hidden className="absolute inset-0 bg-ink/10" />
+      <div className="pointer-events-auto relative flex h-full w-full max-w-[380px] flex-col overflow-y-auto bg-surface p-5 shadow-lift ring-1 ring-inset ring-line">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="truncate text-[14px] font-semibold text-ink">
             {title}

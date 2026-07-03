@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { useClickOutside } from "@/hooks/use-click-outside";
 import { cn } from "@/lib/utils";
 
 /**
@@ -72,16 +73,7 @@ export const Combobox = ({
   }, [open]);
 
   // Close on a click outside the whole widget.
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const target = e.target;
-      if (target instanceof Node && !rootRef.current?.contains(target))
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  useClickOutside(rootRef, open, () => setOpen(false));
 
   const commit = (v: string) => {
     onChange(v);
