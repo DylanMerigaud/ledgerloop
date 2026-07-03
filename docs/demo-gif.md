@@ -61,3 +61,25 @@ model call is needed and the graph, banners, and gate render instantly.
 Keep the GIF under ~1.5MB (GitHub renders it inline; larger is slow to load). If a scene
 changes, re-shoot just that frame and rerun steps 3-4. Update the README alt text if the
 scenes change.
+
+## The onboarding GIF (`docs/onboarding.gif`)
+
+Same technique, three scenes for the build-the-workflow half:
+
+- `1_discover.png`  , the HRIS discovery empty state (Discover from BambooHR + the 3 steps)
+- `2_derived.png`   , the derived workflow (org chart, approvers resolved to names, issues
+  flagged, the graph with gates, and the suggested-edit chips)
+- `3_edit_diff.png` , a plain-language edit proposed as a diff (Added / Changed gates,
+  a validation warning, Approve / Revert)
+
+The catch: onboarding makes MODEL calls (discovery + the edit), so it's slow and can be
+flaky. When capturing, wait for the RIGHT signals, not a fixed delay:
+
+- discovery done = the **"What can I change?"** button appears (`state.status === "done"`),
+  NOT just the graph node existing in the DOM (it's there behind the loading overlay
+  first). Allow ~80s.
+- to trigger the edit deterministically, click a **suggestion chip** (the AI-generated
+  next-edit buttons) rather than typing, then wait for the **"Proposed edit ... not
+  applied yet"** bar. Allow ~60s.
+
+Give the derived + diff frames a longer dwell (~3.8s) than the intro, there's more to read.

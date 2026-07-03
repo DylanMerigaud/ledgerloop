@@ -28,6 +28,8 @@ The result is a **proposal**: you review the resolved approvers and the flagged 
 
 **Conversational editing, with preview → approve / revert.** Tell the agent what you want and it proposes a rewrite; the graph shows the diff (added / changed / removed gates) and **nothing is applied until you approve**, the pipeline only ever runs the workflow you've approved.
 
+![Onboarding: the agent reads the org from BambooHR (13 people, approvers resolved to real names, data issues flagged), derives the approval workflow, then a plain-language edit ("add CFO approval for Product") is proposed as a diff, an Added gate and a Changed one, with validation, ready to approve or revert](docs/onboarding.gif)
+
 - The DAG **structure** is a deterministic template; the agent only makes the fuzzy calls (which title fills which approval level → which person, what threshold, plain-language issue notes). Code assembles those into a Zod-validated `ApprovalWorkflow`. An edit that would produce an invalid graph is rejected, never applied.
 - `lib/onboarding.ts` (derive + assemble), `lib/onboarding-model.ts` (the structured-output call), `lib/workflow-edit.ts` (conversational edits + diff). The API is one typed **oRPC** contract ([`lib/orpc/`](lib/orpc/)), `onboarding` and `editWorkflow` are procedures on it, not hand-rolled routes, so a response-shape change is a compile error on both client and server.
 
