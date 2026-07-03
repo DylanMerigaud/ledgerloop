@@ -32,7 +32,7 @@ export const mockToolCallingModel = (opts: {
     specificationVersion: "v2" as const,
     provider: "mock",
     modelId,
-    supportedUrls: {} as Record<string, RegExp[]>,
+    supportedUrls: {},
     async doGenerate() {
       return {
         content: [

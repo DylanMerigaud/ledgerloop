@@ -414,6 +414,7 @@ const stripUnsupported = (node: unknown): void => {
 export const toModelJsonSchema = (
   schema: z.ZodType<unknown>,
 ): Record<string, unknown> => {
+  // eslint-disable-next-line no-restricted-syntax -- boundary cast: zodToJsonSchema returns the library's structured JsonSchema7Type union; we treat it as the generic object shape we hand the model (and mutate below), which is exactly what the model API wants.
   const json = zodToJsonSchema(schema, {
     $refStrategy: "none",
     target: "jsonSchema7",

@@ -147,10 +147,15 @@ export default tseslint.config(
       "no-restricted-syntax": [
         "error",
         {
+          // Ban EVERY `as T` cast (except `as const`). A cast dodges the type checker;
+          // narrow with a type guard, validate with a Zod schema, or use `satisfies`.
+          // A genuinely necessary boundary cast (a library/framework type we can't
+          // express) takes a per-line eslint-disable WITH a reason, so each one is a
+          // deliberate, reviewed exception rather than a silent hole.
           selector:
-            "TSAsExpression > TSAsExpression > TSUnknownKeyword, TSAsExpression[expression.type='TSAsExpression']",
+            "TSAsExpression:not([typeAnnotation.typeName.name='const'])",
           message:
-            "Avoid `as unknown as T`. Narrow with a type guard, or annotate a necessary boundary cast with an eslint-disable + reason.",
+            "Avoid `as T`. Narrow with a type guard, validate with a schema, or use `satisfies`. Annotate a necessary boundary cast with an eslint-disable + reason.",
         },
         {
           selector:
@@ -243,9 +248,10 @@ export default tseslint.config(
     rules: { "@typescript-eslint/require-await": "off" },
   },
 
-  // Tests: `!` and `any` on just-defined fixtures are provably safe; keep the
-  // cast/logic rules (real safety) but relax the ceremony ones. `node:test`'s
-  // `test()` returns a promise the runner owns, so floating-promises is noise here.
+  // Tests: `!`, `any`, and `as` casts on just-defined fixtures are provably safe;
+  // relax the ceremony rules (the assertion + logic ones stay meaningful in prod).
+  // `node:test`'s `test()` returns a promise the runner owns, so floating-promises is
+  // noise here.
   {
     files: ["**/*.test.ts"],
     rules: {
@@ -255,6 +261,9 @@ export default tseslint.config(
       "@typescript-eslint/no-floating-promises": "off",
       // Mock implementations satisfy async interfaces with no await — fine in tests.
       "@typescript-eslint/require-await": "off",
+      // Casting a fixture we just built is safe; the ban is for prod code paths.
+      "no-restricted-syntax": "off",
+      "@typescript-eslint/no-unsafe-type-assertion": "off",
     },
   },
 

@@ -403,6 +403,7 @@ export const p2pWorkflow = createWorkflow({
   // Normalise the branch output (keyed by the executed step's id) back to one
   // BranchOut so reconciliation has a single, uniform input.
   .map(async ({ inputData }) => {
+    // eslint-disable-next-line no-restricted-syntax -- boundary cast: Mastra's `.branch()` yields a union keyed by the executed step's id, which its types don't express precisely; we read the one key that fired.
     const branch = inputData as Record<
       string,
       z.infer<typeof BranchOut> | undefined

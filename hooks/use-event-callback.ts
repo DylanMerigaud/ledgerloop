@@ -24,6 +24,6 @@ export const useEventCallback = <
   const stable = (...args: Parameters<T>): ReturnType<T> =>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- T's return is `any` by the generic constraint above
     ref.current(...args);
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- generic wrapper → T: the call signature matches; T just can't be proven assignable
+  // eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-unsafe-type-assertion -- generic wrapper → T: the call signature matches; T just can't be proven assignable
   return useRef<T>(stable as T).current;
 };
