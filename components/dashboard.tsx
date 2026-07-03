@@ -3,12 +3,20 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
 
+import { CollapsedIntake } from "@/components/dashboard/collapsed-intake";
+import { OutcomeBanner } from "@/components/dashboard/outcome-banner";
+import { PlayIcon } from "@/components/dashboard/play-icon";
+import { QueueHint } from "@/components/dashboard/queue-hint";
+import { RunningAgainst } from "@/components/dashboard/running-against";
+import { Spinner } from "@/components/dashboard/spinner";
+import { TraceDrawer } from "@/components/dashboard/trace-drawer";
 import {
-  ExtractionReveal,
-  type ExtractionState,
-} from "@/components/extraction-reveal";
+  readIntake,
+  readRecommendation,
+  readRunGraph,
+} from "@/components/dashboard/trace-read";
+import { ExtractionReveal } from "@/components/extraction-reveal";
 import { RecentRuns } from "@/components/recent-runs";
 import { TraceTimeline } from "@/components/trace-timeline";
 import { Badge } from "@/components/ui/badge";
@@ -20,38 +28,25 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { WorkflowGraph, type StepStatuses } from "@/components/workflow-graph";
+import { WorkflowGraph } from "@/components/workflow-graph";
 import type { QueueItem } from "@/db/client";
-import { useEscapeKey } from "@/hooks/use-escape-key";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { API_ROUTES } from "@/lib/api-routes";
-import { contextFromMatch } from "@/lib/approval-run";
-import {
-  ApprovalWorkflow,
-  resolvePath,
-  type ApprovalWorkflow as TApprovalWorkflow,
-  type InvoiceContext,
-} from "@/lib/approval-workflow";
-import { isRecord } from "@/lib/assert";
+import { type ApprovalWorkflow as TApprovalWorkflow } from "@/lib/approval-workflow";
 import {
   DEFAULT_APPROVAL_POLICY,
   workflowFromPolicy,
 } from "@/lib/client-profile";
 import {
   outcomeDot,
-  outcomeExplain,
   outcomeLabel,
   outcomeTone,
-  scenarioBadge,
   scenarioExplain,
-  scenarioKind,
   type Outcome,
 } from "@/lib/display";
 import { formatMoney } from "@/lib/format";
 import { client, orpc } from "@/lib/orpc/client";
 import { pendingGates } from "@/lib/run-outcome";
-import { Invoice, MatchResult } from "@/lib/schema";
-import type { TraceEvent } from "@/lib/trace";
 import { usePipelineRun } from "@/lib/use-pipeline-run";
 
 /**
@@ -63,378 +58,11 @@ import { usePipelineRun } from "@/lib/use-pipeline-run";
  * trace state is per-visitor and ephemeral, but each completed run is persisted as
  * an append-only audit row (the Recent runs panel below the queue lists them,
  * replayable). A nightly reset clears those, so every morning starts pristine.
+ *
+ * The pure trace-reading helpers (readIntake, readRunGraph, readRecommendation) and
+ * the leaf sub-components (PlayIcon, Spinner, QueueHint, OutcomeBanner,
+ * CollapsedIntake, RunningAgainst, TraceDrawer) live in ./dashboard/*.
  */
-/** The LAST trace event matching a predicate. A live run upserts a stage in place (one
-    event), but a stored/replayed trace keeps the running (often empty) AND the done
-    (data-carrying) event for a stage, in order, so we must read the last, not the first.
-    (Local helper rather than Array.findLast, which needs a newer lib target.) */
-const findLastEvent = (
-  trace: TraceEvent[],
-  pred: (e: TraceEvent) => boolean,
-): TraceEvent | undefined => {
-  for (let i = trace.length - 1; i >= 0; i--) {
-    const e = trace[i];
-    if (e && pred(e)) return e;
-  }
-  return undefined;
-};
-
-/**
- * Pull the intake (extraction) node out of the trace and shape it for the reveal.
- * The intake step carries `{ document }` while reading and `{ extracted, matches }`
- * once done; we render the document twin + scan from that. Returns null until an
- * intake event exists (i.e. before a run starts, or on a resume).
- */
-const IntakeData = z
-  .object({
-    document: Invoice.optional(),
-    extracted: Invoice.optional(),
-    matches: z.boolean().optional(),
-  })
-  .passthrough();
-const readIntake = (
-  trace: TraceEvent[],
-): { document: Invoice; state: ExtractionState } | null => {
-  const intake = trace.find((e) => e.stage === "intake" && e.kind === "step");
-  if (!intake) return null;
-  // Validate the intake payload (a `.safeParse`, like the other trace reads) rather
-  // than casting `unknown`, so a drifted event yields null instead of garbage fields.
-  const parsed = IntakeData.safeParse(intake.data ?? {});
-  if (!parsed.success) return null;
-  const data = parsed.data;
-  const document = data.extracted ?? data.document;
-  if (!document) return null;
-  return {
-    document,
-    state: {
-      status: intake.status === "running" ? "running" : "done",
-      extracted: data.extracted ?? null,
-      matches: data.matches ?? false,
-    },
-  };
-};
-
-/**
- * Pull the approval workflow + each step's live status out of the trace, so the
- * Pipeline can render the SAME graph the onboarding screen draws, lit up by this
- * invoice's path (a gate "In review", "Approved", "Skipped"). The approval node
- * carries `{ workflow, steps: [{id, status}] }`; we validate the workflow off the
- * trace (no cast) and map the step statuses into the shape WorkflowGraph wants.
- * Returns null until the run has produced an approval node (intake/matching first).
- */
-const readRunGraph = (
-  trace: TraceEvent[],
-): { workflow: TApprovalWorkflow; statuses: StepStatuses } | null => {
-  // findLast, not find: a live run upserts the approval node in place (one event), but
-  // a STORED/replayed trace keeps both the "running" event (empty data) AND the "done"
-  // event (which carries the workflow + steps) under the same stepId. `find` grabbed the
-  // running one → no workflow → the graph fell back to the full unresolved default. Take
-  // the LAST approval event so replay resolves the same lit path a live run shows.
-  const approval = findLastEvent(
-    trace,
-    (e) => e.stage === "approval" && e.kind === "step",
-  );
-  if (!approval || !isRecord(approval.data)) return null;
-  const parsed = ApprovalWorkflow.safeParse(approval.data["workflow"]);
-  if (!parsed.success) return null;
-
-  const statuses: StepStatuses = {};
-  const steps = approval.data["steps"];
-  if (Array.isArray(steps)) {
-    for (const s of steps) {
-      if (
-        isRecord(s) &&
-        typeof s["id"] === "string" &&
-        typeof s["status"] === "string"
-      ) {
-        statuses[s["id"]] = s["status"];
-      }
-    }
-  }
-  // A BLOCKED run (duplicate) never entered the workflow: a control failed at intake
-  // before any gate could route, so the block step emits an empty `steps`. Drawing the
-  // full workflow with no statuses reads as if the bill routed normally, which is
-  // wrong. Grey EVERY node (status "skipped") so the canvas shows the workflow was not
-  // taken, and let the red outcome banner carry the why. Detected from the outcome
-  // (approval `blocked`) or the matching verdict (`duplicate`).
-  if (isBlockedRun(trace, approval.data)) {
-    const skipped: StepStatuses = {};
-    for (const s of parsed.data.steps) skipped[s.id] = "skipped";
-    return { workflow: parsed.data, statuses: skipped };
-  }
-  // Resolve the LINEAR path THIS invoice takes: evaluate each gate's condition against
-  // the matched invoice and drop the ones that don't apply (rewiring edges), so the
-  // reviewer sees the realized chain (e.g. Manager → Post when Director's threshold
-  // isn't met), not every conditional gate. Keyed on the invoice (from the matching
-  // event), NOT on approval order, so it's fixed the moment matching resolves and never
-  // re-routes as gates get decided. If matching data isn't on the trace yet, draw the
-  // full workflow.
-  const ctx = readMatchContext(trace);
-  return { workflow: resolvePath(parsed.data, ctx), statuses };
-};
-
-/** True when the run was blocked at a pre-workflow control (a duplicate), so nothing
-    routed. Reads the approval event's `outcome` (blocked) or the matching verdict. */
-const isBlockedRun = (
-  trace: TraceEvent[],
-  approvalData: Record<string, unknown>,
-): boolean => {
-  if (approvalData["outcome"] === "blocked") return true;
-  // findLast: the stored trace keeps the running (empty) + done matching events; the
-  // verdict is on the done one.
-  const matching = findLastEvent(
-    trace,
-    (e) => e.stage === "matching" && e.kind === "step",
-  );
-  return isRecord(matching?.data) && matching.data["verdict"] === "duplicate";
-};
-
-/** The exception investigator's recommendation, pulled from the trace, so the paused
-    gate can show what the AI concluded right where the human decides (verdict + the
-    reasoning on hover), instead of only in the trace drawer. Null until the agent has
-    produced a recommendation. */
-type Recommendation = {
-  verdict: "likely_legitimate" | "likely_overcharge" | "unclear";
-  rationale: string | null;
-};
-const readRecommendation = (trace: TraceEvent[]): Recommendation | null => {
-  const inv = findLastEvent(
-    trace,
-    (e) => e.stage === "investigation" && e.data != null,
-  );
-  if (!inv || !isRecord(inv.data)) return null;
-  const rec = inv.data["recommendation"];
-  const verdict =
-    rec === "likely_legitimate"
-      ? "likely_legitimate"
-      : rec === "likely_overcharge"
-        ? "likely_overcharge"
-        : "unclear";
-  const rationale =
-    typeof inv.data["rationale"] === "string" ? inv.data["rationale"] : null;
-  return { verdict, rationale };
-};
-
-/** Build the approval engine's InvoiceContext from the matching trace event, so the
-    run graph's path can be resolved client-side. Returns undefined (draw the full
-    graph) if the matching event isn't present/valid yet.
-
-    The matching step emits the MatchResult PLUS run-plumbing (`decisions`, `profile`,
-    `narration`, …), so we validate only the MatchResult fields and `.passthrough()`
-    the extras, rather than strict-parsing the whole event (which would reject it). */
-const MatchResultLoose = MatchResult.passthrough();
-const readMatchContext = (trace: TraceEvent[]): InvoiceContext | undefined => {
-  // findLast: the done matching event (with the MatchResult) follows the running one.
-  const matching = findLastEvent(
-    trace,
-    (e) => e.stage === "matching" && e.kind === "step",
-  );
-  if (!matching || !isRecord(matching.data)) return undefined;
-  const parsed = MatchResultLoose.safeParse(matching.data);
-  return parsed.success ? contextFromMatch(parsed.data) : undefined;
-};
-
-/** Solid play triangle for the Run button. */
-const PlayIcon = () => {
-  return (
-    <svg aria-hidden viewBox="0 0 12 12" className="h-3 w-3 fill-current">
-      <path d="M3 1.8v8.4a.6.6 0 0 0 .92.5l6.4-4.2a.6.6 0 0 0 0-1L3.92 1.3A.6.6 0 0 0 3 1.8Z" />
-    </svg>
-  );
-};
-
-/**
- * The pre-run hint on a queue row: a "Start here" chip on the showcase invoice,
- * and a coloured badge ONLY for exception/blocked scenarios (clean rows stay
- * unmarked, so the marks draw the eye to the cases worth running). Renders nothing
- * for an unmarked clean row.
- */
-const QueueHint = ({
-  scenario,
-  startHere,
-}: {
-  scenario: string | null;
-  startHere: boolean;
-}) => {
-  const badge = scenarioBadge(scenarioKind(scenario));
-  if (!startHere && !badge) return null;
-  return (
-    <span className="flex shrink-0 items-center gap-1.5">
-      {startHere && (
-        <span className="inline-flex items-center gap-0.5 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent ring-1 ring-inset ring-accent/20">
-          <span aria-hidden>⚡</span> Start here
-        </span>
-      )}
-      {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
-    </span>
-  );
-};
-
-/**
- * The outcome banner across the top of the run pane: colour-coded to the result
- * (danger/blocked, warn/needs-approval, ok/reconciled) with a one-line why. Makes
- * the outcome obvious at the PANE level, not only as a badge on one graph node,
- * which is easy to miss on a blocked run where the graph looks otherwise normal.
- * Renders nothing for the transient states (idle / running / pending).
- */
-const OUTCOME_BANNER_TONE: Record<
-  "ok" | "warn" | "danger",
-  { bar: string; dot: string; text: string }
-> = {
-  ok: { bar: "bg-ok-soft/60 ring-ok-line", dot: "#047857", text: "text-ok" },
-  warn: {
-    bar: "bg-warn-soft/60 ring-warn-line",
-    dot: "#B45309",
-    text: "text-warn",
-  },
-  danger: {
-    bar: "bg-danger-soft/60 ring-danger-line",
-    dot: "#B91C1C",
-    text: "text-danger",
-  },
-};
-const OutcomeBanner = ({ outcome }: { outcome: Outcome }) => {
-  const why = outcomeExplain(outcome);
-  const tone = outcomeTone(outcome);
-  // Only the three resolved outcomes get a banner (tone maps them to ok/warn/danger).
-  if (tone !== "ok" && tone !== "warn" && tone !== "danger") return null;
-  const c = OUTCOME_BANNER_TONE[tone];
-  return (
-    <div
-      data-testid="outcome-banner"
-      className={`pointer-events-none flex items-center gap-2 rounded-lg px-3 py-1.5 text-[12px] ring-1 ring-inset ${c.bar}`}
-    >
-      <span
-        aria-hidden
-        className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: c.dot }}
-      />
-      <span className={`shrink-0 font-medium ${c.text}`}>
-        {outcomeLabel(outcome)}
-      </span>
-      {why && <span className="text-ink/70">{why}</span>}
-    </div>
-  );
-};
-
-/**
- * Once the document has been READ and the run moves on, the big extraction reveal
- * (its moment is over) collapses into this one-line node at the top of the trace,
- * "Intake · INV-2042 · 3 lines · $730 · reconciled with PO", expandable to re-show
- * the document + extracted fields. Keeps the AI-reads-the-doc proof one click away
- * while handing the pane to the workflow (the hero).
- */
-const CollapsedIntake = ({
-  pdfSrc,
-  document,
-  state,
-}: {
-  pdfSrc: string;
-  document: Invoice;
-  state: ExtractionState;
-}) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mb-3 rounded-lg ring-1 ring-inset ring-line">
-      <button
-        type="button"
-        data-testid="intake-collapsed"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] hover:bg-subtle/50"
-      >
-        <span aria-hidden className="text-ok">
-          ✓
-        </span>
-        <span className="font-medium text-ink">Intake</span>
-        <span className="min-w-0 flex-1 truncate text-muted">
-          {document.vendor} · {document.lineItems.length} lines ·{" "}
-          {formatMoney(document.total, document.currency)}
-        </span>
-        {state.matches && <Badge tone="ok">reconciled with PO</Badge>}
-        <span
-          aria-hidden
-          className={`text-faint transition-transform ${open ? "rotate-180" : ""}`}
-        >
-          ▾
-        </span>
-      </button>
-      {open && (
-        <div className="border-t border-line p-3">
-          <ExtractionReveal
-            pdfSrc={pdfSrc}
-            state={state}
-            extractedInvoice={document}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
-/** Small spinner shown while a run is in flight. */
-const Spinner = () => {
-  return (
-    <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5 animate-spin">
-      <circle
-        cx="8"
-        cy="8"
-        r="6"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.3"
-        strokeWidth="2"
-      />
-      <path
-        d="M8 2a6 6 0 0 1 6 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-};
-
-/**
- * "Running against: <workflow>", the line that makes the link to onboarding
- * visible: the pipeline routes every invoice through this exact workflow. Shows
- * the active workflow's name once discovery/edits have produced one; otherwise a
- * quiet note that the default DAG is in use until the user derives theirs.
- */
-const RunningAgainst = ({
-  workflow,
-  onBuildWorkflow,
-}: {
-  workflow: TApprovalWorkflow | null;
-  /** Jump back to the "Build the workflow" tab to run discovery. */
-  onBuildWorkflow: () => void;
-}) => {
-  if (!workflow) {
-    return (
-      <p className="mt-1 text-[11px] text-faint">
-        Default workflow.{" "}
-        <button
-          type="button"
-          onClick={onBuildWorkflow}
-          className="font-medium text-accent underline-offset-2 hover:underline"
-        >
-          Build your own
-        </button>{" "}
-        to route against it.
-      </p>
-    );
-  }
-  return (
-    <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted">
-      <span aria-hidden className="text-faint">
-        ↳
-      </span>
-      Running against{" "}
-      <span className="truncate font-medium text-ink">{workflow.name}</span>
-    </p>
-  );
-};
-
 export const Dashboard = ({
   queue,
   workflow,
@@ -1080,61 +708,5 @@ export const Dashboard = ({
         </Card>
       </div>
     </TooltipProvider>
-  );
-};
-
-/** A minimal right-side drawer that slides over the graph with the trace log. Scrim
-    closes it, Esc closes it, body scroll is locked while open. */
-const TraceDrawer = ({
-  open,
-  onClose,
-  invoiceLabel,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  invoiceLabel: string | null;
-  children: React.ReactNode;
-}) => {
-  useEscapeKey(open, onClose);
-  if (!open) return null;
-  return (
-    <div className="absolute inset-0 z-30">
-      <button
-        type="button"
-        aria-label="Close trace"
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/20 backdrop-blur-[1px]"
-      />
-      <div
-        data-testid="trace-drawer"
-        className="absolute inset-y-0 right-0 flex w-full max-w-[420px] flex-col bg-surface shadow-lift ring-1 ring-inset ring-line"
-      >
-        <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-ink">
-              Agent execution trace
-            </p>
-            {invoiceLabel && (
-              <p className="truncate font-mono text-[11px] text-faint">
-                {invoiceLabel}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            aria-label="Close"
-            data-testid="trace-close"
-            onClick={onClose}
-            className="grid size-7 place-items-center rounded-full text-faint hover:bg-subtle hover:text-ink"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          {children}
-        </div>
-      </div>
-    </div>
   );
 };
