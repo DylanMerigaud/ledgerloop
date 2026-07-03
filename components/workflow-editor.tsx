@@ -5,6 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { NodeEditPanel } from "@/components/node-edit-panel";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
@@ -212,17 +218,21 @@ export const WorkflowEditor = ({
         )}
       </div>
 
-      {/* Validation summary, "sound" or the list of issues (errors block apply). */}
-      <ValidationPanel issues={issues} />
+      {/* Validation summary (one row, details in a tooltip). While a proposal is
+          pending its counts live INSIDE the approve bar below instead, right next to
+          the decision they inform, one row instead of two, so the column stays
+          within a laptop viewport even with the canvas at its minimum height. */}
+      {!proposal && <ValidationPanel issues={issues} />}
 
-      {/* Pending-edit bar: approve / revert */}
+      {/* Pending-edit bar: approve / revert, with the checks riding along. */}
       {proposal && (
         <div className="flex items-center justify-between gap-2 rounded-xl bg-accent-soft/60 px-3.5 py-2.5 ring-1 ring-inset ring-accent/15">
-          <span className="text-[12.5px] font-medium text-ink">
+          <span className="min-w-0 truncate text-[12.5px] font-medium text-ink">
             Proposed edit · {changedCount} change{changedCount === 1 ? "" : "s"}{" "}
             <span className="font-normal text-faint">not applied yet</span>
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            {issues.length > 0 && <ChecksBadges issues={issues} />}
             <Button variant="ghost" size="sm" onClick={revert}>
               Revert
             </Button>
@@ -268,26 +278,26 @@ export const WorkflowEditor = ({
         {/* AI-suggested next edits for this workflow. Only shown before a pending
             proposal, and only when the model returned some, no fixed chips, so a
             suggestion is always a real, applicable next step. A used chip is
-            removed (consumed) once it produces a proposal. */}
+            removed (consumed) once it produces a proposal. ONE row, scrolling
+            horizontally: stacked chips ate ~3 rows of the column, height that
+            belongs to the graph canvas above (flex-1). */}
         {!proposal && !clarify && chips.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
+          <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">
               <SparkIcon />
               Suggested edits
             </div>
-            <div className="flex flex-col items-start gap-1.5">
-              {chips.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => submit(s)}
-                  disabled={busy}
-                  className="group inline-flex max-w-full items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-1.5 text-left text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/30 disabled:opacity-50"
-                >
-                  <span className="text-faint group-hover:text-accent">+</span>
-                  <span className="truncate">{s}</span>
-                </button>
-              ))}
-            </div>
+            {chips.map((s) => (
+              <button
+                key={s}
+                onClick={() => submit(s)}
+                disabled={busy}
+                className="group inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-1.5 text-left text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/30 disabled:opacity-50"
+              >
+                <span className="text-faint group-hover:text-accent">+</span>
+                <span className="whitespace-nowrap">{s}</span>
+              </button>
+            ))}
           </div>
         )}
         <form
@@ -335,47 +345,79 @@ export const WorkflowEditor = ({
 };
 
 /**
- * The validation summary. Renders nothing when the workflow is clean; otherwise the
- * list of errors (red, block applying) and warnings (amber, control best-practices).
- * This is what shows the tool understands the workflow, not just draws it.
+ * The severity-count chips ("2 to fix", "1 warning") with the FULL issue list in a
+ * tooltip on hover. The compact form of the checks: it rides inside the approve bar
+ * while a proposal is pending (the counts sit next to the decision they inform) and
+ * heads the standalone row otherwise.
+ */
+const ChecksBadges = ({ issues }: { issues: WorkflowIssue[] }) => {
+  const errors = issues.filter((i) => i.severity === "error");
+  const warnings = issues.filter((i) => i.severity === "warning");
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex cursor-default items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider">
+            {errors.length > 0 && (
+              <span className="rounded-full bg-danger-soft px-1.5 py-0.5 text-danger">
+                {errors.length} to fix
+              </span>
+            )}
+            {warnings.length > 0 && (
+              <span className="rounded-full bg-warn-soft px-1.5 py-0.5 text-warn">
+                {warnings.length}{" "}
+                {warnings.length === 1 ? "warning" : "warnings"}
+              </span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" align="end" className="max-w-[360px]">
+          <ul className="space-y-1">
+            {issues.map((iss, i) => (
+              <li
+                key={`${iss.code}-${i}`}
+                className="flex gap-2 text-[12px] leading-snug"
+              >
+                <span
+                  aria-hidden
+                  className={
+                    iss.severity === "error" ? "text-danger" : "text-warn"
+                  }
+                >
+                  {iss.severity === "error" ? "✕" : "⚠"}
+                </span>
+                <span>{iss.message}</span>
+              </li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+/**
+ * The standalone validation summary (shown when NO proposal is pending). Renders
+ * nothing when the workflow is clean; otherwise ONE compact row: the severity counts
+ * plus the top issue inline (most severe first), full list in the tooltip. One row
+ * instead of a growing list, the vertical space belongs to the graph canvas.
  */
 const ValidationPanel = ({ issues }: { issues: WorkflowIssue[] }) => {
   // Nothing to flag → show nothing. A clean workflow doesn't need a banner taking a
   // row; the checks only surface when there's an error or a best-practice warning.
   if (issues.length === 0) return null;
-  const errors = issues.filter((i) => i.severity === "error");
-  const warnings = issues.filter((i) => i.severity === "warning");
+  const top =
+    issues.find((i) => i.severity === "error") ??
+    issues.find((i) => i.severity === "warning");
   return (
-    <div className="space-y-1.5 rounded-xl bg-subtle/60 px-3 py-2.5 ring-1 ring-inset ring-line">
-      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
+    <div className="flex min-w-0 items-center gap-2 rounded-xl bg-subtle/60 px-3 py-2 ring-1 ring-inset ring-line">
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-faint">
         Checks
-        {errors.length > 0 && (
-          <span className="rounded-full bg-danger-soft px-1.5 py-0.5 text-danger">
-            {errors.length} to fix
-          </span>
-        )}
-        {warnings.length > 0 && (
-          <span className="rounded-full bg-warn-soft px-1.5 py-0.5 text-warn">
-            {warnings.length} {warnings.length === 1 ? "warning" : "warnings"}
-          </span>
-        )}
-      </div>
-      <ul className="space-y-1">
-        {issues.map((iss, i) => (
-          <li
-            key={`${iss.code}-${i}`}
-            className="flex gap-2 text-[12px] leading-snug text-ink/90"
-          >
-            <span
-              aria-hidden
-              className={iss.severity === "error" ? "text-danger" : "text-warn"}
-            >
-              {iss.severity === "error" ? "✕" : "⚠"}
-            </span>
-            <span>{iss.message}</span>
-          </li>
-        ))}
-      </ul>
+      </span>
+      <ChecksBadges issues={issues} />
+      <span className="min-w-0 flex-1 truncate text-[12px] leading-snug text-ink/90">
+        {top?.message}
+      </span>
     </div>
   );
 };
