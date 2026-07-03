@@ -87,6 +87,65 @@ test("run graph: no dangling handles (leaf has no source, root has no target)", 
   for (const r of roots) expect(r.out).toBeGreaterThanOrEqual(1);
 });
 
+/** The center Y of a node's source (right/bottom) and target (left/top) handle, read
+    from the rendered DOM. For a straight edge the source's Y and the target's Y must
+    match; a mismatch is the stair-step "kink" (a node whose measured height drifted
+    after layout so its center, and thus its handle, sits a few px off). */
+const handleY = async (page: Page, stepId: string) => {
+  return page.evaluate((id) => {
+    const node = document
+      .querySelector(`[data-testid="graph-node-${id}"]`)
+      ?.closest(".react-flow__node");
+    const mid = (sel: string): number | null => {
+      const r = node?.querySelector(sel)?.getBoundingClientRect();
+      return r ? Math.round(r.y + r.height / 2) : null;
+    };
+    return {
+      src:
+        mid(".react-flow__handle-right") ?? mid(".react-flow__handle-bottom"),
+      tgt: mid(".react-flow__handle-left") ?? mid(".react-flow__handle-top"),
+    };
+  }, stepId);
+};
+
+test("layout: spine handles stay aligned after nodes resize (no edge kink)", async ({
+  page,
+}) => {
+  // The onboarding EMPTY STATE renders the sample workflow (manager → {director, dept}
+  // → post) with NO model call, so this is deterministic. Manager and Post sit on the
+  // spine; a fan-out node (director) carries a taller `when` chip. The fix re-lays-out
+  // when a node's measured height drifts after the one-shot layout, so the spine
+  // handles must line up: manager's source Y == post's target Y (within a hair).
+  await page.getByRole("button", { name: /Build the workflow/ }).click();
+  await expect(page.getByTestId("graph-node-manager")).toBeVisible();
+  await expect(page.getByTestId("graph-node-post")).toBeVisible();
+
+  // Give the drift re-layout a beat to settle (the fix runs an extra pass when a
+  // when-chip/font finishes measuring a few px taller than the first layout used).
+  await page.waitForTimeout(600);
+
+  const mgr = await handleY(page, "manager");
+  const post = await handleY(page, "post");
+  expect(mgr.src, "manager has a source handle").not.toBeNull();
+  expect(post.tgt, "post has a target handle").not.toBeNull();
+  // Manager → ... → Post is the spine: the two ends line up (≤ 2px), so the connector
+  // is straight, not a Z-kink.
+  expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
+
+  // And the fan-out is symmetric around that spine: director (top) and dept (bottom)
+  // straddle the manager/post line, each roughly equidistant, so a resized node didn't
+  // shove the group off-center.
+  const dir = await handleY(page, "director");
+  const dept = await handleY(page, "dept");
+  const spine = mgr.src ?? 0;
+  const above = spine - (dir.tgt ?? 0);
+  const below = (dept.tgt ?? 0) - spine;
+  expect(above, "director sits above the spine").toBeGreaterThan(0);
+  expect(below, "dept sits below the spine").toBeGreaterThan(0);
+  // Symmetric within a node-height's slack (heights can differ a little).
+  expect(Math.abs(above - below)).toBeLessThanOrEqual(60);
+});
+
 test("run graph: the skipped conditional gate is pruned to a linear path", async ({
   page,
 }) => {
