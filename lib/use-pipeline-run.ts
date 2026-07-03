@@ -302,10 +302,14 @@ export const usePipelineRun = (
     // Adopt the replayed instance's id: if this stored run is still awaiting and the
     // reviewer then approves, the resume upserts THIS row (not a new instance).
     runIdRef.current = runId;
+    // A stored run that PAUSED for a human is still actionable when reopened: surface it
+    // as `awaiting` (not `done`) so the gate's Approve / Reject render and a decision
+    // resumes THIS instance. Otherwise it's a finished run, opened for viewing (`done`).
+    const awaiting = isAwaitingApproval(trace);
     setState({
-      status: "done",
+      status: awaiting ? "awaiting" : "done",
       trace: [...trace],
-      outcome: deriveOutcome(trace, true),
+      outcome: awaiting ? "needs-approval" : deriveOutcome(trace, true),
       durationMs: null,
       error: null,
       replayed: true, // stored run opened for viewing, not streamed live
