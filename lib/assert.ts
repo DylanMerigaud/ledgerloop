@@ -31,3 +31,18 @@ export const assertUnreachable = (value: never): never => {
  */
 export const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
+
+/**
+ * Invariant that NARROWS to a record. For a value that's provably an object to a human
+ * (a library that always returns one) but typed loosely: asserts it so downstream reads
+ * are cast-free, and throws a named error if the invariant is ever violated, instead of
+ * an `as` cast silently papering over a bug.
+ */
+export const assertRecord: (
+  v: unknown,
+  why: string,
+) => asserts v is Record<string, unknown> = (v, why) => {
+  if (!isRecord(v)) {
+    throw new Error(`Invariant violated: ${why}`);
+  }
+};

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import { isRecord } from "@/lib/assert";
+import { assertRecord, isRecord } from "@/lib/assert";
 
 /**
  * The Zod schemas in this file are the SINGLE SOURCE OF TRUTH for the whole
@@ -414,14 +414,18 @@ const stripUnsupported = (node: unknown): void => {
 export const toModelJsonSchema = (
   schema: z.ZodType<unknown>,
 ): Record<string, unknown> => {
-  // eslint-disable-next-line no-restricted-syntax -- boundary cast: zodToJsonSchema returns the library's structured JsonSchema7Type union; we treat it as the generic object shape we hand the model (and mutate below), which is exactly what the model API wants.
-  const json = zodToJsonSchema(schema, {
+  // zodToJsonSchema returns the library's structured JsonSchema7Type union; assert it's
+  // the generic object we hand the model (it always is, a schema is an object) to narrow
+  // it cast-free, then strip the unsupported keys. A non-object here would be a library
+  // contract break, so throw rather than paper over it.
+  const produced = zodToJsonSchema(schema, {
     $refStrategy: "none",
     target: "jsonSchema7",
-  }) as Record<string, unknown>;
-  delete json["$schema"];
-  stripUnsupported(json);
-  return json;
+  });
+  assertRecord(produced, "zodToJsonSchema always returns a schema object");
+  delete produced["$schema"];
+  stripUnsupported(produced);
+  return produced;
 };
 
 export const INVOICE_JSON_SCHEMA = toModelJsonSchema(Invoice);

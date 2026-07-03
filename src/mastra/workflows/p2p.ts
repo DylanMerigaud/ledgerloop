@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { runApproval, type ApprovalRun } from "@/lib/approval-run";
 import { ApprovalWorkflow as ApprovalWorkflowSchema } from "@/lib/approval-workflow";
+import { assertRecord } from "@/lib/assert";
 import {
   ClientProfile,
   DEFAULT_TOLERANCES,
@@ -403,19 +404,19 @@ export const p2pWorkflow = createWorkflow({
   // Normalise the branch output (keyed by the executed step's id) back to one
   // BranchOut so reconciliation has a single, uniform input.
   .map(async ({ inputData }) => {
-    // eslint-disable-next-line no-restricted-syntax -- boundary cast: Mastra's `.branch()` yields a union keyed by the executed step's id, which its types don't express precisely; we read the one key that fired.
-    const branch = inputData as Record<
-      string,
-      z.infer<typeof BranchOut> | undefined
-    >;
-    const picked =
-      branch["approval"] ??
-      branch["approval-blocked"] ??
-      branch["approval-auto"];
-    if (!picked) {
+    // Mastra's `.branch()` yields an object keyed by the executed step's id, which its
+    // types don't express precisely. Narrow it cast-free (assertRecord), read whichever
+    // branch fired as `unknown`, then VALIDATE it through BranchOut, so the boundary is
+    // guarded by a schema rather than an `as` cast that trusts the shape blindly.
+    assertRecord(inputData, "a workflow branch always outputs an object");
+    const raw =
+      inputData["approval"] ??
+      inputData["approval-blocked"] ??
+      inputData["approval-auto"];
+    if (raw === undefined) {
       throw new Error("No approval branch produced an output");
     }
-    return picked;
+    return BranchOut.parse(raw);
   })
   .then(reconciliationStep)
   .commit();
