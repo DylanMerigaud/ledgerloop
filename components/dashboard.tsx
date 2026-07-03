@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ExtractionReveal,
@@ -571,7 +571,13 @@ export const Dashboard = ({
   // each step's status, so we light up the SAME canvas onboarding draws. Before
   // that (or on a run with no active workflow) we draw the active workflow idle, so
   // the user sees their workflow waiting to route. Null when there's nothing to draw.
-  const runGraphNow = readRunGraph(state.trace);
+  // Derive the run graph from the trace. MEMOIZED on the trace: readRunGraph +
+  // resolvePath build a NEW workflow object every call, so without this every unrelated
+  // re-render (e.g. hovering a queue row) handed WorkflowGraph a fresh `workflow`
+  // reference, which reset its layout and re-fit the view, the graph visibly "reset"
+  // on hover. Keyed on the trace identity (the only input), so it's stable until the
+  // run actually advances.
+  const runGraphNow = useMemo(() => readRunGraph(state.trace), [state.trace]);
   // LATCH the resolved run graph across a resume. On Approve+Submit the trace
   // re-streams from the top, so for a beat `readRunGraph` finds no approval event yet
   // and would fall back to the generic full workflow (the graph visibly "swaps" to the
@@ -584,11 +590,13 @@ export const Dashboard = ({
   const runGraph = runGraphNow ?? runGraphLatch.current;
   // The graph is the hero and always drawn: the run's lit workflow if a run has
   // reached approval, else the active derived workflow, else the default DAG (so a
-  // cold visit with no onboarding still shows what an invoice will route through).
-  const graphToShow =
-    runGraph?.workflow ??
-    workflow ??
-    workflowFromPolicy(DEFAULT_APPROVAL_POLICY);
+  // cold visit with no onboarding still shows what an invoice will route through). The
+  // default is memoized so the fallback reference is stable too (same reset concern).
+  const defaultGraph = useMemo(
+    () => workflowFromPolicy(DEFAULT_APPROVAL_POLICY),
+    [],
+  );
+  const graphToShow = runGraph?.workflow ?? workflow ?? defaultGraph;
   const graphStatuses = runGraph?.statuses;
 
   // Has the document been READ and the run moved on? The extraction reveal is a
