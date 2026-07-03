@@ -101,11 +101,7 @@ const Inner = ({
       position: { x: 0, y: 0 },
       data: {
         step,
-        // `status` is NOT set here: it's patched onto live nodes by a separate effect
-        // (like `selected`), so a status arriving mid-run does not rebuild initialNodes
-        // and re-run the layout. The status badge row has a FIXED height (reserved in
-        // StepNode) so the badge appearing never changes the card height, which is what
-        // let a stale re-layout drift the edge handles a few px (the connector kink).
+        status: statuses?.[step.id],
         change: changeOf.get(step.id),
         issue: issueOf.get(step.id),
         vertical,
@@ -132,7 +128,7 @@ const Inner = ({
       },
     }));
     return [...real, ...gone];
-  }, [workflow, changeOf, removed, issueOf, vertical]);
+  }, [workflow, statuses, changeOf, removed, issueOf, vertical]);
 
   // Structural edges only (no status) so the layout/reset path never re-fires on a
   // status change, the live "flow" styling is patched separately below.
@@ -201,6 +197,10 @@ const Inner = ({
   // The measured heights the current layout was computed from, so a later drift (a
   // few-px settle) can be detected and corrected with a single re-layout.
   const laidOutHeights = useRef<Map<string, number | null>>(new Map());
+  // The LATEST measured height per node, updated straight off React Flow's `dimensions`
+  // change events (never stale, unlike re-reading node.measured in an effect). The
+  // layout reads its heights from here so it always lays out on the true sizes.
+  const liveHeights = useRef<Map<string, number>>(new Map());
   // True while the NEXT layout run is a silent drift correction (re-position only, no
   // re-fit), so straightening an edge doesn't zoom the pane on a staged decision.
   const driftRelayout = useRef(false);
@@ -234,23 +234,29 @@ const Inner = ({
   useEffect(() => {
     if (!initialized || laidOutFor.current === graphKey) return;
     laidOutFor.current = graphKey;
-    setNodes((cur) => {
-      const measured = new Map(cur.map((n) => [n.id, n.measured?.height]));
-      // Remember the heights this layout is based on. If a node's measured height
-      // later drifts (a badge/font/when-chip settling a few px after the one-shot
-      // layout), the re-layout effect below notices and lays out again, so the node
-      // centers, and therefore the edge handles, don't end up a few px off (which a
-      // smoothstep edge renders as a visible stair-step "kink").
-      laidOutHeights.current = new Map(
-        cur.map((n) => [n.id, n.measured?.height ?? null]),
-      );
-      return layout(
-        initialNodes,
-        edges,
-        (n) => measured.get(n.id) ?? estimateHeight(n.data),
-        vertical,
-      ).map((n) => ({ ...n, style: { visibility: "visible" } }));
-    });
+    // Layout from `liveHeights`, the authoritative measured heights kept up to date by
+    // the onNodesChange interceptor below (which reads them straight off React Flow's
+    // `dimensions` change events). We do NOT re-read node.measured here: right after a
+    // resize it can still be the STALE value for a tick, which is what drifted the edge
+    // handles a few px (the connector kink). `liveHeights` is always the latest.
+    const heightOf = (n: Node<NodeData>): number =>
+      liveHeights.current.get(n.id) ?? estimateHeight(n.data);
+    laidOutHeights.current = new Map(
+      nodesRef.current.map((n) => [
+        n.id,
+        liveHeights.current.get(n.id) ?? null,
+      ]),
+    );
+    const laid = layout(initialNodes, edges, heightOf, vertical);
+    const byId = new Map(laid.map((n) => [n.id, n.position]));
+    setNodes((cur) =>
+      cur.map((n) => {
+        const pos = byId.get(n.id);
+        return pos
+          ? { ...n, position: pos, style: { visibility: "visible" } }
+          : { ...n, style: { visibility: "visible" } };
+      }),
+    );
     // A DRIFT re-layout only nudges node positions a few px to straighten edges; it
     // must NOT re-fit the view. Otherwise staging a decision (which tints the card and
     // can drift its measured height by a px) would re-fit and the pane would visibly
@@ -274,24 +280,25 @@ const Inner = ({
     relayoutTick,
   ]);
 
-  // Re-layout when React Flow REPORTS a node resized, not by polling heights. React
-  // Flow emits a `dimensions` change (from its ResizeObserver) the instant a card's
-  // measured height changes, so a badge/font/when-chip/decision-toolbar settling a few
-  // px after the one-shot layout arrives here as a precise event. If the new height
-  // differs from what the current layout was computed with, run ONE more silent layout
-  // pass (positions only, no re-fit) so node centers, and thus the edge handles, stay
-  // aligned. This is the deterministic signal (vs. comparing heights every render): no
-  // missed settle, no render-loop. Bounded, after the re-layout the heights match.
+  // Re-layout when React Flow REPORTS a node resized. React Flow emits a `dimensions`
+  // change (from its ResizeObserver) the instant a card's measured height changes, so a
+  // badge/when-chip/toolbar appearing after the one-shot layout arrives here as a precise
+  // event CARRYING the new height. We record it in `liveHeights` (the source of truth the
+  // layout reads) and, if it differs from what the current layout used, run ONE more
+  // layout pass (positions only, no re-fit) so the node centers, and thus the edge
+  // handles, re-align on the TRUE heights. Bounded: after it, the heights match.
   const onNodesChangeWithRelayout = useEventCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
       onNodesChange(changes);
-      if (laidOutFor.current !== graphKey) return; // not laid out yet
-      const resized = changes.some((c) => {
-        if (c.type !== "dimensions" || !c.dimensions) return false;
+      let resized = false;
+      for (const c of changes) {
+        if (c.type !== "dimensions" || !c.dimensions) continue;
+        liveHeights.current.set(c.id, c.dimensions.height);
         const used = laidOutHeights.current.get(c.id);
-        return used != null && Math.abs(used - c.dimensions.height) > 1;
-      });
-      if (resized) {
+        if (used == null || Math.abs(used - c.dimensions.height) > 1)
+          resized = true;
+      }
+      if (resized && laidOutFor.current === graphKey) {
         driftRelayout.current = true; // silent: straighten edges, don't re-fit the view
         laidOutFor.current = "";
         setRelayoutTick((t) => t + 1);
@@ -328,28 +335,6 @@ const Inner = ({
       ),
     );
   }, [selectedId, setNodes]);
-
-  // Patch the per-step `status` onto live nodes, same as `selected`: no re-layout, so a
-  // status arriving mid-run (a live run painting In review, Approved, Done) only repaints
-  // the badge. The badge row is a fixed height, so this never shifts a card's centre and
-  // the edges stay straight.
-  const statusPatchKey = statuses
-    ? Object.entries(statuses)
-        .map(([k, v]) => `${k}:${v}`)
-        .sort()
-        .join("|")
-    : "";
-  useEffect(() => {
-    setNodes((cur) =>
-      cur.map((n) => {
-        const next = statuses?.[n.id];
-        return n.data.status === next
-          ? n
-          : { ...n, data: { ...n.data, status: next } };
-      }),
-    );
-    // statusPatchKey is the change signal; statuses read inside.
-  }, [statusPatchKey, statuses, setNodes]);
 
   // Patch the per-gate decision state (decidable + staged choice + the handler) onto
   // live nodes, also cheap, no re-layout, so deciding a gate doesn't reflow the graph.
