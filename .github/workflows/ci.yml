@@ -10,6 +10,11 @@ jobs:
   check:
     name: format · typecheck · lint · knip · test · build · eval
     runs-on: ubuntu-latest
+    # No real secrets in CI: the app validates env at runtime (on Vercel), so the build
+    # and the dry-run sanity/eval only need to skip the load-time env validation. Without
+    # this, `next build` throws "Invalid environment variables" and the job fails.
+    env:
+      SKIP_ENV_VALIDATION: "1"
     steps:
       - uses: actions/checkout@v4
 
