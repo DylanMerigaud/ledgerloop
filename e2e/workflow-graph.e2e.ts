@@ -88,62 +88,95 @@ test("run graph: no dangling handles (leaf has no source, root has no target)", 
 });
 
 /** The center Y of a node's source (right/bottom) and target (left/top) handle, read
-    from the rendered DOM. For a straight edge the source's Y and the target's Y must
-    match; a mismatch is the stair-step "kink" (a node whose measured height drifted
-    after layout so its center, and thus its handle, sits a few px off). */
-const handleY = async (page: Page, stepId: string) => {
-  return page.evaluate((id) => {
-    const node = document
-      .querySelector(`[data-testid="graph-node-${id}"]`)
-      ?.closest(".react-flow__node");
-    const mid = (sel: string): number | null => {
-      const r = node?.querySelector(sel)?.getBoundingClientRect();
-      return r ? Math.round(r.y + r.height / 2) : null;
-    };
-    return {
-      src:
-        mid(".react-flow__handle-right") ?? mid(".react-flow__handle-bottom"),
-      tgt: mid(".react-flow__handle-left") ?? mid(".react-flow__handle-top"),
-    };
-  }, stepId);
+    from the rendered DOM within a given case container. For a straight edge the
+    source's Y and the target's Y must match; a mismatch is the stair-step "kink" (a
+    node's center, and thus its handle, sitting off because its card is a different
+    height). Scoped to `caseId` so a page with several sub-canvases is unambiguous. */
+const handleY = async (page: Page, caseId: string, stepId: string) => {
+  return page.evaluate(
+    ({ caseId, stepId }) => {
+      const node = document
+        .querySelector(`[data-testid="${caseId}"]`)
+        ?.querySelector(`[data-testid="graph-node-${stepId}"]`)
+        ?.closest(".react-flow__node");
+      const mid = (sel: string): number | null => {
+        const r = node?.querySelector(sel)?.getBoundingClientRect();
+        return r ? Math.round(r.y + r.height / 2) : null;
+      };
+      return {
+        src:
+          mid(".react-flow__handle-right") ?? mid(".react-flow__handle-bottom"),
+        tgt: mid(".react-flow__handle-left") ?? mid(".react-flow__handle-top"),
+      };
+    },
+    { caseId, stepId },
+  );
 };
 
-test("layout: spine handles stay aligned after nodes resize (no edge kink)", async ({
-  page,
-}) => {
-  // The onboarding EMPTY STATE renders the sample workflow (manager → {director, dept}
-  // → post) with NO model call, so this is deterministic. Manager and Post sit on the
-  // spine; a fan-out node (director) carries a taller `when` chip. The fix re-lays-out
-  // when a node's measured height drifts after the one-shot layout, so the spine
-  // handles must line up: manager's source Y == post's target Y (within a hair).
-  await page.getByRole("button", { name: /Build the workflow/ }).click();
-  await expect(page.getByTestId("graph-node-manager")).toBeVisible();
-  await expect(page.getByTestId("graph-node-post")).toBeVisible();
+// The layout cases are rendered deterministically (no model) at /dev/graph-cases, so
+// these assert the RENDERED handle geometry across the shapes that used to kink.
+test.describe("graph layout: handles never kink", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/dev/graph-cases");
+    // Wait for all three sub-canvases to have laid out (their post nodes are visible).
+    await expect(
+      page.locator(
+        '[data-testid="case-linear"] [data-testid="graph-node-post-netsuite"]',
+      ),
+    ).toBeVisible();
+    await page.waitForTimeout(700); // let any measured-height re-layout settle
+  });
 
-  // Give the drift re-layout a beat to settle (the fix runs an extra pass when a
-  // when-chip/font finishes measuring a few px taller than the first layout used).
-  await page.waitForTimeout(600);
+  test("linear chain: a Manager → Post run graph is dead straight", async ({
+    page,
+  }) => {
+    // Different-height nodes on one line (tall gate → short integration). The straighten
+    // pass snaps the target's center onto the source's, so the two handles share a Y.
+    const mgr = await handleY(page, "case-linear", "manager-review");
+    const post = await handleY(page, "case-linear", "post-netsuite");
+    expect(mgr.src, "manager source handle").not.toBeNull();
+    expect(post.tgt, "post target handle").not.toBeNull();
+    expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
+  });
 
-  const mgr = await handleY(page, "manager");
-  const post = await handleY(page, "post");
-  expect(mgr.src, "manager has a source handle").not.toBeNull();
-  expect(post.tgt, "post has a target handle").not.toBeNull();
-  // Manager → ... → Post is the spine: the two ends line up (≤ 2px), so the connector
-  // is straight, not a Z-kink.
-  expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
+  test("fan-out: branches straddle a straight Manager ↔ Post spine", async ({
+    page,
+  }) => {
+    // Manager → {Director, Dept} → Post: manager and post stay colinear (the spine),
+    // and the two branches sit symmetrically above/below it.
+    const mgr = await handleY(page, "case-fanout", "manager-review");
+    const post = await handleY(page, "case-fanout", "post-netsuite");
+    const dir = await handleY(page, "case-fanout", "director-review");
+    const dept = await handleY(page, "case-fanout", "dept-review");
+    expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
+    const spine = mgr.src ?? 0;
+    const above = spine - (dir.tgt ?? 0);
+    const below = (dept.tgt ?? 0) - spine;
+    expect(above, "director above the spine").toBeGreaterThan(0);
+    expect(below, "dept below the spine").toBeGreaterThan(0);
+    expect(Math.abs(above - below), "symmetric fan-out").toBeLessThanOrEqual(8);
+  });
 
-  // And the fan-out is symmetric around that spine: director (top) and dept (bottom)
-  // straddle the manager/post line, each roughly equidistant, so a resized node didn't
-  // shove the group off-center.
-  const dir = await handleY(page, "director");
-  const dept = await handleY(page, "dept");
-  const spine = mgr.src ?? 0;
-  const above = spine - (dir.tgt ?? 0);
-  const below = (dept.tgt ?? 0) - spine;
-  expect(above, "director sits above the spine").toBeGreaterThan(0);
-  expect(below, "dept sits below the spine").toBeGreaterThan(0);
-  // Symmetric within a node-height's slack (heights can differ a little).
-  expect(Math.abs(above - below)).toBeLessThanOrEqual(60);
+  test("base workflow with a condition: the diamond renders without a big kink", async ({
+    page,
+  }) => {
+    // The base workflow is Manager → {Director, Post}: a conditional escalation to
+    // Director plus a direct fall-through to Post. It's a real branch (not a straight
+    // line), so a small bend is fine, but no node should be wildly off the spine.
+    const mgr = await handleY(page, "case-diamond", "manager-review");
+    const dir = await handleY(page, "case-diamond", "director-review");
+    const post = await handleY(page, "case-diamond", "post-netsuite");
+    expect(mgr.src, "manager present").not.toBeNull();
+    expect(
+      dir.tgt,
+      "director present (base keeps the escalation gate)",
+    ).not.toBeNull();
+    expect(post.tgt, "post present").not.toBeNull();
+    // Manager, Director and Post sit within a modest band (a card-height's worth), i.e.
+    // the diamond stays a tidy near-line, not a staircase.
+    const ys = [mgr.src ?? 0, dir.tgt ?? 0, post.tgt ?? 0];
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(40);
+  });
 });
 
 test("run graph: the skipped conditional gate is pruned to a linear path", async ({

@@ -572,6 +572,23 @@ const layout = (
     if (parents.length >= 2) cross.set(id, boxMid(parents));
   }
 
+  // STRAIGHTEN LINEAR SEGMENTS. The handle sits at a node's cross-axis CENTER; nodes of
+  // different heights get different centers, so a plain chain A→B→C (each a single
+  // in/out) renders with a kinked connector even though it's one straight line. Walk
+  // rank order and, for every straight segment (source has exactly one child, target
+  // exactly one parent), snap the target's center onto the source's. This makes a
+  // linear run perfectly colinear regardless of card heights (the ONE thing that made
+  // edges kink), while leaving fan-out branches and joins (2+ in/out) untouched, since
+  // they aren't straight segments. Deterministic: it depends only on the graph shape.
+  for (const id of [...g.nodes()].sort((a, b) => rankOf(a) - rankOf(b))) {
+    const kids = childrenOf.get(id) ?? [];
+    if (kids.length !== 1) continue; // source must fan out to exactly one node
+    const kid = kids[0];
+    if (kid === undefined) continue;
+    if ((parentsOf.get(kid) ?? []).length !== 1) continue; // target: single parent
+    cross.set(kid, cross.get(id) ?? crossOf(kid));
+  }
+
   return nodes.map((n) => {
     const node = g.node(n.id);
     const c = cross.get(n.id) ?? crossOf(n.id);
@@ -811,27 +828,30 @@ const Inner = ({
     relayoutTick,
   ]);
 
-  // Correct post-layout height DRIFT. React Flow keeps re-measuring nodes; if one's
-  // height settles a few px AFTER the one-shot layout (a badge/font/when-chip), the
-  // node centers computed from the old heights are now slightly wrong, and the edge
-  // handles sit a few px apart, which a smoothstep edge draws as a stair-step kink.
-  // Detect any drift > 1px from the heights the layout used, then force one re-layout
-  // (reset the guard + bump the tick). Bounded: after the re-layout the heights match,
-  // so it settles and can't loop.
-  const drifted =
-    initialized &&
-    laidOutFor.current === graphKey &&
-    nodes.some((n) => {
-      const used = laidOutHeights.current.get(n.id);
-      const now = n.measured?.height;
-      return used != null && now != null && Math.abs(used - now) > 1;
-    });
-  useEffect(() => {
-    if (!drifted) return;
-    driftRelayout.current = true; // silent: straighten edges, don't re-fit the view
-    laidOutFor.current = "";
-    setRelayoutTick((t) => t + 1);
-  }, [drifted, graphKey]);
+  // Re-layout when React Flow REPORTS a node resized, not by polling heights. React
+  // Flow emits a `dimensions` change (from its ResizeObserver) the instant a card's
+  // measured height changes, so a badge/font/when-chip/decision-toolbar settling a few
+  // px after the one-shot layout arrives here as a precise event. If the new height
+  // differs from what the current layout was computed with, run ONE more silent layout
+  // pass (positions only, no re-fit) so node centers, and thus the edge handles, stay
+  // aligned. This is the deterministic signal (vs. comparing heights every render): no
+  // missed settle, no render-loop. Bounded, after the re-layout the heights match.
+  const onNodesChangeWithRelayout = useEventCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      onNodesChange(changes);
+      if (laidOutFor.current !== graphKey) return; // not laid out yet
+      const resized = changes.some((c) => {
+        if (c.type !== "dimensions" || !c.dimensions) return false;
+        const used = laidOutHeights.current.get(c.id);
+        return used != null && Math.abs(used - c.dimensions.height) > 1;
+      });
+      if (resized) {
+        driftRelayout.current = true; // silent: straighten edges, don't re-fit the view
+        laidOutFor.current = "";
+        setRelayoutTick((t) => t + 1);
+      }
+    },
+  );
 
   // Re-fit when the container resizes so nodes never sit clipped past an edge after a
   // layout reflow or window resize. RAF-debounced; skipped until the nodes exist.
@@ -1001,7 +1021,7 @@ const Inner = ({
         edges={rfEdges}
         onNodeClick={onNodeSelect ? (_, n) => onNodeSelect(n.id) : undefined}
         onPaneClick={onNodeSelect ? () => onNodeSelect(null) : undefined}
-        onNodesChange={onNodesChange}
+        onNodesChange={onNodesChangeWithRelayout}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         proOptions={{ hideAttribution: true }}
