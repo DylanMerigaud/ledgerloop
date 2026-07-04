@@ -204,10 +204,10 @@ const Footer = () => {
   return (
     <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] text-faint">
       <p>
-        Built with <span className="text-muted">Mastra</span> · investigator
-        agent on <span className="font-mono text-muted">{PIPELINE_MODEL}</span>{" "}
-        · Next.js · Supabase · Drizzle. Runs are stateless. Nothing is written
-        back.
+        Matching and reconciliation run in code. A{" "}
+        <span className="text-muted">Mastra</span> agent on{" "}
+        <span className="font-mono text-muted">{PIPELINE_MODEL}</span>{" "}
+        investigates only the exceptions, all on the small model.
       </p>
       <div className="flex items-center gap-2">
         <span className="font-medium text-muted">Dylan Mérigaud</span>
