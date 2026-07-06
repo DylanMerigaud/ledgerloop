@@ -69,8 +69,8 @@ importers:
         specifier: 19.2.7
         version: 19.2.7(react@19.2.7)
       react-flow-auto-layout:
-        specifier: ^0.1.1
-        version: 0.1.1(@xyflow/react@12.11.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(dagre@0.8.5)(react@19.2.7)
+        specifier: ^0.2.0
+        version: 0.2.0(@xyflow/react@12.11.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(dagre@0.8.5)(react@19.2.7)
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -3727,8 +3727,8 @@ packages:
     peerDependencies:
       react: ^19.2.7
 
-  react-flow-auto-layout@0.1.1:
-    resolution: {integrity: sha512-sQMVMH++b6tPdv3pIW9G9uZdhtxRg1ar5pGDFEKSCvWMUvsb9qATuy25xCYfk87pk/F8q5flFCkqMRqNim60dw==}
+  react-flow-auto-layout@0.2.0:
+    resolution: {integrity: sha512-vO/dlvyHf9ET1CJzVq/JkQUNRET7VVtR2Sevw0nb6SBtjoqU+xFnowuHGUMU8KDA0eoeuMXsa+MQZK9yULhSCw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@xyflow/react': '>=12.0.0'
@@ -7820,7 +7820,7 @@ snapshots:
       react: 19.2.7
       scheduler: 0.27.0
 
-  react-flow-auto-layout@0.1.1(@xyflow/react@12.11.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(dagre@0.8.5)(react@19.2.7):
+  react-flow-auto-layout@0.2.0(@xyflow/react@12.11.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(dagre@0.8.5)(react@19.2.7):
     dependencies:
       '@xyflow/react': 12.11.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       dagre: 0.8.5
