@@ -13,8 +13,9 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { layout } from "react-flow-auto-layout";
 
-import { estimateHeight, layout } from "@/components/workflow-graph/layout";
+import { estimateHeight } from "@/components/workflow-graph/layout";
 import type { NodeData } from "@/components/workflow-graph/node-data";
 import { nodeTypes } from "@/components/workflow-graph/step-node";
 import {
@@ -247,7 +248,12 @@ const Inner = ({
         liveHeights.current.get(n.id) ?? null,
       ]),
     );
-    const laid = layout(initialNodes, edges, heightOf, vertical);
+    // Cards are a fixed 244px wide; only the height varies (a 2-line title or a
+    // `when` chip), so `sizeOf` feeds the measured height and the constant width.
+    const laid = layout(initialNodes, edges, {
+      sizeOf: (n) => ({ width: 244, height: heightOf(n) }),
+      vertical,
+    });
     const byId = new Map(laid.map((n) => [n.id, n.position]));
     setNodes((cur) =>
       cur.map((n) => {

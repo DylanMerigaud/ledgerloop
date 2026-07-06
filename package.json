@@ -51,6 +51,7 @@
     "postgres": "3.4.9",
     "react": "19.2.7",
     "react-dom": "19.2.7",
+    "react-flow-auto-layout": "^0.1.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "3.6.0",
     "zod": "3.25.76",
