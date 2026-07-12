@@ -72,7 +72,7 @@ const priorNumbersFor = (bundle: SeedBundle): string[] => {
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
 };
 
-const runOneCase = async (c: EvalCase, dryRun: boolean): Promise<CaseScore> => {
+const runOneCase = async (c: EvalCase, isDryRun: boolean): Promise<CaseScore> => {
   const bundle = SEED_BUNDLES.find((b) => b.id === c.id);
   if (!bundle) {
     return scoreCase(c.id, c.stresses, c.expected, undefined, "no seed bundle");
@@ -99,7 +99,7 @@ const runOneCase = async (c: EvalCase, dryRun: boolean): Promise<CaseScore> => {
 
   // --dry-run: skip the model, "predict" the ground truth verbatim. Exercises the
   // match + scoring + reporting path with no API call; a perfect run is expected.
-  if (dryRun) {
+  if (isDryRun) {
     return scoreCase(c.id, c.stresses, c.expected, c.expected);
   }
 
@@ -138,6 +138,9 @@ const colorPct = (n: number): string => {
   if (n >= 0.75) return col(C.yellow, s);
   return col(C.red, s);
 };
+const row = (label: string, value: string): void => {
+  console.log("  " + label.padEnd(28) + value);
+};
 
 const printTable = (scores: CaseScore[]) => {
   console.log(col(C.bold, "\nPer-case results\n"));
@@ -164,7 +167,6 @@ const printTable = (scores: CaseScore[]) => {
 const printSummary = (scores: CaseScore[]) => {
   const conf = overchargeConfusion(scores);
   console.log(col(C.bold, "\nSummary\n"));
-  const row = (label: string, value: string) => console.log("  " + label.padEnd(28) + value);
   row("Model", col(C.cyan, PIPELINE_MODEL));
   row("Cases", String(scores.length));
   row("Accuracy", colorPct(accuracy(scores)));
@@ -187,7 +189,6 @@ const main = async () => {
 
   const args = process.argv.slice(2);
   const isDryRun = args.includes("--dry-run");
-  const filter = args.filter((a) => !a.startsWith("--"));
 
   if (!isDryRun && !process.env.ANTHROPIC_API_KEY) {
     console.error(
@@ -195,13 +196,13 @@ const main = async () => {
         " Add it to .env.local (see .env.example), then re-run `pnpm eval`." +
         col(C.gray, "\n(Tip: `pnpm eval --dry-run` validates the harness without calling the API.)")
     );
-    process.exit(1);
+    throw new Error("ANTHROPIC_API_KEY is not set.");
   }
 
+  const filter = args.filter((a) => !a.startsWith("--"));
   const cases = filter.length === 0 ? EVAL_CASES : EVAL_CASES.filter((c) => filter.includes(c.id));
   if (cases.length === 0) {
-    console.error(`No matching cases. Known ids: ${EVAL_CASES.map((c) => c.id).join(", ")}`);
-    process.exit(1);
+    throw new Error(`No matching cases. Known ids: ${EVAL_CASES.map((c) => c.id).join(", ")}`);
   }
 
   console.log(
@@ -246,10 +247,18 @@ const main = async () => {
       col(C.red, `✖ missed ${conf.falseNegatives} real overcharge(s) (recall < 100%).`)
     );
   }
-  process.exit(hardFailures > 0 || isRecallMiss ? 1 : 0);
+  if (hardFailures > 0 || isRecallMiss) {
+    throw new Error("eval gate failed (see the errors above).");
+  }
 };
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
+})();

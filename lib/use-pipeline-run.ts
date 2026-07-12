@@ -129,9 +129,6 @@ export const usePipelineRun = (
 
       const isResuming = decisions !== undefined;
       const push = (e: TraceEvent) => {
-        const events = eventsRef.current;
-        const stepIndex = stepIndexRef.current;
-
         // On a phase-2 RESUME the workflow re-runs end-to-end, so it re-emits the
         // whole front of the pipeline. We've already shown the upstream nodes
         // (intake/matching/investigation) and they don't advance, drop them and the
@@ -144,6 +141,9 @@ export const usePipelineRun = (
           return;
         }
         if (isResuming && e.kind === "run") return; // never replay run markers
+
+        const events = eventsRef.current;
+        const stepIndex = stepIndexRef.current;
 
         // UPSERT anything with a stepId (steps AND tool nodes carry stable ids) so a
         // stage is a single node that transitions running → done, and across phases

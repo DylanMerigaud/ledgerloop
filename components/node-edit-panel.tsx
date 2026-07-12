@@ -27,7 +27,7 @@ import { isActivatable, validateWorkflow } from "@/lib/workflow-validate";
     (a "Director" gate surfaces VPs / C-level), then everyone else, by name. */
 const peopleFor = (people: OrgEmployee[], role: string): OrgEmployee[] => {
   const r = role.toLowerCase();
-  const relevant = (p: OrgEmployee): boolean => {
+  const isRelevant = (p: OrgEmployee): boolean => {
     const t = p.title.toLowerCase();
     if (!t) return false;
     // Share a word with the role, or both read as senior (VP / chief / head / director).
@@ -37,8 +37,8 @@ const peopleFor = (people: OrgEmployee[], role: string): OrgEmployee[] => {
       (senior.test(r) && senior.test(t))
     );
   };
-  const score = (p: OrgEmployee): number => (relevant(p) ? 0 : 1);
-  return [...people].sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
+  const score = (p: OrgEmployee): number => (isRelevant(p) ? 0 : 1);
+  return [...people].toSorted((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
 };
 
 /** A person row for the approver combobox: initials avatar + name + title. */
@@ -258,6 +258,7 @@ const PanelShell = ({
   // that owns its own scroll, so a tall condition editor is never cut off. Escape and a
   // backdrop click close it. Portalled to <body> after mount (SSR-safe).
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line @eslint-react/set-state-in-effect -- SSR-safe portal: flip `mounted` true on mount so createPortal(<body>) only runs client-side. Standard React pattern, runs once, empty deps.
   useEffect(() => setMounted(true), []); // portal to <body> only after mount (SSR-safe)
   useEscapeKey(mounted, onClose);
   if (!mounted) return null;

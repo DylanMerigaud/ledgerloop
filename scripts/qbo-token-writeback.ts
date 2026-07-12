@@ -24,9 +24,12 @@ export const persistRotatedRefreshToken = (): void => {
 
   const original = readFileSync(file, "utf8");
   const line = `QBO_REFRESH_TOKEN=${rotated}`;
+  // Replacement FUNCTIONS (not strings): the rotated token can contain `$`, which
+  // a string replacement would interpret as a special pattern ($&, $1, ...) and
+  // corrupt the written value. A function's return is inserted verbatim.
   const next = /^QBO_REFRESH_TOKEN=.*$/m.test(original)
-    ? original.replace(/^QBO_REFRESH_TOKEN=.*$/m, line)
-    : original.replace(/\n*$/, `\n${line}\n`);
+    ? original.replace(/^QBO_REFRESH_TOKEN=.*$/m, () => line)
+    : original.replace(/\n*$/, () => `\n${line}\n`);
   if (next !== original) {
     writeFileSync(file, next, "utf8");
     console.log(`Refresh token rotated, updated QBO_REFRESH_TOKEN in ${path.basename(file)}.`);

@@ -28,7 +28,7 @@ const ev = (data: Record<string, unknown>): TraceEvent => {
 const matching = (verdict: string) => ev({ verdict });
 const approval = (outcome: string, steps: { id: string; status: string; detail: string }[] = []) =>
   ev({ outcome, steps });
-const recon = (outcome: string, posted: boolean) => ev({ outcome, posted });
+const recon = (outcome: string, isPosted: boolean) => ev({ outcome, posted: isPosted });
 
 test("clean → reconciled (posted)", () => {
   const trace = [matching("clean"), approval("auto"), recon("posted", true)];

@@ -17,14 +17,15 @@ import { formatMoney, formatPct, humanize } from "@/lib/format";
  * render branch and the prop type are checked together. (A guard that returns
  * `d is T` documents AND verifies the shape; a cast would only assert it.)
  */
-const has = (d: object, ...keys: string[]): boolean => {
-  return keys.every((k) => k in d);
+const hasKeys = (d: object, ...keys: string[]): boolean => {
+  return keys.every((k) => Object.hasOwn(d, k));
 };
-const isMatch = (d: object): d is MatchResult => has(d, "verdict", "exceptions");
-const isInvestigation = (d: object): d is Investigation => has(d, "recommendation", "toolsUsed");
-const isWorkflowRun = (d: object): d is WorkflowRunData => has(d, "workflow", "steps");
-const isApprovalSummary = (d: object): d is ApprovalSummary => has(d, "outcome", "steps");
-const isRecon = (d: object): d is ReconResult => has(d, "posted", "glEntries");
+const isMatch = (d: object): d is MatchResult => hasKeys(d, "verdict", "exceptions");
+const isInvestigation = (d: object): d is Investigation =>
+  hasKeys(d, "recommendation", "toolsUsed");
+const isWorkflowRun = (d: object): d is WorkflowRunData => hasKeys(d, "workflow", "steps");
+const isApprovalSummary = (d: object): d is ApprovalSummary => hasKeys(d, "outcome", "steps");
+const isRecon = (d: object): d is ReconResult => hasKeys(d, "posted", "glEntries");
 
 export const TraceDetail = ({ data }: { data: unknown }) => {
   if (!data || typeof data !== "object") return null;
@@ -55,9 +56,9 @@ type WorkflowRunData = {
 
 /** A per-step status dot colour for the workflow run summary (matches the queue dots). */
 const stepDot = (status: string): string => {
-  if (status === "approved" || status === "done" || status === "posted") return "#047857";
-  if (status === "rejected" || status === "blocked") return "#B91C1C";
-  if (status === "pending" || status === "awaiting") return "#B45309";
+  if (["approved", "done", "posted"].includes(status)) return "#047857";
+  if (["rejected", "blocked"].includes(status)) return "#B91C1C";
+  if (["pending", "awaiting"].includes(status)) return "#B45309";
   return "#D1D5DB"; // skipped / neutral
 };
 
@@ -124,9 +125,9 @@ const MatchDetail = ({ match }: { match: MatchResult }) => {
   }
   return (
     <div className="space-y-1.5">
-      {match.exceptions.map((e, i) => (
+      {match.exceptions.map((e) => (
         <div
-          key={`${e.sku}-${e.code}-${i}`}
+          key={`${e.sku}-${e.code}-${e.message}`}
           className="rounded-lg bg-danger-soft/40 px-2.5 py-1.5 ring-1 ring-inset ring-danger-line/50"
         >
           <div className="flex items-center justify-between gap-2">
@@ -207,8 +208,11 @@ const ReconDetail = ({ recon }: { recon: ReconResult }) => {
         <div className="mt-1 overflow-hidden rounded-lg ring-1 ring-inset ring-line">
           <table className="w-full text-[11px]">
             <tbody>
-              {recon.glEntries.map((g, i) => (
-                <tr key={i} className="border-b border-line last:border-0">
+              {recon.glEntries.map((g) => (
+                <tr
+                  key={`${g.account}-${g.debit}-${g.credit}`}
+                  className="border-b border-line last:border-0"
+                >
                   <td className="px-2 py-1 text-ink/80">{g.account}</td>
                   <td className="tnum px-2 py-1 text-right text-ink">
                     {g.debit > 0 ? formatMoney(g.debit, recon.currency) : ""}

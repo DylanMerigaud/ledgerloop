@@ -101,6 +101,12 @@ const intakeStep = createStep({
   inputSchema: RunInput,
   outputSchema: RunInput,
   execute: async ({ inputData, writer }) => {
+    // Phase-2 resume: the document was read in phase 1. Re-running the workflow
+    // re-enters intake, but we don't pay for a second vision call, pass the
+    // already-known invoice through. (Phase-1 extraction drives the run; the
+    // resume just continues it.)
+    if (inputData.skipExtraction) return inputData;
+
     const emit = async (chunk: unknown) => {
       try {
         await writer.write(chunk);
@@ -108,12 +114,6 @@ const intakeStep = createStep({
         /* ignore writer errors, never let the trace affect the result */
       }
     };
-
-    // Phase-2 resume: the document was read in phase 1. Re-running the workflow
-    // re-enters intake, but we don't pay for a second vision call, pass the
-    // already-known invoice through. (Phase-1 extraction drives the run; the
-    // resume just continues it.)
-    if (inputData.skipExtraction) return inputData;
 
     // Show the document immediately (the on-screen twin of the PDF being read).
     await emit({
@@ -239,9 +239,10 @@ const investigate = async (
    normalise regardless of which path ran. The approval result is the conditional
    workflow's execution summary (`ApprovalRunOut`): the outcome the bill posts on,
    the per-step states (for the trace/canvas), and whether it's a duplicate block. */
+const StepSummarySchema = z.object({ id: z.string(), status: z.string(), detail: z.string() });
 const ApprovalRunOut = z.object({
   outcome: z.enum(["posted", "awaiting", "rejected", "blocked"]),
-  steps: z.array(z.object({ id: z.string(), status: z.string(), detail: z.string() })),
+  steps: z.array(StepSummarySchema),
   /* The workflow graph this run executed, carried so the trace can render the
      SAME graph the onboarding screen draws, coloured by this invoice's path.
      Optional (the duplicate block has no workflow). */

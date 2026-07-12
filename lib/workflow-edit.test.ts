@@ -690,7 +690,7 @@ test("add-approver: a no-op when the person is already on the gate", () => {
   });
   const dir1 = samePrimary.steps.find((s) => s.id === "director");
   assert.equal(
-    dir1?.kind === "approval" && (dir1.approvers ?? []).length,
+    dir1?.kind === "approval" ? (dir1.approvers ?? []).length : null,
     0,
     "the primary is never duplicated into the extras"
   );

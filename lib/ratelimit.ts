@@ -42,6 +42,7 @@ let isRedisResolved = false;
 
 const getRedis = (): Redis | null => {
   if (isRedisResolved) return redis;
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton, resolve Redis once and cache the outcome
   isRedisResolved = true;
 
   // Accept either naming convention so it works however you provision Redis:
@@ -57,9 +58,11 @@ const getRedis = (): Redis | null => {
         "(UPSTASH_REDIS_REST_URL/_TOKEN or KV_REST_API_URL/_TOKEN), " +
         "rate limiting is DISABLED (failing open)."
     );
+    // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton cache, memoizes the no-credentials outcome
     redis = null;
     return redis;
   }
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton cache, assigned once on first use
   redis = new Redis({ url, token });
   return redis;
 };

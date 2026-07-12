@@ -48,8 +48,10 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
   // values a vendor/currency gate can route on. Derived from the already-loaded
   // queue (no extra query); passed to onboarding so the editor offers + validates
   // them, and the popover documents them.
-  const vendors = [...new Set(queue.map((q) => q.vendor))].sort();
-  const currencies = [...new Set(queue.map((q) => q.currency))].sort();
+  const vendors = [...new Set(queue.map((q) => q.vendor))].toSorted((a, b) => a.localeCompare(b));
+  const currencies = [...new Set(queue.map((q) => q.currency))].toSorted((a, b) =>
+    a.localeCompare(b)
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">

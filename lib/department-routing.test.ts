@@ -123,7 +123,7 @@ test("the derived department gate fires for its department, isolating it from th
   // proves the department lever routes independently of the amount/exception gates.
   const run = runApproval(wf, match);
   assert.equal(run.outcome, "awaiting");
-  const pendingIds = run.pending.map((p) => p.id).sort();
+  const pendingIds = run.pending.map((p) => p.id).toSorted((a, b) => a.localeCompare(b));
   assert.deepEqual(
     pendingIds,
     ["department-review"],

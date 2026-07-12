@@ -42,6 +42,7 @@ const db = (): Database => {
     // and validated at env load, so a missing value fails clearly there (the error
     // names DATABASE_URL, which the run route keys its setup notice off).
     const sql = postgres(env.DATABASE_URL, { prepare: false, max: 1 });
+    // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton cache (module-scoped handle, assigned once on first call)
     cached = drizzle(sql);
   }
   return cached;

@@ -62,6 +62,7 @@ export const RecentRuns = ({
     const el = listRef.current;
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- measures real DOM (scrollHeight/clientHeight), which only exists after layout; can't be derived during render. Called from the effect + a ResizeObserver.
     setHiddenBelow(remaining < 8 ? 0 : remaining);
   };
   useEffect(() => {

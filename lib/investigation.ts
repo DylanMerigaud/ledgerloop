@@ -58,7 +58,8 @@ const finalText = (res: AgentResult): string => {
 /** Which tools the agent actually called, in order, de-duplicated. */
 const toolsUsedFrom = (res: AgentResult): string[] => {
   const names: string[] = [];
-  for (const call of res.toolCalls ?? []) {
+  const toolCalls = res.toolCalls ?? [];
+  for (const call of toolCalls) {
     const name = call.payload?.toolName;
     if (typeof name === "string" && !names.includes(name)) {
       names.push(name);

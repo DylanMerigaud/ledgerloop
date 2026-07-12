@@ -298,7 +298,7 @@ const departmentsOf = (employees: OrgEmployee[]): string[] => {
   const set = new Set(
     employees.map((e) => e.department.trim()).filter((d) => d.length > 0 && d !== "Company")
   );
-  return [...set].sort();
+  return [...set].toSorted((a, b) => a.localeCompare(b));
 };
 
 /** Initials for an avatar chip ("Riley Carter" → "RC"). */
@@ -435,9 +435,9 @@ const DiscoverySummary = ({ data }: { data: OnboardingResult }) => {
         <section className="space-y-2">
           <Eyebrow>Fix before activating</Eyebrow>
           <ul className="space-y-1.5">
-            {data.issues.map((iss, i) => (
+            {data.issues.map((iss) => (
               <li
-                key={i}
+                key={`${iss.employeeName}-${iss.note}`}
                 className="flex gap-2 rounded-lg bg-warn-soft/60 px-3 py-2 text-[11.5px] leading-snug text-ink ring-1 ring-inset ring-warn-line/50"
               >
                 <span className="mt-px shrink-0 text-warn">⚠</span>

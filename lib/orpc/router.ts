@@ -75,7 +75,12 @@ const onboarding = rateLimited.output(OnboardingResult).handler(async () => {
   try {
     const { workflow, proposal, issues } = await deriveWorkflow(anthropicProposalModel, org);
     // Suggestions are best-effort, never fail discovery over them.
-    const suggestions = await anthropicSuggestModel.suggest(workflow).catch(() => []);
+    let suggestions: Awaited<ReturnType<typeof anthropicSuggestModel.suggest>>;
+    try {
+      suggestions = await anthropicSuggestModel.suggest(workflow);
+    } catch {
+      suggestions = [];
+    }
     return {
       source: org.source,
       employeeCount: org.employees.length,
@@ -151,7 +156,12 @@ const replayRun = base
   .input(ReplayInput)
   .output(ReplayResult)
   .handler(async ({ input }) => {
-    const stored = await loadAgentRun(input.id).catch(() => null);
+    let stored: Awaited<ReturnType<typeof loadAgentRun>>;
+    try {
+      stored = await loadAgentRun(input.id);
+    } catch {
+      stored = null;
+    }
     if (!stored) {
       throw new ORPCError("NOT_FOUND", {
         message: "That run is no longer available (the demo resets daily).",

@@ -29,6 +29,10 @@ const money = (n: number, currency: string): string => {
   );
 };
 
+/** The x offset that right-aligns text `s` (in font `f` at `size`) to `xRight`. */
+const rightOf = (s: string, f: PDFFont, size: number, xRight: number): number =>
+  xRight - f.widthOfTextAtSize(s, size);
+
 /** Returns the invoice as PDF bytes (Uint8Array). */
 export const renderInvoicePdf = async (invoice: Invoice): Promise<Uint8Array> => {
   const doc = await PDFDocument.create();
@@ -42,9 +46,6 @@ export const renderInvoicePdf = async (invoice: Invoice): Promise<Uint8Array> =>
   // y is measured from the TOP here for readability; convert on draw.
   const draw = (s: string, x: number, yTop: number, f: PDFFont = font, size = 10, color = ink) =>
     page.drawText(s, { x, y: PAGE_H - yTop, font: f, size, color });
-
-  const rightOf = (s: string, f: PDFFont, size: number, xRight: number) =>
-    xRight - f.widthOfTextAtSize(s, size);
 
   // ── Header ────────────────────────────────────────────────────────────────
   draw(invoice.vendor, MARGIN, MARGIN + 6, bold, 18);

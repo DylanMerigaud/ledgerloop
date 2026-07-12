@@ -58,6 +58,7 @@ export const ExtractionReveal = ({
   const [revealed, setRevealed] = useState(0);
   useEffect(() => {
     if (!isDone) {
+      // eslint-disable-next-line @eslint-react/set-state-in-effect -- resetting the stepped-reveal counter when the run leaves the "done" phase; this effect owns the reveal timer lifecycle keyed on isDone.
       setRevealed(0);
       return;
     }
@@ -73,8 +74,6 @@ export const ExtractionReveal = ({
   // Preview = the PDF on its own, full width. Once a run starts it shares the row
   // with the Extracted panel. (A small reflow at Run is fine; a preview that looks
   // like it's mid-extraction is not.)
-  const isRunning = mode === "running";
-
   // Preview: the document alone, centered and a comfortable size (wider than the
   // run split's column so it isn't lost in whitespace). Width-driven so it never
   // overflows the pane; the card border/shadow stay visible around it.
@@ -91,6 +90,8 @@ export const ExtractionReveal = ({
       </div>
     );
   }
+
+  const isRunning = mode === "running";
 
   return (
     <div

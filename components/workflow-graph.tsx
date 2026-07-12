@@ -66,7 +66,8 @@ const Inner = ({
   // Highest-severity issue per step id (error beats warning), for the node rings.
   const issueOf = useMemo(() => {
     const m = new Map<string, "error" | "warning">();
-    for (const iss of issues ?? [])
+    const allIssues = issues ?? [];
+    for (const iss of allIssues)
       for (const id of iss.stepIds) {
         if (iss.severity === "error" || !m.has(id)) m.set(id, iss.severity);
       }
@@ -164,7 +165,7 @@ const Inner = ({
         const pos = nodesRef.current.find((m) => m.id === id)?.position;
         return pos ? (isVertical ? pos.x : pos.y) : Infinity;
       };
-      const top = [...pending].sort((a, b) => axis(a) - axis(b))[0];
+      const top = [...pending].toSorted((a, b) => axis(a) - axis(b))[0];
       void fitView({
         nodes: top ? [{ id: top }] : pending.map((id) => ({ id })),
         duration: ms,
@@ -184,17 +185,17 @@ const Inner = ({
 
   // When the source graph changes (new discovery / edit), reset to the new nodes
   // HIDDEN so they get re-measured, and mark that this set still needs a layout.
-  const laidOutFor = useRef<string>("");
+  const laidOutForRef = useRef<string>("");
   // The measured heights the current layout was computed from, so a later drift (a
   // few-px settle) can be detected and corrected with a single re-layout.
-  const laidOutHeights = useRef<Map<string, number | null>>(new Map());
+  const laidOutHeightsRef = useRef<Map<string, number | null>>(new Map());
   // The LATEST measured height per node, updated straight off React Flow's `dimensions`
   // change events (never stale, unlike re-reading node.measured in an effect). The
   // layout reads its heights from here so it always lays out on the true sizes.
-  const liveHeights = useRef<Map<string, number>>(new Map());
+  const liveHeightsRef = useRef<Map<string, number>>(new Map());
   // True while the NEXT layout run is a silent drift correction (re-position only, no
   // re-fit), so straightening an edge doesn't zoom the pane on a staged decision.
-  const driftRelayout = useRef(false);
+  const driftRelayoutRef = useRef(false);
   // The graph's container, observed so we can re-fit when it resizes (the editor's
   // bottom stack growing/shrinking, a window resize). fitView otherwise runs once per
   // graph, so without this a node could sit clipped off the edge after a resize.
@@ -207,7 +208,7 @@ const Inner = ({
   useEffect(() => {
     setNodes(initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })));
     setEdges(edges);
-    laidOutFor.current = ""; // force a fresh layout for the new graph
+    laidOutForRef.current = ""; // force a fresh layout for the new graph
   }, [initialNodes, edges, setNodes, setEdges]);
 
   // Once measured, lay out with the REAL (measured) heights, reveal, and fit. The
@@ -218,17 +219,17 @@ const Inner = ({
   // shows, not off to one side. The separate focus effect below handles later focus
   // changes (the next gate after an approve); this handles the initial appearance.
   useEffect(() => {
-    if (!isInitialized || laidOutFor.current === graphKey) return;
-    laidOutFor.current = graphKey;
-    // Layout from `liveHeights`, the authoritative measured heights kept up to date by
+    if (!isInitialized || laidOutForRef.current === graphKey) return;
+    laidOutForRef.current = graphKey;
+    // Layout from `liveHeightsRef`, the authoritative measured heights kept up to date by
     // the onNodesChange interceptor below (which reads them straight off React Flow's
     // `dimensions` change events). We do NOT re-read node.measured here: right after a
     // resize it can still be the STALE value for a tick, which is what drifted the edge
-    // handles a few px (the connector kink). `liveHeights` is always the latest.
+    // handles a few px (the connector kink). `liveHeightsRef` is always the latest.
     const heightOf = (n: Node<NodeData>): number =>
-      liveHeights.current.get(n.id) ?? estimateHeight(n.data);
-    laidOutHeights.current = new Map(
-      nodesRef.current.map((n) => [n.id, liveHeights.current.get(n.id) ?? null])
+      liveHeightsRef.current.get(n.id) ?? estimateHeight(n.data);
+    laidOutHeightsRef.current = new Map(
+      nodesRef.current.map((n) => [n.id, liveHeightsRef.current.get(n.id) ?? null])
     );
     const laid = layout(initialNodes, edges, heightOf, isVertical);
     const byId = new Map(laid.map((n) => [n.id, n.position]));
@@ -245,8 +246,8 @@ const Inner = ({
     // can drift its measured height by a px) would re-fit and the pane would visibly
     // zoom on the click. The view re-frames only on a real focus change (the initial
     // appearance here, or the next gate after Submit via the focus effect below).
-    if (driftRelayout.current) {
-      driftRelayout.current = false;
+    if (driftRelayoutRef.current) {
+      driftRelayoutRef.current = false;
       return;
     }
     requestAnimationFrame(() => frameForFocus(focusIds ?? [], 200));
@@ -266,7 +267,7 @@ const Inner = ({
   // Re-layout when React Flow REPORTS a node resized. React Flow emits a `dimensions`
   // change (from its ResizeObserver) the instant a card's measured height changes, so a
   // badge/when-chip/toolbar appearing after the one-shot layout arrives here as a precise
-  // event CARRYING the new height. We record it in `liveHeights` (the source of truth the
+  // event CARRYING the new height. We record it in `liveHeightsRef` (the source of truth the
   // layout reads) and, if it differs from what the current layout used, run ONE more
   // layout pass (positions only, no re-fit) so the node centers, and thus the edge
   // handles, re-align on the TRUE heights. Bounded: after it, the heights match.
@@ -276,13 +277,13 @@ const Inner = ({
       let isResized = false;
       for (const c of changes) {
         if (c.type !== "dimensions" || !c.dimensions) continue;
-        liveHeights.current.set(c.id, c.dimensions.height);
-        const used = laidOutHeights.current.get(c.id);
+        liveHeightsRef.current.set(c.id, c.dimensions.height);
+        const used = laidOutHeightsRef.current.get(c.id);
         if (used == null || Math.abs(used - c.dimensions.height) > 1) isResized = true;
       }
-      if (isResized && laidOutFor.current === graphKey) {
-        driftRelayout.current = true; // silent: straighten edges, don't re-fit the view
-        laidOutFor.current = "";
+      if (isResized && laidOutForRef.current === graphKey) {
+        driftRelayoutRef.current = true; // silent: straighten edges, don't re-fit the view
+        laidOutForRef.current = "";
         setRelayoutTick((t) => t + 1);
       }
     }
@@ -310,11 +311,12 @@ const Inner = ({
   // no re-layout (kept out of the layout pipeline so a click doesn't reflow the graph).
   useEffect(() => {
     setNodes((cur) =>
-      cur.map((n) =>
-        n.data.selected === (n.id === selectedId)
+      cur.map((n) => {
+        const shouldSelect = n.id === selectedId;
+        return n.data.selected === shouldSelect
           ? n
-          : { ...n, data: { ...n.data, selected: n.id === selectedId } }
-      )
+          : { ...n, data: { ...n.data, selected: shouldSelect } };
+      })
     );
   }, [selectedId, setNodes]);
 
@@ -329,13 +331,13 @@ const Inner = ({
     ? Object.entries(decisions)
         // eslint-disable-next-line custom/no-empty-string-fallback -- building a cache key: an undecided (null) choice contributes "" to the key string.
         .map(([k, v]) => `${k}:${v ?? ""}`)
-        .sort()
+        .toSorted((a, b) => a.localeCompare(b))
         .join("|")
     : "";
   const reasonKey = reasons
     ? Object.entries(reasons)
         .map(([k, v]) => `${k}:${v}`)
-        .sort()
+        .toSorted((a, b) => a.localeCompare(b))
         .join("|")
     : "";
   useEffect(() => {
@@ -399,7 +401,7 @@ const Inner = ({
   // Approve/Reject doesn't change the pending set, so the view stays put on a click.
   const focusKey = (focusIds ?? []).join("|");
   useEffect(() => {
-    if (!isInitialized || laidOutFor.current !== graphKey) return;
+    if (!isInitialized || laidOutForRef.current !== graphKey) return;
     const raf = requestAnimationFrame(() =>
       frameForFocus(focusKey ? focusKey.split("|") : [], 400)
     );
@@ -414,7 +416,7 @@ const Inner = ({
   const statusKey = statuses
     ? Object.entries(statuses)
         .map(([k, v]) => `${k}:${v}`)
-        .sort()
+        .toSorted((a, b) => a.localeCompare(b))
         .join("|")
     : "";
   useEffect(() => {

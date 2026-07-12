@@ -59,10 +59,9 @@ const creds = (): QboCreds => {
   const refreshToken = process.env.QBO_REFRESH_TOKEN;
   const realmId = process.env.QBO_REALM_ID;
   if (!clientId || !clientSecret || !refreshToken || !realmId) {
-    console.error(
+    throw new Error(
       "Missing QBO_CLIENT_ID / QBO_CLIENT_SECRET / QBO_REFRESH_TOKEN / QBO_REALM_ID in .env."
     );
-    process.exit(1);
   }
   return {
     clientId,
@@ -256,6 +255,13 @@ const createPo = async (
 };
 
 /* ── Existing seeded POs (for idempotency + reset) ──────────────────────────*/
+/** One PurchaseOrder row (extracted so the parse below isn't over-nested). */
+const PurchaseOrderRow = z.object({
+  Id: z.string(),
+  DocNumber: z.string().optional(),
+  SyncToken: z.string(),
+});
+
 const seededPoIds = async (
   c: QboCreds,
   docNumbers: string[]
@@ -264,15 +270,7 @@ const seededPoIds = async (
   const Resp = z.object({
     QueryResponse: z
       .object({
-        PurchaseOrder: z
-          .array(
-            z.object({
-              Id: z.string(),
-              DocNumber: z.string().optional(),
-              SyncToken: z.string(),
-            })
-          )
-          .optional(),
+        PurchaseOrder: z.array(PurchaseOrderRow).optional(),
       })
       .optional(),
   });
@@ -296,11 +294,10 @@ const seed = async (): Promise<void> => {
 
   const already = await seededPoIds(c, docNumbers);
   if (already.length > 0) {
-    console.error(
+    throw new Error(
       `${already.length} scenario PO(s) already in QBO (${already.map((a) => a.docNumber).join(", ")}). ` +
         `Run "pnpm erp:reset" first to avoid duplicates.`
     );
-    process.exit(1);
   }
 
   console.log("Resolving an expense account for the seeded items …");
@@ -424,17 +421,21 @@ const main = async (): Promise<void> => {
   } else if (cmd === "seed" || cmd === undefined) {
     await seed();
   } else {
-    console.error(`Unknown command "${cmd}". Use: seed | reset`);
-    process.exit(1);
+    throw new Error(`Unknown command "${cmd}". Use: seed | reset`);
   }
 };
 
-main()
-  .then(() => persistRotatedRefreshToken())
-  .catch((error: unknown) => {
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+    persistRotatedRefreshToken();
+  } catch (error) {
     // Persist any rotation even on failure, the token may have rotated before
     // the error, and we don't want to lose it.
     persistRotatedRefreshToken();
     console.error("Failed:", error instanceof Error ? error.message : error);
-    process.exit(1);
-  });
+    process.exitCode = 1;
+  }
+})();

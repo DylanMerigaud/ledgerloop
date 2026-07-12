@@ -80,8 +80,8 @@ export const pendingGates = (
  * reconciliation/approval `outcome` (when present) is the most specific signal and
  * wins over the earlier verdict hints.
  */
-export const deriveOutcome = (trace: TraceEvent[], finished: boolean): Outcome => {
-  const outcome: Outcome = finished ? "reconciled" : "running";
+export const deriveOutcome = (trace: TraceEvent[], isFinished: boolean): Outcome => {
+  const outcome: Outcome = isFinished ? "reconciled" : "running";
   for (const e of trace) {
     const data = dataOf(e);
     if (!data) continue;

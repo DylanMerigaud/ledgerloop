@@ -90,8 +90,11 @@ test("assembled workflow validates and has the template shape", () => {
   const wf = assembleWorkflow(org, proposal);
   assert.doesNotThrow(() => ApprovalWorkflow.parse(wf));
   // Manager and department head are parallel first-line roots.
-  assert.deepEqual([...wf.roots].sort(), ["department-review", "manager-review"]);
-  const ids = wf.steps.map((s) => s.id).sort();
+  assert.deepEqual(
+    [...wf.roots].toSorted((a, b) => a.localeCompare(b)),
+    ["department-review", "manager-review"]
+  );
+  const ids = wf.steps.map((s) => s.id).toSorted((a, b) => a.localeCompare(b));
   assert.deepEqual(ids, [
     "department-review",
     "director-review",

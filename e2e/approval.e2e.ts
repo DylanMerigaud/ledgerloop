@@ -43,7 +43,13 @@ const decideGate = async (
   reason?: string
 ) => {
   const close = page.getByTestId("trace-close");
-  if (await close.isVisible().catch(() => false)) await close.click();
+  let isCloseVisible: boolean;
+  try {
+    isCloseVisible = await close.isVisible();
+  } catch {
+    isCloseVisible = false; // locator resolution can race a teardown, treat as not shown
+  }
+  if (isCloseVisible) await close.click();
   await page.getByTestId(`gate-${choice}-${stepId}`).click();
   if (choice === "reject" && reason) {
     // The reason input only appears once the gate is staged "reject".

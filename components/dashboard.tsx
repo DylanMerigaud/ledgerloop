@@ -81,8 +81,8 @@ export const Dashboard = ({
   // own in-flight run (which would 404, it isn't stored yet) and don't clobber the URL.
   const loadedRunRef = useRef<string | null>(null);
   const ownRunRef = useRef<string | null>(null);
-  const setRunUrl = useEventCallback((runId: string | null, own: boolean = false) => {
-    if (own && runId) ownRunRef.current = runId;
+  const setRunUrl = useEventCallback((runId: string | null, isOwn: boolean = false) => {
+    if (isOwn && runId) ownRunRef.current = runId;
     const url = runId ? `${pathname}?run=${encodeURIComponent(runId)}` : pathname;
     router.push(url, { scroll: false });
   });
@@ -144,6 +144,7 @@ export const Dashboard = ({
     const el = listRef.current;
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- measures real DOM (scrollHeight/clientHeight), which only exists after layout; can't be derived during render. Called from the mount effect + a ResizeObserver.
     setScroll({
       hiddenBelow: Math.max(0, el.scrollHeight - el.clientHeight - el.scrollTop),
       atBottom: remaining < 8,
@@ -199,10 +200,10 @@ export const Dashboard = ({
   // and would fall back to the generic full workflow (the graph visibly "swaps" to the
   // default DAG mid-resume). Keep the last resolved graph until a new one arrives or
   // the run resets, so the lit path stays put through the re-stream.
-  const runGraphLatch = useRef<ReturnType<typeof readRunGraph>>(null);
-  if (runGraphNow) runGraphLatch.current = runGraphNow;
-  if (state.status === "idle" || state.trace.length === 0) runGraphLatch.current = null;
-  const runGraph = runGraphNow ?? runGraphLatch.current;
+  const runGraphLatchRef = useRef<ReturnType<typeof readRunGraph>>(null);
+  if (runGraphNow) runGraphLatchRef.current = runGraphNow;
+  if (state.status === "idle" || state.trace.length === 0) runGraphLatchRef.current = null;
+  const runGraph = runGraphNow ?? runGraphLatchRef.current;
   // The graph is the hero and always drawn: the run's lit workflow if a run has
   // reached approval, else the active derived workflow, else the default DAG (so a
   // cold visit with no onboarding still shows what an invoice will route through). The
@@ -231,26 +232,31 @@ export const Dashboard = ({
   // window elapses. `revealHeld` is derived from the ref each render, so React state
   // stays a single boolean tick and can't get stuck.
   const REVEAL_HOLD_MS = 3500;
-  const intakeDoneAtRef = useRef<{ key: string; at: number } | null>(null);
-  const [, forceTick] = useState(0);
+  // Which done-invoice the current hold is timing, so a re-render mid-hold doesn't
+  // restart it and a new invoice starts a fresh hold.
+  const heldKeyRef = useRef<string | null>(null);
+  // Whether the reveal is still in its grace window. Held as real state flipped by
+  // the timer (not derived from Date.now() during render, which would be impure):
+  // it goes true when a live read finishes and false when the window elapses.
+  const [isRevealHeld, setIsRevealHeld] = useState(false);
   // Only hold for a LIVE run's read. A replayed stored run jumps straight to `done`
   // with a full trace, nothing was read live, so holding the reveal there just makes
   // opening a past run look like it re-parses the document (it doesn't).
   const doneKey = doneIntake && !state.replayed ? doneIntake.document.invoiceNumber : null;
   useEffect(() => {
     if (doneKey === null) {
-      intakeDoneAtRef.current = null;
+      heldKeyRef.current = null;
+      // eslint-disable-next-line @eslint-react/set-state-in-effect -- clearing the reveal-hold when the read is no longer done (a discrete transition), paired with the timer-driven set below.
+      setIsRevealHeld(false);
       return;
     }
-    if (intakeDoneAtRef.current?.key === doneKey) return; // already timing
-    intakeDoneAtRef.current = { key: doneKey, at: Date.now() };
-    const t = setTimeout(() => forceTick((n) => n + 1), REVEAL_HOLD_MS);
+    if (heldKeyRef.current === doneKey) return; // already timing this invoice
+    heldKeyRef.current = doneKey;
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- begins the timed reveal-hold phase when a live read finishes (a discrete transition + a timer), not a render-derived value; the timer below flips it back off.
+    setIsRevealHeld(true);
+    const t = setTimeout(() => setIsRevealHeld(false), REVEAL_HOLD_MS);
     return () => clearTimeout(t);
   }, [doneKey]);
-
-  const holdRec = intakeDoneAtRef.current;
-  const isRevealHeld =
-    holdRec !== null && holdRec.key === doneKey && Date.now() - holdRec.at < REVEAL_HOLD_MS;
 
   // Past intake once the read is done AND its reveal grace window has elapsed. Until
   // then the reveal owns the pane so the figures can be read. A REPLAYED run is a
@@ -262,10 +268,10 @@ export const Dashboard = ({
   // the reveal mid-run. During the matching→approval transition `doneIntake` can blink
   // null for a render (events reshuffle), which briefly flashed the document overlay
   // back over the graph. The latch clears when the trace empties (reset / new invoice).
-  const pastIntakeLatch = useRef(false);
-  if (isPastIntakeNow) pastIntakeLatch.current = true;
-  if (state.status === "idle" || state.trace.length === 0) pastIntakeLatch.current = false;
-  const isPastIntake = isPastIntakeNow || pastIntakeLatch.current;
+  const pastIntakeLatchRef = useRef(false);
+  if (isPastIntakeNow) pastIntakeLatchRef.current = true;
+  if (state.status === "idle" || state.trace.length === 0) pastIntakeLatchRef.current = false;
+  const isPastIntake = isPastIntakeNow || pastIntakeLatchRef.current;
 
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.

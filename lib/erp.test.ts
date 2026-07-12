@@ -287,7 +287,10 @@ test("maps QBO items, keying the catalog on the item name (the SKU)", () => {
       Item: [{ Name: "BOLT-M8-50" }, { Name: "STL-BAR-20", Active: true }, {}],
     },
   });
-  assert.deepEqual(items.map((i) => i.sku).sort(), ["BOLT-M8-50", "STL-BAR-20"]);
+  assert.deepEqual(
+    items.map((i) => i.sku).toSorted((a, b) => a.localeCompare(b)),
+    ["BOLT-M8-50", "STL-BAR-20"]
+  );
 });
 
 test("maps QBO bills to (vendor, docNumber); drops rows missing either", () => {

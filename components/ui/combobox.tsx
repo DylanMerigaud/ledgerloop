@@ -64,10 +64,12 @@ export const Combobox = ({
 
   // Reset the highlight whenever the filtered set changes, and focus the input on open.
   useEffect(() => {
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- resetting the keyboard-navigable active index on a query/open change; it's user-driven state (arrow keys), not derivable during render.
     setActive(0);
   }, [query, open]);
   useEffect(() => {
     if (open) inputRef.current?.focus();
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- clearing the search query when the popover closes, an imperative reset on the open->closed transition.
     else setQuery("");
   }, [open]);
 

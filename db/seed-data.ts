@@ -59,7 +59,7 @@ const clean: SeedBundle = {
     currency: "USD",
     lineItems: cleanLines,
     subtotal: sum(cleanLines),
-    tax: round2(sum(cleanLines) * 0),
+    tax: 0, // 0% tax rate on this clean invoice
     total: sum(cleanLines),
   },
   purchaseOrder: {
@@ -592,5 +592,6 @@ export const scenarioPurchaseOrders = (): PurchaseOrder[] => {
       byNumber.set(b.purchaseOrder.poNumber, b.purchaseOrder);
     }
   }
+  // eslint-disable-next-line unicorn/prefer-iterator-to-array -- a real PurchaseOrder[] is returned; Iterator#toArray() needs the es2024 iterator-helpers lib, which this project's es2023 lib doesn't include, so spread the values instead.
   return [...byNumber.values()];
 };

@@ -14,8 +14,7 @@ import { resetAndReseed } from "@/db/reset";
 const main = async () => {
   const url = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
   if (!url) {
-    console.error("✖ Set DATABASE_URL (or DIRECT_DATABASE_URL) before seeding, see .env.example.");
-    process.exit(1);
+    throw new Error("Set DATABASE_URL (or DIRECT_DATABASE_URL) before seeding, see .env.example.");
   }
 
   const sql = postgres(url, { prepare: false, max: 1 });
@@ -36,7 +35,14 @@ const main = async () => {
   }
 };
 
-main().catch((error) => {
-  console.error("✖ Seed failed:", error);
-  process.exit(1);
-});
+// Async IIFE, not top-level await: this script is run by tsx, whose CJS output
+// format rejects top-level await. The IIFE clears the prefer-await/no-process-exit
+// rules (no .catch chain, no process.exit) while running under CJS.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("✖ Seed failed:", error);
+    process.exitCode = 1;
+  }
+})();

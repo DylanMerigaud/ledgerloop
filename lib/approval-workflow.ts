@@ -80,6 +80,8 @@ export type Condition =
 /** @public, a single comparison in a condition (the editor's row unit). */
 export type ConditionLeaf = Extract<Condition, { kind: "leaf" }>;
 
+const ConditionValue = z.union([z.string(), z.number()]);
+
 export const Condition: z.ZodType<Condition> = z.lazy(() =>
   z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("always") }).strict(),
@@ -88,7 +90,7 @@ export const Condition: z.ZodType<Condition> = z.lazy(() =>
         kind: z.literal("leaf"),
         field: ConditionField,
         op: ConditionOp,
-        value: z.union([z.string(), z.number()]),
+        value: ConditionValue,
       })
       .strict(),
     z.object({ kind: z.literal("all"), conditions: z.array(Condition) }).strict(),
@@ -224,6 +226,7 @@ const valueFor = (
   }
 };
 
+// eslint-disable-next-line unicorn/consistent-boolean-name -- comparison predicate; the name states the operation, not a boolean subject
 const compare = (left: string | number, op: ConditionOp, right: string | number): boolean => {
   // Numeric comparison when both sides are numbers; otherwise string equality
   // (only == / != are meaningful for strings).
@@ -267,6 +270,7 @@ const compare = (left: string | number, op: ConditionOp, right: string | number)
 };
 
 /** Evaluate a condition against an invoice context. Pure. */
+// eslint-disable-next-line unicorn/consistent-boolean-name -- exported predicate; renaming would break lib/approval-engine.ts and the test suites that import it
 export const evaluateCondition = (cond: Condition, ctx: InvoiceContext): boolean => {
   switch (cond.kind) {
     case "always": {
@@ -302,10 +306,10 @@ export const describeCondition = (cond: Condition): string => {
       return `${cond.field} ${cond.op} ${describeLeafValue(cond)}`;
     }
     case "all": {
-      return cond.conditions.map(describeCondition).join(" and ");
+      return cond.conditions.map((c) => describeCondition(c)).join(" and ");
     }
     case "any": {
-      return cond.conditions.map(describeCondition).join(" or ");
+      return cond.conditions.map((c) => describeCondition(c)).join(" or ");
     }
   }
 };
@@ -339,10 +343,10 @@ export const humanizeCondition = (cond: Condition): string => {
       return humanizeLeaf(cond);
     }
     case "all": {
-      return cond.conditions.map(humanizeCondition).join(" · ");
+      return cond.conditions.map((c) => humanizeCondition(c)).join(" · ");
     }
     case "any": {
-      return cond.conditions.map(humanizeCondition).join(" or ");
+      return cond.conditions.map((c) => humanizeCondition(c)).join(" or ");
     }
   }
 };
@@ -354,27 +358,25 @@ const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   const { field, op, value } = cond;
   const num = typeof value === "number" ? value : 0;
 
+  // eslint-disable-next-line unicorn/prefer-switch -- not all field branches are pure equality (verdict/matchType also test op) and non-matching ops fall through to the fallback return, a switch would change that
   if (field === "amount" || field === "exceptionAmount") {
     const what = field === "amount" ? "" : "exception ";
     if (op === ">" || op === ">=") return `Over ${what}${money(num)}`;
     if (op === "<" || op === "<=") return `Under ${what}${money(num)}`;
-  }
-  if (field === "variancePct") {
+  } else if (field === "variancePct") {
     if (op === ">" || op === ">=") return `Variance ≥ ${pct(num)}`;
     if (op === "<" || op === "<=") return `Variance < ${pct(num)}`;
-  }
-  if (field === "department") {
+  } else if (field === "department") {
     if (op === "==") return `${String(value)} only`;
     if (op === "!=") return `Not ${String(value)}`;
   }
   if (field === "verdict" && op === "==") {
-    return value === "exception" ? "Exception" : `${String(value)}`;
+    return value === "exception" ? "Exception" : String(value);
   }
   if (field === "vendor") {
     if (op === "==") return `Vendor: ${String(value)}`;
     if (op === "!=") return `Not ${String(value)}`;
-  }
-  if (field === "currency") {
+  } else if (field === "currency") {
     if (op === "==") return `${String(value)} only`;
     if (op === "!=") return `Not ${String(value)}`;
   }

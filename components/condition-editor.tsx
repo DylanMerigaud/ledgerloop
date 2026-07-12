@@ -101,6 +101,7 @@ export const ConditionEditor = ({
       {root.conditions.map((c, i) =>
         isGroup(c) ? (
           <SubGroup
+            // eslint-disable-next-line @eslint-react/no-array-index-key -- condition rows have no stable id (and content can legitimately repeat while editing); SubGroup/LeafRow are stateless, fully prop-controlled components, so an index key can't corrupt row state.
             key={i}
             group={c}
             available={available}
@@ -109,6 +110,7 @@ export const ConditionEditor = ({
           />
         ) : isLeaf(c) ? (
           <LeafRow
+            // eslint-disable-next-line @eslint-react/no-array-index-key -- see above: stateless controlled rows, no stable id, index key is safe here.
             key={i}
             leaf={c}
             available={available}
@@ -172,6 +174,7 @@ const SubGroup = ({
         // A subgroup holds only leaves; ignore any deeper nesting defensively.
         isLeaf(c) ? (
           <LeafRow
+            // eslint-disable-next-line @eslint-react/no-array-index-key -- stateless controlled LeafRow, no stable id on a leaf, index key is safe (see the root map's note).
             key={i}
             leaf={c}
             available={available}

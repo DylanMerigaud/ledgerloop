@@ -14,7 +14,7 @@
  */
 import { join } from "node:path";
 
-import type { WorkflowEditOp } from "@/lib/workflow-edit";
+import type { EditModel, WorkflowEditOp } from "@/lib/workflow-edit";
 
 import { EDIT_CASES, EDIT_FIXTURE, type EditCase } from "@/eval/edit-cases";
 // NOTE: the model (which imports lib/env, validating DATABASE_URL at load) is
@@ -47,15 +47,16 @@ const main = async (): Promise<void> => {
   console.log(`conversational-edit eval, ${isDryRun ? "dry-run (no API)" : "live"}\n`);
 
   if (!isDryRun && !process.env.ANTHROPIC_API_KEY) {
-    console.error("✖ Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.");
-    process.exit(1);
+    throw new Error("Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.");
   }
 
   // Import the model only for a live run (it loads lib/env, which validates the DB
   // URL), a dry-run stays env-free.
-  const planEdit = isDryRun
-    ? null
-    : (await import("@/lib/workflow-edit-model")).anthropicEditModel.planEdit;
+  let planEdit: EditModel["planEdit"] | null = null;
+  if (!isDryRun) {
+    const mod = await import("@/lib/workflow-edit-model");
+    planEdit = mod.anthropicEditModel.planEdit;
+  }
 
   const results: Result[] = [];
   for (const c of EDIT_CASES) {
@@ -86,8 +87,7 @@ const main = async (): Promise<void> => {
   console.log(`\n${passed}/${total} correct (${Math.round((passed / total) * 100)}%)`);
 
   if (passed < total) {
-    console.error(`\n✖ ${total - passed} case(s) failed.`);
-    process.exit(1);
+    throw new Error(`${total - passed} case(s) failed.`);
   }
   console.log("✓ Every instruction mapped to the correct edit.");
 };
@@ -158,4 +158,13 @@ const stubOp = (c: EditCase): WorkflowEditOp => {
   }
 };
 
-void main();
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
+})();

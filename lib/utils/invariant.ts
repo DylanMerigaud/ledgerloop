@@ -10,8 +10,11 @@
  * verbatim into @dylanmerigaud/config later; call sites then swap this specifier
  * for the package one and nothing else changes.
  */
-export function invariant(condition: unknown, message: string): asserts condition {
+export const invariant: (condition: unknown, message: string) => asserts condition = (
+  condition,
+  message
+) => {
   if (!condition) {
     throw new Error(`Invariant violated: ${message}`);
   }
-}
+};

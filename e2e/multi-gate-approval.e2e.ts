@@ -27,7 +27,13 @@ const openTrace = (page: Page) => page.getByTestId("view-trace").click({ timeout
 /** Close the drawer (the gate decision is on the canvas behind it). */
 const closeTrace = async (page: Page) => {
   const close = page.getByTestId("trace-close");
-  if (await close.isVisible().catch(() => false)) await close.click();
+  let isCloseVisible: boolean;
+  try {
+    isCloseVisible = await close.isVisible();
+  } catch {
+    isCloseVisible = false; // locator resolution can race a teardown, treat as not shown
+  }
+  if (isCloseVisible) await close.click();
 };
 
 test("two parallel gates: reject one, approve the other → bill blocked", async ({ page }) => {

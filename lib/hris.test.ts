@@ -165,12 +165,12 @@ test("tolerates an empty / shapeless payload without throwing", () => {
 // Skips cleanly if the fixture hasn't been captured (e.g. a fresh checkout that
 // hasn't run the capture script), so the suite never fails for a missing file.
 test("the recorded fixture maps to a valid OrgChart", async (t) => {
-  const adapter = recordedHris();
   // recordedHris() points at db/fixtures/bamboohr/report.json by default.
   if (!existsSync("db/fixtures/bamboohr/report.json")) {
     t.skip("fixture missing, run pnpm fixture:build");
     return;
   }
+  const adapter = recordedHris();
   const org = await adapter.fetchOrg();
   // Valid against the schema (the real assertion, shape is correct).
   assert.doesNotThrow(() => OrgChart.parse(org));

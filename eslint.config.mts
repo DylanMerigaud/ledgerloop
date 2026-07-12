@@ -81,4 +81,21 @@ export default [
     files: ["src/mastra/index.ts"],
     rules: { "custom/no-index-files": "off" },
   },
+
+  // Playwright e2e: the bodies passed to `page.evaluate(...)` are serialized and
+  // run in the BROWSER, where `document`, `window`, and `CSS` exist. Declaring
+  // them as globals here lets unicorn/isolated-functions see they're defined in
+  // the evaluate context (it otherwise reports them as undefined captures).
+  {
+    files: ["e2e/**/*.ts"],
+    languageOptions: {
+      globals: {
+        document: "readonly",
+        window: "readonly",
+        CSS: "readonly",
+        navigator: "readonly",
+        getComputedStyle: "readonly",
+      },
+    },
+  },
 ];

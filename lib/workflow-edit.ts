@@ -32,6 +32,8 @@ import { assertUnreachable, nonNull } from "@/lib/assert";
  *  The edit op, small + flat, so the model schema stays tiny and reliable
  * ────────────────────────────────────────────────────────────────────────── */
 
+const StringArray = z.array(z.string());
+
 export const WorkflowEditOp = z.discriminatedUnion("op", [
   z
     .object({
@@ -94,7 +96,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       op: z.literal("set-approvers"),
       stepId: z.string(),
       /** The ADDITIONAL co-approvers (the primary stays on approverName). */
-      approvers: z.array(z.string()),
+      approvers: StringArray,
     })
     .strict(),
   z
@@ -149,7 +151,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
       /** The parent whose parallel branches to reorder, top→bottom. */
       parentStepId: z.string(),
       /** The branch step ids in the desired top→bottom order. */
-      order: z.array(z.string()),
+      order: StringArray,
     })
     .strict(),
   z
@@ -172,7 +174,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     .object({
       op: z.literal("add-parallel-after"),
       /** The new gate runs only once ALL of these steps have settled (AND-join). */
-      afterStepIds: z.array(z.string()),
+      afterStepIds: StringArray,
       label: z.string(),
       approverTitle: z.string(),
       amountOver: z.number().nullable(),
@@ -196,7 +198,7 @@ export const WorkflowEditOp = z.discriminatedUnion("op", [
     .object({
       op: z.literal("clarify"),
       question: z.string(),
-      options: z.array(z.string()),
+      options: StringArray,
     })
     .strict(),
 ]);
@@ -333,7 +335,7 @@ const orderNextForLayout = (wf: TWorkflow): TWorkflow => {
       return false;
     };
     // Stable partition: keep the given order within each group, joins after gates.
-    s.next = [...s.next.filter((n) => !isJoin(n)), ...s.next.filter(isJoin)];
+    s.next = [...s.next.filter((n) => !isJoin(n)), ...s.next.filter((n) => isJoin(n))];
   }
   return wf;
 };
@@ -441,7 +443,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       for (const s of next.steps) if (s.next.includes(orig.id)) s.next = [...s.next, id];
       if (next.roots.includes(orig.id)) next.roots = [...next.roots, id];
       next.steps.push(copy);
-      return wouldCycle(next) ? wf : next;
+      return hasCycle(next) ? wf : next;
     }
 
     case "move-step": {
@@ -467,7 +469,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       // 2. Re-insert after the anchor: anchor → moved → anchor's old successors.
       moved.next = [...anchor.next];
       anchor.next = [moved.id];
-      return wouldCycle(next) ? wf : next;
+      return hasCycle(next) ? wf : next;
     }
 
     case "reorder-branches": {
@@ -540,7 +542,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       // …and `after` now points only at the new gate (true insertion).
       after.next = [id];
       next.steps.push(newStep);
-      return wouldCycle(next) ? wf : next; // guard: never break the DAG
+      return hasCycle(next) ? wf : next; // guard: never break the DAG
     }
 
     case "add-parallel-after": {
@@ -565,7 +567,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
         a.next = [...new Set([...a.next.filter((n) => n !== post), id])];
       }
       next.steps.push(newStep);
-      return wouldCycle(next) ? wf : next;
+      return hasCycle(next) ? wf : next;
     }
 
     default: {
@@ -577,7 +579,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 };
 
 /** True if the step graph contains a cycle (Kahn: not all nodes emitted). */
-const wouldCycle = (wf: TWorkflow): boolean => {
+const hasCycle = (wf: TWorkflow): boolean => {
   const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
   for (const s of wf.steps) for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
   const queue = [...indeg].filter(([, d]) => d === 0).map(([id]) => id);
@@ -585,7 +587,8 @@ const wouldCycle = (wf: TWorkflow): boolean => {
   let emitted = 0;
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     emitted++;
-    for (const n of byId.get(id)?.next ?? []) {
+    const nextIds = byId.get(id)?.next ?? [];
+    for (const n of nextIds) {
       const d = (indeg.get(n) ?? 0) - 1;
       indeg.set(n, d);
       if (d === 0) queue.push(n);
@@ -764,6 +767,9 @@ export type AvailableScope = {
   currencies: string[];
 };
 
+/** Join a list for the prompt, or "(none)" when empty. */
+const commaListOrNone = (xs: string[]): string => (xs.length > 0 ? xs.join(", ") : "(none)");
+
 /** Prompt body for the planner: current steps (+ conditions), the available scope
     values (departments / vendors / currencies, so a gate can only target a real one),
     the instruction, and optionally the validation feedback from a previous attempt. */
@@ -784,11 +790,10 @@ export const planPrompt = (
       return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
     })
     .join("\n");
-  const list = (xs: string[]): string => (xs.length > 0 ? xs.join(", ") : "(none)");
   const scope =
-    `AVAILABLE DEPARTMENTS: ${list(available.departments)}\n` +
-    `AVAILABLE VENDORS: ${list(available.vendors)}\n` +
-    `AVAILABLE CURRENCIES: ${list(available.currencies)}`;
+    `AVAILABLE DEPARTMENTS: ${commaListOrNone(available.departments)}\n` +
+    `AVAILABLE VENDORS: ${commaListOrNone(available.vendors)}\n` +
+    `AVAILABLE CURRENCIES: ${commaListOrNone(available.currencies)}`;
   const base = `CURRENT STEPS:\n${steps}\n\n${scope}\n\nINSTRUCTION:\n${instruction}`;
   if (!feedback || feedback.issues.length === 0)
     return `${base}\n\nReturn the ordered ops as JSON.`;

@@ -64,7 +64,7 @@ export const isActivatable = (issues: WorkflowIssue[]): boolean =>
 /** Flatten a condition tree into its leaves (ignores all/any structure). */
 const leaves = (c: Condition): Extract<Condition, { kind: "leaf" }>[] => {
   if (c.kind === "leaf") return [c];
-  if (c.kind === "all" || c.kind === "any") return c.conditions.flatMap(leaves);
+  if (c.kind === "all" || c.kind === "any") return c.conditions.flatMap((cond) => leaves(cond));
   return [];
 };
 
@@ -101,7 +101,8 @@ const reachableFromRoots = (wf: ApprovalWorkflow): Set<string> => {
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     if (seen.has(id)) continue;
     seen.add(id);
-    for (const n of succ.get(id) ?? []) queue.push(n);
+    const succs = succ.get(id) ?? [];
+    for (const n of succs) queue.push(n);
   }
   return seen;
 };
@@ -173,7 +174,8 @@ const cycleFree = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   let emitted = 0;
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     emitted++;
-    for (const n of byId.get(id)?.next ?? []) {
+    const nextIds = byId.get(id)?.next ?? [];
+    for (const n of nextIds) {
       const d = (indeg.get(n) ?? 0) - 1;
       indeg.set(n, d);
       if (d === 0) queue.push(n);
@@ -245,16 +247,17 @@ const duplicateGates = (wf: ApprovalWorkflow): WorkflowIssue[] => {
     for (let j = i + 1; j < gates.length; j++) {
       const a = gates[i];
       const b = gates[j];
-      if (!a || !b) continue;
-      const isSameDept = departmentScope(a) === departmentScope(b);
-      const isSameRole = a.approverTitle === b.approverTitle;
-      if (isSameRole && isSameDept) {
-        out.push({
-          severity: "warning",
-          code: "duplicate-gate",
-          message: `"${a.label}" and "${b.label}" overlap (same role and scope), merge them or narrow one.`,
-          stepIds: [a.id, b.id],
-        });
+      if (a && b) {
+        const isSameDept = departmentScope(a) === departmentScope(b);
+        const isSameRole = a.approverTitle === b.approverTitle;
+        if (isSameRole && isSameDept) {
+          out.push({
+            severity: "warning",
+            code: "duplicate-gate",
+            message: `"${a.label}" and "${b.label}" overlap (same role and scope), merge them or narrow one.`,
+            stepIds: [a.id, b.id],
+          });
+        }
       }
     }
   }
@@ -268,20 +271,21 @@ const segregationOfDuties = (wf: ApprovalWorkflow): WorkflowIssue[] => {
     const seen = new Map<string, string>(); // person → first step label
     for (const id of path) {
       const s = byId.get(id);
-      if (!s || s.kind !== "approval") continue;
-      // Every approver on the gate counts, a co-approver who already signed an
-      // earlier gate on this path breaks segregation just as a primary would.
-      for (const person of approversOf(s)) {
-        const prev = seen.get(person);
-        if (prev) {
-          out.push({
-            severity: "warning",
-            code: "segregation-of-duties",
-            message: `${person} approves more than once on the same path ("${prev}" and "${s.label}"), a second person should sign off.`,
-            stepIds: [id],
-          });
-        } else {
-          seen.set(person, s.label);
+      if (s && s.kind === "approval") {
+        // Every approver on the gate counts, a co-approver who already signed an
+        // earlier gate on this path breaks segregation just as a primary would.
+        for (const person of approversOf(s)) {
+          const prev = seen.get(person);
+          if (prev) {
+            out.push({
+              severity: "warning",
+              code: "segregation-of-duties",
+              message: `${person} approves more than once on the same path ("${prev}" and "${s.label}"), a second person should sign off.`,
+              stepIds: [id],
+            });
+          } else {
+            seen.set(person, s.label);
+          }
         }
       }
     }

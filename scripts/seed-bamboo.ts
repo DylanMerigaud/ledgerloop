@@ -57,8 +57,7 @@ const creds = (): Creds => {
   const key = process.env.BAMBOO_HR_API_KEY;
   const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
   if (!key || !subdomain) {
-    console.error("Missing BAMBOO_HR_API_KEY / BAMBOO_HR_SUBDOMAIN in .env.");
-    process.exit(1);
+    throw new Error("Missing BAMBOO_HR_API_KEY / BAMBOO_HR_SUBDOMAIN in .env.");
   }
   return { key, subdomain };
 };
@@ -180,6 +179,16 @@ const setJobInfo = async (c: Creds, id: string, p: SeedPerson): Promise<void> =>
   }
 };
 
+/** One row of the scope report (extracted so the parse below isn't over-nested). */
+const SeededEmployeeRow = z.object({
+  id: z.string(),
+  displayName: z.string().nullish(),
+  // The account's demo employees can carry `division: null`; nullish (not
+  // just optional) so the read-back doesn't 400 on them. We filter to
+  // SEED_DIVISION next, so a null division is simply out of scope.
+  division: z.string().nullish(),
+});
+
 /** Everyone currently in the SEED_DIVISION (the scope of seed/reset). */
 const seededEmployees = async (c: Creds): Promise<{ id: string; name: string }[]> => {
   const res = await fetch(api(c, "/reports/custom?format=JSON"), {
@@ -197,16 +206,7 @@ const seededEmployees = async (c: Creds): Promise<{ id: string; name: string }[]
   if (!res.ok) throw new Error(`scope report failed: HTTP ${res.status}`);
   const data = z
     .object({
-      employees: z.array(
-        z.object({
-          id: z.string(),
-          displayName: z.string().nullish(),
-          // The account's demo employees can carry `division: null`; nullish (not
-          // just optional) so the read-back doesn't 400 on them. We filter to
-          // SEED_DIVISION next, so a null division is simply out of scope.
-          division: z.string().nullish(),
-        })
-      ),
+      employees: z.array(SeededEmployeeRow),
     })
     .parse(await res.json());
   return data.employees
@@ -220,10 +220,9 @@ const seed = async (): Promise<void> => {
 
   const already = await seededEmployees(c);
   if (already.length > 0) {
-    console.error(
+    throw new Error(
       `${already.length} employee(s) already in "${SEED_DIVISION}". Run "pnpm hris:reset" first to avoid duplicates.`
     );
-    process.exit(1);
   }
 
   console.log(`Seeding ${SEED_ORG.length} employees into "${SEED_DIVISION}" …`);
@@ -287,12 +286,17 @@ const main = async (): Promise<void> => {
   } else if (cmd === "seed" || cmd === undefined) {
     await seed();
   } else {
-    console.error(`Unknown command "${cmd}". Use: seed | reset`);
-    process.exit(1);
+    throw new Error(`Unknown command "${cmd}". Use: seed | reset`);
   }
 };
 
-main().catch((error: unknown) => {
-  console.error("Failed:", error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("Failed:", error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
+})();

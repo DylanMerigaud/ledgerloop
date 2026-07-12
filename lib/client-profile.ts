@@ -112,7 +112,7 @@ export const workflowFromPolicy = (
   policy: ApprovalPolicy,
   name = "Default approval workflow"
 ): TApprovalWorkflow => {
-  const isException: WorkflowStep["when"] = {
+  const exceptionCondition: WorkflowStep["when"] = {
     kind: "leaf",
     field: "verdict",
     op: "==",
@@ -125,7 +125,7 @@ export const workflowFromPolicy = (
   const managerReview: WorkflowStep["when"] = {
     kind: "any",
     conditions: [
-      isException,
+      exceptionCondition,
       { kind: "leaf", field: "amount", op: ">", value: policy.manager.amount },
     ],
   };
@@ -133,7 +133,7 @@ export const workflowFromPolicy = (
   const directorEscalation: WorkflowStep["when"] = {
     kind: "all",
     conditions: [
-      isException,
+      exceptionCondition,
       {
         kind: "any",
         conditions: [

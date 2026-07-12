@@ -38,14 +38,15 @@ const byId = (id: string): SeedBundle => {
   return b;
 };
 
+const deptOf = (id: string) => byId(id).purchaseOrder?.department;
+
 test("the demo's department POs carry their buying department", () => {
   // Three distinct departments are seeded so a department-scoped gate is demonstrable
   // (and each maps to a real org head). If a future edit drops one, the
   // "route by department" demo would quietly stop firing.
-  const dept = (id: string) => byId(id).purchaseOrder?.department;
-  assert.equal(dept("INV-2044"), "Product"); // PO-7744
-  assert.equal(dept("INV-2042"), "Operations"); // PO-7742
-  assert.equal(dept("INV-2047"), "Finance"); // PO-7747
+  assert.equal(deptOf("INV-2044"), "Product"); // PO-7744
+  assert.equal(deptOf("INV-2042"), "Operations"); // PO-7742
+  assert.equal(deptOf("INV-2047"), "Finance"); // PO-7747
 });
 
 test("every seeded document validates against the Zod schema", () => {
@@ -154,7 +155,7 @@ test("INV-2051 pends BOTH parallel gates (exception + Product) in one wave", () 
 
   const run = runApproval(PARALLEL_WORKFLOW, m);
   assert.equal(run.outcome, "awaiting");
-  const pendingIds = run.pending.map((p) => p.id).sort();
+  const pendingIds = run.pending.map((p) => p.id).toSorted((a, b) => a.localeCompare(b));
   assert.deepEqual(pendingIds, ["department-review", "manager-review"]);
 });
 

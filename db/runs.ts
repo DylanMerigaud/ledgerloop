@@ -132,7 +132,7 @@ export const listRecentRuns = async (
     .from(agentRuns)
     .orderBy(desc(agentRuns.createdAt))
     .limit(limit);
-  return rows.map(toHistoryItem);
+  return rows.map((row) => toHistoryItem(row));
 };
 
 /**

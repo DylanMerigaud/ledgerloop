@@ -38,6 +38,12 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   // Co-approvers beyond the primary (the panel's "Also requires").
   const extraApprovers = step.kind === "approval" ? (step.approvers ?? []) : [];
   const isUnconditional = step.when.kind === "always";
+  // The integration's brand (logo component + name) for a non-approval step. Looked
+  // up here, at the top of the component, so the icon is a plain variable reference
+  // in the JSX (not a component picked inside an inline IIFE, which reads as
+  // "component created during render").
+  const integration = isApproval ? null : integrationBrand(step.integration);
+  const IntegrationIcon = integration?.Icon;
 
   const badge = cb ?? st;
   // A staged decision tints the whole card (so the canvas shows at a glance which
@@ -140,15 +146,8 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
               Integration
             </div>
             <div className="mt-1 flex items-center gap-1.5">
-              {(() => {
-                const { Icon, name } = integrationBrand(step.integration);
-                return (
-                  <>
-                    <Icon size={16} />
-                    <span className="text-[12px] font-medium text-ink">{name}</span>
-                  </>
-                );
-              })()}
+              {IntegrationIcon && <IntegrationIcon size={16} />}
+              <span className="text-[12px] font-medium text-ink">{integration?.name}</span>
             </div>
           </div>
         )}

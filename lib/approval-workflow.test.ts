@@ -110,8 +110,9 @@ test("exceptionCode is set membership: == has the flag, != lacks it", () => {
   assert.equal(evaluateCondition(lacks, ctx({ exceptionCodes: ["vendor_inactive"] })), false);
 });
 
+const h = (c: Condition) => humanizeCondition(c);
+
 test("humanizeCondition reads the new levers plainly", () => {
-  const h = (c: Condition) => humanizeCondition(c);
   assert.equal(
     h({ kind: "leaf", field: "vendor", op: "==", value: "Severn Steelworks" }),
     "Vendor: Severn Steelworks"

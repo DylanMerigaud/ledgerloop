@@ -63,8 +63,7 @@ const main = async (): Promise<void> => {
   console.log(`edit-agent eval, ${isDryRun ? "dry-run (no API)" : "live"}\n`);
 
   if (!isDryRun && !process.env.ANTHROPIC_API_KEY) {
-    console.error("✖ Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.");
-    process.exit(1);
+    throw new Error("Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.");
   }
 
   // The real planner loads lib/env; import it only for a live run.
@@ -76,8 +75,7 @@ const main = async (): Promise<void> => {
 
   // The fixture is sound to start (sanity) so any final error is the agent's doing.
   if (!isActivatable(validateWorkflow(EDIT_FIXTURE))) {
-    console.error("✖ The eval fixture itself isn't sound, fix the fixture.");
-    process.exit(1);
+    throw new Error("The eval fixture itself isn't sound, fix the fixture.");
   }
 
   const rows: Row[] = [];
@@ -95,8 +93,19 @@ const main = async (): Promise<void> => {
 
   const passed = rows.filter((r) => r.pass).length;
   console.log(`\n${passed}/${rows.length} sound`);
-  if (passed !== rows.length) process.exit(1);
+  if (passed !== rows.length) {
+    throw new Error(`${rows.length - passed} case(s) produced an unsound workflow.`);
+  }
   console.log("✓ Every instruction produced a sound workflow.");
 };
 
-void main();
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
+})();

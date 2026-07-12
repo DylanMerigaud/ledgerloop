@@ -37,14 +37,14 @@ export const layout = (
   nodes: Node<NodeData>[],
   edges: Edge[],
   heightOf: (n: Node<NodeData>) => number,
-  vertical: boolean
+  isVertical: boolean
 ): Node<NodeData>[] => {
   const h = new Map(nodes.map((n) => [n.id, heightOf(n)]));
   const g = new dagre.graphlib.Graph();
   g.setGraph({
     // Horizontal (LR) on desktop; vertical (TB) on a narrow screen, where a wide
     // left-to-right DAG can't fit, stacked, each node gets the full column width.
-    rankdir: vertical ? "TB" : "LR",
+    rankdir: isVertical ? "TB" : "LR",
     nodesep: NODE_SEP,
     ranksep: RANK_SEP,
     ranker: "tight-tree",
@@ -60,8 +60,8 @@ export const layout = (
   // vertical axis when ranks flow left→right, the horizontal axis when top→bottom.
   // `rank` is the other axis (which column/row). We center + reorder on the cross
   // axis, so the same logic serves both orientations by swapping which coord it reads.
-  const crossOf = (id: string): number => (vertical ? g.node(id).x : g.node(id).y);
-  const crossSizeOf = (id: string): number => (vertical ? NODE_WIDTH : (h.get(id) ?? 80));
+  const crossOf = (id: string): number => (isVertical ? g.node(id).x : g.node(id).y);
+  const crossSizeOf = (id: string): number => (isVertical ? NODE_WIDTH : (h.get(id) ?? 80));
 
   const cross = new Map<string, number>(); // node id → center on the cross axis
   for (const id of g.nodes()) cross.set(id, crossOf(id));
@@ -88,18 +88,20 @@ export const layout = (
   for (const [, children] of childrenOf) {
     const branches = children.filter((c) => (parentsOf.get(c) ?? []).length === 1);
     if (branches.length < 2) continue;
-    const slots = branches.map((c) => cross.get(c) ?? 0).sort((a, b) => a - b);
+    const slots = branches.map((c) => cross.get(c) ?? 0).toSorted((a, b) => a - b);
     for (const [i, c] of branches.entries()) cross.set(c, slots[i] ?? cross.get(c) ?? 0);
   }
 
   // Parents centered on their children (deepest rank first so children settle first).
-  const rankOf = (id: string): number => (vertical ? g.node(id).y : g.node(id).x);
-  for (const id of [...g.nodes()].sort((a, b) => rankOf(b) - rankOf(a))) {
+  const rankOf = (id: string): number => (isVertical ? g.node(id).y : g.node(id).x);
+  const deepestFirst = [...g.nodes()].toSorted((a, b) => rankOf(b) - rankOf(a));
+  for (const id of deepestFirst) {
     const kids = childrenOf.get(id) ?? [];
     if (kids.length >= 2) cross.set(id, boxMid(kids));
   }
   // Join nodes centered on their parents (shallowest rank first).
-  for (const id of [...g.nodes()].sort((a, b) => rankOf(a) - rankOf(b))) {
+  const shallowestFirst = [...g.nodes()].toSorted((a, b) => rankOf(a) - rankOf(b));
+  for (const id of shallowestFirst) {
     const parents = parentsOf.get(id) ?? [];
     if (parents.length >= 2) cross.set(id, boxMid(parents));
   }
@@ -112,7 +114,9 @@ export const layout = (
   // linear run perfectly colinear regardless of card heights (the ONE thing that made
   // edges kink), while leaving fan-out branches and joins (2+ in/out) untouched, since
   // they aren't straight segments. Deterministic: it depends only on the graph shape.
-  for (const id of [...g.nodes()].sort((a, b) => rankOf(a) - rankOf(b))) {
+  // Same shallowest-first rank order as above (rankOf reads dagre's fixed positions,
+  // which the cross.set() calls don't touch), so the sorted list is reused.
+  for (const id of shallowestFirst) {
     const kids = childrenOf.get(id) ?? [];
     if (kids.length !== 1) continue; // source must fan out to exactly one node
     const kid = kids[0];
@@ -126,8 +130,8 @@ export const layout = (
     const c = cross.get(n.id) ?? crossOf(n.id);
     // dagre gives the center; React Flow positions by top-left. Map the cross-axis
     // center back to x (vertical) or y (horizontal); the rank axis is dagre's own.
-    const x = vertical ? c - NODE_WIDTH / 2 : node.x - node.width / 2;
-    const y = vertical ? node.y - node.height / 2 : c - halfOf(n.id);
+    const x = isVertical ? c - NODE_WIDTH / 2 : node.x - node.width / 2;
+    const y = isVertical ? node.y - node.height / 2 : c - halfOf(n.id);
     return { ...n, position: { x, y } };
   });
 };

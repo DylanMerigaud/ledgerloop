@@ -56,8 +56,7 @@ const main = async () => {
   console.log(IS_DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n");
 
   if (!IS_DRY_RUN && !process.env.ANTHROPIC_API_KEY) {
-    console.error("✖ Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.");
-    process.exit(1);
+    throw new Error("Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.");
   }
 
   const rows: string[] = [];
@@ -103,9 +102,12 @@ const main = async () => {
   const priceMismatch = SEED_BUNDLES.find((b) => b.id === "INV-2042");
   if (priceMismatch) {
     // The price-mismatch exception activates the manager gate; decide it by step id.
-    const pending = (await routeOf(priceMismatch, {})).recon;
-    const approved = (await routeOf(priceMismatch, { "manager-review": "approve" })).recon;
-    const rejected = (await routeOf(priceMismatch, { "manager-review": "reject" })).recon;
+    const pendingRun = await routeOf(priceMismatch, {});
+    const pending = pendingRun.recon;
+    const approvedRun = await routeOf(priceMismatch, { "manager-review": "approve" });
+    const approved = approvedRun.recon;
+    const rejectedRun = await routeOf(priceMismatch, { "manager-review": "reject" });
+    const rejected = rejectedRun.recon;
     if (pending.outcome !== "awaiting" || pending.posted) {
       console.error(`✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`);
       failures++;
@@ -126,13 +128,19 @@ const main = async () => {
   }
 
   if (failures > 0) {
-    console.error(`\n✖ ${failures} sanity check(s) failed.`);
-    process.exit(1);
+    throw new Error(`\n${failures} sanity check(s) failed.`);
   }
   console.log("✓ All edge cases route as expected. Pipeline logic is sound.");
 };
 
-main().catch((error) => {
-  console.error("✖ Sanity check crashed:", error);
-  process.exit(1);
-});
+// Run via an async IIFE (not top-level await) so the tsx/esbuild CJS transform
+// this script is executed under (`pnpm sanity`) still accepts it. A crash sets a
+// non-zero exit code instead of calling process.exit().
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("✖ Sanity check crashed:", error);
+    process.exitCode = 1;
+  }
+})();

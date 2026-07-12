@@ -21,11 +21,13 @@ import { formatDuration, humanize } from "@/lib/format";
  */
 /* The slices of the trace data this banner reads, Zod-validated so the unknown
    `data` is narrowed without a cast (same discipline as the rest of the app). */
+const ApprovalStep = z.object({ status: z.string(), detail: z.string() });
 const ApprovalData = z.object({
-  steps: z.array(z.object({ status: z.string(), detail: z.string() })).optional(),
+  steps: z.array(ApprovalStep).optional(),
 });
+const MatchingException = z.object({ message: z.string() });
 const MatchingData = z.object({
-  exceptions: z.array(z.object({ message: z.string() })).optional(),
+  exceptions: z.array(MatchingException).optional(),
 });
 
 const pauseReason = (trace: TraceEvent[]): string => {

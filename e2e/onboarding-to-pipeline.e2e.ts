@@ -26,7 +26,13 @@ const step = (page: Page, stage: string) => page.locator(`[data-testid="trace-st
 const openTrace = (page: Page) => page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
 const closeTrace = async (page: Page) => {
   const close = page.getByTestId("trace-close");
-  if (await close.isVisible().catch(() => false)) await close.click();
+  let isCloseVisible: boolean;
+  try {
+    isCloseVisible = await close.isVisible();
+  } catch {
+    isCloseVisible = false; // locator resolution can race a teardown, treat as not shown
+  }
+  if (isCloseVisible) await close.click();
 };
 
 test("a derived workflow drives the run, department gate and all", async ({ page }) => {

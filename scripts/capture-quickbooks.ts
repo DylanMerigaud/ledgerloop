@@ -47,11 +47,10 @@ const main = async (): Promise<void> => {
   const refreshToken = process.env.QBO_REFRESH_TOKEN;
   const realmId = process.env.QBO_REALM_ID;
   if (!clientId || !clientSecret || !refreshToken || !realmId) {
-    console.error(
+    throw new Error(
       "Missing QBO_CLIENT_ID / QBO_CLIENT_SECRET / QBO_REFRESH_TOKEN / QBO_REALM_ID.\n" +
         "Set them in .env.local, this script needs the live sandbox app to capture."
     );
-    process.exit(1);
   }
   const creds: QboCreds = {
     clientId,
@@ -73,11 +72,10 @@ const main = async (): Promise<void> => {
   // be mapped is worse than no fixture (the others can legitimately be empty).
   const pos = mapQboPurchaseOrders(purchaseOrders);
   if (pos.length === 0) {
-    console.error(
+    throw new Error(
       "Mapped 0 purchase orders. The sandbox has no item-based POs to read, " +
         "run `pnpm erp:seed` first to create the scenario, then retry."
     );
-    process.exit(1);
   }
   console.log(`Mapped OK: ${pos.length} purchase order(s).`);
 
@@ -103,10 +101,15 @@ const main = async (): Promise<void> => {
   console.log(`Wrote ${path.relative(process.cwd(), outFile)}`);
 };
 
-main()
-  .then(() => persistRotatedRefreshToken())
-  .catch((error: unknown) => {
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+    persistRotatedRefreshToken();
+  } catch (error) {
     persistRotatedRefreshToken();
     console.error("Capture failed:", error instanceof Error ? error.message : error);
-    process.exit(1);
-  });
+    process.exitCode = 1;
+  }
+})();

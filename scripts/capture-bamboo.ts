@@ -37,11 +37,10 @@ const main = async (): Promise<void> => {
   const key = process.env.BAMBOO_HR_API_KEY;
   const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
   if (!key || !subdomain) {
-    console.error(
+    throw new Error(
       "Missing BAMBOO_HR_API_KEY and/or BAMBOO_HR_SUBDOMAIN. Set them in .env.\n" +
         "(This script needs the LIVE trial key, it is the only step that does.)"
     );
-    process.exit(1);
   }
 
   console.log(`Fetching org from ${subdomain}.bamboohr.com …`);
@@ -72,7 +71,13 @@ const main = async (): Promise<void> => {
   console.log(`Wrote ${path.relative(process.cwd(), outFile)}`);
 };
 
-main().catch((error: unknown) => {
-  console.error("Capture failed:", error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("Capture failed:", error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
+})();

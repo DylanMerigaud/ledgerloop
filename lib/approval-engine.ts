@@ -100,9 +100,6 @@ export const executeWorkflow = (
     );
 
     const isAnyPredRejected = predStates.some((p) => p.status === "rejected");
-    const isAnyPredWaiting = predStates.some(
-      (p) => p.status === "pending" || p.status === "blocked"
-    );
 
     // A rejection anywhere upstream blocks this step (the bill won't post).
     if (isAnyPredRejected) {
@@ -112,6 +109,9 @@ export const executeWorkflow = (
         detail: "Blocked, an upstream approval was rejected.",
       };
     }
+    const isAnyPredWaiting = predStates.some(
+      (p) => p.status === "pending" || p.status === "blocked"
+    );
     // Any predecessor still pending/blocked → not reached yet; recompute after the
     // human acts. (For the AND-join, ALL paths must settle before we proceed.)
     if (isAnyPredWaiting) {
@@ -200,7 +200,8 @@ const topoOrder = (workflow: ApprovalWorkflow): string[] => {
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     order.push(id);
-    for (const n of byId.get(id)?.next ?? []) {
+    const nextIds = byId.get(id)?.next ?? [];
+    for (const n of nextIds) {
       const d = (indegree.get(n) ?? 0) - 1;
       indegree.set(n, d);
       if (d === 0) queue.push(n);

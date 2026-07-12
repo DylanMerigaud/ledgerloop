@@ -85,7 +85,7 @@ export const buildVendorBill = (match: MatchResult, vendor: string): VendorBill 
 /** Deterministic pseudo-id from the invoice number, so the demo is reproducible. */
 const refFor = (invoiceNumber: string): string => {
   let hash = 0;
-  for (const ch of invoiceNumber) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  for (const ch of invoiceNumber) hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) >>> 0;
   const n = 1000 + (hash % 9000);
   return `NETSUITE-BILL-${n}`;
 };
@@ -538,10 +538,12 @@ const qboAccessToken = async (creds: QboCreds): Promise<string> => {
     throw new Error("QBO token refresh returned no access_token.");
   }
   if (parsed.data.refresh_token && parsed.data.refresh_token !== creds.refreshToken) {
+    // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- captures QBO's rotated refresh token for the exported getter to read back after this run
     rotatedRefreshToken = parsed.data.refresh_token;
   }
   // Cache until 60s before expiry (default 3600s if QBO omits expires_in).
   const ttlMs = (parsed.data.expires_in ?? 3600) * 1000;
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy token cache, memoized so a seed run doesn't re-mint on every request
   tokenCache = {
     token: parsed.data.access_token,
     expiresAt: Date.now() + ttlMs - 60_000,
@@ -595,7 +597,12 @@ export const qboPostEntity = async (
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      // Body unreadable (already consumed / network hiccup), leave detail empty.
+    }
     throw new Error(
       `QBO ${entityPath} failed: HTTP ${res.status} ${res.statusText}${detail ? `, ${detail}` : ""}`
     );
@@ -656,6 +663,9 @@ const ErpFixture = z.object({
   bills: z.unknown().optional(),
 });
 
+/** Parse the recorded QBO payload once per call; each adapter method maps its slice. */
+const parseErpFixture = (): z.infer<typeof ErpFixture> => ErpFixture.parse(recordedErpPayload);
+
 /**
  * Replays the captured QBO payloads through the SAME mappers the live adapter
  * uses, so recorded and live read the exact same data. The fixture is a REAL
@@ -669,21 +679,19 @@ const ErpFixture = z.object({
  * identically local and in prod. Same reasoning as `recordedHris` in lib/hris.ts.
  */
 export const recordedErp = (): PoSourceAdapter => {
-  // Parse once; each method maps its slice. Async contract, in-memory payload.
-  const load = (): z.infer<typeof ErpFixture> => ErpFixture.parse(recordedErpPayload);
   return {
     name: "quickbooks (recorded)",
     pullPurchaseOrders() {
-      return Promise.resolve(mapQboPurchaseOrders(load().purchaseOrders));
+      return Promise.resolve(mapQboPurchaseOrders(parseErpFixture().purchaseOrders));
     },
     pullVendors() {
-      return Promise.resolve(mapQboVendors(load().vendors));
+      return Promise.resolve(mapQboVendors(parseErpFixture().vendors));
     },
     pullItems() {
-      return Promise.resolve(mapQboItems(load().items));
+      return Promise.resolve(mapQboItems(parseErpFixture().items));
     },
     pullPostedBills() {
-      return Promise.resolve(mapQboPostedBills(load().bills));
+      return Promise.resolve(mapQboPostedBills(parseErpFixture().bills));
     },
   };
 };

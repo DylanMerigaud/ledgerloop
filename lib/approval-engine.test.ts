@@ -94,7 +94,10 @@ test("collect-all: a big IT invoice surfaces BOTH director and IT pending at onc
   const s = executeWorkflow(wf, ctx({ amount: 9000, department: "IT" }), {
     manager: "approve",
   });
-  assert.deepEqual([...s.pending].sort(), ["director", "it"]);
+  assert.deepEqual(
+    [...s.pending].toSorted((a, b) => a.localeCompare(b)),
+    ["director", "it"]
+  );
   assert.equal(s.outcome, "awaiting");
   assert.equal(status(s, "post"), "blocked"); // waits for both
 });

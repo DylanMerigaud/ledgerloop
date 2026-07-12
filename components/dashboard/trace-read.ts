@@ -20,11 +20,12 @@ import { Invoice, MatchResult } from "@/lib/schema";
     (Local helper rather than Array.findLast, which needs a newer lib target.) */
 const findLastEvent = (
   trace: TraceEvent[],
-  pred: (e: TraceEvent) => boolean
+  // eslint-disable-next-line unicorn/consistent-boolean-name -- this is a predicate CALLBACK (e) => boolean, not a boolean value; an is/has prefix would misrepresent it as a flag.
+  predicate: (e: TraceEvent) => boolean
 ): TraceEvent | undefined => {
   for (let i = trace.length - 1; i >= 0; i--) {
     const e = trace[i];
-    if (e && pred(e)) return e;
+    if (e && predicate(e)) return e;
   }
   return undefined;
 };

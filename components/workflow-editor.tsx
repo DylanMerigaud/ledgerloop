@@ -348,8 +348,11 @@ const ChecksBadges = ({ issues }: { issues: WorkflowIssue[] }) => {
         </TooltipTrigger>
         <TooltipContent side="top" align="end" className="max-w-[360px]">
           <ul className="space-y-1">
-            {issues.map((iss, i) => (
-              <li key={`${iss.code}-${i}`} className="flex gap-2 text-[12px] leading-snug">
+            {issues.map((iss) => (
+              <li
+                key={`${iss.code}-${iss.stepIds.join(",")}`}
+                className="flex gap-2 text-[12px] leading-snug"
+              >
                 <span
                   aria-hidden
                   className={iss.severity === "error" ? "text-danger" : "text-warn"}
@@ -407,7 +410,7 @@ const SparkIcon = () => {
  */
 const hueFor = (label: string): number => {
   let h = 0;
-  for (const ch of label) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  for (const ch of label) h = (h * 31 + (ch.codePointAt(0) ?? 0)) % 360;
   return h;
 };
 
