@@ -17,9 +17,7 @@ const PO: PurchaseOrder = {
   poNumber: "PO-1",
   vendor: "Acme",
   currency: "USD",
-  lineItems: [
-    { sku: "A", description: "Widget", qty: 10, unitPrice: 100, amount: 1000 },
-  ],
+  lineItems: [{ sku: "A", description: "Widget", qty: 10, unitPrice: 100, amount: 1000 }],
   total: 1000,
   department: "",
 };
@@ -30,9 +28,7 @@ const INV: Invoice = {
   issueDate: "2026-05-01",
   currency: "USD",
   // 103 vs 100 = 3% over.
-  lineItems: [
-    { sku: "A", description: "Widget", qty: 10, unitPrice: 103, amount: 1030 },
-  ],
+  lineItems: [{ sku: "A", description: "Widget", qty: 10, unitPrice: 103, amount: 1030 }],
   subtotal: 1030,
   tax: null,
   total: 1030,
@@ -50,14 +46,8 @@ const relaxed: MatchTolerances = {
 };
 
 test("a 3% overage is an exception under tight tolerances, clean under loose", () => {
-  const strictMatch = runMatch(
-    { invoice: INV, purchaseOrder: PO, goodsReceipt: null },
-    strict,
-  );
-  const relaxedMatch = runMatch(
-    { invoice: INV, purchaseOrder: PO, goodsReceipt: null },
-    relaxed,
-  );
+  const strictMatch = runMatch({ invoice: INV, purchaseOrder: PO, goodsReceipt: null }, strict);
+  const relaxedMatch = runMatch({ invoice: INV, purchaseOrder: PO, goodsReceipt: null }, relaxed);
   // strict: 0.5% tolerance → 3% is a price variance → exception.
   assert.equal(strictMatch.verdict, "exception");
   // relaxed: 5% tolerance → 3% is within noise → clean.

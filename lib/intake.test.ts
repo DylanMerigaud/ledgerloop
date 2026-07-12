@@ -16,9 +16,7 @@ const SOURCE: Invoice = {
   vendor: "Acme Corp",
   issueDate: "2026-05-01",
   currency: "USD",
-  lineItems: [
-    { sku: "A-1", description: "Widget", qty: 2, unitPrice: 10, amount: 20 },
-  ],
+  lineItems: [{ sku: "A-1", description: "Widget", qty: 2, unitPrice: 10, amount: 20 }],
   subtotal: 20,
   tax: null,
   total: 20,

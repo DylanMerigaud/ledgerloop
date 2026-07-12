@@ -40,7 +40,7 @@ const decideGate = async (
   page: Page,
   stepId: string,
   choice: "approve" | "reject",
-  reason?: string,
+  reason?: string
 ) => {
   const close = page.getByTestId("trace-close");
   if (await close.isVisible().catch(() => false)) await close.click();
@@ -65,9 +65,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText("Invoice queue")).toBeVisible();
 });
 
-test("clean invoice runs straight through, no approval gate", async ({
-  page,
-}) => {
+test("clean invoice runs straight through, no approval gate", async ({ page }) => {
   await selectAndRun(page, "INV-2040");
 
   // A clean invoice trips no gate, so the decision bar never appears.
@@ -76,19 +74,13 @@ test("clean invoice runs straight through, no approval gate", async ({
   });
   // Open the trace: reconciliation resolves to ok (posted).
   await openTrace(page);
-  await expect(step(page, "reconciliation")).toHaveAttribute(
-    "data-status",
-    "ok",
-    {
-      timeout: RUN_TIMEOUT,
-    },
-  );
+  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "ok", {
+    timeout: RUN_TIMEOUT,
+  });
   await expect(page.getByText("Pipeline complete")).toBeVisible();
 });
 
-test("price-mismatch pauses for approval, then APPROVE posts it", async ({
-  page,
-}) => {
+test("price-mismatch pauses for approval, then APPROVE posts it", async ({ page }) => {
   await selectAndRun(page, "INV-2042");
 
   // 1. The run PAUSES on the manager gate: the decision bar appears on the canvas.
@@ -100,10 +92,7 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
   //    and nothing posted yet.
   await openTrace(page);
   await expect(step(page, "matching")).toHaveAttribute("data-status", "warn");
-  await expect(step(page, "reconciliation")).toHaveAttribute(
-    "data-status",
-    "waiting",
-  );
+  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "waiting");
   await expect(page.getByText(/Paused/)).toBeVisible();
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
 
@@ -113,11 +102,9 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
     timeout: RUN_TIMEOUT,
   });
   await openTrace(page);
-  await expect(step(page, "reconciliation")).toHaveAttribute(
-    "data-status",
-    "ok",
-    { timeout: RUN_TIMEOUT },
-  );
+  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "ok", {
+    timeout: RUN_TIMEOUT,
+  });
   await expect(page.getByText(/NETSUITE-BILL-/).first()).toBeVisible();
 
   // 4. No duplicated stage nodes after the resume (the audit-bug guard: a phase-2
@@ -129,34 +116,21 @@ test("price-mismatch pauses for approval, then APPROVE posts it", async ({
   await expect(page.getByText("Pipeline started")).toHaveCount(0);
 });
 
-test("price-mismatch REJECT (with a reason) leaves it un-posted", async ({
-  page,
-}) => {
+test("price-mismatch REJECT (with a reason) leaves it un-posted", async ({ page }) => {
   await selectAndRun(page, "INV-2042");
 
   await expect(page.getByTestId("approval-gate")).toBeVisible({
     timeout: RUN_TIMEOUT,
   });
   // Reject the gate on its node with a reason, then submit.
-  await decideGate(
-    page,
-    "manager-review",
-    "reject",
-    "price too high, renegotiate",
-  );
+  await decideGate(page, "manager-review", "reject", "price too high, renegotiate");
 
   // Reconciliation ends in error (rejected), and nothing was posted.
   await openTrace(page);
-  await expect(step(page, "reconciliation")).toHaveAttribute(
-    "data-status",
-    "error",
-    {
-      timeout: RUN_TIMEOUT,
-    },
-  );
+  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "error", {
+    timeout: RUN_TIMEOUT,
+  });
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
   // The reason rides into the trace on the rejected gate's detail.
-  await expect(
-    page.getByText(/price too high, renegotiate/).first(),
-  ).toBeVisible();
+  await expect(page.getByText(/price too high, renegotiate/).first()).toBeVisible();
 });

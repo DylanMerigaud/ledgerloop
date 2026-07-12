@@ -9,11 +9,7 @@ import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { isRecord } from "@/lib/assert";
 import type { Outcome } from "@/lib/display";
 import { client } from "@/lib/orpc/client";
-import {
-  deriveOutcome,
-  isAwaitingApproval,
-  decisionsForPending,
-} from "@/lib/run-outcome";
+import { deriveOutcome, isAwaitingApproval, decisionsForPending } from "@/lib/run-outcome";
 import type { TraceEvent } from "@/lib/trace";
 
 /**
@@ -52,7 +48,7 @@ export const usePipelineRun = (
   workflow: ApprovalWorkflow | null,
   /** Fired when a fresh (phase-1) run starts, with its generated instance id, so the
       caller can persist it in the URL (`?run=<runId>`). */
-  onRunStart?: (runId: string) => void,
+  onRunStart?: (runId: string) => void
 ) => {
   const [state, setState] = useState<PipelineRunState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
@@ -105,7 +101,7 @@ export const usePipelineRun = (
     async (
       id: string,
       decisions?: Record<string, "approve" | "reject">,
-      reasons?: Record<string, string>,
+      reasons?: Record<string, string>
     ) => {
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -143,11 +139,7 @@ export const usePipelineRun = (
         // approval node updates its per-step states, a just-approved gate, and a
         // NEXT gate that a wave reached now pends), upserting in place by stepId. This
         // is what lets a multi-wave workflow re-pause instead of silently posting.
-        if (
-          resuming &&
-          e.stage !== "approval" &&
-          e.stage !== "reconciliation"
-        ) {
+        if (resuming && e.stage !== "approval" && e.stage !== "reconciliation") {
           return;
         }
         if (resuming && e.kind === "run") return; // never replay run markers
@@ -186,8 +178,7 @@ export const usePipelineRun = (
         const activeWorkflow = workflowRef.current ?? undefined;
         if (decisions) {
           decisionsRef.current = { ...decisionsRef.current, ...decisions };
-          if (reasons)
-            reasonsRef.current = { ...reasonsRef.current, ...reasons };
+          if (reasons) reasonsRef.current = { ...reasonsRef.current, ...reasons };
         }
         // The instance id rides on both phases so the server upserts the same audit
         // row (phase 2 advances the phase-1 row rather than inserting a duplicate).
@@ -236,18 +227,14 @@ export const usePipelineRun = (
           trace: [...eventsRef.current],
           status: awaiting ? "awaiting" : "done",
           durationMs,
-          outcome: awaiting
-            ? "needs-approval"
-            : deriveOutcome(eventsRef.current, true),
+          outcome: awaiting ? "needs-approval" : deriveOutcome(eventsRef.current, true),
         }));
       } catch (err) {
         if (controller.signal.aborted) return;
-        const message =
-          err instanceof Error ? err.message : "Network error during run.";
+        const message = err instanceof Error ? err.message : "Network error during run.";
         // Rate-limit (the demo guard) is expected traffic, not a crash: surface it
         // as a toast the user actually sees, rather than a silent `error` state.
-        const rateLimited =
-          isRecord(err) && err["code"] === "TOO_MANY_REQUESTS";
+        const rateLimited = isRecord(err) && err["code"] === "TOO_MANY_REQUESTS";
         if (rateLimited) {
           toast.warning("Demo limit reached", { description: message });
         }
@@ -258,30 +245,25 @@ export const usePipelineRun = (
           error: message,
         }));
       }
-    },
+    }
   );
 
   const run = useEventCallback((id: string) => stream(id));
   // One decision applied to every gate pending in this wave (the header button). An
   // optional reason (a reject note) is attached to those same gates.
-  const decide = useEventCallback(
-    (id: string, decision: "approve" | "reject", reason?: string) => {
-      const decisions = decisionsForPending(eventsRef.current, decision);
-      const note = reason?.trim();
-      const reasons = note
-        ? Object.fromEntries(Object.keys(decisions).map((k) => [k, note]))
-        : undefined;
-      return stream(id, decisions, reasons);
-    },
-  );
+  const decide = useEventCallback((id: string, decision: "approve" | "reject", reason?: string) => {
+    const decisions = decisionsForPending(eventsRef.current, decision);
+    const note = reason?.trim();
+    const reasons = note
+      ? Object.fromEntries(Object.keys(decisions).map((k) => [k, note]))
+      : undefined;
+    return stream(id, decisions, reasons);
+  });
   // An explicit per-gate map (the inline node controls), approve one, reject
   // another in the same parallel wave, each with its own optional reject note.
   const decideMany = useEventCallback(
-    (
-      id: string,
-      perGate: Record<string, "approve" | "reject">,
-      reasons?: Record<string, string>,
-    ) => stream(id, perGate, reasons),
+    (id: string, perGate: Record<string, "approve" | "reject">, reasons?: Record<string, string>) =>
+      stream(id, perGate, reasons)
   );
 
   /**

@@ -60,7 +60,7 @@ const creds = (): QboCreds => {
   const realmId = process.env.QBO_REALM_ID;
   if (!clientId || !clientSecret || !refreshToken || !realmId) {
     console.error(
-      "Missing QBO_CLIENT_ID / QBO_CLIENT_SECRET / QBO_REFRESH_TOKEN / QBO_REALM_ID in .env.",
+      "Missing QBO_CLIENT_ID / QBO_CLIENT_SECRET / QBO_REFRESH_TOKEN / QBO_REALM_ID in .env."
     );
     process.exit(1);
   }
@@ -93,26 +93,17 @@ const QboAccount = z.object({
 });
 
 const resolveExpenseAccountId = async (c: QboCreds): Promise<string> => {
-  const raw = await qboQuery(
-    c,
-    "select * from Account where Active = true maxresults 1000",
-  );
+  const raw = await qboQuery(c, "select * from Account where Active = true maxresults 1000");
   const Resp = z.object({
-    QueryResponse: z
-      .object({ Account: z.array(QboAccount).optional() })
-      .optional(),
+    QueryResponse: z.object({ Account: z.array(QboAccount).optional() }).optional(),
   });
   const parsed = Resp.safeParse(raw);
-  const accounts = parsed.success
-    ? (parsed.data.QueryResponse?.Account ?? [])
-    : [];
+  const accounts = parsed.success ? (parsed.data.QueryResponse?.Account ?? []) : [];
   // Prefer Cost of Goods Sold (what a purchased item expenses to), else any Expense.
   const cogs = accounts.find((a) => a.AccountType === "Cost of Goods Sold");
   const expense = cogs ?? accounts.find((a) => a.Classification === "Expense");
   if (!expense) {
-    throw new Error(
-      "No expense / COGS account found in the sandbox to attach items to.",
-    );
+    throw new Error("No expense / COGS account found in the sandbox to attach items to.");
   }
   return expense.Id;
 };
@@ -128,7 +119,7 @@ const ensureVendor = async (c: QboCreds, vendor: string): Promise<string> => {
   const name = tagged(vendor);
   const existing = await qboQuery(
     c,
-    `select * from Vendor where DisplayName = '${escapeQuery(name)}'`,
+    `select * from Vendor where DisplayName = '${escapeQuery(name)}'`
   );
   const found = firstEntity(existing, "Vendor");
   if (found) return found;
@@ -136,17 +127,10 @@ const ensureVendor = async (c: QboCreds, vendor: string): Promise<string> => {
   return entityId(created, "Vendor");
 };
 
-const ensureItem = async (
-  c: QboCreds,
-  sku: string,
-  expenseAccountId: string,
-): Promise<string> => {
+const ensureItem = async (c: QboCreds, sku: string, expenseAccountId: string): Promise<string> => {
   // The item NAME is the scenario SKU, that's what the matcher joins on once the
   // PO is pulled back (mapQboPurchaseOrders keys sku on ItemRef.name).
-  const existing = await qboQuery(
-    c,
-    `select * from Item where Name = '${escapeQuery(sku)}'`,
-  );
+  const existing = await qboQuery(c, `select * from Item where Name = '${escapeQuery(sku)}'`);
   const found = firstEntity(existing, "Item");
   if (found) return found;
   const created = await qboPostEntity(c, "item", {
@@ -163,13 +147,10 @@ const ensureItem = async (
  * (vendor_inactive / duplicate_in_erp), so the QBO name must equal the invoice's
  * vendor verbatim.
  */
-const ensureVendorExact = async (
-  c: QboCreds,
-  name: string,
-): Promise<string> => {
+const ensureVendorExact = async (c: QboCreds, name: string): Promise<string> => {
   const existing = await qboQuery(
     c,
-    `select * from Vendor where DisplayName = '${escapeQuery(name)}'`,
+    `select * from Vendor where DisplayName = '${escapeQuery(name)}'`
   );
   const found = firstEntity(existing, "Vendor");
   if (found) return found;
@@ -183,10 +164,7 @@ const ensureVendorExact = async (
  * SyncToken. Idempotent: a no-op if already inactive.
  */
 const deactivateVendor = async (c: QboCreds, name: string): Promise<void> => {
-  const raw = await qboQuery(
-    c,
-    `select * from Vendor where DisplayName = '${escapeQuery(name)}'`,
-  );
+  const raw = await qboQuery(c, `select * from Vendor where DisplayName = '${escapeQuery(name)}'`);
   if (!isRecord(raw) || !isRecord(raw.QueryResponse)) return;
   const parsed = z
     .array(
@@ -194,7 +172,7 @@ const deactivateVendor = async (c: QboCreds, name: string): Promise<void> => {
         Id: z.string(),
         SyncToken: z.string(),
         Active: z.boolean().optional(),
-      }),
+      })
     )
     .safeParse(raw.QueryResponse.Vendor);
   const v = parsed.success ? parsed.data[0] : undefined;
@@ -217,7 +195,7 @@ const postBill = async (
   vendorId: string,
   docNumber: string,
   expenseAccountId: string,
-  amount: number,
+  amount: number
 ): Promise<void> => {
   if (await seededBill(c, docNumber)) return; // idempotent, don't post twice
   await qboPostEntity(c, "bill", {
@@ -238,12 +216,9 @@ const postBill = async (
 /** Find the seeded posted Bill by its DocNumber, returning {id, syncToken} or null. */
 const seededBill = async (
   c: QboCreds,
-  docNumber: string,
+  docNumber: string
 ): Promise<{ id: string; syncToken: string } | null> => {
-  const raw = await qboQuery(
-    c,
-    `select * from Bill where DocNumber = '${escapeQuery(docNumber)}'`,
-  );
+  const raw = await qboQuery(c, `select * from Bill where DocNumber = '${escapeQuery(docNumber)}'`);
   if (!isRecord(raw) || !isRecord(raw.QueryResponse)) return null;
   const rows = z
     .array(z.object({ Id: z.string(), SyncToken: z.string() }))
@@ -253,10 +228,7 @@ const seededBill = async (
 };
 
 /* ── PO create ──────────────────────────────────────────────────────────────*/
-const buildPoLine = (
-  line: LineItem,
-  itemId: string,
-): Record<string, unknown> => ({
+const buildPoLine = (line: LineItem, itemId: string): Record<string, unknown> => ({
   DetailType: "ItemBasedExpenseLineDetail",
   Amount: line.amount,
   Description: line.description,
@@ -271,10 +243,10 @@ const createPo = async (
   c: QboCreds,
   po: PurchaseOrder,
   vendorId: string,
-  itemIds: Map<string, string>,
+  itemIds: Map<string, string>
 ): Promise<void> => {
   const Line = po.lineItems.map((l) =>
-    buildPoLine(l, nonNull(itemIds.get(l.sku), `item ${l.sku} was ensured`)),
+    buildPoLine(l, nonNull(itemIds.get(l.sku), `item ${l.sku} was ensured`))
   );
   await qboPostEntity(c, "purchaseorder", {
     DocNumber: po.poNumber,
@@ -286,7 +258,7 @@ const createPo = async (
 /* ── Existing seeded POs (for idempotency + reset) ──────────────────────────*/
 const seededPoIds = async (
   c: QboCreds,
-  docNumbers: string[],
+  docNumbers: string[]
 ): Promise<{ id: string; docNumber: string; syncToken: string }[]> => {
   const raw = await qboQuery(c, "select * from PurchaseOrder maxresults 1000");
   const Resp = z.object({
@@ -298,16 +270,14 @@ const seededPoIds = async (
               Id: z.string(),
               DocNumber: z.string().optional(),
               SyncToken: z.string(),
-            }),
+            })
           )
           .optional(),
       })
       .optional(),
   });
   const parsed = Resp.safeParse(raw);
-  const pos = parsed.success
-    ? (parsed.data.QueryResponse?.PurchaseOrder ?? [])
-    : [];
+  const pos = parsed.success ? (parsed.data.QueryResponse?.PurchaseOrder ?? []) : [];
   const wanted = new Set(docNumbers);
   return pos
     .filter((p) => p.DocNumber && wanted.has(p.DocNumber))
@@ -328,7 +298,7 @@ const seed = async (): Promise<void> => {
   if (already.length > 0) {
     console.error(
       `${already.length} scenario PO(s) already in QBO (${already.map((a) => a.docNumber).join(", ")}). ` +
-        `Run "pnpm erp:reset" first to avoid duplicates.`,
+        `Run "pnpm erp:reset" first to avoid duplicates.`
     );
     process.exit(1);
   }
@@ -347,7 +317,7 @@ const seed = async (): Promise<void> => {
     }
     await createPo(c, po, vendorId, itemIds);
     console.log(
-      `  + ${po.poNumber}, ${po.vendor} (${po.lineItems.length} line${po.lineItems.length === 1 ? "" : "s"})`,
+      `  + ${po.poNumber}, ${po.vendor} (${po.lineItems.length} line${po.lineItems.length === 1 ? "" : "s"})`
     );
   }
 
@@ -361,20 +331,12 @@ const seed = async (): Promise<void> => {
   console.log(`  · inactive vendor "${ERP_INACTIVE_VENDOR}"`);
 
   const paidVendorId = await ensureVendorExact(c, ERP_PAID_VENDOR);
-  await postBill(
-    c,
-    paidVendorId,
-    ERP_PAID_INVOICE_NUMBER,
-    expenseAccountId,
-    500,
-  );
-  console.log(
-    `  · posted bill ${ERP_PAID_INVOICE_NUMBER} for "${ERP_PAID_VENDOR}" (already paid)`,
-  );
+  await postBill(c, paidVendorId, ERP_PAID_INVOICE_NUMBER, expenseAccountId, 500);
+  console.log(`  · posted bill ${ERP_PAID_INVOICE_NUMBER} for "${ERP_PAID_VENDOR}" (already paid)`);
 
   console.log(
     `\nDone. ${pos.length} purchase order(s) + ERP-control data seeded. ` +
-      `Run "pnpm erp:capture" to record them into the recorded fixture.`,
+      `Run "pnpm erp:capture" to record them into the recorded fixture.`
   );
 };
 
@@ -413,9 +375,7 @@ const reset = async (): Promise<void> => {
     } catch (err) {
       failed++;
       const reason = err instanceof Error ? err.message : String(err);
-      console.log(
-        `  ! could not delete bill ${ERP_PAID_INVOICE_NUMBER}: ${reason}`,
-      );
+      console.log(`  ! could not delete bill ${ERP_PAID_INVOICE_NUMBER}: ${reason}`);
     }
   }
 
@@ -424,7 +384,7 @@ const reset = async (): Promise<void> => {
   console.log(
     failed === 0
       ? `Removed ${targets.length} PO(s) + the seeded bill. (Vendors/items left in place; tagged "${SEED_TAG}" or named exactly.)`
-      : `${failed} item(s) could not be deleted (see above).`,
+      : `${failed} item(s) could not be deleted (see above).`
   );
 };
 

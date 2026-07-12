@@ -66,6 +66,6 @@ test("a tool reads requestContext and the agent invokes it (mock model)", async 
   assert.equal(
     sawContextValue,
     "hello-from-context",
-    "requestContext value must reach the tool's execute",
+    "requestContext value must reach the tool's execute"
   );
 });

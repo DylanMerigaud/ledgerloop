@@ -104,7 +104,7 @@ export const ExtractionReveal = ({
         {running && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 animate-scan bg-gradient-to-b from-accent/0 via-accent/25 to-accent/0"
+            className="animate-scan pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-accent/0 via-accent/25 to-accent/0"
           />
         )}
         <PdfDocument src={pdfSrc} dim={running} />
@@ -124,9 +124,7 @@ export const ExtractionReveal = ({
                   : "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
               }`}
             >
-              {state.matches
-                ? "reconciled with PO record"
-                : "differs from record"}
+              {state.matches ? "reconciled with PO record" : "differs from record"}
             </span>
           )}
         </div>
@@ -146,14 +144,7 @@ export const ExtractionReveal = ({
 };
 
 /** The field labels shown in the Extracted panel, in order (stable across modes). */
-const FIELD_LABELS = [
-  "Vendor",
-  "Invoice no.",
-  "PO number",
-  "Issue date",
-  "Line items",
-  "Total",
-];
+const FIELD_LABELS = ["Vendor", "Invoice no.", "PO number", "Issue date", "Line items", "Total"];
 
 const FieldRow = ({
   label,
@@ -168,9 +159,7 @@ const FieldRow = ({
     <div className="flex items-baseline justify-between gap-3 text-[12px]">
       <span className="shrink-0 text-muted">{label}</span>
       {state === "shown" ? (
-        <span className="animate-trace-in truncate text-right font-medium text-ink">
-          {value}
-        </span>
+        <span className="animate-trace-in truncate text-right font-medium text-ink">{value}</span>
       ) : (
         <span
           aria-hidden

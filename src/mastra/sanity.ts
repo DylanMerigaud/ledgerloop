@@ -46,24 +46,16 @@ const routeOf = async (bundle: SeedBundle, decisions: Decisions = {}) => {
     match.verdict === "duplicate"
       ? { outcome: "blocked" as const, pending: [] }
       : runApproval(WORKFLOW, match, decisions);
-  const recon = await reconcileFromOutcome(
-    approval.outcome,
-    match,
-    bundle.invoice.vendor,
-  );
+  const recon = await reconcileFromOutcome(approval.outcome, match, bundle.invoice.vendor);
   return { match, approval, recon };
 };
 
 const main = async () => {
   console.log(`ledgerloop pipeline sanity, model: ${PIPELINE_MODEL}`);
-  console.log(
-    DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n",
-  );
+  console.log(DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n");
 
   if (!DRY_RUN && !process.env.ANTHROPIC_API_KEY) {
-    console.error(
-      "✖ Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.",
-    );
+    console.error("✖ Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.");
     process.exit(1);
   }
 
@@ -78,14 +70,10 @@ const main = async () => {
         : approval.outcome === "blocked"
           ? "BLOCKED (not posted)"
           : `→ ${approval.pending.map((p) => p.id).join(", ")} → ⏸ awaiting human decision`;
-    rows.push(
-      `  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`,
-    );
+    rows.push(`  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`);
   }
 
-  console.log(
-    "Invoice          Verdict    Routing (no reviewer decisions yet)",
-  );
+  console.log("Invoice          Verdict    Routing (no reviewer decisions yet)");
   console.log(rows.join("\n"));
   console.log();
 
@@ -115,33 +103,23 @@ const main = async () => {
   if (priceMismatch) {
     // The price-mismatch exception activates the manager gate; decide it by step id.
     const pending = (await routeOf(priceMismatch, {})).recon;
-    const approved = (
-      await routeOf(priceMismatch, { "manager-review": "approve" })
-    ).recon;
-    const rejected = (
-      await routeOf(priceMismatch, { "manager-review": "reject" })
-    ).recon;
+    const approved = (await routeOf(priceMismatch, { "manager-review": "approve" })).recon;
+    const rejected = (await routeOf(priceMismatch, { "manager-review": "reject" })).recon;
     if (pending.outcome !== "awaiting" || pending.posted) {
-      console.error(
-        `✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`,
-      );
+      console.error(`✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`);
       failures++;
     }
     if (approved.outcome !== "posted" || !approved.posted) {
-      console.error(
-        `✖ INV-2042 approve: expected posted, got ${approved.outcome}`,
-      );
+      console.error(`✖ INV-2042 approve: expected posted, got ${approved.outcome}`);
       failures++;
     }
     if (rejected.outcome !== "rejected" || rejected.posted) {
-      console.error(
-        `✖ INV-2042 reject: expected rejected/un-posted, got ${rejected.outcome}`,
-      );
+      console.error(`✖ INV-2042 reject: expected rejected/un-posted, got ${rejected.outcome}`);
       failures++;
     }
     if (!failures) {
       console.log(
-        "✓ Human-in-the-loop gate: INV-2042 pauses (awaiting) → posts on approve → stays un-posted on reject.",
+        "✓ Human-in-the-loop gate: INV-2042 pauses (awaiting) → posts on approve → stays un-posted on reject."
       );
     }
   }

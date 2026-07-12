@@ -110,7 +110,7 @@ export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
  */
 export const workflowFromPolicy = (
   policy: ApprovalPolicy,
-  name = "Default approval workflow",
+  name = "Default approval workflow"
 ): TApprovalWorkflow => {
   const isException: WorkflowStep["when"] = {
     kind: "leaf",

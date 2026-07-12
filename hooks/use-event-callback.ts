@@ -9,7 +9,7 @@ export const useEventCallback = <
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a generic callback needs `any` args/return for full flexibility
   T extends (...args: any[]) => any,
 >(
-  fn: T,
+  fn: T
 ): T => {
   const ref = useRef<T>(fn);
 

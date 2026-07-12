@@ -29,8 +29,7 @@ import {
 type Group = { kind: "all" | "any"; conditions: Condition[] };
 
 /** A leaf or a (single-level) group, the two kinds of row in the root list. */
-const isGroup = (c: Condition): c is Group =>
-  c.kind === "all" || c.kind === "any";
+const isGroup = (c: Condition): c is Group => c.kind === "all" || c.kind === "any";
 const isLeaf = (c: Condition): c is ConditionLeaf => c.kind === "leaf";
 
 /** Bring any stored condition into an editable root group (so there's always a
@@ -45,9 +44,7 @@ const normalize = (c: Condition): Group => {
     single leaf under ALL → that leaf; otherwise the group (with empty subgroups
     dropped). Keeps `humanizeCondition` reading naturally and the schema minimal. */
 const collapse = (root: Group): Condition => {
-  const conditions = root.conditions.filter(
-    (c) => !isGroup(c) || c.conditions.length > 0,
-  );
+  const conditions = root.conditions.filter((c) => !isGroup(c) || c.conditions.length > 0);
   if (conditions.length === 0) return { kind: "always" };
   const only = conditions[0];
   if (conditions.length === 1 && only && !isGroup(only)) return only;
@@ -91,10 +88,7 @@ export const ConditionEditor = ({
     <div className="space-y-2 rounded-lg bg-subtle/30 p-2.5 ring-1 ring-inset ring-line">
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-faint">Match</span>
-        <Combinator
-          kind={root.kind}
-          onChange={(kind) => emit({ ...root, kind })}
-        />
+        <Combinator kind={root.kind} onChange={(kind) => emit({ ...root, kind })} />
       </div>
 
       {root.conditions.length === 0 && (
@@ -120,7 +114,7 @@ export const ConditionEditor = ({
             onChange={(next) => setRow(i, next)}
             onRemove={() => removeRow(i)}
           />
-        ) : null,
+        ) : null
       )}
 
       <div className="flex gap-1.5 pt-0.5">
@@ -169,10 +163,7 @@ const SubGroup = ({
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-faint">Any/all of</span>
         <div className="flex items-center gap-1">
-          <Combinator
-            kind={group.kind}
-            onChange={(kind) => onChange({ ...group, kind })}
-          />
+          <Combinator kind={group.kind} onChange={(kind) => onChange({ ...group, kind })} />
           <RemoveButton onClick={onRemove} label="Remove group" />
         </div>
       </div>
@@ -186,7 +177,7 @@ const SubGroup = ({
             onChange={(next) => setLeaf(i, next)}
             onRemove={() => removeLeaf(i)}
           />
-        ) : null,
+        ) : null
       )}
       <AddButton testid="cond-subadd-leaf" onClick={addLeaf}>
         + condition
@@ -214,9 +205,7 @@ const LeafRow = ({
         aria-label="Field"
         data-testid="cond-field"
         value={leaf.field}
-        onChange={(e) =>
-          onChange(defaultLeafFor(asField(e.target.value), available))
-        }
+        onChange={(e) => onChange(defaultLeafFor(asField(e.target.value), available))}
         className={`${SELECT} min-w-0 flex-1`}
       >
         {CONDITION_FIELDS.map((f) => (
@@ -259,8 +248,7 @@ const ValueInput = ({
   onChange: (next: ConditionLeaf) => void;
 }) => {
   if (meta.kind === "enum" && meta.options) {
-    const labelOf = (o: string) =>
-      meta.label === "Exception flag" ? o.replace(/_/g, " ") : o;
+    const labelOf = (o: string) => (meta.label === "Exception flag" ? o.replace(/_/g, " ") : o);
     // Long lists (vendors, exception codes) get a searchable combobox; short enums
     // (verdict, matchType) stay a plain select, search there is overkill.
     if (meta.options.length > 6) {
@@ -384,13 +372,7 @@ const AddButton = ({
   </button>
 );
 
-const RemoveButton = ({
-  onClick,
-  label,
-}: {
-  onClick: () => void;
-  label: string;
-}) => (
+const RemoveButton = ({ onClick, label }: { onClick: () => void; label: string }) => (
   <button
     type="button"
     aria-label={label}
@@ -403,7 +385,6 @@ const RemoveButton = ({
 
 /* The selects emit raw strings; narrow them back to the typed unions (the values come
    from our own option lists, so a non-match falls back to a safe default). */
-const asField = (v: string): ConditionField =>
-  CONDITION_FIELDS.find((f) => f === v) ?? "amount";
+const asField = (v: string): ConditionField => CONDITION_FIELDS.find((f) => f === v) ?? "amount";
 const ALL_OPS: ConditionOp[] = [">", ">=", "<", "<=", "==", "!="];
 const asOp = (v: string): ConditionOp => ALL_OPS.find((o) => o === v) ?? "==";

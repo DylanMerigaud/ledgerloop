@@ -3,16 +3,8 @@ import {
   diffWorkflows,
   type StepChange,
 } from "@/lib/approval-workflow";
-import {
-  applyEditOp,
-  type WorkflowEditOp,
-  type AvailableScope,
-} from "@/lib/workflow-edit";
-import {
-  validateWorkflow,
-  isActivatable,
-  type WorkflowIssue,
-} from "@/lib/workflow-validate";
+import { applyEditOp, type WorkflowEditOp, type AvailableScope } from "@/lib/workflow-edit";
+import { validateWorkflow, isActivatable, type WorkflowIssue } from "@/lib/workflow-validate";
 
 /**
  * The conversational EDIT AGENT, the real agentic layer.
@@ -76,7 +68,7 @@ const MAX_STEPS = 4;
 /** Apply an ordered op list to a workflow, returning the running result. */
 const applyAll = (
   wf: TWorkflow,
-  ops: WorkflowEditOp[],
+  ops: WorkflowEditOp[]
 ): { result: TWorkflow; reason: string | null } => {
   let result = wf;
   let reason: string | null = null;
@@ -98,7 +90,7 @@ export const runEditAgent = async (
   model: PlanModel,
   current: TWorkflow,
   instruction: string,
-  available: AvailableScope,
+  available: AvailableScope
 ): Promise<AgentEditResult> => {
   const allOps: WorkflowEditOp[] = [];
   let working = current;

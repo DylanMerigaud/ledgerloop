@@ -12,16 +12,8 @@
  */
 import { join } from "node:path";
 
-import {
-  AGENT_CASES,
-  EDIT_FIXTURE,
-  type AgentCase,
-} from "@/eval/edit-agent-cases";
-import {
-  runEditAgent,
-  type PlanModel,
-  type AgentEditResult,
-} from "@/lib/workflow-edit-agent";
+import { AGENT_CASES, EDIT_FIXTURE, type AgentCase } from "@/eval/edit-agent-cases";
+import { runEditAgent, type PlanModel, type AgentEditResult } from "@/lib/workflow-edit-agent";
 import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
 
 const dryRun = process.argv.includes("--dry-run");
@@ -71,9 +63,7 @@ const main = async (): Promise<void> => {
   console.log(`edit-agent eval, ${dryRun ? "dry-run (no API)" : "live"}\n`);
 
   if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
-    console.error(
-      "✖ Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.",
-    );
+    console.error("✖ Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.");
     process.exit(1);
   }
 

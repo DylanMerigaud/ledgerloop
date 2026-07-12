@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { isRecord } from "@/lib/assert";
-import {
-  toTraceEvent,
-  stageForStep,
-  pipelineErrorEvent,
-  TraceEvent,
-} from "@/lib/trace";
+import { toTraceEvent, stageForStep, pipelineErrorEvent, TraceEvent } from "@/lib/trace";
 
 /**
  * Tests for the Mastra-chunk → TraceEvent adapter. The two properties that
@@ -145,10 +140,7 @@ test("narration in output becomes the detail line", () => {
 });
 
 test("unknown chunk types are dropped (null), not surfaced", () => {
-  assert.equal(
-    toTraceEvent({ type: "workflow-step-progress", payload: {} }),
-    null,
-  );
+  assert.equal(toTraceEvent({ type: "workflow-step-progress", payload: {} }), null);
   assert.equal(toTraceEvent({ type: "reasoning", payload: {} }), null);
 });
 
@@ -206,7 +198,7 @@ test("the internal .map() step is dropped, not surfaced", () => {
       type: "workflow-step-start",
       payload: { id: "mapping_abc-123" },
     }),
-    null,
+    null
   );
   assert.equal(
     toTraceEvent({
@@ -216,7 +208,7 @@ test("the internal .map() step is dropped, not surfaced", () => {
         output: { decision: {}, match: {}, vendor: "x" },
       },
     }),
-    null,
+    null
   );
 });
 
@@ -268,11 +260,7 @@ test("approval step output is unwrapped: nested approval summary drives status +
   assert.ok(e);
   assert.equal(e.status, "waiting", "awaiting outcome → amber/pause");
   assert.ok(isRecord(e.data), "event data is an object");
-  assert.equal(
-    e.data["outcome"],
-    "awaiting",
-    "data is the unwrapped approval summary",
-  );
+  assert.equal(e.data["outcome"], "awaiting", "data is the unwrapped approval summary");
   assert.equal(e.detail, "Needs manager sign-off.");
 });
 

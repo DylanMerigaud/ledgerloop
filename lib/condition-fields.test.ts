@@ -27,14 +27,11 @@ test("defaultLeafFor yields a schema-valid leaf for every field", () => {
   for (const field of CONDITION_FIELDS) {
     const leaf = defaultLeafFor(field, SOME);
     // It parses as a Condition (so the op/value are in domain for the schema).
-    assert.doesNotThrow(
-      () => Condition.parse(leaf),
-      `${field} leaf must validate`,
-    );
+    assert.doesNotThrow(() => Condition.parse(leaf), `${field} leaf must validate`);
     // The op is one the field actually allows.
     assert.ok(
       fieldMeta(field, SOME).ops.includes(leaf.op),
-      `${field}: op ${leaf.op} not in its ops`,
+      `${field}: op ${leaf.op} not in its ops`
     );
   }
 });

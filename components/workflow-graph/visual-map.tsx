@@ -10,7 +10,7 @@ export const REACHED = new Set(["pending", "approved", "done", "rejected"]);
 /* ── node visuals ──────────────────────────────────────────────────────────── */
 
 export const statusTone = (
-  status: string | undefined,
+  status: string | undefined
 ): { tone: "ok" | "warn" | "danger" | "neutral"; label: string } | null => {
   switch (status) {
     case "approved":
@@ -32,7 +32,7 @@ export const statusTone = (
 
 /** The real brand mark + display name for an integration kind. */
 export const integrationBrand = (
-  kind: string,
+  kind: string
 ): { Icon: (p: { size?: number }) => React.ReactNode; name: string } => {
   switch (kind) {
     case "slack":
@@ -60,7 +60,7 @@ export const changeRing = (change: StepChange["kind"] | undefined): string => {
 };
 
 export const changeBadge = (
-  change: StepChange["kind"] | undefined,
+  change: StepChange["kind"] | undefined
 ): { tone: "ok" | "warn" | "danger"; label: string } | null => {
   if (change === "added") return { tone: "ok", label: "Added" };
   if (change === "changed") return { tone: "warn", label: "Changed" };

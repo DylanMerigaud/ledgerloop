@@ -98,7 +98,7 @@ test("add-approval: adds a gate, wires it, leaves every other step untouched", (
   assert.equal(
     describeCondition(cfo.when),
     "amount > $50,000",
-    "condition built from the threshold",
+    "condition built from the threshold"
   );
   // The director's NESTED condition is byte-for-byte intact (the old bug).
   assert.equal(whenOf(next, "director"), directorWhenText);
@@ -106,7 +106,7 @@ test("add-approval: adds a gate, wires it, leaves every other step untouched", (
   assert.equal(
     changes.find((c) => c.id === "director")?.kind,
     "unchanged",
-    "director must not be touched",
+    "director must not be touched"
   );
 });
 
@@ -140,10 +140,7 @@ test("add-approval: builds a vendor / currency / matchType / exceptionCode condi
   });
   const fx = multi.steps.find((s) => s.label === "FX exception review");
   assert.ok(fx);
-  assert.equal(
-    describeCondition(fx.when),
-    "currency == EUR and exceptionCode == vendor_inactive",
-  );
+  assert.equal(describeCondition(fx.when), "currency == EUR and exceptionCode == vendor_inactive");
 });
 
 test("add-approval: onException scopes the gate to any flagged exception", () => {
@@ -178,10 +175,7 @@ test("add-approval: onException scopes the gate to any flagged exception", () =>
   });
   const fraud = narrowed.steps.find((s) => s.label === "Fraud review");
   assert.ok(fraud);
-  assert.equal(
-    describeCondition(fraud.when),
-    "exceptionCode == vendor_inactive",
-  );
+  assert.equal(describeCondition(fraud.when), "exceptionCode == vendor_inactive");
 });
 
 test("add-integration: runs after the post, doesn't alter other conditions", () => {
@@ -195,11 +189,7 @@ test("add-integration: runs after the post, doesn't alter other conditions", () 
   assert.equal(slack.kind, "integration");
   const post = next.steps.find((s) => s.id === "post");
   assert.ok(post?.next.includes(slack.id), "post routes into slack");
-  assert.equal(
-    whenOf(next, "director"),
-    directorWhenText,
-    "director condition untouched",
-  );
+  assert.equal(whenOf(next, "director"), directorWhenText, "director condition untouched");
 });
 
 test("a SECOND notification still branches off the ERP post, not the first", () => {
@@ -270,16 +260,8 @@ test("insert-approval-after: sits the new gate BETWEEN the anchor and what follo
   const cfo = next.steps.find((s) => s.label === "CFO review");
   const dir = next.steps.find((s) => s.id === "director");
   assert.ok(cfo && dir);
-  assert.deepEqual(
-    dir.next,
-    [cfo.id],
-    "director now points only at the new gate",
-  );
-  assert.deepEqual(
-    cfo.next,
-    ["post"],
-    "the new gate inherits director's old next",
-  );
+  assert.deepEqual(dir.next, [cfo.id], "director now points only at the new gate");
+  assert.deepEqual(cfo.next, ["post"], "the new gate inherits director's old next");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
 });
 
@@ -304,10 +286,7 @@ test("add-parallel-after: new gate waits on ALL anchors, then flows to the post"
   assert.ok(dir.next.includes(fin.id), "director → final");
   assert.deepEqual(fin.next, ["post"], "final → post");
   // Anchors no longer race the post directly (manager's old direct post edge dropped).
-  assert.ok(
-    !mgr.next.includes("post"),
-    "manager no longer points straight at post",
-  );
+  assert.ok(!mgr.next.includes("post"), "manager no longer points straight at post");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
 });
 
@@ -411,7 +390,7 @@ test("adding a parallel gate orders the shared join (post) LAST in the parent", 
   assert.equal(
     mgr.next[mgr.next.length - 1],
     post,
-    "the shared join (post) is ordered last, gates first",
+    "the shared join (post) is ordered last, gates first"
   );
   // Every edge is preserved (nothing dropped by the reorder).
   assert.equal(mgr.next.length, 3, "director + new gate + post");
@@ -427,10 +406,7 @@ test("rename-step: changes only the label, nothing else", () => {
   assert.equal(dir?.label, "CFO review");
   // condition + approver + edges untouched
   assert.equal(whenOf(next, "director"), directorWhenText);
-  assert.equal(
-    dir?.kind === "approval" ? dir.approverName : null,
-    "Jordan Ellis",
-  );
+  assert.equal(dir?.kind === "approval" ? dir.approverName : null, "Jordan Ellis");
 });
 
 test("duplicate-step: makes a parallel twin with the same successors", () => {
@@ -461,10 +437,7 @@ test("move-step: relocates a step after the anchor", () => {
   const post = next.steps.find((s) => s.id === "post");
   const dir = next.steps.find((s) => s.id === "director");
   assert.ok(mgr && post && dir);
-  assert.ok(
-    !mgr.next.includes("director"),
-    "manager no longer points at director",
-  );
+  assert.ok(!mgr.next.includes("director"), "manager no longer points at director");
   assert.ok(post.next.includes("director"), "post → director (new position)");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
 });
@@ -519,11 +492,7 @@ test("move-step: extracting a parallel branch into sequence leaves NO stray edge
     afterStepId: "dir",
   });
   const get = (id: string) => next.steps.find((s) => s.id === id);
-  assert.deepEqual(
-    get("mgr")?.next,
-    ["dir"],
-    "manager → dir only (no stray post)",
-  );
+  assert.deepEqual(get("mgr")?.next, ["dir"], "manager → dir only (no stray post)");
   assert.deepEqual(get("dir")?.next, ["dept"], "dir → dept");
   assert.deepEqual(get("dept")?.next, ["post"], "dept → post");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
@@ -569,11 +538,7 @@ test("move-step: a linear-chain move still bypasses (keeps flow)", () => {
     afterStepId: "c",
   });
   const get = (id: string) => next.steps.find((s) => s.id === id);
-  assert.deepEqual(
-    get("a")?.next,
-    ["c"],
-    "a bypasses to c (would be orphaned otherwise)",
-  );
+  assert.deepEqual(get("a")?.next, ["c"], "a bypasses to c (would be orphaned otherwise)");
   assert.deepEqual(get("c")?.next, ["b"], "c → b (new position)");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
 });
@@ -587,11 +552,7 @@ test("move-step keeps the graph acyclic (it unhooks before re-inserting)", () =>
     stepId: "director",
     afterStepId: "director",
   });
-  assert.equal(
-    JSON.stringify(self),
-    JSON.stringify(base),
-    "moving a step after itself is a no-op",
-  );
+  assert.equal(JSON.stringify(self), JSON.stringify(base), "moving a step after itself is a no-op");
   // A real move still validates as a sound DAG (no cycle introduced).
   const moved = applyEditOp(base, {
     op: "move-step",
@@ -625,10 +586,7 @@ test("set-condition: replaces only the targeted gate's trigger", () => {
     },
   });
   // The director's trigger is the new tree…
-  assert.match(
-    whenOf(next, "director"),
-    /verdict == exception or amount > \$10,000/,
-  );
+  assert.match(whenOf(next, "director"), /verdict == exception or amount > \$10,000/);
   // …and a sibling gate's trigger is untouched.
   assert.equal(whenOf(next, "manager"), whenOf(base, "manager"));
   // Still a sound, parseable workflow.
@@ -654,16 +612,14 @@ test("set-approver: assigning a person clears the unresolved-approver warning", 
   const unresolved: TWorkflow = {
     ...base,
     steps: base.steps.map((s) =>
-      s.id === "director" && s.kind === "approval"
-        ? { ...s, approverName: null }
-        : s,
+      s.id === "director" && s.kind === "approval" ? { ...s, approverName: null } : s
     ),
   };
   assert.ok(
     validateWorkflow(unresolved).some(
-      (i) => i.code === "unresolved-approver" && i.stepIds.includes("director"),
+      (i) => i.code === "unresolved-approver" && i.stepIds.includes("director")
     ),
-    "the unassigned gate should report unresolved-approver",
+    "the unassigned gate should report unresolved-approver"
   );
   const fixed = applyEditOp(unresolved, {
     op: "set-approver",
@@ -672,7 +628,7 @@ test("set-approver: assigning a person clears the unresolved-approver warning", 
   });
   assert.ok(
     !validateWorkflow(fixed).some((i) => i.code === "unresolved-approver"),
-    "assigning a person clears the warning",
+    "assigning a person clears the warning"
   );
 });
 
@@ -685,10 +641,7 @@ test("set-approvers: adds co-approvers to one gate, leaves the primary and other
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
   const dir = next.steps.find((s) => s.id === "director");
   assert.equal(dir?.kind === "approval" && dir.approverName, "Jordan Ellis");
-  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
-    "Cameron Diaz",
-    "Sam Patel",
-  ]);
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, ["Cameron Diaz", "Sam Patel"]);
   // The other gate is untouched and never grows an `approvers` array.
   const mgr = next.steps.find((s) => s.id === "manager");
   assert.equal(mgr?.kind === "approval" && mgr.approvers, undefined);
@@ -702,9 +655,7 @@ test("set-approvers: never duplicates the primary into the co-approver list", ()
     approvers: ["Jordan Ellis", "Cameron Diaz"],
   });
   const dir = next.steps.find((s) => s.id === "director");
-  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
-    "Cameron Diaz",
-  ]);
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, ["Cameron Diaz"]);
 });
 
 test("add-approver: appends one co-approver, keeping the primary", () => {
@@ -716,9 +667,7 @@ test("add-approver: appends one co-approver, keeping the primary", () => {
   assert.doesNotThrow(() => ApprovalWorkflow.parse(next));
   const dir = next.steps.find((s) => s.id === "director");
   assert.equal(dir?.kind === "approval" && dir.approverName, "Jordan Ellis");
-  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
-    "Cameron Diaz",
-  ]);
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, ["Cameron Diaz"]);
 });
 
 test("add-approver: a second add appends, doesn't replace", () => {
@@ -733,10 +682,7 @@ test("add-approver: a second add appends, doesn't replace", () => {
     approverName: "Sam Patel",
   });
   const dir = next.steps.find((s) => s.id === "director");
-  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
-    "Cameron Diaz",
-    "Sam Patel",
-  ]);
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, ["Cameron Diaz", "Sam Patel"]);
 });
 
 test("add-approver: a no-op when the person is already on the gate", () => {
@@ -750,7 +696,7 @@ test("add-approver: a no-op when the person is already on the gate", () => {
   assert.equal(
     dir1?.kind === "approval" && (dir1.approvers ?? []).length,
     0,
-    "the primary is never duplicated into the extras",
+    "the primary is never duplicated into the extras"
   );
   // Already an extra → not added twice.
   let twice = applyEditOp(base, {
@@ -764,9 +710,7 @@ test("add-approver: a no-op when the person is already on the gate", () => {
     approverName: "Cameron Diaz",
   });
   const dir2 = twice.steps.find((s) => s.id === "director");
-  assert.deepEqual(dir2?.kind === "approval" ? dir2.approvers : null, [
-    "Cameron Diaz",
-  ]);
+  assert.deepEqual(dir2?.kind === "approval" ? dir2.approvers : null, ["Cameron Diaz"]);
 });
 
 test("remove-approver: drops one co-approver, keeps the rest and the primary", () => {
@@ -776,7 +720,7 @@ test("remove-approver: drops one co-approver, keeps the rest and the primary", (
       stepId: "director",
       approverName: "Cameron Diaz",
     }),
-    { op: "add-approver", stepId: "director", approverName: "Sam Patel" },
+    { op: "add-approver", stepId: "director", approverName: "Sam Patel" }
   );
   const next = applyEditOp(withTwo, {
     op: "remove-approver",
@@ -785,9 +729,7 @@ test("remove-approver: drops one co-approver, keeps the rest and the primary", (
   });
   const dir = next.steps.find((s) => s.id === "director");
   assert.equal(dir?.kind === "approval" && dir.approverName, "Jordan Ellis");
-  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, [
-    "Sam Patel",
-  ]);
+  assert.deepEqual(dir?.kind === "approval" ? dir.approvers : null, ["Sam Patel"]);
 });
 
 test("remove-approver: never removes the primary, only extras", () => {
@@ -820,7 +762,7 @@ test("diffWorkflows: adding a co-approver reads as a changed approver, not uncha
   assert.equal(change?.kind, "changed");
   assert.ok(
     change?.kind === "changed" && change.fields.includes("approver"),
-    "the co-approver edit surfaces as an approver change in the preview",
+    "the co-approver edit surfaces as an approver change in the preview"
   );
 });
 
@@ -867,11 +809,7 @@ test("proposeEdit runs the model -> op -> apply -> diff", async () => {
         exceptionCode: null,
       }),
   };
-  const { proposed, op, changes } = await proposeEdit(
-    fake,
-    base,
-    "above 50k add CFO",
-  );
+  const { proposed, op, changes } = await proposeEdit(fake, base, "above 50k add CFO");
   assert.equal(op.op, "add-approval");
   assert.doesNotThrow(() => ApprovalWorkflow.parse(proposed));
   assert.ok(changes.some((c) => c.kind === "added"));
@@ -888,9 +826,7 @@ test("a clarify op leaves the workflow untouched (it's a question, not an edit)"
 
 test("parseEditPlan accepts a clarify op in the plan", () => {
   const ops = parseEditPlan({
-    ops: [
-      { op: "clarify", question: "Which department?", options: ["Finance"] },
-    ],
+    ops: [{ op: "clarify", question: "Which department?", options: ["Finance"] }],
   });
   assert.equal(ops.length, 1);
   assert.equal(ops[0]?.op, "clarify");

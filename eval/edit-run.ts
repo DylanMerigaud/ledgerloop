@@ -43,14 +43,10 @@ const scoreOne = (c: EditCase, op: WorkflowEditOp): Result => {
 
 const main = async (): Promise<void> => {
   loadEnv();
-  console.log(
-    `conversational-edit eval, ${dryRun ? "dry-run (no API)" : "live"}\n`,
-  );
+  console.log(`conversational-edit eval, ${dryRun ? "dry-run (no API)" : "live"}\n`);
 
   if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
-    console.error(
-      "✖ Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.",
-    );
+    console.error("✖ Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.");
     process.exit(1);
   }
 
@@ -66,10 +62,7 @@ const main = async (): Promise<void> => {
     // FAILURE for that case, not a crash of the whole run, so one flaky reply doesn't
     // hide the other nine cases' results.
     try {
-      const op =
-        dryRun || !planEdit
-          ? stubOp(c)
-          : await planEdit(EDIT_FIXTURE, c.instruction);
+      const op = dryRun || !planEdit ? stubOp(c) : await planEdit(EDIT_FIXTURE, c.instruction);
       results.push(scoreOne(c, op));
     } catch (err) {
       results.push({
@@ -84,16 +77,12 @@ const main = async (): Promise<void> => {
   const idW = Math.max(8, ...results.map((r) => r.id.length));
   for (const r of results) {
     const mark = r.pass ? "✓" : "✗";
-    console.log(
-      `  ${mark} ${r.id.padEnd(idW)}  got=${r.got.padEnd(18)} ${r.why}`,
-    );
+    console.log(`  ${mark} ${r.id.padEnd(idW)}  got=${r.got.padEnd(18)} ${r.why}`);
   }
 
   const passed = results.filter((r) => r.pass).length;
   const total = results.length;
-  console.log(
-    `\n${passed}/${total} correct (${Math.round((passed / total) * 100)}%)`,
-  );
+  console.log(`\n${passed}/${total} correct (${Math.round((passed / total) * 100)}%)`);
 
   if (passed < total) {
     console.error(`\n✖ ${total - passed} case(s) failed.`);
@@ -110,11 +99,7 @@ const stubOp = (c: EditCase): WorkflowEditOp => {
         op: "add-approval",
         label: "stub",
         approverTitle: c.id.includes("cfo") ? "CFO" : "Approver",
-        amountOver: c.id.includes("exceptions")
-          ? null
-          : c.id.includes("cfo")
-            ? 50000
-            : null,
+        amountOver: c.id.includes("exceptions") ? null : c.id.includes("cfo") ? 50000 : null,
         department: null,
         vendor: null,
         currency: null,

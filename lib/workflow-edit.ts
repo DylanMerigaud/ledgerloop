@@ -283,8 +283,7 @@ const conditionFor = (scope: GateScope): Condition => {
       value: "exception",
     });
   if (leaves.length === 0) return { kind: "always" };
-  if (leaves.length === 1)
-    return nonNull(leaves[0], "exactly one leaf when length is 1");
+  if (leaves.length === 1) return nonNull(leaves[0], "exactly one leaf when length is 1");
   return { kind: "all", conditions: leaves };
 };
 
@@ -296,15 +295,11 @@ const conditionFor = (scope: GateScope): Condition => {
  */
 const postStepId = (wf: TWorkflow): string | null => {
   const approvalTargets = new Set(
-    wf.steps.filter((s) => s.kind === "approval").flatMap((s) => s.next),
+    wf.steps.filter((s) => s.kind === "approval").flatMap((s) => s.next)
   );
-  const converged = wf.steps.find(
-    (s) => s.kind === "integration" && approvalTargets.has(s.id),
-  );
+  const converged = wf.steps.find((s) => s.kind === "integration" && approvalTargets.has(s.id));
   if (converged) return converged.id;
-  const netsuite = wf.steps.find(
-    (s) => s.kind === "integration" && s.integration === "netsuite",
-  );
+  const netsuite = wf.steps.find((s) => s.kind === "integration" && s.integration === "netsuite");
   if (netsuite) return netsuite.id;
   return wf.steps.find((s) => s.kind === "integration")?.id ?? null;
 };
@@ -400,10 +395,8 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       // Append one co-approver, unless they're already the primary or on the gate.
       if (step && step.kind === "approval") {
         const already =
-          op.approverName === step.approverName ||
-          (step.approvers ?? []).includes(op.approverName);
-        if (!already)
-          step.approvers = [...(step.approvers ?? []), op.approverName];
+          op.approverName === step.approverName || (step.approvers ?? []).includes(op.approverName);
+        if (!already) step.approvers = [...(step.approvers ?? []), op.approverName];
       }
       return next;
     }
@@ -418,8 +411,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 
     case "remove-step": {
       next.steps = next.steps.filter((s) => s.id !== op.stepId);
-      for (const s of next.steps)
-        s.next = s.next.filter((n) => n !== op.stepId);
+      for (const s of next.steps) s.next = s.next.filter((n) => n !== op.stepId);
       next.roots = next.roots.filter((r) => r !== op.stepId);
       return next;
     }
@@ -445,8 +437,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
         next: [...orig.next],
         when: structuredClone(orig.when),
       };
-      for (const s of next.steps)
-        if (s.next.includes(orig.id)) s.next = [...s.next, id];
+      for (const s of next.steps) if (s.next.includes(orig.id)) s.next = [...s.next, id];
       if (next.roots.includes(orig.id)) next.roots = [...next.roots, id];
       next.steps.push(copy);
       return wouldCycle(next) ? wf : next;
@@ -526,8 +517,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
         next: [],
       };
       const postStep = next.steps.find((s) => s.id === post);
-      if (postStep && !postStep.next.includes(id))
-        postStep.next = [...postStep.next, id];
+      if (postStep && !postStep.next.includes(id)) postStep.next = [...postStep.next, id];
       next.steps.push(newStep);
       return next;
     }
@@ -587,11 +577,8 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 /** True if the step graph contains a cycle (Kahn: not all nodes emitted). */
 const wouldCycle = (wf: TWorkflow): boolean => {
   const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
-  for (const s of wf.steps)
-    for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
-  const queue = [...indeg.entries()]
-    .filter(([, d]) => d === 0)
-    .map(([id]) => id);
+  for (const s of wf.steps) for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
+  const queue = [...indeg.entries()].filter(([, d]) => d === 0).map(([id]) => id);
   const byId = new Map(wf.steps.map((s) => [s.id, s]));
   let emitted = 0;
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
@@ -614,13 +601,9 @@ const mergeAmount = (when: Condition, amountOver: number): Condition => {
     value: amountOver,
   };
   if (when.kind === "leaf")
-    return when.field === "amount"
-      ? amountLeaf
-      : { kind: "all", conditions: [when, amountLeaf] };
+    return when.field === "amount" ? amountLeaf : { kind: "all", conditions: [when, amountLeaf] };
   if (when.kind === "all" || when.kind === "any") {
-    const others = when.conditions.filter(
-      (c) => !(c.kind === "leaf" && c.field === "amount"),
-    );
+    const others = when.conditions.filter((c) => !(c.kind === "leaf" && c.field === "amount"));
     return { kind: when.kind, conditions: [...others, amountLeaf] };
   }
   return amountLeaf; // was `always`
@@ -639,10 +622,7 @@ const uniqueId = (wf: TWorkflow, base: string): string => {
 
 export type EditModel = {
   /** Map a plain-language instruction to one structured edit op. */
-  planEdit: (
-    current: TWorkflow,
-    instruction: string,
-  ) => Promise<WorkflowEditOp>;
+  planEdit: (current: TWorkflow, instruction: string) => Promise<WorkflowEditOp>;
 };
 
 export type EditResult = {
@@ -658,7 +638,7 @@ export type EditResult = {
 export const proposeEdit = async (
   model: EditModel,
   current: TWorkflow,
-  instruction: string,
+  instruction: string
 ): Promise<EditResult> => {
   const op = await model.planEdit(current, instruction);
   const proposed = applyEditOp(current, op);
@@ -730,8 +710,7 @@ export const jsonFromModelText = (text: string): unknown => {
 };
 
 /** Validate a raw model JSON value into a WorkflowEditOp (or throw). */
-export const parseEditOp = (raw: unknown): WorkflowEditOp =>
-  WorkflowEditOp.parse(raw);
+export const parseEditOp = (raw: unknown): WorkflowEditOp => WorkflowEditOp.parse(raw);
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  Multi-op planning (the agent), an ORDERED list of ops for one instruction
@@ -742,8 +721,7 @@ export const parseEditOp = (raw: unknown): WorkflowEditOp =>
     schema is derived from it anymore). */
 const WorkflowEditPlan = z.object({ ops: z.array(WorkflowEditOp) }).strict();
 
-export const parseEditPlan = (raw: unknown): WorkflowEditOp[] =>
-  WorkflowEditPlan.parse(raw).ops;
+export const parseEditPlan = (raw: unknown): WorkflowEditOp[] => WorkflowEditPlan.parse(raw).ops;
 
 export const WORKFLOW_PLAN_SYSTEM_PROMPT = `You translate a plain-language instruction (which may ask for SEVERAL changes) into an ORDERED list of structured edits for a procure-to-pay approval workflow, then I apply them in order and validate the result.
 
@@ -791,7 +769,7 @@ export const planPrompt = (
   current: TWorkflow,
   instruction: string,
   available: AvailableScope,
-  feedback?: { issues: { message: string }[]; triedOps: WorkflowEditOp[] },
+  feedback?: { issues: { message: string }[]; triedOps: WorkflowEditOp[] }
 ): string => {
   const steps = current.steps
     .map((s) => {
@@ -804,8 +782,7 @@ export const planPrompt = (
       return `- ${s.id} (${s.kind}: "${s.label}", ${who}, when: ${describeCondition(s.when)})`;
     })
     .join("\n");
-  const list = (xs: string[]): string =>
-    xs.length > 0 ? xs.join(", ") : "(none)";
+  const list = (xs: string[]): string => (xs.length > 0 ? xs.join(", ") : "(none)");
   const scope =
     `AVAILABLE DEPARTMENTS: ${list(available.departments)}\n` +
     `AVAILABLE VENDORS: ${list(available.vendors)}\n` +

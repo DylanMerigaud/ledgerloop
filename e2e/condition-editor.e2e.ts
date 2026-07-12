@@ -14,16 +14,12 @@ const DISCOVERY_TIMEOUT = 90_000;
 const node = (page: Page, id: string) =>
   page.getByTestId(`graph-node-${id}`).locator("visible=true");
 
-test("edit a gate's trigger: add a condition and a nested group", async ({
-  page,
-}) => {
+test("edit a gate's trigger: add a condition and a nested group", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
   // Discovery done once the derived workflow has rendered its gates.
   // Both tabs stay mounted and share the workflow, so scope to the VISIBLE graph.
-  await expect(
-    page.getByTestId("graph-node-manager-review").locator("visible=true"),
-  ).toBeVisible({
+  await expect(page.getByTestId("graph-node-manager-review").locator("visible=true")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 
@@ -36,16 +32,12 @@ test("edit a gate's trigger: add a condition and a nested group", async ({
 
   // Add a flat condition → one more leaf row.
   await page.getByTestId("cond-add-leaf").click();
-  await expect(async () =>
-    expect(await fieldCount()).toBe(before + 1),
-  ).toPass();
+  await expect(async () => expect(await fieldCount()).toBe(before + 1)).toPass();
 
   // Add a nested group → its own leaf row appears (the depth-2 group).
   await page.getByTestId("cond-add-group").click();
   await expect(page.getByTestId("cond-subadd-leaf")).toBeVisible();
-  await expect(async () =>
-    expect(await fieldCount()).toBe(before + 2),
-  ).toPass();
+  await expect(async () => expect(await fieldCount()).toBe(before + 2)).toPass();
 
   // Switch the root combinator to ANY, the node's plain-English chip recomputes
   // (an "or" rule), proving the edit flowed through set-condition to the graph.

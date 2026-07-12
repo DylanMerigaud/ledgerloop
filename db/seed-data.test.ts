@@ -4,10 +4,7 @@ import { test } from "node:test";
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { runApproval } from "@/lib/approval-run";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
-import {
-  workflowFromPolicy,
-  DEFAULT_APPROVAL_POLICY,
-} from "@/lib/client-profile";
+import { workflowFromPolicy, DEFAULT_APPROVAL_POLICY } from "@/lib/client-profile";
 import { runMatch } from "@/lib/matching";
 import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
 
@@ -54,36 +51,18 @@ test("every seeded document validates against the Zod schema", () => {
   for (const b of SEED_BUNDLES) {
     assert.doesNotThrow(() => Invoice.parse(b.invoice), `${b.id} invoice`);
     if (b.purchaseOrder) {
-      assert.doesNotThrow(
-        () => PurchaseOrder.parse(b.purchaseOrder),
-        `${b.id} PO`,
-      );
+      assert.doesNotThrow(() => PurchaseOrder.parse(b.purchaseOrder), `${b.id} PO`);
     }
     if (b.goodsReceipt) {
-      assert.doesNotThrow(
-        () => GoodsReceipt.parse(b.goodsReceipt),
-        `${b.id} GR`,
-      );
+      assert.doesNotThrow(() => GoodsReceipt.parse(b.goodsReceipt), `${b.id} GR`);
     }
   }
 });
 
 test("the three headline edge cases produce their intended verdicts", () => {
-  assert.equal(
-    matchOf(byId("INV-2042")).verdict,
-    "exception",
-    "price mismatch",
-  );
-  assert.equal(
-    matchOf(byId("INV-2048")).verdict,
-    "exception",
-    "quantity mismatch",
-  );
-  assert.equal(
-    matchOf(byId("INV-2041-RESEND")).verdict,
-    "duplicate",
-    "duplicate",
-  );
+  assert.equal(matchOf(byId("INV-2042")).verdict, "exception", "price mismatch");
+  assert.equal(matchOf(byId("INV-2048")).verdict, "exception", "quantity mismatch");
+  assert.equal(matchOf(byId("INV-2041-RESEND")).verdict, "duplicate", "duplicate");
 });
 
 test("price mismatch is a price_variance on the steel-bar line", () => {
@@ -96,14 +75,8 @@ test("price mismatch is a price_variance on the steel-bar line", () => {
 test("quantity mismatch is caught by the 3-way receipt check, not the PO check", () => {
   const m = matchOf(byId("INV-2048"));
   const codes = m.exceptions.map((e) => e.code);
-  assert.ok(
-    codes.includes("qty_variance_receipt"),
-    "receipt overbill must fire",
-  );
-  assert.ok(
-    !codes.includes("qty_variance_po"),
-    "PO qty agrees (ordered = invoiced)",
-  );
+  assert.ok(codes.includes("qty_variance_receipt"), "receipt overbill must fire");
+  assert.ok(!codes.includes("qty_variance_po"), "PO qty agrees (ordered = invoiced)");
   assert.equal(m.matchType, "three_way");
 });
 
@@ -129,7 +102,7 @@ test("a material clean invoice still needs the manager (over the floor)", () => 
     assert.equal(run.outcome, "awaiting", `${id} should need approval`);
     assert.ok(
       run.pending.some((p) => p.id === "manager-review"),
-      `${id} should pend the manager gate`,
+      `${id} should pend the manager gate`
     );
   }
 });
@@ -193,10 +166,7 @@ test("mixed parallel decision: rejecting one gate blocks the bill", () => {
     "department-review": "approve",
   });
   assert.equal(run.outcome, "rejected");
-  assert.ok(
-    !run.pending.length,
-    "no gate is left pending once both are decided",
-  );
+  assert.ok(!run.pending.length, "no gate is left pending once both are decided");
 });
 
 test("the services invoice is a clean 2-way match (no receipt)", () => {
@@ -221,10 +191,7 @@ test("the queue is a healthy mix: majority clean, with each edge case present", 
   const clean = verdicts.filter((v) => v === "clean").length;
   const exception = verdicts.filter((v) => v === "exception").length;
   const duplicate = verdicts.filter((v) => v === "duplicate").length;
-  assert.ok(
-    clean >= 5,
-    "most invoices should be clean so the exceptions stand out",
-  );
+  assert.ok(clean >= 5, "most invoices should be clean so the exceptions stand out");
   assert.ok(exception >= 3, "several exceptions to demo the routing");
   assert.equal(duplicate, 1, "exactly one duplicate");
 });

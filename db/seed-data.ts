@@ -31,12 +31,7 @@ export type SeedBundle = {
 };
 
 /* Helper to keep line construction terse + arithmetically correct by default. */
-const line = (
-  sku: string,
-  description: string,
-  qty: number,
-  unitPrice: number,
-) => {
+const line = (sku: string, description: string, qty: number, unitPrice: number) => {
   return { sku, description, qty, unitPrice, amount: round2(qty * unitPrice) };
 };
 const round2 = (n: number): number => {
@@ -471,9 +466,7 @@ const qtyMismatch: SeedBundle = {
     grNumber: "GR-5548",
     poNumber: "PO-7748",
     receivedDate: "2026-05-16",
-    lineItems: [
-      { sku: "CAT6-305", description: "Cat6 cable 305m reel", receivedQty: 80 },
-    ], // only 80 of 100
+    lineItems: [{ sku: "CAT6-305", description: "Cat6 cable 305m reel", receivedQty: 80 }], // only 80 of 100
   },
 };
 
@@ -523,9 +516,7 @@ const cleanOffice: SeedBundle = {
    pulled vendor master. The seed script (erp:seed) creates this vendor inactive
    in QBO so the control fires against real pulled data. */
 export const ERP_INACTIVE_VENDOR = "Dormant Metals LLC";
-const ghostLines = [
-  line("STL-BAR-20", "Cold-rolled steel bar 20mm (per m)", 40, 33),
-];
+const ghostLines = [line("STL-BAR-20", "Cold-rolled steel bar 20mm (per m)", 40, 33)];
 const inactiveVendor: SeedBundle = {
   id: "INV-2050",
   scenario: "Inactive vendor (ERP)",
@@ -552,9 +543,7 @@ const inactiveVendor: SeedBundle = {
    The seed script posts this exact bill in QBO. */
 export const ERP_PAID_VENDOR = "Atlas Fasteners";
 export const ERP_PAID_INVOICE_NUMBER = "INV-1990";
-const alreadyPaidLines = [
-  line("BOLT-M8-50", "Hex bolt M8×50 (box/100)", 40, 12.5),
-];
+const alreadyPaidLines = [line("BOLT-M8-50", "Hex bolt M8×50 (box/100)", 40, 12.5)];
 const alreadyPaidInErp: SeedBundle = {
   id: "INV-1990",
   scenario: "Already paid (ERP duplicate)",

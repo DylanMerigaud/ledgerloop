@@ -45,7 +45,7 @@ export const runIntake = async (
     extract?: Extractor;
     render?: (inv: Invoice) => Promise<string>;
     timeoutMs?: number;
-  } = {},
+  } = {}
 ): Promise<IntakeResult> => {
   const extract = opts.extract ?? extractInvoice;
   const render = opts.render ?? renderInvoicePdfBase64;
@@ -64,8 +64,8 @@ export const runIntake = async (
               kind: "api_error",
               message: "extraction timed out",
             }),
-          timeoutMs,
-        ),
+          timeoutMs
+        )
       ),
     ]);
   } catch {

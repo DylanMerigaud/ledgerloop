@@ -1,9 +1,4 @@
-import {
-  outcomeExplain,
-  outcomeLabel,
-  outcomeTone,
-  type Outcome,
-} from "@/lib/display";
+import { outcomeExplain, outcomeLabel, outcomeTone, type Outcome } from "@/lib/display";
 
 /**
  * The outcome banner across the top of the run pane: colour-coded to the result
@@ -44,9 +39,7 @@ export const OutcomeBanner = ({ outcome }: { outcome: Outcome }) => {
         className="h-2 w-2 shrink-0 rounded-full"
         style={{ backgroundColor: c.dot }}
       />
-      <span className={`shrink-0 font-medium ${c.text}`}>
-        {outcomeLabel(outcome)}
-      </span>
+      <span className={`shrink-0 font-medium ${c.text}`}>{outcomeLabel(outcome)}</span>
       {why && <span className="text-ink/70">{why}</span>}
     </div>
   );

@@ -31,13 +31,9 @@ export const TraceDrawer = ({
       >
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-ink">
-              Agent execution trace
-            </p>
+            <p className="text-[13px] font-semibold text-ink">Agent execution trace</p>
             {invoiceLabel && (
-              <p className="truncate font-mono text-[11px] text-faint">
-                {invoiceLabel}
-              </p>
+              <p className="truncate font-mono text-[11px] text-faint">{invoiceLabel}</p>
             )}
           </div>
           <button
@@ -50,9 +46,7 @@ export const TraceDrawer = ({
             ✕
           </button>
         </div>
-        <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          {children}
-        </div>
+        <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto px-4 py-4">{children}</div>
       </div>
     </div>
   );

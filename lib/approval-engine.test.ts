@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { executeWorkflow, type Decisions } from "@/lib/approval-engine";
-import {
-  type ApprovalWorkflow,
-  type InvoiceContext,
-} from "@/lib/approval-workflow";
+import { type ApprovalWorkflow, type InvoiceContext } from "@/lib/approval-workflow";
 
 /**
  * The engine drives payment routing, so it's tested exhaustively. The fixture is
@@ -84,11 +81,7 @@ test("fresh run: only the manager is pending; gated + downstream wait", () => {
 
 test("small Finance invoice: after manager approves, the gated steps skip and post runs", () => {
   const decisions: Decisions = { manager: "approve" };
-  const s = executeWorkflow(
-    wf,
-    ctx({ amount: 1000, department: "Finance" }),
-    decisions,
-  );
+  const s = executeWorkflow(wf, ctx({ amount: 1000, department: "Finance" }), decisions);
   assert.equal(status(s, "manager"), "approved");
   assert.equal(status(s, "director"), "skipped"); // amount <= 5000
   assert.equal(status(s, "it"), "skipped"); // dept != IT
@@ -120,7 +113,7 @@ test("partial approval still waits on the remaining branch", () => {
   const s = executeWorkflow(
     wf,
     ctx({ amount: 9000, department: "IT" }),
-    { manager: "approve", director: "approve" }, // it still pending
+    { manager: "approve", director: "approve" } // it still pending
   );
   assert.deepEqual(s.pending, ["it"]);
   assert.equal(status(s, "post"), "blocked");
@@ -154,12 +147,9 @@ test("a reject reason shows in the rejected step's detail", () => {
     wf,
     ctx({ amount: 9000 }),
     { manager: "reject" },
-    { manager: "price too high, renegotiate" },
+    { manager: "price too high, renegotiate" }
   );
-  assert.match(
-    detail(s, "manager"),
-    /Rejected by .+: price too high, renegotiate/,
-  );
+  assert.match(detail(s, "manager"), /Rejected by .+: price too high, renegotiate/);
 });
 
 test("a reject WITHOUT a reason keeps the bare detail (no regression)", () => {
@@ -173,7 +163,7 @@ test("a reason for a non-rejected / absent step is ignored", () => {
     wf,
     ctx({ amount: 9000 }),
     { manager: "approve" },
-    { manager: "should be ignored", ghost: "nobody" },
+    { manager: "should be ignored", ghost: "nobody" }
   );
   assert.match(detail(s, "manager"), /^Approved by /);
 });

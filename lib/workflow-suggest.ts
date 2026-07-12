@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import {
-  type ApprovalWorkflow as TWorkflow,
-  describeCondition,
-} from "@/lib/approval-workflow";
+import { type ApprovalWorkflow as TWorkflow, describeCondition } from "@/lib/approval-workflow";
 
 /**
  * Suggested next edits for the chat editor, generated, never hardcoded.
@@ -48,8 +45,7 @@ Return ONLY the JSON object matching the schema.`;
 export const suggestPrompt = (current: TWorkflow): string => {
   const steps = current.steps
     .map((s) => {
-      const who =
-        s.kind === "approval" ? `approver=${s.approverTitle}` : s.integration;
+      const who = s.kind === "approval" ? `approver=${s.approverTitle}` : s.integration;
       return `- ${s.kind}: "${s.label}" (${who}, when: ${describeCondition(s.when)})`;
     })
     .join("\n");

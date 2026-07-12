@@ -65,10 +65,8 @@ const Header = () => {
         </div>
         <p className="mt-2 max-w-xl text-[13.5px] leading-snug text-muted">
           Reads a client&apos;s HRIS,{" "}
-          <span className="font-medium text-ink">
-            derives their approval workflow
-          </span>
-          , and runs procure-to-pay against it.
+          <span className="font-medium text-ink">derives their approval workflow</span>, and runs
+          procure-to-pay against it.
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -99,31 +97,26 @@ const HowItWorks = () => {
     <details className="group relative">
       <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-subtle px-3 py-1.5 text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:text-ink">
         How it works
-        <span
-          aria-hidden
-          className="text-faint transition-transform group-open:rotate-180"
-        >
+        <span aria-hidden className="text-faint transition-transform group-open:rotate-180">
           ▾
         </span>
       </summary>
       <div className="absolute right-0 z-20 mt-2 w-[300px] rounded-xl bg-surface p-3 text-[12px] leading-snug text-muted shadow-lift ring-1 ring-inset ring-line">
         <dl className="space-y-1.5">
           <Term name="Gate">
-            an approval step that fires on a condition (amount, variance, …) and
-            pauses for a human.
+            an approval step that fires on a condition (amount, variance, …) and pauses for a human.
           </Term>
           <Term name="2-way / 3-way match">
             invoice ↔ PO, or invoice ↔ PO ↔ goods receipt (did we receive it?).
           </Term>
           <Term name="Verdict">
             <span className="text-ink">clean</span> (reconciles),{" "}
-            <span className="text-ink">exception</span> (a variance needs a
-            decision), <span className="text-ink">duplicate</span> (blocked,
-            never paid twice).
+            <span className="text-ink">exception</span> (a variance needs a decision),{" "}
+            <span className="text-ink">duplicate</span> (blocked, never paid twice).
           </Term>
           <Term name="Investigator">
-            an AI agent that reads messy records on an exception and recommends.
-            A human still decides.
+            an AI agent that reads messy records on an exception and recommends. A human still
+            decides.
           </Term>
         </dl>
       </div>
@@ -131,13 +124,7 @@ const HowItWorks = () => {
   );
 };
 
-const Term = ({
-  name,
-  children,
-}: {
-  name: string;
-  children: React.ReactNode;
-}) => {
+const Term = ({ name, children }: { name: string; children: React.ReactNode }) => {
   return (
     <div>
       <dt className="inline font-medium text-ink">{name}: </dt>
@@ -150,10 +137,7 @@ const Term = ({
     glyph (matches app/icon.svg). The second stroke is the accent. */
 const LogoMark = () => {
   return (
-    <div
-      aria-hidden
-      className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-ink"
-    >
+    <div aria-hidden className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-ink">
       <svg viewBox="0 0 32 32" className="size-[19px]" fill="none" aria-hidden>
         <path
           d="M12 7v12a4 4 0 0 0 4 4"
@@ -177,9 +161,7 @@ const LogoMark = () => {
 const SetupNotice = ({ detail }: { detail: string }) => {
   return (
     <div className="rounded-2xl bg-warn-soft/60 px-6 py-5 text-[13px] text-ink ring-1 ring-inset ring-warn-line/60">
-      <p className="font-semibold">
-        Almost there. The demo needs its database.
-      </p>
+      <p className="font-semibold">Almost there. The demo needs its database.</p>
       <p className="mt-1 text-muted">{detail}</p>
       <p className="mt-2.5 text-muted">
         Set{" "}
@@ -204,10 +186,9 @@ const Footer = () => {
   return (
     <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[12px] text-faint">
       <p>
-        Built with <span className="text-muted">Mastra</span> · investigator
-        agent on <span className="font-mono text-muted">{PIPELINE_MODEL}</span>{" "}
-        · Next.js · Supabase · Drizzle. Runs are stateless. Nothing is written
-        back.
+        Built with <span className="text-muted">Mastra</span> · investigator agent on{" "}
+        <span className="font-mono text-muted">{PIPELINE_MODEL}</span> · Next.js · Supabase ·
+        Drizzle. Runs are stateless. Nothing is written back.
       </p>
       <div className="flex items-center gap-2">
         <span className="font-medium text-muted">Dylan Mérigaud</span>

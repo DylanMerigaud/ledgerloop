@@ -89,10 +89,7 @@ test("assembled workflow validates and has the template shape", () => {
   const wf = assembleWorkflow(org, proposal);
   assert.doesNotThrow(() => ApprovalWorkflow.parse(wf));
   // Manager and department head are parallel first-line roots.
-  assert.deepEqual([...wf.roots].sort(), [
-    "department-review",
-    "manager-review",
-  ]);
+  assert.deepEqual([...wf.roots].sort(), ["department-review", "manager-review"]);
   const ids = wf.steps.map((s) => s.id).sort();
   assert.deepEqual(ids, [
     "department-review",
@@ -111,24 +108,12 @@ test("manager step fires on any exception or a clean bill over the floor", () =>
   // is a separate root, not behind the manager. The post is reached via the gates
   // (skipped gates pass through in the engine).
   assert.deepEqual(mgr.next, ["director-review"]);
-  assert.ok(
-    !mgr.next.includes("post-netsuite"),
-    "no direct manager → post edge",
-  );
+  assert.ok(!mgr.next.includes("post-netsuite"), "no direct manager → post edge");
   // A small clean invoice skips the manager (straight-through); a material clean one
   // or any exception triggers it, the standard "not every $50 bill needs a human".
-  assert.equal(
-    evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 500 })),
-    false,
-  );
-  assert.equal(
-    evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 9000 })),
-    true,
-  );
-  assert.equal(
-    evaluateCondition(mgr.when, anyCtx({ verdict: "exception", amount: 100 })),
-    true,
-  );
+  assert.equal(evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 500 })), false);
+  assert.equal(evaluateCondition(mgr.when, anyCtx({ verdict: "clean", amount: 9000 })), true);
+  assert.equal(evaluateCondition(mgr.when, anyCtx({ verdict: "exception", amount: 100 })), true);
 });
 
 test("director step gates on the proposed threshold", () => {
@@ -143,14 +128,8 @@ test("department step gates on the buying department", () => {
   const dept = wf.steps.find((s) => s.id === "department-review")!;
   // Fires for the gated department, skips for any other (or none), so the gate is
   // real, not dead: an invoice whose PO is that department routes through it.
-  assert.equal(
-    evaluateCondition(dept.when, anyCtx({ department: "Product" })),
-    true,
-  );
-  assert.equal(
-    evaluateCondition(dept.when, anyCtx({ department: "Finance" })),
-    false,
-  );
+  assert.equal(evaluateCondition(dept.when, anyCtx({ department: "Product" })), true);
+  assert.equal(evaluateCondition(dept.when, anyCtx({ department: "Finance" })), false);
   assert.equal(evaluateCondition(dept.when, anyCtx({ department: "" })), false);
 });
 

@@ -107,9 +107,7 @@ export const scenarioKind = (scenario: string | null): ScenarioKind => {
 
 /** The badge tone + short label for a signposted scenario kind (queue, pre-run).
  *  `clean` returns null, clean rows stay unmarked so the marks draw the eye. */
-export const scenarioBadge = (
-  kind: ScenarioKind,
-): { tone: BadgeTone; label: string } | null => {
+export const scenarioBadge = (kind: ScenarioKind): { tone: BadgeTone; label: string } | null => {
   switch (kind) {
     case "exception":
       return { tone: "warn", label: "exception" };
@@ -127,18 +125,13 @@ export const scenarioBadge = (
  */
 export const scenarioExplain = (scenario: string | null): string | null => {
   const s = (scenario ?? "").toLowerCase();
-  if (s.includes("already paid"))
-    return "A bill with this number is already posted in the ERP.";
-  if (s.includes("duplicate"))
-    return "This invoice number was already submitted in the queue.";
-  if (s.includes("price mismatch"))
-    return "Invoiced unit price is over the PO price.";
-  if (s.includes("quantity mismatch"))
-    return "Invoiced quantity exceeds what was received.";
+  if (s.includes("already paid")) return "A bill with this number is already posted in the ERP.";
+  if (s.includes("duplicate")) return "This invoice number was already submitted in the queue.";
+  if (s.includes("price mismatch")) return "Invoiced unit price is over the PO price.";
+  if (s.includes("quantity mismatch")) return "Invoiced quantity exceeds what was received.";
   if (s.includes("arithmetic") || s.includes("error"))
     return "A line's amount doesn't equal unit price times quantity.";
-  if (s.includes("not on po"))
-    return "A billed line isn't on the purchase order.";
+  if (s.includes("not on po")) return "A billed line isn't on the purchase order.";
   if (s.includes("inactive")) return "The ERP marks this vendor inactive.";
   return null;
 };

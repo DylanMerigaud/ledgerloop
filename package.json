@@ -4,6 +4,7 @@
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@10.24.0",
+  "prettier": "@dylanmerigaud/config/prettier",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

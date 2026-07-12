@@ -28,7 +28,7 @@ export const isAwaitingApproval = (trace: TraceEvent[]): boolean => {
  */
 export const decisionsForPending = (
   trace: TraceEvent[],
-  decision: "approve" | "reject",
+  decision: "approve" | "reject"
 ): Record<string, "approve" | "reject"> => {
   const out: Record<string, "approve" | "reject"> = {};
   for (const e of trace) {
@@ -36,11 +36,7 @@ export const decisionsForPending = (
     if (!Array.isArray(steps)) continue;
     for (const raw of steps) {
       // Guard the shape instead of asserting it (raw is unknown from the trace).
-      if (
-        isRecord(raw) &&
-        raw["status"] === "pending" &&
-        typeof raw["id"] === "string"
-      ) {
+      if (isRecord(raw) && raw["status"] === "pending" && typeof raw["id"] === "string") {
         out[raw["id"]] = decision;
       }
     }
@@ -66,7 +62,7 @@ export type PendingGate = {
  */
 export const pendingGates = (
   statuses: Record<string, string>,
-  steps: WorkflowStep[],
+  steps: WorkflowStep[]
 ): PendingGate[] =>
   steps
     .filter((s) => s.kind === "approval" && statuses[s.id] === "pending")
@@ -83,10 +79,7 @@ export const pendingGates = (
  * reconciliation/approval `outcome` (when present) is the most specific signal and
  * wins over the earlier verdict hints.
  */
-export const deriveOutcome = (
-  trace: TraceEvent[],
-  finished: boolean,
-): Outcome => {
+export const deriveOutcome = (trace: TraceEvent[], finished: boolean): Outcome => {
   const outcome: Outcome = finished ? "reconciled" : "running";
   for (const e of trace) {
     const data = dataOf(e);
@@ -94,8 +87,7 @@ export const deriveOutcome = (
 
     // Approval / reconciliation outcome, the definitive resolution.
     if (data["outcome"] === "awaiting") return "needs-approval"; // paused for a human
-    if (data["outcome"] === "rejected" || data["outcome"] === "blocked")
-      return "blocked";
+    if (data["outcome"] === "rejected" || data["outcome"] === "blocked") return "blocked";
     if (data["outcome"] === "posted") return "reconciled";
 
     // Earlier hint (before the approval/recon outcome arrives).

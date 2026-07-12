@@ -27,10 +27,7 @@ type AgentResult = {
 
 /** Anything that can run a prompt, the real Mastra Agent, or a test/eval fake. */
 export type InvestigatorAgent = {
-  generate: (
-    prompt: string,
-    options?: { requestContext?: unknown },
-  ) => Promise<AgentResult>;
+  generate: (prompt: string, options?: { requestContext?: unknown }) => Promise<AgentResult>;
 };
 
 /** The requestContext key the investigator's tools read the trusted vendor from. */
@@ -82,8 +79,7 @@ const toolsUsedFrom = (res: AgentResult): string[] => {
 export const classify = (text: string): Investigation["recommendation"] => {
   const t = text.toLowerCase();
   const lead = t.slice(0, 120);
-  const leadOvercharge =
-    /overcharge|over-charge|not legitimate|error|dispute/.test(lead);
+  const leadOvercharge = /overcharge|over-charge|not legitimate|error|dispute/.test(lead);
   const leadLegit = /legitimate|justified|in line|expected/.test(lead);
   if (leadOvercharge && !leadLegit) return "likely_overcharge";
   if (leadLegit && !leadOvercharge) return "likely_legitimate";
@@ -92,7 +88,7 @@ export const classify = (text: string): Investigation["recommendation"] => {
   const legit = /legitimate|justified|in line|expected/.test(t);
   const bad =
     /overcharge|over-charge|no (notice|basis|contractual|surcharge)|typo|bill(ing)? (slip|error)/.test(
-      t,
+      t
     );
   if (bad && !legit) return "likely_overcharge";
   if (legit && !bad) return "likely_legitimate";
@@ -110,7 +106,7 @@ export const runInvestigation = async (
   agent: InvestigatorAgent,
   match: MatchResult,
   vendor: string,
-  requestContext: unknown,
+  requestContext: unknown
 ): Promise<{ investigation: Investigation; toolsUsed: string[] } | null> => {
   const res = await agent.generate(investigationPrompt(match, vendor), {
     requestContext,

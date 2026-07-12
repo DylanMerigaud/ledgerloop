@@ -104,11 +104,7 @@ const BAMBOO_REPORT_FIELDS = [
  *      become `OrgIssue`s for a human, the forward-deployed-engineer's actual
  *      onboarding work, made explicit.
  */
-export const mapBambooReport = (
-  raw: unknown,
-  source: string,
-  division?: string,
-): OrgChart => {
+export const mapBambooReport = (raw: unknown, source: string, division?: string): OrgChart => {
   // `raw` is unknown (a parsed JSON payload), validate with Zod so we read
   // `employees` without a cast (a malformed payload yields no rows, not a throw).
   const parsed = BambooReport.safeParse(raw);
@@ -121,15 +117,14 @@ export const mapBambooReport = (
     (r) =>
       (r.status ?? "Active") === "Active" &&
       r.id &&
-      (division === undefined || (r.division ?? "") === division),
+      (division === undefined || (r.division ?? "") === division)
   );
   const employees = active.map((r) => {
     const name =
       (r.displayName && r.displayName.trim()) ||
       [r.firstName, r.lastName].filter(Boolean).join(" ").trim() ||
       `Employee ${r.id}`;
-    const managerId =
-      r.supervisorEId && r.supervisorEId !== "0" ? r.supervisorEId : null;
+    const managerId = r.supervisorEId && r.supervisorEId !== "0" ? r.supervisorEId : null;
     return Employee.parse({
       // `active` was filtered on `r.id` being present, so it's a string here.
       id: nonNull(r.id, "active row has an id (filtered above)"),
@@ -214,10 +209,7 @@ export type BambooCreds = {
  * @public, the integration seam: swap this for a `workdayHris` implementing
  * `HrisAdapter` and nothing downstream changes (cf. `erp.ts`).
  */
-export const bambooHris = (
-  creds: BambooCreds,
-  division?: string,
-): HrisAdapter => {
+export const bambooHris = (creds: BambooCreds, division?: string): HrisAdapter => {
   return {
     name: division ? `bamboohr (${division})` : "bamboohr",
     async fetchOrg() {
@@ -228,9 +220,7 @@ export const bambooHris = (
 };
 
 /** The raw HTTP call, exported so the capture script records the exact payload. */
-export const fetchBambooReport = async (
-  creds: BambooCreds,
-): Promise<unknown> => {
+export const fetchBambooReport = async (creds: BambooCreds): Promise<unknown> => {
   const auth = Buffer.from(`${creds.key}:x`).toString("base64");
   const url = `https://${creds.subdomain}.bamboohr.com/api/v1/reports/custom?format=JSON`;
   const res = await fetch(url, {
@@ -243,9 +233,7 @@ export const fetchBambooReport = async (
     body: JSON.stringify({ title: "orgchart", fields: BAMBOO_REPORT_FIELDS }),
   });
   if (!res.ok) {
-    throw new Error(
-      `BambooHR report failed: HTTP ${res.status} ${res.statusText}`,
-    );
+    throw new Error(`BambooHR report failed: HTTP ${res.status} ${res.statusText}`);
   }
   return res.json();
 };
@@ -274,11 +262,7 @@ export const recordedHris = (): HrisAdapter => {
     // is already in memory, so return a resolved promise rather than an async fn.
     fetchOrg() {
       return Promise.resolve(
-        mapBambooReport(
-          recordedReport,
-          "bamboohr (recorded)",
-          DEMO_CLIENT_DIVISION,
-        ),
+        mapBambooReport(recordedReport, "bamboohr (recorded)", DEMO_CLIENT_DIVISION)
       );
     },
   };
@@ -308,7 +292,5 @@ export const DEMO_CLIENT_DIVISION = "LedgerLoop Demo";
 export const defaultHris = (): HrisAdapter => {
   const key = env.BAMBOO_HR_API_KEY;
   const subdomain = env.BAMBOO_HR_SUBDOMAIN;
-  return key && subdomain
-    ? bambooHris({ key, subdomain }, DEMO_CLIENT_DIVISION)
-    : recordedHris();
+  return key && subdomain ? bambooHris({ key, subdomain }, DEMO_CLIENT_DIVISION) : recordedHris();
 };

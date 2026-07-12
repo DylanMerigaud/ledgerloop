@@ -71,10 +71,7 @@ const buildGlEntries = (amount: number): GlEntry[] => {
  *
  * @public, part of the ERP seam: a real adapter would send exactly this.
  */
-export const buildVendorBill = (
-  match: MatchResult,
-  vendor: string,
-): VendorBill => {
+export const buildVendorBill = (match: MatchResult, vendor: string): VendorBill => {
   return {
     docNumber: match.invoiceNumber,
     vendor,
@@ -130,7 +127,7 @@ export const reconcileFromOutcome = async (
   outcome: ApprovalOutcome,
   match: MatchResult,
   vendor: string,
-  adapter: ErpAdapter = fakeErp,
+  adapter: ErpAdapter = fakeErp
 ): Promise<ReconResult> => {
   const base = {
     invoiceNumber: match.invoiceNumber,
@@ -298,17 +295,14 @@ const QboPurchaseOrder = z.object({
 });
 
 const QboPoResponse = z.object({
-  QueryResponse: z
-    .object({ PurchaseOrder: z.array(QboPurchaseOrder).optional() })
-    .optional(),
+  QueryResponse: z.object({ PurchaseOrder: z.array(QboPurchaseOrder).optional() }).optional(),
 });
 
 /* ────────────────────────────────────────────────────────────────────────── *
  *  The shared mapper, QBO shape → internal PurchaseOrder[]
  * ────────────────────────────────────────────────────────────────────────── */
 
-const round2 = (n: number): number =>
-  Math.round((n + Number.EPSILON) * 100) / 100;
+const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /**
  * Turn a raw QBO PurchaseOrder query payload into our `PurchaseOrder[]`. The ONE
@@ -334,9 +328,7 @@ const round2 = (n: number): number =>
  */
 export const mapQboPurchaseOrders = (raw: unknown): TPurchaseOrder[] => {
   const parsed = QboPoResponse.safeParse(raw);
-  const rows = parsed.success
-    ? (parsed.data.QueryResponse?.PurchaseOrder ?? [])
-    : [];
+  const rows = parsed.success ? (parsed.data.QueryResponse?.PurchaseOrder ?? []) : [];
 
   const out: TPurchaseOrder[] = [];
   for (const po of rows) {
@@ -364,8 +356,7 @@ export const mapQboPurchaseOrders = (raw: unknown): TPurchaseOrder[] => {
     // can't use.
     if (!vendor || !poNumber || lineItems.length === 0) continue;
 
-    const total =
-      po.TotalAmt ?? round2(lineItems.reduce((s, l) => s + l.amount, 0));
+    const total = po.TotalAmt ?? round2(lineItems.reduce((s, l) => s + l.amount, 0));
 
     // QBO doesn't carry our internal buying department on a PO, so it's "" (no
     // department → the invoice routes normally; a department-scoped gate just
@@ -398,9 +389,7 @@ const QboVendorRow = z.object({
   Active: z.boolean().optional(),
 });
 const QboVendorResponse = z.object({
-  QueryResponse: z
-    .object({ Vendor: z.array(QboVendorRow).optional() })
-    .optional(),
+  QueryResponse: z.object({ Vendor: z.array(QboVendorRow).optional() }).optional(),
 });
 
 /** Raw QBO Vendor query payload → internal vendor master.
@@ -486,8 +475,7 @@ export type QboCreds = {
 
 /** QBO's sandbox API host. (Production would be quickbooks.api.intuit.com.) */
 const QBO_API_BASE = "https://sandbox-quickbooks.api.intuit.com";
-const QBO_TOKEN_URL =
-  "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+const QBO_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 
 /**
  * Exchange the long-lived refresh token for a short-lived access token. QBO
@@ -514,9 +502,7 @@ const qboAccessToken = async (creds: QboCreds): Promise<string> => {
   // refresh-token rotation entirely while the token is fresh).
   if (creds.accessToken) return creds.accessToken;
   if (tokenCache && Date.now() < tokenCache.expiresAt) return tokenCache.token;
-  const basic = Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString(
-    "base64",
-  );
+  const basic = Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString("base64");
   const res = await fetch(QBO_TOKEN_URL, {
     method: "POST",
     headers: {
@@ -533,7 +519,7 @@ const qboAccessToken = async (creds: QboCreds): Promise<string> => {
     throw new Error(
       `QBO token refresh failed: HTTP ${res.status} ${res.statusText}. ` +
         "The refresh token is invalid or expired (QBO rotates it), mint a fresh " +
-        "one from the OAuth 2.0 Playground and update QBO_REFRESH_TOKEN.",
+        "one from the OAuth 2.0 Playground and update QBO_REFRESH_TOKEN."
     );
   }
   const json: unknown = await res.json();
@@ -546,10 +532,7 @@ const qboAccessToken = async (creds: QboCreds): Promise<string> => {
   if (!parsed.success) {
     throw new Error("QBO token refresh returned no access_token.");
   }
-  if (
-    parsed.data.refresh_token &&
-    parsed.data.refresh_token !== creds.refreshToken
-  ) {
+  if (parsed.data.refresh_token && parsed.data.refresh_token !== creds.refreshToken) {
     rotatedRefreshToken = parsed.data.refresh_token;
   }
   // Cache until 60s before expiry (default 3600s if QBO omits expires_in).
@@ -570,10 +553,7 @@ const qboUrl = (creds: QboCreds, pathPart: string): string => {
  * Run a SuiteQL-style read query against QBO. Exported so the seed/capture scripts
  * (re)use the exact token + request path the live adapter uses.
  */
-export const qboQuery = async (
-  creds: QboCreds,
-  query: string,
-): Promise<unknown> => {
+export const qboQuery = async (creds: QboCreds, query: string): Promise<unknown> => {
   const accessToken = await qboAccessToken(creds);
   const url = qboUrl(creds, `query?query=${encodeURIComponent(query)}`);
   const res = await fetch(url, {
@@ -596,7 +576,7 @@ export const qboQuery = async (
 export const qboPostEntity = async (
   creds: QboCreds,
   entityPath: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<unknown> => {
   const accessToken = await qboAccessToken(creds);
   const url = qboUrl(creds, entityPath);
@@ -612,7 +592,7 @@ export const qboPostEntity = async (
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(
-      `QBO ${entityPath} failed: HTTP ${res.status} ${res.statusText}${detail ? `, ${detail}` : ""}`,
+      `QBO ${entityPath} failed: HTTP ${res.status} ${res.statusText}${detail ? `, ${detail}` : ""}`
     );
   }
   return res.json();
@@ -624,10 +604,7 @@ export const fetchQboPurchaseOrders = (creds: QboCreds): Promise<unknown> =>
 export const fetchQboVendors = (creds: QboCreds): Promise<unknown> =>
   // QBO returns only active rows by default; the inactive-vendor control needs the
   // deactivated ones too, so ask for both explicitly.
-  qboQuery(
-    creds,
-    "select * from Vendor where Active in (true, false) maxresults 1000",
-  );
+  qboQuery(creds, "select * from Vendor where Active in (true, false) maxresults 1000");
 export const fetchQboItems = (creds: QboCreds): Promise<unknown> =>
   qboQuery(creds, "select * from Item maxresults 1000");
 export const fetchQboBills = (creds: QboCreds): Promise<unknown> =>
@@ -688,8 +665,7 @@ const ErpFixture = z.object({
  */
 export const recordedErp = (): PoSourceAdapter => {
   // Parse once; each method maps its slice. Async contract, in-memory payload.
-  const load = (): z.infer<typeof ErpFixture> =>
-    ErpFixture.parse(recordedErpPayload);
+  const load = (): z.infer<typeof ErpFixture> => ErpFixture.parse(recordedErpPayload);
   return {
     name: "quickbooks (recorded)",
     pullPurchaseOrders() {
@@ -720,8 +696,7 @@ export const recordedErp = (): PoSourceAdapter => {
  * @public, the entry point the pipeline uses to read a client's POs.
  */
 export const defaultErp = (): PoSourceAdapter => {
-  const { QBO_CLIENT_ID, QBO_CLIENT_SECRET, QBO_REFRESH_TOKEN, QBO_REALM_ID } =
-    env;
+  const { QBO_CLIENT_ID, QBO_CLIENT_SECRET, QBO_REFRESH_TOKEN, QBO_REALM_ID } = env;
   if (QBO_CLIENT_ID && QBO_CLIENT_SECRET && QBO_REFRESH_TOKEN && QBO_REALM_ID) {
     return liveQuickBooksErp({
       clientId: QBO_CLIENT_ID,

@@ -37,9 +37,7 @@ const peopleFor = (people: OrgEmployee[], role: string): OrgEmployee[] => {
     );
   };
   const score = (p: OrgEmployee): number => (relevant(p) ? 0 : 1);
-  return [...people].sort(
-    (a, b) => score(a) - score(b) || a.name.localeCompare(b.name),
-  );
+  return [...people].sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
 };
 
 /** A person row for the approver combobox: initials avatar + name + title. */
@@ -82,24 +80,14 @@ export const NodeEditPanel = ({
   return (
     <PanelShell title={step.label} onClose={onClose}>
       {step.kind === "approval" ? (
-        <ApprovalFields
-          step={step}
-          people={people}
-          available={available}
-          onApply={onApply}
-        />
+        <ApprovalFields step={step} people={people} available={available} onApply={onApply} />
       ) : (
         <p className="text-[12px] text-faint">
           A system step (posts the bill / notifies). Rename or remove it below.
         </p>
       )}
       <LabelField step={step} onApply={onApply} />
-      <RemoveField
-        workflow={workflow}
-        stepId={stepId}
-        onApply={onApply}
-        onClose={onClose}
-      />
+      <RemoveField workflow={workflow} stepId={stepId} onApply={onApply} onClose={onClose} />
     </PanelShell>
   );
 };
@@ -137,9 +125,7 @@ const ApprovalFields = ({
       <Field label={`Approver · ${step.approverTitle}`}>
         <Combobox
           value={step.approverName ?? ""}
-          onChange={(name) =>
-            onApply({ op: "set-approver", stepId: step.id, approverName: name })
-          }
+          onChange={(name) => onApply({ op: "set-approver", stepId: step.id, approverName: name })}
           options={optionsFor(extras)}
           placeholder={unresolved ? "⚠ Choose a person…" : "Choose a person…"}
           invalid={unresolved}
@@ -172,10 +158,7 @@ const ApprovalFields = ({
         <Combobox
           value=""
           onChange={(name) => name && setExtras([...extras, name])}
-          options={optionsFor([
-            ...(step.approverName ? [step.approverName] : []),
-            ...extras,
-          ])}
+          options={optionsFor([...(step.approverName ? [step.approverName] : []), ...extras])}
           placeholder="Add another approver…"
           testid="add-approver-combobox"
         />
@@ -185,9 +168,7 @@ const ApprovalFields = ({
         <ConditionEditor
           value={step.when}
           available={available}
-          onChange={(when) =>
-            onApply({ op: "set-condition", stepId: step.id, when })
-          }
+          onChange={(when) => onApply({ op: "set-condition", stepId: step.id, when })}
         />
       </Field>
     </>
@@ -208,8 +189,7 @@ const LabelField = ({
         onSubmit={(e) => {
           e.preventDefault();
           const v = label.trim();
-          if (v && v !== step.label)
-            onApply({ op: "rename-step", stepId: step.id, label: v });
+          if (v && v !== step.label) onApply({ op: "rename-step", stepId: step.id, label: v });
         }}
         className="flex items-center gap-1.5"
       >
@@ -244,9 +224,7 @@ const RemoveField = ({
     // refused, the validator is the same one the editor blocks Approve on.
     const after = applyEditOp(workflow, { op: "remove-step", stepId });
     if (!isActivatable(validateWorkflow(after))) {
-      setError(
-        "Can't remove this. It would break the workflow (nothing would post).",
-      );
+      setError("Can't remove this. It would break the workflow (nothing would post).");
       return;
     }
     onApply({ op: "remove-step", stepId });
@@ -254,9 +232,7 @@ const RemoveField = ({
   };
   return (
     <div className="mt-1 border-t border-line pt-3">
-      {error && (
-        <p className="mb-2 text-[11.5px] leading-snug text-danger">{error}</p>
-      )}
+      {error && <p className="mb-2 text-[11.5px] leading-snug text-danger">{error}</p>}
       <Button variant="danger" size="sm" onClick={remove}>
         Remove this step
       </Button>
@@ -293,9 +269,7 @@ const PanelShell = ({
       <div aria-hidden className="absolute inset-0 bg-ink/10" />
       <div className="pointer-events-auto relative flex h-full w-full max-w-[380px] flex-col overflow-y-auto bg-surface p-5 shadow-lift ring-1 ring-inset ring-line">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <span className="truncate text-[14px] font-semibold text-ink">
-            {title}
-          </span>
+          <span className="truncate text-[14px] font-semibold text-ink">{title}</span>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -307,17 +281,11 @@ const PanelShell = ({
         <div className="space-y-3">{children}</div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 };
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => (
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div>
     <span className="mb-1 block text-[10.5px] font-medium uppercase tracking-wider text-faint">
       {label}

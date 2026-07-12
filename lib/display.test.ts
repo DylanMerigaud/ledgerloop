@@ -30,12 +30,7 @@ test("classifies the duplicate scenarios as blocked", () => {
 });
 
 test("classifies clean matches (and the paid original) as clean", () => {
-  for (const s of [
-    "Clean 3-way match",
-    "Clean 2-way (services)",
-    "Original (paid)",
-    null,
-  ]) {
+  for (const s of ["Clean 3-way match", "Clean 2-way (services)", "Original (paid)", null]) {
     assert.equal(scenarioKind(s), "clean", String(s));
   }
 });

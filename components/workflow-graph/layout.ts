@@ -36,7 +36,7 @@ export const layout = (
   nodes: Node<NodeData>[],
   edges: Edge[],
   heightOf: (n: Node<NodeData>) => number,
-  vertical: boolean,
+  vertical: boolean
 ): Node<NodeData>[] => {
   const h = new Map(nodes.map((n) => [n.id, heightOf(n)]));
   const g = new dagre.graphlib.Graph();
@@ -59,10 +59,8 @@ export const layout = (
   // vertical axis when ranks flow left→right, the horizontal axis when top→bottom.
   // `rank` is the other axis (which column/row). We center + reorder on the cross
   // axis, so the same logic serves both orientations by swapping which coord it reads.
-  const crossOf = (id: string): number =>
-    vertical ? g.node(id).x : g.node(id).y;
-  const crossSizeOf = (id: string): number =>
-    vertical ? NODE_WIDTH : (h.get(id) ?? 80);
+  const crossOf = (id: string): number => (vertical ? g.node(id).x : g.node(id).y);
+  const crossSizeOf = (id: string): number => (vertical ? NODE_WIDTH : (h.get(id) ?? 80));
 
   const cross = new Map<string, number>(); // node id → center on the cross axis
   for (const id of g.nodes()) cross.set(id, crossOf(id));
@@ -87,17 +85,14 @@ export const layout = (
   // siblings that belong to a single parent (true fan-out branches), a shared join
   // node like the post isn't reordered.
   for (const [, children] of childrenOf) {
-    const branches = children.filter(
-      (c) => (parentsOf.get(c) ?? []).length === 1,
-    );
+    const branches = children.filter((c) => (parentsOf.get(c) ?? []).length === 1);
     if (branches.length < 2) continue;
     const slots = branches.map((c) => cross.get(c) ?? 0).sort((a, b) => a - b);
     branches.forEach((c, i) => cross.set(c, slots[i] ?? cross.get(c) ?? 0));
   }
 
   // Parents centered on their children (deepest rank first so children settle first).
-  const rankOf = (id: string): number =>
-    vertical ? g.node(id).y : g.node(id).x;
+  const rankOf = (id: string): number => (vertical ? g.node(id).y : g.node(id).x);
   for (const id of [...g.nodes()].sort((a, b) => rankOf(b) - rankOf(a))) {
     const kids = childrenOf.get(id) ?? [];
     if (kids.length >= 2) cross.set(id, boxMid(kids));

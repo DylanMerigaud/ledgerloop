@@ -2,11 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
-import {
-  validateWorkflow,
-  isActivatable,
-  MATERIALITY,
-} from "@/lib/workflow-validate";
+import { validateWorkflow, isActivatable, MATERIALITY } from "@/lib/workflow-validate";
 
 /**
  * The validator is the tool that decides whether a workflow "makes sense", both
@@ -57,8 +53,7 @@ const sound = (): ApprovalWorkflow => ({
   ],
 });
 
-const codes = (wf: ApprovalWorkflow): string[] =>
-  validateWorkflow(wf).map((i) => i.code);
+const codes = (wf: ApprovalWorkflow): string[] => validateWorkflow(wf).map((i) => i.code);
 
 test("a sound template validates with zero issues", () => {
   const issues = validateWorkflow(sound());

@@ -18,9 +18,7 @@ export const persistRotatedRefreshToken = (): void => {
   const rotated = qboRotatedRefreshToken();
   if (!rotated) return;
 
-  const candidates = [".env.local", ".env"].map((f) =>
-    path.join(process.cwd(), f),
-  );
+  const candidates = [".env.local", ".env"].map((f) => path.join(process.cwd(), f));
   const file = candidates.find((f) => existsSync(f));
   if (!file) return;
 
@@ -31,8 +29,6 @@ export const persistRotatedRefreshToken = (): void => {
     : original.replace(/\n*$/, `\n${line}\n`);
   if (next !== original) {
     writeFileSync(file, next, "utf8");
-    console.log(
-      `Refresh token rotated, updated QBO_REFRESH_TOKEN in ${path.basename(file)}.`,
-    );
+    console.log(`Refresh token rotated, updated QBO_REFRESH_TOKEN in ${path.basename(file)}.`);
   }
 };

@@ -123,15 +123,12 @@ export const EDIT_CASES: EditCase[] = [
     instruction: "Make Sam Patel the IT review approver",
     expectedOp: "set-approver",
     check: (op) =>
-      op.op === "set-approver" &&
-      op.stepId === "it-review" &&
-      /sam patel/i.test(op.approverName),
+      op.op === "set-approver" && op.stepId === "it-review" && /sam patel/i.test(op.approverName),
     why: "set the person on the existing IT gate",
   },
   {
     id: "add-director-co-approver",
-    instruction:
-      "The director review should also require Taylor Nguyen to sign off",
+    instruction: "The director review should also require Taylor Nguyen to sign off",
     expectedOp: "add-approver",
     check: (op) =>
       op.op === "add-approver" &&
@@ -141,8 +138,7 @@ export const EDIT_CASES: EditCase[] = [
   },
   {
     id: "remove-director-co-approver",
-    instruction:
-      "Jordan Ellis no longer needs to sign off on the director review",
+    instruction: "Jordan Ellis no longer needs to sign off on the director review",
     expectedOp: "remove-approver",
     check: (op) =>
       op.op === "remove-approver" &&

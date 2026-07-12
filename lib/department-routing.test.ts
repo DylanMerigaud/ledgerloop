@@ -126,7 +126,7 @@ test("the derived department gate fires for its department, isolating it from th
   assert.deepEqual(
     pendingIds,
     ["department-review"],
-    "only the Product department gate pends on a small clean invoice",
+    "only the Product department gate pends on a small clean invoice"
   );
 });
 

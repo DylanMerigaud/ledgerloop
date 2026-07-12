@@ -93,7 +93,7 @@ test("the match result carries the invoice vendor (for vendor-scoped gates)", ()
   assert.equal(run().vendor, "Acme Steel");
   assert.equal(
     run({ invoice: invoice({ vendor: "Severn Steelworks" }) }).vendor,
-    "Severn Steelworks",
+    "Severn Steelworks"
   );
 });
 
@@ -254,9 +254,7 @@ test("an active vendor raises no vendor_inactive flag", () => {
 test("invoiced SKU outside the ERP catalog → sku_not_in_catalog", () => {
   // Catalog has only one of the two invoiced SKUs.
   const r = run({ catalogSkus: new Set(["BOLT-M8"]) });
-  const offCatalog = r.exceptions.filter(
-    (e) => e.code === "sku_not_in_catalog",
-  );
+  const offCatalog = r.exceptions.filter((e) => e.code === "sku_not_in_catalog");
   assert.equal(offCatalog.length, 1);
   assert.equal(offCatalog[0]?.sku, "NUT-M8");
 });

@@ -30,7 +30,7 @@ test("maps a clean two-person org with one ID-based reporting edge", () => {
         status: "Active",
       },
     ]),
-    "test",
+    "test"
   );
   assert.equal(org.employees.length, 2);
   assert.equal(org.issues.length, 0);
@@ -46,7 +46,7 @@ test("drops non-active rows so terminated staff never enter the hierarchy", () =
       { id: "1", displayName: "Boss", jobTitle: "CEO", status: "Active" },
       { id: "2", displayName: "Gone", status: "Inactive", supervisorEId: "1" },
     ]),
-    "test",
+    "test"
   );
   assert.equal(org.employees.length, 1);
   assert.equal(org.employees[0]?.id, "1");
@@ -63,7 +63,7 @@ test("flags a dangling manager (supervisor id not an active employee)", () => {
         status: "Active",
       },
     ]),
-    "test",
+    "test"
   );
   const issue = org.issues.find((i) => i.kind === "dangling-manager");
   assert.ok(issue, "expected a dangling-manager issue");
@@ -81,17 +81,15 @@ test("flags a self-managed employee", () => {
         status: "Active",
       },
     ]),
-    "test",
+    "test"
   );
   assert.ok(org.issues.some((i) => i.kind === "self-managed"));
 });
 
 test("a single root is healthy; multiple roots are all flagged as orphans", () => {
   const oneRoot = mapBambooReport(
-    report([
-      { id: "1", displayName: "Solo", jobTitle: "CEO", status: "Active" },
-    ]),
-    "test",
+    report([{ id: "1", displayName: "Solo", jobTitle: "CEO", status: "Active" }]),
+    "test"
   );
   assert.equal(oneRoot.issues.length, 0);
 
@@ -100,7 +98,7 @@ test("a single root is healthy; multiple roots are all flagged as orphans", () =
       { id: "1", displayName: "Root A", status: "Active" },
       { id: "2", displayName: "Root B", status: "Active" },
     ]),
-    "test",
+    "test"
   );
   const orphans = twoRoots.issues.filter((i) => i.kind === "orphan");
   assert.equal(orphans.length, 2);
@@ -117,7 +115,7 @@ test("a blank-title root is called out as junk; a titled root as needs-review", 
       },
       { id: "2", displayName: "Junk Row", status: "Active" }, // no title
     ]),
-    "test",
+    "test"
   );
   const junk = org.issues.find((i) => i.employeeId === "2");
   const titled = org.issues.find((i) => i.employeeId === "1");
@@ -136,7 +134,7 @@ test("treats supervisorEId '0' / missing as no manager (a root), not a dangling 
         status: "Active",
       },
     ]),
-    "test",
+    "test"
   );
   assert.equal(org.employees[0]?.managerId, null);
   assert.equal(org.issues.length, 0);
@@ -153,7 +151,7 @@ test("derives a name from first/last when displayName is absent", () => {
         status: "Active",
       },
     ]),
-    "test",
+    "test"
   );
   assert.equal(org.employees[0]?.name, "Ada Lovelace");
 });
@@ -180,7 +178,7 @@ test("the recorded fixture maps to a valid OrgChart", async (t) => {
   assert.ok(org.employees.length > 10, "expected a populated org");
   assert.ok(
     org.employees.some((e) => e.managerId !== null),
-    "expected at least one resolved reporting edge",
+    "expected at least one resolved reporting edge"
   );
   assert.equal(org.source, "bamboohr (recorded)");
 });

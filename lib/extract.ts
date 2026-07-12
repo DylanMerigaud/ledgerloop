@@ -2,11 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { APIError } from "@anthropic-ai/sdk";
 
 import { anthropic, MissingAnthropicKeyError } from "@/lib/anthropic";
-import {
-  Invoice,
-  INVOICE_JSON_SCHEMA,
-  type Invoice as TInvoice,
-} from "@/lib/schema";
+import { Invoice, INVOICE_JSON_SCHEMA, type Invoice as TInvoice } from "@/lib/schema";
 
 /**
  * Document extraction, the intake step's real work: a vendor's invoice PDF in,
@@ -45,9 +41,7 @@ Rules:
 - Each line item needs a "sku": copy the printed item/SKU code for that line EXACTLY as shown (e.g. the "Item" column). Only if no code is printed, fall back to a short slug of the description.`;
 
 /** Extract a base64-encoded PDF into a validated Invoice (or a tagged failure). */
-export const extractInvoice = async (
-  pdfBase64: string,
-): Promise<ExtractionResult> => {
+export const extractInvoice = async (pdfBase64: string): Promise<ExtractionResult> => {
   let message: Anthropic.Message;
   try {
     message = await anthropic().messages.create({
@@ -98,9 +92,7 @@ export const extractInvoice = async (
     return {
       ok: false,
       kind: "validation",
-      issues: parsed.error.issues.map(
-        (i) => `${i.path.join(".") || "(root)"}: ${i.message}`,
-      ),
+      issues: parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
     };
   }
   return {

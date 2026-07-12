@@ -12,16 +12,12 @@ import { test, expect } from "@playwright/test";
 const DISCOVERY_TIMEOUT = 90_000;
 const EDIT_TIMEOUT = 45_000;
 
-test("the editor builds a vendor-scoped gate from a plain instruction", async ({
-  page,
-}) => {
+test("the editor builds a vendor-scoped gate from a plain instruction", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
   // Discovery done once the derived workflow has rendered its gates.
   // Both tabs stay mounted and share the workflow, so scope to the VISIBLE graph.
-  await expect(
-    page.getByTestId("graph-node-manager-review").locator("visible=true"),
-  ).toBeVisible({
+  await expect(page.getByTestId("graph-node-manager-review").locator("visible=true")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 
@@ -43,7 +39,5 @@ test("the editor builds a vendor-scoped gate from a plain instruction", async ({
   await expect(page.getByText(/not applied yet/i)).toBeVisible({
     timeout: EDIT_TIMEOUT,
   });
-  await expect(
-    page.getByText(/Vendor: Severn Steelworks/).first(),
-  ).toBeVisible();
+  await expect(page.getByText(/Vendor: Severn Steelworks/).first()).toBeVisible();
 });

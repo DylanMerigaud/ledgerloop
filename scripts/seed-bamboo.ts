@@ -34,11 +34,7 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import {
-  SEED_ORG,
-  SEED_DIVISION,
-  type SeedPerson,
-} from "@/db/fixtures/bamboohr/seed-org";
+import { SEED_ORG, SEED_DIVISION, type SeedPerson } from "@/db/fixtures/bamboohr/seed-org";
 import { nonNull } from "@/lib/assert";
 
 /** Same env loading as eval/run.ts, native, no dotenv dep. */
@@ -92,7 +88,7 @@ const MetaLists = z.array(
     alias: z.string().nullish(),
     fieldId: z.number(),
     options: z.array(ListOption).nullish(),
-  }),
+  })
 );
 
 /**
@@ -131,8 +127,7 @@ const ensureDivision = async (c: Creds): Promise<void> => {
     },
     body: JSON.stringify({ options }),
   });
-  if (!put.ok)
-    throw new Error(`creating division option failed: HTTP ${put.status}`);
+  if (!put.ok) throw new Error(`creating division option failed: HTTP ${put.status}`);
   console.log(`Created Division option "${SEED_DIVISION}".`);
 };
 
@@ -149,7 +144,7 @@ const createEmployee = async (c: Creds, p: SeedPerson): Promise<string> => {
   });
   if (res.status !== 201) {
     throw new Error(
-      `create ${p.firstName} ${p.lastName} failed: HTTP ${res.status} ${res.statusText}`,
+      `create ${p.firstName} ${p.lastName} failed: HTTP ${res.status} ${res.statusText}`
     );
   }
   const location = res.headers.get("location") ?? "";
@@ -159,11 +154,7 @@ const createEmployee = async (c: Creds, p: SeedPerson): Promise<string> => {
 };
 
 /** Set division/title/department/manager via the jobInfo table (the only path that sticks). */
-const setJobInfo = async (
-  c: Creds,
-  id: string,
-  p: SeedPerson,
-): Promise<void> => {
+const setJobInfo = async (c: Creds, id: string, p: SeedPerson): Promise<void> => {
   const body: Record<string, string> = {
     date: "2026-01-01",
     department: p.department,
@@ -184,16 +175,12 @@ const setJobInfo = async (
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(
-      `jobInfo for ${p.firstName} ${p.lastName} failed: HTTP ${res.status}`,
-    );
+    throw new Error(`jobInfo for ${p.firstName} ${p.lastName} failed: HTTP ${res.status}`);
   }
 };
 
 /** Everyone currently in the SEED_DIVISION (the scope of seed/reset). */
-const seededEmployees = async (
-  c: Creds,
-): Promise<{ id: string; name: string }[]> => {
+const seededEmployees = async (c: Creds): Promise<{ id: string; name: string }[]> => {
   const res = await fetch(api(c, "/reports/custom?format=JSON"), {
     method: "POST",
     headers: {
@@ -217,7 +204,7 @@ const seededEmployees = async (
           // just optional) so the read-back doesn't 400 on them. We filter to
           // SEED_DIVISION next, so a null division is simply out of scope.
           division: z.string().nullish(),
-        }),
+        })
       ),
     })
     .parse(await res.json());
@@ -233,7 +220,7 @@ const seed = async (): Promise<void> => {
   const already = await seededEmployees(c);
   if (already.length > 0) {
     console.error(
-      `${already.length} employee(s) already in "${SEED_DIVISION}". Run "pnpm hris:reset" first to avoid duplicates.`,
+      `${already.length} employee(s) already in "${SEED_DIVISION}". Run "pnpm hris:reset" first to avoid duplicates.`
     );
     process.exit(1);
   }
@@ -252,19 +239,17 @@ const seed = async (): Promise<void> => {
   for (const p of SEED_ORG) {
     const id = nonNull(
       created.get(`${p.firstName} ${p.lastName}`),
-      "every person was created in pass 1",
+      "every person was created in pass 1"
     );
     await setJobInfo(c, id, p);
     const rel = p.managerName ? ` → ${p.managerName}` : " (root)";
-    console.log(
-      `  · ${p.firstName} ${p.lastName}: ${p.title || "(no title)"}${rel}`,
-    );
+    console.log(`  · ${p.firstName} ${p.lastName}: ${p.title || "(no title)"}${rel}`);
   }
 
   console.log(
     `\nDone. ${SEED_ORG.length} employees seeded into "${SEED_DIVISION}".\n` +
       `Deliberate issues for the discovery agent: an employee pointed at a\n` +
-      `non-existent manager (surfaces as an unexpected root) and a blank-title second root.`,
+      `non-existent manager (surfaces as an unexpected root) and a blank-title second root.`
   );
 };
 
@@ -289,9 +274,7 @@ const reset = async (): Promise<void> => {
     }
   }
   console.log(
-    failed === 0
-      ? `Removed all ${targets.length}.`
-      : `${failed} could not be deleted (see above).`,
+    failed === 0 ? `Removed all ${targets.length}.` : `${failed} could not be deleted (see above).`
   );
 };
 

@@ -34,8 +34,7 @@ export const RunningAgainst = ({
       <span aria-hidden className="text-faint">
         ↳
       </span>
-      Running against{" "}
-      <span className="truncate font-medium text-ink">{workflow.name}</span>
+      Running against <span className="truncate font-medium text-ink">{workflow.name}</span>
     </p>
   );
 };

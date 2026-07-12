@@ -71,16 +71,14 @@ const leaves = (c: Condition): Extract<Condition, { kind: "leaf" }>[] => {
 /** The amount lower-bound a step requires (from a `>`/`>=` amount leaf), or null. */
 const amountFloor = (step: WorkflowStep): number | null => {
   const amt = leaves(step.when).find(
-    (l) => l.field === "amount" && (l.op === ">" || l.op === ">="),
+    (l) => l.field === "amount" && (l.op === ">" || l.op === ">=")
   );
   return amt && typeof amt.value === "number" ? amt.value : null;
 };
 
 /** The department a step is scoped to (from a `department ==` leaf), or null. */
 const departmentScope = (step: WorkflowStep): string | null => {
-  const dep = leaves(step.when).find(
-    (l) => l.field === "department" && l.op === "==",
-  );
+  const dep = leaves(step.when).find((l) => l.field === "department" && l.op === "==");
   return dep && typeof dep.value === "string" ? dep.value : null;
 };
 
@@ -135,7 +133,7 @@ const pathsToPosts = (wf: ApprovalWorkflow): string[][] => {
 const danglingEdges = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   const ids = new Set(wf.steps.map((s) => s.id));
   const bad = wf.steps.flatMap((s) =>
-    s.next.filter((n) => !ids.has(n)).map((n) => ({ from: s.id, to: n })),
+    s.next.filter((n) => !ids.has(n)).map((n) => ({ from: s.id, to: n }))
   );
   return bad.map((b) => ({
     severity: "error",
@@ -169,11 +167,8 @@ const rootsValid = (wf: ApprovalWorkflow): WorkflowIssue[] => {
 const cycleFree = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   // Kahn: if not all nodes get emitted, there's a cycle.
   const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
-  for (const s of wf.steps)
-    for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
-  const queue = [...indeg.entries()]
-    .filter(([, d]) => d === 0)
-    .map(([id]) => id);
+  for (const s of wf.steps) for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
+  const queue = [...indeg.entries()].filter(([, d]) => d === 0).map(([id]) => id);
   const byId = new Map(wf.steps.map((s) => [s.id, s]));
   let emitted = 0;
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
@@ -208,9 +203,7 @@ const allReachable = (wf: ApprovalWorkflow): WorkflowIssue[] => {
 };
 
 const postReached = (wf: ApprovalWorkflow): WorkflowIssue[] => {
-  const posts = wf.steps.filter(
-    (s) => s.kind === "integration" && s.next.length === 0,
-  );
+  const posts = wf.steps.filter((s) => s.kind === "integration" && s.next.length === 0);
   if (posts.length === 0)
     return [
       {

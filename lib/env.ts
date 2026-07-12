@@ -14,9 +14,7 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     /** Node environment, drives dev-only logging. */
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .default("development"),
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     /** Postgres connection (seeded invoice queue). Required, there's no app without it. */
     DATABASE_URL: z.string().min(1),
     /** Direct (non-pooled) Postgres URL, used by migrations/tooling. Optional. */

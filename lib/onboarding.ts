@@ -52,7 +52,7 @@ const STEP = {
 
 const rolePerson = (
   proposal: TProposal,
-  role: "manager" | "director" | "department-head",
+  role: "manager" | "director" | "department-head"
 ): { title: string; name: string | null } => {
   const r = proposal.roles.find((x) => x.role === role);
   return { title: r?.title ?? role, name: r?.employeeName ?? null };
@@ -64,10 +64,7 @@ const rolePerson = (
  * template; only the threshold value and the resolved approver names come from the
  * model.
  */
-export const assembleWorkflow = (
-  org: OrgChart,
-  proposal: TProposal,
-): ApprovalWorkflow => {
+export const assembleWorkflow = (org: OrgChart, proposal: TProposal): ApprovalWorkflow => {
   const manager = rolePerson(proposal, "manager");
   const director = rolePerson(proposal, "director");
   const deptHead = rolePerson(proposal, "department-head");
@@ -93,7 +90,7 @@ export const assembleWorkflow = (
   // guards against an unusually low proposed threshold.
   const managerFloor = Math.max(
     DEFAULT_APPROVAL_POLICY.manager.amount / 2,
-    Math.round(proposal.directorThreshold / 10),
+    Math.round(proposal.directorThreshold / 10)
   );
   const managerReview: Condition = {
     kind: "any",
@@ -182,7 +179,7 @@ export type OnboardingResult = {
  */
 export const deriveWorkflow = async (
   model: ProposalModel,
-  org: OrgChart,
+  org: OrgChart
 ): Promise<OnboardingResult> => {
   const proposal = await model.propose(org);
   const workflow = assembleWorkflow(org, proposal);

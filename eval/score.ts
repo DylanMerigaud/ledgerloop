@@ -40,7 +40,7 @@ export const scoreCase = (
   stresses: string,
   expected: Recommendation,
   got: Recommendation | undefined,
-  failed?: string,
+  failed?: string
 ): CaseScore => {
   return {
     id,
@@ -78,10 +78,7 @@ export const overchargeConfusion = (scores: CaseScore[]): Confusion => {
   }
   const precision = tp + fp === 0 ? 1 : tp / (tp + fp);
   const recall = tp + fn === 0 ? 1 : tp / (tp + fn);
-  const f1 =
-    precision + recall === 0
-      ? 0
-      : (2 * precision * recall) / (precision + recall);
+  const f1 = precision + recall === 0 ? 0 : (2 * precision * recall) / (precision + recall);
   return {
     truePositives: tp,
     falsePositives: fp,

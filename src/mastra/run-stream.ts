@@ -4,10 +4,7 @@ import { loadRunBundle } from "@/db/client";
 import { saveAgentRun } from "@/db/runs";
 import { type RunRequest, type StreamDone } from "@/lib/api-types";
 import { isRecord } from "@/lib/assert";
-import {
-  DEFAULT_TOLERANCES,
-  DEFAULT_APPROVAL_POLICY,
-} from "@/lib/client-profile";
+import { DEFAULT_TOLERANCES, DEFAULT_APPROVAL_POLICY } from "@/lib/client-profile";
 import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
 import { mastra } from "@/src/mastra";
 import { PIPELINE_MODEL } from "@/src/mastra/model";
@@ -24,7 +21,7 @@ import { PIPELINE_MODEL } from "@/src/mastra/model";
  * thrown error, so a flaky model degrades the trace instead of blanking the screen.
  */
 export const runPipelineStream = async function* (
-  input: RunRequest,
+  input: RunRequest
 ): AsyncGenerator<TraceEvent | StreamDone> {
   const decisions = input.decisions ?? {};
   // Optional per-rejected-gate notes, parallel to decisions.
@@ -118,8 +115,7 @@ export const runPipelineStream = async function* (
       yield stamped;
     }
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Unexpected pipeline error.";
+    const message = err instanceof Error ? err.message : "Unexpected pipeline error.";
     const errEvent = stamp(pipelineErrorEvent(message));
     collected.push(errEvent);
     yield errEvent;

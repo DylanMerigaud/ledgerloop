@@ -87,7 +87,7 @@ export const billKey = (vendor: string, invoiceNumber: string): string =>
  */
 export const runMatch = (
   input: MatchInput,
-  tolerances: MatchTolerances = DEFAULT_TOLERANCES,
+  tolerances: MatchTolerances = DEFAULT_TOLERANCES
 ): MatchResult => {
   const {
     invoice,
@@ -102,16 +102,14 @@ export const runMatch = (
   // The buying department comes from the PO (the internal team that ordered); "" when
   // there's no PO. Carried into the result so a department-scoped approval gate routes.
   const department = purchaseOrder?.department ?? "";
-  const matchType: MatchResult["matchType"] = goodsReceipt
-    ? "three_way"
-    : "two_way";
+  const matchType: MatchResult["matchType"] = goodsReceipt ? "three_way" : "two_way";
 
   // A blocked-duplicate result, shared by the two duplicate controls below. Both
   // are control failures (never a pricing question), so they short-circuit before
   // any line reasoning and yield the same blocking verdict.
   const blockedAsDuplicate = (
     code: "duplicate" | "duplicate_in_erp",
-    message: string,
+    message: string
   ): MatchResult => ({
     invoiceNumber: invoice.invoiceNumber,
     poNumber: purchaseOrder?.poNumber ?? invoice.poNumber ?? null,
@@ -140,7 +138,7 @@ export const runMatch = (
   if (priorInvoiceNumbers.includes(invoice.invoiceNumber)) {
     return blockedAsDuplicate(
       "duplicate",
-      `Invoice ${invoice.invoiceNumber} has already been processed, blocking to prevent a double payment.`,
+      `Invoice ${invoice.invoiceNumber} has already been processed, blocking to prevent a double payment.`
     );
   }
 
@@ -151,7 +149,7 @@ export const runMatch = (
   if (postedBillKeys?.has(billKey(invoice.vendor, invoice.invoiceNumber))) {
     return blockedAsDuplicate(
       "duplicate_in_erp",
-      `Invoice ${invoice.invoiceNumber} from ${invoice.vendor} is already posted as a bill in the ERP, blocking a double payment.`,
+      `Invoice ${invoice.invoiceNumber} from ${invoice.vendor} is already posted as a bill in the ERP, blocking a double payment.`
     );
   }
 
@@ -172,12 +170,8 @@ export const runMatch = (
   }
 
   // Index the PO and receipt lines by SKU for line-level comparison.
-  const poLines = new Map(
-    (purchaseOrder?.lineItems ?? []).map((li) => [li.sku, li] as const),
-  );
-  const receiptLines = new Map(
-    (goodsReceipt?.lineItems ?? []).map((li) => [li.sku, li] as const),
-  );
+  const poLines = new Map((purchaseOrder?.lineItems ?? []).map((li) => [li.sku, li] as const));
+  const receiptLines = new Map((goodsReceipt?.lineItems ?? []).map((li) => [li.sku, li] as const));
 
   for (const line of invoice.lineItems) {
     // 2. Internal arithmetic: does the line's own amount equal qty × unitPrice?
@@ -271,13 +265,10 @@ export const runMatch = (
     }
   }
 
-  const maxVariancePct = exceptions.reduce(
-    (m, e) => Math.max(m, e.variancePct),
-    0,
-  );
+  const maxVariancePct = exceptions.reduce((m, e) => Math.max(m, e.variancePct), 0);
   // Money at stake = sum of the absolute line-amount deltas on exception lines.
   const exceptionAmount = round2(
-    exceptions.reduce((sum, e) => sum + exceptionLineAmount(invoice, e), 0),
+    exceptions.reduce((sum, e) => sum + exceptionLineAmount(invoice, e), 0)
   );
 
   return {

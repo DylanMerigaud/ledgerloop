@@ -19,14 +19,10 @@ import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
 const has = (d: object, ...keys: string[]): boolean => {
   return keys.every((k) => k in d);
 };
-const isMatch = (d: object): d is MatchResult =>
-  has(d, "verdict", "exceptions");
-const isInvestigation = (d: object): d is Investigation =>
-  has(d, "recommendation", "toolsUsed");
-const isWorkflowRun = (d: object): d is WorkflowRunData =>
-  has(d, "workflow", "steps");
-const isApprovalSummary = (d: object): d is ApprovalSummary =>
-  has(d, "outcome", "steps");
+const isMatch = (d: object): d is MatchResult => has(d, "verdict", "exceptions");
+const isInvestigation = (d: object): d is Investigation => has(d, "recommendation", "toolsUsed");
+const isWorkflowRun = (d: object): d is WorkflowRunData => has(d, "workflow", "steps");
+const isApprovalSummary = (d: object): d is ApprovalSummary => has(d, "outcome", "steps");
 const isRecon = (d: object): d is ReconResult => has(d, "posted", "glEntries");
 
 export const TraceDetail = ({ data }: { data: unknown }) => {
@@ -58,8 +54,7 @@ type WorkflowRunData = {
 
 /** A per-step status dot colour for the workflow run summary (matches the queue dots). */
 const stepDot = (status: string): string => {
-  if (status === "approved" || status === "done" || status === "posted")
-    return "#047857";
+  if (status === "approved" || status === "done" || status === "posted") return "#047857";
   if (status === "rejected" || status === "blocked") return "#B91C1C";
   if (status === "pending" || status === "awaiting") return "#B45309";
   return "#D1D5DB"; // skipped / neutral
@@ -122,8 +117,7 @@ const MatchDetail = ({ match }: { match: MatchResult }) => {
   if (match.exceptions.length === 0) {
     return (
       <Row label="Match">
-        {match.matchType === "three_way" ? "3-way" : "2-way"} · all lines
-        reconcile
+        {match.matchType === "three_way" ? "3-way" : "2-way"} · all lines reconcile
       </Row>
     );
   }
@@ -135,16 +129,12 @@ const MatchDetail = ({ match }: { match: MatchResult }) => {
           className="rounded-lg bg-danger-soft/40 px-2.5 py-1.5 ring-1 ring-inset ring-danger-line/50"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[11px] font-medium text-ink">
-              {e.sku}
-            </span>
+            <span className="font-mono text-[11px] font-medium text-ink">{e.sku}</span>
             <Badge tone="danger">{humanize(e.code)}</Badge>
           </div>
-          <p className="mt-0.5 text-[12px] leading-snug text-ink/80">
-            {e.message}
-          </p>
+          <p className="mt-0.5 text-[12px] leading-snug text-ink/80">{e.message}</p>
           {e.variancePct > 0 && (
-            <p className="mt-0.5 text-[11px] text-muted tnum">
+            <p className="tnum mt-0.5 text-[11px] text-muted">
               variance {formatPct(e.variancePct)}
               {e.expectedValue != null && e.invoiceValue != null
                 ? ` · expected ${e.expectedValue} vs invoiced ${e.invoiceValue}`
@@ -167,11 +157,7 @@ const stepTone = (status: string): "ok" | "warn" | "danger" | "neutral" => {
 
 const ApprovalDetail = ({ approval }: { approval: ApprovalSummary }) => {
   const outcomeTone =
-    approval.outcome === "posted"
-      ? "ok"
-      : approval.outcome === "awaiting"
-        ? "warn"
-        : "danger";
+    approval.outcome === "posted" ? "ok" : approval.outcome === "awaiting" ? "warn" : "danger";
   // Only the steps that actually mattered, hide the ones that skipped (their
   // condition wasn't met for this invoice), so the trace shows the path taken.
   const shown = approval.steps.filter((s) => s.status !== "skipped");
@@ -197,12 +183,7 @@ const ApprovalDetail = ({ approval }: { approval: ApprovalSummary }) => {
 const ReconDetail = ({ recon }: { recon: ReconResult }) => {
   // Awaiting is a pause (amber), not a failure; posted is success; rejected/
   // blocked are red. Drive the badge off the precise outcome.
-  const tone =
-    recon.outcome === "posted"
-      ? "ok"
-      : recon.outcome === "awaiting"
-        ? "warn"
-        : "danger";
+  const tone = recon.outcome === "posted" ? "ok" : recon.outcome === "awaiting" ? "warn" : "danger";
   const label =
     recon.outcome === "posted"
       ? "Posted"
@@ -228,10 +209,10 @@ const ReconDetail = ({ recon }: { recon: ReconResult }) => {
               {recon.glEntries.map((g, i) => (
                 <tr key={i} className="border-b border-line last:border-0">
                   <td className="px-2 py-1 text-ink/80">{g.account}</td>
-                  <td className="px-2 py-1 text-right tnum text-ink">
+                  <td className="tnum px-2 py-1 text-right text-ink">
                     {g.debit > 0 ? formatMoney(g.debit, recon.currency) : ""}
                   </td>
-                  <td className="px-2 py-1 text-right tnum text-ink">
+                  <td className="tnum px-2 py-1 text-right text-ink">
                     {g.credit > 0 ? formatMoney(g.credit, recon.currency) : ""}
                   </td>
                 </tr>
@@ -252,24 +233,18 @@ const ReconDetail = ({ recon }: { recon: ReconResult }) => {
             <Badge tone="neutral">dry-run</Badge>
           </p>
           <Row label="Doc number">
-            <span className="font-mono text-[11px]">
-              {recon.vendorBill.docNumber}
-            </span>
+            <span className="font-mono text-[11px]">{recon.vendorBill.docNumber}</span>
           </Row>
           <Row label="Vendor">
             <span className="text-[11px]">{recon.vendorBill.vendor}</span>
           </Row>
           {recon.vendorBill.poNumber && (
             <Row label="PO">
-              <span className="font-mono text-[11px]">
-                {recon.vendorBill.poNumber}
-              </span>
+              <span className="font-mono text-[11px]">{recon.vendorBill.poNumber}</span>
             </Row>
           )}
           <Row label="Expense account">
-            <span className="text-[11px]">
-              {recon.vendorBill.expenseAccount}
-            </span>
+            <span className="text-[11px]">{recon.vendorBill.expenseAccount}</span>
           </Row>
           <Row label="Amount">
             <span className="tnum text-[11px]">
@@ -282,13 +257,7 @@ const ReconDetail = ({ recon }: { recon: ReconResult }) => {
   );
 };
 
-const Row = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => {
+const Row = ({ label, children }: { label: string; children: React.ReactNode }) => {
   return (
     <div className="flex items-center justify-between gap-3 text-[12px]">
       <span className="text-muted">{label}</span>

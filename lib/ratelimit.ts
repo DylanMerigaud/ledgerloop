@@ -55,7 +55,7 @@ const getRedis = (): Redis | null => {
     log.warn(
       "[ratelimit] No Redis credentials found " +
         "(UPSTASH_REDIS_REST_URL/_TOKEN or KV_REST_API_URL/_TOKEN), " +
-        "rate limiting is DISABLED (failing open).",
+        "rate limiting is DISABLED (failing open)."
     );
     redis = null;
     return redis;
@@ -81,10 +81,7 @@ const getLimiter = (tier: RateTier): Ratelimit | null => {
 };
 
 /** Check (and consume) one unit of the given tier's rate budget for the IP. */
-export const checkRateLimit = async (
-  ip: string,
-  tier: RateTier,
-): Promise<RateVerdict> => {
+export const checkRateLimit = async (ip: string, tier: RateTier): Promise<RateVerdict> => {
   const rl = getLimiter(tier);
   if (!rl) {
     // Failing open: always allow.
@@ -96,10 +93,7 @@ export const checkRateLimit = async (
     if (success) {
       return { ok: true, remaining };
     }
-    const retryAfterSeconds = Math.max(
-      0,
-      Math.ceil((reset - Date.now()) / 1000),
-    );
+    const retryAfterSeconds = Math.max(0, Math.ceil((reset - Date.now()) / 1000));
     return { ok: false, limit, reset, retryAfterSeconds };
   } catch (err) {
     // If Redis itself errors, don't take the whole endpoint down, fail open but

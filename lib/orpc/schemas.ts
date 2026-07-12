@@ -44,7 +44,7 @@ export const OnboardingResult = z.object({
       employeeName: z.string(),
       detail: z.string(),
       note: z.string(),
-    }),
+    })
   ),
   /** Up to three AI-generated next-edit suggestions for the derived workflow. */
   suggestions: z.array(z.string()),

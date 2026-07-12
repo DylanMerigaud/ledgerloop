@@ -57,9 +57,7 @@ export const Combobox = ({
     const q = query.trim().toLowerCase();
     if (!q) return options;
     return options.filter((o) =>
-      `${o.label} ${o.sublabel ?? ""} ${o.keywords ?? ""}`
-        .toLowerCase()
-        .includes(q),
+      `${o.label} ${o.sublabel ?? ""} ${o.keywords ?? ""}`.toLowerCase().includes(q)
     );
   }, [options, query]);
 
@@ -107,12 +105,10 @@ export const Combobox = ({
         className={cn(
           "flex h-9 w-full items-center justify-between gap-2 rounded-lg bg-surface px-2.5 text-left text-[13px] outline-none ring-1 ring-inset transition-shadow focus:ring-2 focus:ring-accent-ring",
           invalid ? "ring-warn-line" : "ring-line-strong",
-          buttonClassName,
+          buttonClassName
         )}
       >
-        <span
-          className={cn("min-w-0 flex-1 truncate", !selected && "text-faint")}
-        >
+        <span className={cn("min-w-0 flex-1 truncate", !selected && "text-faint")}>
           {selected ? (selected.render?.() ?? selected.label) : placeholder}
         </span>
         <span aria-hidden className="shrink-0 text-faint">
@@ -131,11 +127,7 @@ export const Combobox = ({
             data-testid={testid ? `${testid}-search` : undefined}
             className="h-9 w-full border-b border-line bg-surface px-2.5 text-[13px] text-ink outline-none placeholder:text-faint"
           />
-          <ul
-            id={listId}
-            role="listbox"
-            className="scrollbar-slim max-h-56 overflow-y-auto py-1"
-          >
+          <ul id={listId} role="listbox" className="scrollbar-slim max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 && (
               <li className="px-2.5 py-2 text-[12px] text-faint">No match.</li>
             )}
@@ -151,7 +143,7 @@ export const Combobox = ({
                   onMouseEnter={() => setActive(i)}
                   className={cn(
                     "flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-ink",
-                    i === active ? "bg-accent-soft" : "hover:bg-subtle/60",
+                    i === active ? "bg-accent-soft" : "hover:bg-subtle/60"
                   )}
                 >
                   {o.render ? (
@@ -159,9 +151,7 @@ export const Combobox = ({
                   ) : (
                     <span className="min-w-0 flex-1 truncate">
                       {o.label}
-                      {o.sublabel && (
-                        <span className="text-faint"> · {o.sublabel}</span>
-                      )}
+                      {o.sublabel && <span className="text-faint"> · {o.sublabel}</span>}
                     </span>
                   )}
                   {o.value === value && (

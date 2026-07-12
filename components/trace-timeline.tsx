@@ -21,9 +21,7 @@ import type { PipelineRunState } from "@/lib/use-pipeline-run";
 /* The slices of the trace data this banner reads, Zod-validated so the unknown
    `data` is narrowed without a cast (same discipline as the rest of the app). */
 const ApprovalData = z.object({
-  steps: z
-    .array(z.object({ status: z.string(), detail: z.string() }))
-    .optional(),
+  steps: z.array(z.object({ status: z.string(), detail: z.string() })).optional(),
 });
 const MatchingData = z.object({
   exceptions: z.array(z.object({ message: z.string() })).optional(),
@@ -129,9 +127,8 @@ export const TraceTimeline = ({
 
       {state.status === "done" && state.durationMs != null && (
         <div className="pl-8 pt-2">
-          <span className="text-[11px] text-muted tnum">
-            Completed in {formatDuration(state.durationMs)} ·{" "}
-            {state.trace.length} events
+          <span className="tnum text-[11px] text-muted">
+            Completed in {formatDuration(state.durationMs)} · {state.trace.length} events
           </span>
         </div>
       )}
@@ -154,16 +151,13 @@ const TraceNode = ({
 
   return (
     <div
-      className="relative animate-trace-in pl-8"
+      className="animate-trace-in relative pl-8"
       data-testid={`trace-${event.kind}-${event.stage}`}
       data-status={event.status}
     >
       {/* connector line */}
       {!isLast && (
-        <span
-          aria-hidden
-          className="absolute left-[7px] top-3 h-full w-px bg-line-strong"
-        />
+        <span aria-hidden className="absolute left-[7px] top-3 h-full w-px bg-line-strong" />
       )}
       {/* dot */}
       <span
@@ -192,9 +186,7 @@ const TraceNode = ({
         </div>
 
         {event.detail && (
-          <p className="mt-0.5 text-[12px] leading-snug text-ink/70">
-            {event.detail}
-          </p>
+          <p className="mt-0.5 text-[12px] leading-snug text-ink/70">{event.detail}</p>
         )}
 
         {event.data != null && (
@@ -234,7 +226,7 @@ const PendingNode = () => {
     <div className="relative pl-8">
       <span
         aria-hidden
-        className="absolute left-0 top-[5px] h-3.5 w-3.5 animate-pulse-ring rounded-full bg-accent ring-2 ring-surface"
+        className="animate-pulse-ring absolute left-0 top-[5px] h-3.5 w-3.5 rounded-full bg-accent ring-2 ring-surface"
       />
       <div className="pb-4">
         <span className="text-[13px] text-muted">Working…</span>
@@ -256,14 +248,10 @@ const Empty = ({
 }) => {
   return (
     <div className="flex h-full min-h-[240px] flex-col items-center justify-center px-8 text-center">
-      <p
-        className={`text-[15px] font-semibold ${tone === "danger" ? "text-danger" : "text-ink"}`}
-      >
+      <p className={`text-[15px] font-semibold ${tone === "danger" ? "text-danger" : "text-ink"}`}>
         {title}
       </p>
-      <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">
-        {body}
-      </p>
+      <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">{body}</p>
       {action}
     </div>
   );

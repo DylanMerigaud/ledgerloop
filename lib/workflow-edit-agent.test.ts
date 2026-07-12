@@ -62,7 +62,7 @@ test("dispatches a multi-op plan in order (one round)", async () => {
     model,
     base,
     "add a CFO gate over 50k and a Slack notice",
-    { departments: [], vendors: [], currencies: [] },
+    { departments: [], vendors: [], currencies: [] }
   );
   assert.equal(ops.length, 2, "both ops applied");
   assert.ok(proposed.steps.some((s) => s.label === "CFO review"));
@@ -79,13 +79,10 @@ test("on an erroring plan, it re-plans with the validator's errors as feedback",
   const model: PlanModel = {
     planOps: ({ feedback }) => {
       call++;
-      if (feedback?.issues.some((i) => i.severity === "error"))
-        sawFeedbackError = true;
+      if (feedback?.issues.some((i) => i.severity === "error")) sawFeedbackError = true;
       if (call === 1) {
         // remove the post → "no-post" / "post-not-reached" error
-        return Promise.resolve<WorkflowEditOp[]>([
-          { op: "remove-step", stepId: "post" },
-        ]);
+        return Promise.resolve<WorkflowEditOp[]>([{ op: "remove-step", stepId: "post" }]);
       }
       return Promise.resolve<WorkflowEditOp[]>([]); // give up on the correction
     },
@@ -96,31 +93,19 @@ test("on an erroring plan, it re-plans with the validator's errors as feedback",
     currencies: [],
   });
   assert.equal(call >= 2, true, "it ran a correction round");
-  assert.equal(
-    sawFeedbackError,
-    true,
-    "the errors were fed back to the planner",
-  );
+  assert.equal(sawFeedbackError, true, "the errors were fed back to the planner");
 });
 
 test("returns a reason when the plan is all no-ops (no change)", async () => {
   const model: PlanModel = {
-    planOps: () =>
-      Promise.resolve<WorkflowEditOp[]>([
-        { op: "none", reason: "already does that" },
-      ]),
+    planOps: () => Promise.resolve<WorkflowEditOp[]>([{ op: "none", reason: "already does that" }]),
   };
-  const { changes, reason } = await runEditAgent(
-    model,
-    base,
-    "do nothing useful",
-    { departments: [], vendors: [], currencies: [] },
-  );
-  assert.equal(
-    changes.filter((c) => c.kind !== "unchanged").length,
-    0,
-    "no real change",
-  );
+  const { changes, reason } = await runEditAgent(model, base, "do nothing useful", {
+    departments: [],
+    vendors: [],
+    currencies: [],
+  });
+  assert.equal(changes.filter((c) => c.kind !== "unchanged").length, 0, "no real change");
   assert.match(reason ?? "", /already does that/);
 });
 
@@ -145,14 +130,10 @@ test("a clarify op short-circuits: workflow unchanged, clarification surfaced", 
   assert.deepEqual(
     result.clarify,
     { question: "Which department?", options: ["Finance", "Product"] },
-    "the clarification is surfaced",
+    "the clarification is surfaced"
   );
   assert.equal(result.proposed, base, "the workflow is left unchanged");
-  assert.equal(
-    result.changes.filter((c) => c.kind !== "unchanged").length,
-    0,
-    "no edit applied",
-  );
+  assert.equal(result.changes.filter((c) => c.kind !== "unchanged").length, 0, "no edit applied");
 });
 
 test("a complete instruction applies normally (clarify stays null)", async () => {
@@ -188,9 +169,7 @@ test("stops at the step budget on a stubborn error (doesn't hang)", async () => 
   const model: PlanModel = {
     planOps: () => {
       calls++;
-      return Promise.resolve<WorkflowEditOp[]>([
-        { op: "remove-step", stepId: "post" },
-      ]);
+      return Promise.resolve<WorkflowEditOp[]>([{ op: "remove-step", stepId: "post" }]);
     },
   };
   const { issues } = await runEditAgent(model, base, "break it", {

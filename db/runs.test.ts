@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  saveAgentRun,
-  toHistoryItem,
-  parseStoredTrace,
-  type SaveAgentRunInput,
-} from "@/db/runs";
+import { saveAgentRun, toHistoryItem, parseStoredTrace, type SaveAgentRunInput } from "@/db/runs";
 import type { TraceEvent } from "@/lib/trace";
 
 /**
@@ -68,10 +63,7 @@ test("saveAgentRun writes one row with the run's verdict/outcome/trace", async (
 
 test("saveAgentRun uses the client-provided runId as the row id (URL persistence)", async () => {
   const rows: Record<string, unknown>[] = [];
-  await saveAgentRun(
-    { ...input(), runId: "INV-2042-fixed-instance" },
-    capturingDb(rows),
-  );
+  await saveAgentRun({ ...input(), runId: "INV-2042-fixed-instance" }, capturingDb(rows));
   assert.equal(rows[0]!["id"], "INV-2042-fixed-instance");
 });
 

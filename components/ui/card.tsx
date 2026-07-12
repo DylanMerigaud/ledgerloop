@@ -13,10 +13,7 @@ export const Card = ({
 }) => {
   return (
     <div
-      className={cn(
-        "rounded-2xl bg-surface shadow-card ring-1 ring-inset ring-line",
-        className,
-      )}
+      className={cn("rounded-2xl bg-surface shadow-card ring-1 ring-inset ring-line", className)}
     >
       {children}
     </div>
@@ -34,7 +31,7 @@ export const CardHeader = ({
     <div
       className={cn(
         "flex items-center justify-between gap-3 border-b border-line px-5 py-3.5",
-        className,
+        className
       )}
     >
       {children}
@@ -53,11 +50,7 @@ export const CardTitle = ({
   className?: string;
   children: React.ReactNode;
 }) => {
-  return (
-    <h3 className={cn("text-sm font-semibold text-ink", className)}>
-      {children}
-    </h3>
-  );
+  return <h3 className={cn("text-sm font-semibold text-ink", className)}>{children}</h3>;
 };
 
 /** Small uppercase section label, for sub-sections inside a card body. */
@@ -69,12 +62,7 @@ export const Eyebrow = ({
   children: React.ReactNode;
 }) => {
   return (
-    <h4
-      className={cn(
-        "text-[11px] font-semibold uppercase tracking-wider text-faint",
-        className,
-      )}
-    >
+    <h4 className={cn("text-[11px] font-semibold uppercase tracking-wider text-faint", className)}>
       {children}
     </h4>
   );

@@ -32,9 +32,7 @@ const ctx = (over: Partial<InvoiceContext>): InvoiceContext => ({
 });
 
 test("workflowFromPolicy produces a valid workflow", () => {
-  assert.doesNotThrow(() =>
-    ApprovalWorkflow.parse(workflowFromPolicy(DEFAULT_APPROVAL_POLICY)),
-  );
+  assert.doesNotThrow(() => ApprovalWorkflow.parse(workflowFromPolicy(DEFAULT_APPROVAL_POLICY)));
 });
 
 test("clean invoice: no gate fires, the bill posts", () => {
@@ -54,12 +52,12 @@ test("small exception: only the manager gate fires, not the director", () => {
       amount: 2000,
       exceptionAmount: 60,
       variancePct: 0.06,
-    }),
+    })
   );
   assert.deepEqual(s.pending, ["manager-review"]);
   assert.equal(
     s.steps.find((x) => x.id === "director-review")!.status,
-    "blocked", // gated-but-behind the pending manager; not yet skipped/active
+    "blocked" // gated-but-behind the pending manager; not yet skipped/active
   );
 });
 
@@ -73,7 +71,7 @@ test("big exception by amount: director gate also fires after the manager", () =
       exceptionAmount: 15000,
       variancePct: 0.03,
     }),
-    { "manager-review": "approve" },
+    { "manager-review": "approve" }
   );
   // amount 15000 >= director 10000 → director now pending.
   assert.deepEqual(s.pending, ["director-review"]);
@@ -89,7 +87,7 @@ test("big exception by variance alone: director still escalates", () => {
       exceptionAmount: 500,
       variancePct: 0.2,
     }),
-    { "manager-review": "approve" },
+    { "manager-review": "approve" }
   );
   // variance 0.2 >= director 0.1 → escalates despite the small amount.
   assert.deepEqual(s.pending, ["director-review"]);
@@ -109,7 +107,7 @@ test("a stricter profile escalates a smaller exception to the director", () => {
       exceptionAmount: 6000,
       variancePct: 0.03,
     }),
-    { "manager-review": "approve" },
+    { "manager-review": "approve" }
   );
   // 6000 >= 5000 → director fires under the strict profile (wouldn't under default).
   assert.deepEqual(s.pending, ["director-review"]);
@@ -118,12 +116,11 @@ test("a stricter profile escalates a smaller exception to the director", () => {
 test("workflowFor returns the explicit workflow when present, else the derived one", () => {
   const explicit = workflowFromPolicy(DEFAULT_APPROVAL_POLICY, "Custom");
   assert.equal(
-    workflowFor({ approvalPolicy: DEFAULT_APPROVAL_POLICY, workflow: explicit })
-      .name,
-    "Custom",
+    workflowFor({ approvalPolicy: DEFAULT_APPROVAL_POLICY, workflow: explicit }).name,
+    "Custom"
   );
   assert.equal(
     workflowFor({ approvalPolicy: DEFAULT_APPROVAL_POLICY }).name,
-    "Default approval workflow",
+    "Default approval workflow"
   );
 });

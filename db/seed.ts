@@ -14,9 +14,7 @@ import { resetAndReseed } from "@/db/reset";
 const main = async () => {
   const url = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
   if (!url) {
-    console.error(
-      "✖ Set DATABASE_URL (or DIRECT_DATABASE_URL) before seeding, see .env.example.",
-    );
+    console.error("✖ Set DATABASE_URL (or DIRECT_DATABASE_URL) before seeding, see .env.example.");
     process.exit(1);
   }
 
@@ -27,13 +25,11 @@ const main = async () => {
     console.log("→ Clearing existing rows + reseeding…");
     const counts = await resetAndReseed(db);
     console.log(
-      `✓ Seeded ${counts.invoices} invoices, ${counts.purchaseOrders} purchase orders, ${counts.goodsReceipts} goods receipts.`,
+      `✓ Seeded ${counts.invoices} invoices, ${counts.purchaseOrders} purchase orders, ${counts.goodsReceipts} goods receipts.`
     );
+    console.log("✓ agent_runs cleared (the nightly reset keeps the demo pristine).");
     console.log(
-      "✓ agent_runs cleared (the nightly reset keeps the demo pristine).",
-    );
-    console.log(
-      "  Edge cases: price mismatch (INV-2042), quantity mismatch (INV-2048), duplicate (INV-2041), already-paid (INV-1990), inactive vendor (INV-2050).",
+      "  Edge cases: price mismatch (INV-2042), quantity mismatch (INV-2048), duplicate (INV-2041), already-paid (INV-1990), inactive vendor (INV-2050)."
     );
   } finally {
     await sql.end({ timeout: 5 });

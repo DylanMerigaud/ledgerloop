@@ -114,15 +114,11 @@ export const loadRunBundle = async (
   /* The ERP the open POs are pulled from. Defaults to `defaultErp()` (live QBO
      when keyed, else the recorded fixture). Injectable so tests pin behaviour
      without a network call or a key. */
-  erp: PoSourceAdapter = defaultErp(),
+  erp: PoSourceAdapter = defaultErp()
 ): Promise<RunBundle | null> => {
   const d = db();
 
-  const [invoiceRow] = await d
-    .select()
-    .from(invoices)
-    .where(eq(invoices.id, id))
-    .limit(1);
+  const [invoiceRow] = await d.select().from(invoices).where(eq(invoices.id, id)).limit(1);
   if (!invoiceRow) return null;
 
   const invoice = Invoice.parse(toInvoiceShape(invoiceRow));
@@ -150,9 +146,7 @@ export const loadRunBundle = async (
       // department-scoped approval gate still routes. Same split everywhere: the ERP
       // is the source for what was ordered; the department is our own overlay.
       purchaseOrder =
-        pulled.department === "" && seeded
-          ? { ...pulled, department: seeded.department }
-          : pulled;
+        pulled.department === "" && seeded ? { ...pulled, department: seeded.department } : pulled;
     } else {
       purchaseOrder = seeded;
     }
@@ -218,7 +212,7 @@ export const loadRunBundle = async (
  */
 const pulledPoByNumber = async (
   erp: PoSourceAdapter,
-  poNumber: string,
+  poNumber: string
 ): Promise<TPurchaseOrder | null> => {
   try {
     const pos = await erp.pullPurchaseOrders();
@@ -235,10 +229,8 @@ const pulledPoByNumber = async (
  * disable the others or blank the run. Read-only.
  */
 const pulledMasterData = async (
-  erp: PoSourceAdapter,
-): Promise<
-  Pick<RunBundle, "postedBillKeys" | "inactiveVendors" | "catalogSkus">
-> => {
+  erp: PoSourceAdapter
+): Promise<Pick<RunBundle, "postedBillKeys" | "inactiveVendors" | "catalogSkus">> => {
   const safe = async <T>(fn: () => Promise<T[]>): Promise<T[]> => {
     try {
       return await fn();
@@ -265,11 +257,7 @@ const pulledMasterData = async (
  * row doesn't exist.
  */
 export const loadInvoiceById = async (id: string): Promise<TInvoice | null> => {
-  const [row] = await db()
-    .select()
-    .from(invoices)
-    .where(eq(invoices.id, id))
-    .limit(1);
+  const [row] = await db().select().from(invoices).where(eq(invoices.id, id)).limit(1);
   if (!row) return null;
   return Invoice.parse(toInvoiceShape(row));
 };

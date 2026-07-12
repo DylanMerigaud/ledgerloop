@@ -38,9 +38,7 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
   // own URL effect then replays it). Read once for the initial tab; the user can still
   // switch tabs afterwards.
   const searchParams = useSearchParams();
-  const [view, setView] = useState<View>(
-    searchParams.get("run") ? "pipeline" : "onboarding",
-  );
+  const [view, setView] = useState<View>(searchParams.get("run") ? "pipeline" : "onboarding");
   // The single approval workflow shared across both tabs. null until the user
   // runs discovery; the pipeline falls back to its default DAG meanwhile.
   const [workflow, setWorkflow] = useState<ApprovalWorkflow | null>(null);
@@ -60,11 +58,7 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
             switch. `hidden` collapses the inactive pane to zero box, so the active
             one keeps the full height (the panes use lg:h-full). */}
         <div className={view === "onboarding" ? "h-full" : "hidden"}>
-          <Onboarding
-            onWorkflowChange={setWorkflow}
-            vendors={vendors}
-            currencies={currencies}
-          />
+          <Onboarding onWorkflowChange={setWorkflow} vendors={vendors} currencies={currencies} />
         </div>
         <div className={view === "pipeline" ? "h-full" : "hidden"}>
           <Dashboard
@@ -78,13 +72,7 @@ export const AppView = ({ queue }: { queue: QueueItem[] }) => {
   );
 };
 
-const Tabs = ({
-  view,
-  onChange,
-}: {
-  view: View;
-  onChange: (v: View) => void;
-}) => {
+const Tabs = ({ view, onChange }: { view: View; onChange: (v: View) => void }) => {
   return (
     // Two steps of ONE flow, not two unrelated tabs: build the workflow, then run
     // invoices through it. The arrow + the "→ that workflow" subtitles make the link
@@ -132,9 +120,7 @@ const TabButton = ({
     <button
       onClick={onClick}
       className={`group relative -mb-px flex items-center gap-2.5 border-b-2 pb-2 pt-1 text-left transition-colors ${
-        active
-          ? "border-ink text-ink"
-          : "border-transparent text-muted hover:text-ink"
+        active ? "border-ink text-ink" : "border-transparent text-muted hover:text-ink"
       }`}
     >
       <span
@@ -147,9 +133,7 @@ const TabButton = ({
         {step}
       </span>
       <span className="min-w-0">
-        <span className="block text-[13px] font-medium leading-tight">
-          {label}
-        </span>
+        <span className="block text-[13px] font-medium leading-tight">{label}</span>
         {/* The subtitle is the point, keep it visible on wider screens; drop it on
             narrow ones where it would wrap and crowd the row. */}
         <span className="hidden text-[11px] font-normal leading-tight text-faint sm:block">

@@ -67,14 +67,7 @@ const stageForTool = (toolName: string): TraceStage => {
   return "pipeline";
 };
 
-export const TraceStatus = z.enum([
-  "running",
-  "ok",
-  "warn",
-  "error",
-  "skipped",
-  "waiting",
-]);
+export const TraceStatus = z.enum(["running", "ok", "warn", "error", "skipped", "waiting"]);
 export type TraceStatus = z.infer<typeof TraceStatus>;
 
 /**
@@ -114,8 +107,7 @@ export type TraceEvent = z.infer<typeof TraceEvent>;
  *  Adapter: raw Mastra chunk → TraceEvent (or null to drop)
  * ────────────────────────────────────────────────────────────────────────── */
 
-const asRecord = (v: unknown): Record<string, unknown> | undefined =>
-  isRecord(v) ? v : undefined;
+const asRecord = (v: unknown): Record<string, unknown> | undefined => (isRecord(v) ? v : undefined);
 
 /** Friendly stage label for a step id. Deterministic stages say "step"; the one
     agentic stage (investigation) says "agent". */
@@ -141,9 +133,7 @@ const stageLabel = (stage: TraceStage): string => {
  * the route stamps). Returns `null` for chunks we intentionally don't surface
  * (internal lifecycle noise) or anything malformed, never throws.
  */
-export const toTraceEvent = (
-  chunk: unknown,
-): Omit<TraceEvent, "seq" | "atMs"> | null => {
+export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> | null => {
   try {
     // `chunk` is genuinely unknown, narrow it through `asRecord` (which handles
     // null/non-object) rather than casting to a non-null shape. No lying cast, so
@@ -162,8 +152,7 @@ export const toTraceEvent = (
           status: "running",
           stepId: "",
           label: "Pipeline started",
-          detail:
-            "Intake → Matching → Investigation → Approval → Reconciliation",
+          detail: "Intake → Matching → Investigation → Approval → Reconciliation",
         };
 
       case "workflow-step-start":
@@ -192,9 +181,7 @@ export const toTraceEvent = (
 
         if (innerType === "tool-call") {
           const toolName =
-            typeof innerPayload?.["toolName"] === "string"
-              ? innerPayload["toolName"]
-              : "tool";
+            typeof innerPayload?.["toolName"] === "string" ? innerPayload["toolName"] : "tool";
           return {
             kind: "tool",
             stage: stageForTool(toolName),
@@ -266,10 +253,7 @@ export const toTraceEvent = (
       case "tool-call": {
         // Native tool-call chunks (should the runtime surface them directly) carry
         // a tool name, not a workflow step id, map the stage from the tool name.
-        const name =
-          typeof payload?.["toolName"] === "string"
-            ? payload["toolName"]
-            : "tool";
+        const name = typeof payload?.["toolName"] === "string" ? payload["toolName"] : "tool";
         return {
           kind: "tool",
           stage: stageForTool(name),
@@ -287,9 +271,7 @@ export const toTraceEvent = (
         if (stage === "intake") return null;
         const rawOut = asRecord(payload?.["output"]);
         const narration =
-          typeof rawOut?.["narration"] === "string"
-            ? rawOut["narration"]
-            : undefined;
+          typeof rawOut?.["narration"] === "string" ? rawOut["narration"] : undefined;
 
         // Steps emit a domain object plus a `narration` string, and some
         // wrap the domain object (approval outputs `{ decision, match, vendor }`).
@@ -341,7 +323,7 @@ export const toTraceEvent = (
  * shows), falling back to the raw output for the flat steps.
  */
 const unwrapStageData = (
-  out: Record<string, unknown> | undefined,
+  out: Record<string, unknown> | undefined
 ): Record<string, unknown> | undefined => {
   if (!out) return undefined;
   const approval = asRecord(out["approval"]);
@@ -350,9 +332,7 @@ const unwrapStageData = (
 };
 
 /** Derive a traffic-light status from a stage's domain object, if recognizable. */
-const stepStatusFromOutput = (
-  out: Record<string, unknown> | undefined,
-): TraceStatus => {
+const stepStatusFromOutput = (out: Record<string, unknown> | undefined): TraceStatus => {
   if (!out) return "ok";
   // MatchResult
   if (out["verdict"] === "duplicate") return "error";
@@ -363,17 +343,14 @@ const stepStatusFromOutput = (
   //   posted   → cleared / booked (green)
   //   rejected/blocked → not posted (red)
   if (out["outcome"] === "awaiting") return "waiting";
-  if (out["outcome"] === "rejected" || out["outcome"] === "blocked")
-    return "error";
+  if (out["outcome"] === "rejected" || out["outcome"] === "blocked") return "error";
   if (out["outcome"] === "posted") return "ok";
   if (out["posted"] === false) return "error";
   return "ok";
 };
 
 /** Traffic-light for the investigator's recommendation. */
-const investigationStatus = (
-  inv: Record<string, unknown> | undefined,
-): TraceStatus => {
+const investigationStatus = (inv: Record<string, unknown> | undefined): TraceStatus => {
   const rec = inv?.["recommendation"];
   if (rec === "likely_overcharge") return "error";
   if (rec === "likely_legitimate") return "ok";
@@ -381,9 +358,7 @@ const investigationStatus = (
 };
 
 /** Fallback one-line summary when a stage produced no narration. */
-const stepDetailFromOutput = (
-  out: Record<string, unknown> | undefined,
-): string | undefined => {
+const stepDetailFromOutput = (out: Record<string, unknown> | undefined): string | undefined => {
   if (!out) return undefined;
   if (typeof out["reason"] === "string") return out["reason"];
   if (typeof out["note"] === "string") return out["note"];
@@ -393,7 +368,7 @@ const stepDetailFromOutput = (
 /** Build a synthetic error event (used by the route when a step throws). */
 export const pipelineErrorEvent = (
   message: string,
-  stage: TraceStage = "pipeline",
+  stage: TraceStage = "pipeline"
 ): Omit<TraceEvent, "seq" | "atMs"> => {
   return {
     kind: "finding",

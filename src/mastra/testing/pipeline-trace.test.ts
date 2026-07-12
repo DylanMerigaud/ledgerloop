@@ -50,9 +50,7 @@ const mastraWithMockInvestigator = (narration: string) => {
 
 const runTrace = async (mastra: Mastra, b: SeedBundle) => {
   const idx = SEED_BUNDLES.indexOf(b);
-  const priorInvoiceNumbers = SEED_BUNDLES.slice(0, idx).map(
-    (x) => x.invoice.invoiceNumber,
-  );
+  const priorInvoiceNumbers = SEED_BUNDLES.slice(0, idx).map((x) => x.invoice.invoiceNumber);
   const run = await mastra.getWorkflow("p2p").createRun();
   const out = run.stream({
     inputData: {
@@ -105,7 +103,7 @@ const timelineFrom = (raw: unknown[]): TraceEvent[] => {
 
 test("an exception invokes the investigator agent's real tool, reaching the trace", async () => {
   const mastra = mastraWithMockInvestigator(
-    "The surcharge was flagged in advance and is in line with the market, looks legitimate.",
+    "The surcharge was flagged in advance and is in line with the market, looks legitimate."
   );
   const price = SEED_BUNDLES.find((x) => x.id === "INV-2042");
   assert.ok(price);
@@ -118,25 +116,21 @@ test("an exception invokes the investigator agent's real tool, reaching the trac
   const toolNodes = events.filter((e) => e.kind === "tool");
   assert.ok(
     toolNodes.some((e) => e.stage === "investigation"),
-    "the investigator's tool call should appear under investigation",
+    "the investigator's tool call should appear under investigation"
   );
 
   // The investigation recommendation node should be present with the agent's text.
-  const investigation = events.find(
-    (e) => e.kind === "finding" && e.stage === "investigation",
-  );
+  const investigation = events.find((e) => e.kind === "finding" && e.stage === "investigation");
   assert.ok(investigation, "an investigation node should be surfaced");
   assert.ok(isRecord(investigation.data), "investigation carries data");
   assert.equal(
     investigation.data["recommendation"],
     "likely_legitimate",
-    "the agent's prose should classify to likely_legitimate",
+    "the agent's prose should classify to likely_legitimate"
   );
 
   // Deterministic routing still holds: matching warns (not straight-through).
-  const matching = events.find(
-    (e) => e.kind === "step" && e.stage === "matching",
-  );
+  const matching = events.find((e) => e.kind === "step" && e.stage === "matching");
   assert.equal(matching?.status, "warn", "price mismatch → matching amber");
 });
 
@@ -151,27 +145,16 @@ test("a clean invoice skips investigation and stays green end to end", async () 
   // Clean → no investigation node at all (the agent must not run).
   assert.ok(
     !events.some((e) => e.stage === "investigation"),
-    "a clean invoice must not trigger the investigator",
+    "a clean invoice must not trigger the investigator"
   );
 
-  const recon = events.find(
-    (e) => e.kind === "step" && e.stage === "reconciliation",
-  );
+  const recon = events.find((e) => e.kind === "step" && e.stage === "reconciliation");
   assert.equal(recon?.status, "ok", "clean invoice → reconciled green");
 
   // No duplicate stage nodes and no leaked internal step node.
-  const stageNodes = events
-    .filter((e) => e.kind === "step")
-    .map((e) => e.stage);
-  assert.equal(
-    stageNodes.length,
-    new Set(stageNodes).size,
-    "no doubled stage nodes",
-  );
-  assert.ok(
-    !stageNodes.includes("pipeline"),
-    "no internal step leaked into the trace",
-  );
+  const stageNodes = events.filter((e) => e.kind === "step").map((e) => e.stage);
+  assert.equal(stageNodes.length, new Set(stageNodes).size, "no doubled stage nodes");
+  assert.ok(!stageNodes.includes("pipeline"), "no internal step leaked into the trace");
 });
 
 test("a duplicate is blocked without investigation", async () => {
@@ -184,10 +167,8 @@ test("a duplicate is blocked without investigation", async () => {
 
   assert.ok(
     !events.some((e) => e.stage === "investigation"),
-    "a duplicate must not trigger the investigator",
+    "a duplicate must not trigger the investigator"
   );
-  const recon = events.find(
-    (e) => e.kind === "step" && e.stage === "reconciliation",
-  );
+  const recon = events.find((e) => e.kind === "step" && e.stage === "reconciliation");
   assert.equal(recon?.status, "error", "duplicate → not posted (red)");
 });

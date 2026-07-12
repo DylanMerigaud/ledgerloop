@@ -91,13 +91,9 @@ export const Condition: z.ZodType<Condition> = z.lazy(() =>
         value: z.union([z.string(), z.number()]),
       })
       .strict(),
-    z
-      .object({ kind: z.literal("all"), conditions: z.array(Condition) })
-      .strict(),
-    z
-      .object({ kind: z.literal("any"), conditions: z.array(Condition) })
-      .strict(),
-  ]),
+    z.object({ kind: z.literal("all"), conditions: z.array(Condition) }).strict(),
+    z.object({ kind: z.literal("any"), conditions: z.array(Condition) }).strict(),
+  ])
 );
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -133,9 +129,7 @@ export type ApprovalStep = z.infer<typeof ApprovalStep>;
 /** @public, everyone who approves a gate: the primary (if resolved) then the extras,
     in order. Empty when the gate is unresolved with no extras. */
 export const approversOf = (step: ApprovalStep): string[] =>
-  [step.approverName, ...(step.approvers ?? [])].filter(
-    (n): n is string => !!n,
-  );
+  [step.approverName, ...(step.approvers ?? [])].filter((n): n is string => !!n);
 
 /** @public, the system actions an integration step can run. */
 export const IntegrationKind = z.enum(["slack", "jira", "netsuite"]);
@@ -159,10 +153,7 @@ export const IntegrationStep = z
   .strict();
 export type IntegrationStep = z.infer<typeof IntegrationStep>;
 
-export const WorkflowStep = z.discriminatedUnion("kind", [
-  ApprovalStep,
-  IntegrationStep,
-]);
+export const WorkflowStep = z.discriminatedUnion("kind", [ApprovalStep, IntegrationStep]);
 export type WorkflowStep = z.infer<typeof WorkflowStep>;
 
 /**
@@ -203,7 +194,7 @@ export type InvoiceContext = {
     (set membership), handled directly in `evaluateCondition`. */
 const valueFor = (
   field: Exclude<ConditionField, "exceptionCode">,
-  ctx: InvoiceContext,
+  ctx: InvoiceContext
 ): string | number => {
   switch (field) {
     case "amount":
@@ -225,11 +216,7 @@ const valueFor = (
   }
 };
 
-const compare = (
-  left: string | number,
-  op: ConditionOp,
-  right: string | number,
-): boolean => {
+const compare = (left: string | number, op: ConditionOp, right: string | number): boolean => {
   // Numeric comparison when both sides are numbers; otherwise string equality
   // (only == / != are meaningful for strings).
   if (typeof left === "number" && typeof right === "number") {
@@ -263,10 +250,7 @@ const compare = (
 };
 
 /** Evaluate a condition against an invoice context. Pure. */
-export const evaluateCondition = (
-  cond: Condition,
-  ctx: InvoiceContext,
-): boolean => {
+export const evaluateCondition = (cond: Condition, ctx: InvoiceContext): boolean => {
   switch (cond.kind) {
     case "always":
       return true;
@@ -307,9 +291,7 @@ export const describeCondition = (cond: Condition): string => {
  * the threshold itself is currency-agnostic (it's compared to the invoice amount
  * whatever its currency), but "$25,000" reads far better than a bare "25000".
  */
-const describeLeafValue = (
-  cond: Extract<Condition, { kind: "leaf" }>,
-): string => {
+const describeLeafValue = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   if (cond.field === "amount" && typeof cond.value === "number") {
     return `$${cond.value.toLocaleString("en-US")}`;
   }
@@ -401,8 +383,7 @@ const stepFieldDiffs = (a: WorkflowStep, b: WorkflowStep): string[] => {
   const fields: string[] = [];
   if (a.kind !== b.kind) fields.push("type");
   if (a.label !== b.label) fields.push("label");
-  if (describeCondition(a.when) !== describeCondition(b.when))
-    fields.push("condition");
+  if (describeCondition(a.when) !== describeCondition(b.when)) fields.push("condition");
   // "approver" covers the whole gate roster (primary + co-approvers), so adding or
   // dropping an "Also requires" person reads as a change, not "unchanged".
   const aAppr = a.kind === "approval" ? approversOf(a).join(",") : "";
@@ -418,7 +399,7 @@ const stepFieldDiffs = (a: WorkflowStep, b: WorkflowStep): string[] => {
 /** Diff two workflows by step id: added / removed / changed / unchanged. @public */
 export const diffWorkflows = (
   current: ApprovalWorkflow,
-  proposed: ApprovalWorkflow,
+  proposed: ApprovalWorkflow
 ): StepChange[] => {
   const cur = new Map(current.steps.map((s) => [s.id, s]));
   const prop = new Map(proposed.steps.map((s) => [s.id, s]));
@@ -435,7 +416,7 @@ export const diffWorkflows = (
     changes.push(
       fields.length > 0
         ? { kind: "changed", id, label: p.label, fields }
-        : { kind: "unchanged", id, label: p.label },
+        : { kind: "unchanged", id, label: p.label }
     );
   }
   // Removed, in current but not in the proposal.
@@ -500,7 +481,7 @@ export type OnboardingProposal = z.infer<typeof OnboardingProposal>;
  */
 const pruneWorkflow = (
   workflow: ApprovalWorkflow,
-  shouldDrop: (id: string) => boolean,
+  shouldDrop: (id: string) => boolean
 ): ApprovalWorkflow => {
   if (!workflow.steps.some((s) => shouldDrop(s.id))) return workflow;
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
@@ -528,7 +509,7 @@ const pruneWorkflow = (
     .filter((s) => !shouldDrop(s.id))
     .map((s) => ({ ...s, next: keptTargets(s.next) }));
   const roots = workflow.roots.flatMap((r) =>
-    shouldDrop(r) ? keptTargets(byId.get(r)?.next ?? []) : [r],
+    shouldDrop(r) ? keptTargets(byId.get(r)?.next ?? []) : [r]
   );
   return { ...workflow, steps, roots };
 };
@@ -550,7 +531,7 @@ const pruneWorkflow = (
  */
 export const resolvePath = (
   workflow: ApprovalWorkflow,
-  ctx: InvoiceContext | undefined,
+  ctx: InvoiceContext | undefined
 ): ApprovalWorkflow => {
   if (!ctx) return workflow;
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));

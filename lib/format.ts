@@ -38,9 +38,7 @@ export const humanize = (token: string): string => {
     .trim()
     .split(/\s+/)
     .map((w) =>
-      ACRONYMS.has(w.toLowerCase())
-        ? w.toUpperCase()
-        : w.charAt(0).toUpperCase() + w.slice(1),
+      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
     )
     .join(" ");
 };

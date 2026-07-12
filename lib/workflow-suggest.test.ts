@@ -2,11 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ApprovalWorkflow as TWorkflow } from "@/lib/approval-workflow";
-import {
-  WorkflowSuggestions,
-  parseSuggestions,
-  suggestPrompt,
-} from "@/lib/workflow-suggest";
+import { WorkflowSuggestions, parseSuggestions, suggestPrompt } from "@/lib/workflow-suggest";
 
 /**
  * The suggest model's OUTPUT is open-ended (tested for relevance by hand / live),

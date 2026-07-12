@@ -37,11 +37,7 @@ const match = (over: Partial<MatchResult> = {}): MatchResult => {
 };
 
 test("posted outcome → books to the ERP", async () => {
-  const r = await reconcileFromOutcome(
-    "posted",
-    match({ verdict: "clean" }),
-    "Acme",
-  );
+  const r = await reconcileFromOutcome("posted", match({ verdict: "clean" }), "Acme");
   assert.equal(r.outcome, "posted");
   assert.equal(r.posted, true);
   assert.match(r.erpRef ?? "", /NETSUITE-BILL-/);
@@ -52,7 +48,7 @@ test("posted outcome carries the dry-run vendor bill (the bill we'd POST)", asyn
   const r = await reconcileFromOutcome(
     "posted",
     match({ verdict: "clean", invoiceNumber: "INV-9", poNumber: "PO-9" }),
-    "Acme",
+    "Acme"
   );
   assert.ok(r.vendorBill, "expected a dry-run bill on the posted path");
   assert.equal(r.vendorBill.docNumber, "INV-9");
@@ -73,7 +69,7 @@ test("non-posted outcomes carry NO vendor bill (nothing would be sent)", async (
 test("buildVendorBill mirrors the real QBO bill shape from the match", () => {
   const bill = buildVendorBill(
     match({ invoiceNumber: "INV-2042", poNumber: "PO-7742", currency: "GBP" }),
-    "Severn Steelworks",
+    "Severn Steelworks"
   );
   assert.equal(bill.docNumber, "INV-2042");
   assert.equal(bill.vendor, "Severn Steelworks");
@@ -84,11 +80,7 @@ test("buildVendorBill mirrors the real QBO bill shape from the match", () => {
 });
 
 test("blocked outcome (duplicate) → never posted", async () => {
-  const r = await reconcileFromOutcome(
-    "blocked",
-    match({ verdict: "duplicate" }),
-    "Acme",
-  );
+  const r = await reconcileFromOutcome("blocked", match({ verdict: "duplicate" }), "Acme");
   assert.equal(r.outcome, "blocked");
   assert.equal(r.posted, false);
   assert.equal(r.erpRef, null);
@@ -110,11 +102,7 @@ test("rejected outcome → not posted", async () => {
 });
 
 test("GL entries balance (debit total == credit total) when posted", async () => {
-  const r = await reconcileFromOutcome(
-    "posted",
-    match({ verdict: "clean" }),
-    "Acme",
-  );
+  const r = await reconcileFromOutcome("posted", match({ verdict: "clean" }), "Acme");
   const debit = r.glEntries.reduce((s: number, g) => s + g.debit, 0);
   const credit = r.glEntries.reduce((s: number, g) => s + g.credit, 0);
   assert.equal(debit, credit);
@@ -141,7 +129,7 @@ const itemLine = (
   itemName: string,
   qty: number,
   unitPrice: number,
-  opts: { amount?: number; description?: string } = {},
+  opts: { amount?: number; description?: string } = {}
 ) => ({
   DetailType: "ItemBasedExpenseLineDetail",
   Amount: opts.amount ?? qty * unitPrice,
@@ -168,7 +156,7 @@ test("maps a real-shaped QBO PO into a valid internal PurchaseOrder", () => {
           }),
         ],
       },
-    ]),
+    ])
   );
   assert.equal(pos.length, 1);
   const po = pos[0]!;
@@ -178,10 +166,7 @@ test("maps a real-shaped QBO PO into a valid internal PurchaseOrder", () => {
   assert.equal(po.vendor, "Severn Steelworks");
   assert.equal(po.currency, "USD");
   assert.equal(po.lineItems[0]?.sku, "STL-BAR-20");
-  assert.equal(
-    po.lineItems[0]?.description,
-    "Cold-rolled steel bar 20mm (per m)",
-  );
+  assert.equal(po.lineItems[0]?.description, "Cold-rolled steel bar 20mm (per m)");
   assert.equal(po.lineItems[0]?.unitPrice, 7.5);
   assert.equal(po.total, 6000);
   // The real assertion: it satisfies the single-source-of-truth schema.
@@ -196,7 +181,7 @@ test("falls back to the internal Id when a PO has no DocNumber", () => {
         VendorRef: { value: "1", name: "Acme" },
         Line: [itemLine("5", "Widget", 2, 10)],
       },
-    ]),
+    ])
   );
   assert.equal(pos[0]?.poNumber, "99");
 });
@@ -209,7 +194,7 @@ test("defaults currency to USD when QBO omits CurrencyRef", () => {
         VendorRef: { value: "1", name: "Acme" },
         Line: [itemLine("5", "Widget", 2, 10)],
       },
-    ]),
+    ])
   );
   assert.equal(pos[0]?.currency, "USD");
 });
@@ -233,7 +218,7 @@ test("recomputes total/line amount when QBO omits them", () => {
         ],
         // no TotalAmt
       },
-    ]),
+    ])
   );
   assert.equal(pos[0]?.lineItems[0]?.amount, 21);
   assert.equal(pos[0]?.total, 21);
@@ -251,7 +236,7 @@ test("drops non-item lines (subtotals, account-based) the matcher can't join", (
           { DetailType: "AccountBasedExpenseLineDetail", Amount: 50 },
         ],
       },
-    ]),
+    ])
   );
   assert.equal(pos[0]?.lineItems.length, 1);
   assert.equal(pos[0]?.lineItems[0]?.sku, "Widget");
@@ -265,7 +250,7 @@ test("skips a PO with a vendor but no matchable line", () => {
         VendorRef: { value: "1", name: "Acme" },
         Line: [{ DetailType: "AccountBasedExpenseLineDetail", Amount: 50 }],
       },
-    ]),
+    ])
   );
   assert.equal(pos.length, 0);
 });
@@ -301,10 +286,7 @@ test("maps QBO items, keying the catalog on the item name (the SKU)", () => {
       Item: [{ Name: "BOLT-M8-50" }, { Name: "STL-BAR-20", Active: true }, {}],
     },
   });
-  assert.deepEqual(items.map((i) => i.sku).sort(), [
-    "BOLT-M8-50",
-    "STL-BAR-20",
-  ]);
+  assert.deepEqual(items.map((i) => i.sku).sort(), ["BOLT-M8-50", "STL-BAR-20"]);
 });
 
 test("maps QBO bills to (vendor, docNumber); drops rows missing either", () => {
@@ -347,11 +329,11 @@ test("the recorded QBO fixture maps to valid purchase orders + master data", asy
   const vendors = await erp.pullVendors();
   assert.ok(
     vendors.some((v) => v.name === "Dormant Metals LLC" && !v.active),
-    "expected the seeded inactive vendor",
+    "expected the seeded inactive vendor"
   );
   const bills = await erp.pullPostedBills();
   assert.ok(
     bills.some((b) => b.docNumber === "INV-1990"),
-    "expected the seeded posted bill",
+    "expected the seeded posted bill"
   );
 });

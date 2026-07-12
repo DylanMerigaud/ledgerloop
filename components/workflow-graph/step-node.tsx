@@ -1,10 +1,4 @@
-import {
-  Handle,
-  NodeToolbar,
-  Position,
-  type Node,
-  type NodeProps,
-} from "@xyflow/react";
+import { Handle, NodeToolbar, Position, type Node, type NodeProps } from "@xyflow/react";
 
 import { Badge } from "@/components/ui/badge";
 import { GateButton } from "@/components/workflow-graph/gate-button";
@@ -65,12 +59,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
     : `ring-1 ring-inset ${ring}`;
   // A skipped gate didn't fire on this run, fade it so the realized path reads first
   // (kept in the graph, not hidden, so the audit shows every gate was considered).
-  const dim =
-    change === "removed"
-      ? "opacity-60"
-      : status === "skipped"
-        ? "opacity-45"
-        : "";
+  const dim = change === "removed" ? "opacity-60" : status === "skipped" ? "opacity-45" : "";
 
   return (
     <>
@@ -155,9 +144,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
                 return (
                   <>
                     <Icon size={16} />
-                    <span className="text-[12px] font-medium text-ink">
-                      {name}
-                    </span>
+                    <span className="text-[12px] font-medium text-ink">{name}</span>
                   </>
                 );
               })()}
@@ -209,9 +196,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
               active={choice === "reject"}
               onClick={() => onDecide("reject")}
               recommendation={
-                recommendation?.verdict === "likely_overcharge"
-                  ? recommendation
-                  : null
+                recommendation?.verdict === "likely_overcharge" ? recommendation : null
               }
             />
             <GateButton
@@ -221,9 +206,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
               active={choice === "approve"}
               onClick={() => onDecide("approve")}
               recommendation={
-                recommendation?.verdict === "likely_legitimate"
-                  ? recommendation
-                  : null
+                recommendation?.verdict === "likely_legitimate" ? recommendation : null
               }
             />
           </div>

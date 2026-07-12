@@ -39,7 +39,7 @@ const main = async (): Promise<void> => {
   if (!key || !subdomain) {
     console.error(
       "Missing BAMBOO_HR_API_KEY and/or BAMBOO_HR_SUBDOMAIN. Set them in .env.\n" +
-        "(This script needs the LIVE trial key, it is the only step that does.)",
+        "(This script needs the LIVE trial key, it is the only step that does.)"
     );
     process.exit(1);
   }
@@ -51,7 +51,7 @@ const main = async (): Promise<void> => {
   // mapped is worse than no fixture. mapBambooReport throws on a bad shape.
   const org = mapBambooReport(raw, "bamboohr (recorded)");
   console.log(
-    `Mapped OK: ${org.employees.length} active employees, ${org.issues.length} org issue(s) flagged.`,
+    `Mapped OK: ${org.employees.length} active employees, ${org.issues.length} org issue(s) flagged.`
   );
 
   // Provenance: the snapshot is real data; record exactly when/where from. The

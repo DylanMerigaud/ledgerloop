@@ -1,9 +1,6 @@
 import { useState } from "react";
 
-import {
-  ExtractionReveal,
-  type ExtractionState,
-} from "@/components/extraction-reveal";
+import { ExtractionReveal, type ExtractionState } from "@/components/extraction-reveal";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/format";
 import type { Invoice } from "@/lib/schema";
@@ -42,20 +39,13 @@ export const CollapsedIntake = ({
           {formatMoney(document.total, document.currency)}
         </span>
         {state.matches && <Badge tone="ok">reconciled with PO</Badge>}
-        <span
-          aria-hidden
-          className={`text-faint transition-transform ${open ? "rotate-180" : ""}`}
-        >
+        <span aria-hidden className={`text-faint transition-transform ${open ? "rotate-180" : ""}`}>
           ▾
         </span>
       </button>
       {open && (
         <div className="border-t border-line p-3">
-          <ExtractionReveal
-            pdfSrc={pdfSrc}
-            state={state}
-            extractedInvoice={document}
-          />
+          <ExtractionReveal pdfSrc={pdfSrc} state={state} extractedInvoice={document} />
         </div>
       )}
     </div>

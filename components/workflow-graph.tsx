@@ -17,10 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { estimateHeight, layout } from "@/components/workflow-graph/layout";
 import type { NodeData } from "@/components/workflow-graph/node-data";
 import { nodeTypes } from "@/components/workflow-graph/step-node";
-import {
-  REACHED,
-  type StepStatuses,
-} from "@/components/workflow-graph/visual-map";
+import { REACHED, type StepStatuses } from "@/components/workflow-graph/visual-map";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
@@ -63,10 +60,7 @@ const Inner = ({
   // left→right layout can't fit, each node then gets the full column width.
   const vertical = useMediaQuery("(max-width: 639px)");
 
-  const changeOf = useMemo(
-    () => new Map((changes ?? []).map((c) => [c.id, c.kind])),
-    [changes],
-  );
+  const changeOf = useMemo(() => new Map((changes ?? []).map((c) => [c.id, c.kind])), [changes]);
 
   // Highest-severity issue per step id (error beats warning), for the node rings.
   const issueOf = useMemo(() => {
@@ -80,10 +74,7 @@ const Inner = ({
 
   // Removed steps aren't in `steps`, synthesize a node from the diff so the
   // preview shows what's going away.
-  const removed = useMemo(
-    () => (changes ?? []).filter((c) => c.kind === "removed"),
-    [changes],
-  );
+  const removed = useMemo(() => (changes ?? []).filter((c) => c.kind === "removed"), [changes]);
 
   const initialNodes = useMemo<Node<NodeData>[]>(() => {
     // Connectivity from the rendered node set: a node HAS an incoming edge if some
@@ -92,8 +83,7 @@ const Inner = ({
     // leaves like the terminal Post (no outgoing).
     const present = new Set(workflow.steps.map((s) => s.id));
     const targets = new Set<string>();
-    for (const s of workflow.steps)
-      for (const n of s.next) if (present.has(n)) targets.add(n);
+    for (const s of workflow.steps) for (const n of s.next) if (present.has(n)) targets.add(n);
 
     const real = workflow.steps.map((step) => ({
       id: step.id,
@@ -155,7 +145,7 @@ const Inner = ({
   // and `useNodesInitialized` actually flips to true (without onNodesChange it
   // never does, and the layout never runs). Nodes start HIDDEN at 0,0.
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(
-    initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
+    initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } }))
   );
   // Live mirror of `nodes` so the focus effect can read the current positions (to pick
   // the topmost pending gate) without listing `nodes` as a dep (which would re-fire it).
@@ -210,16 +200,11 @@ const Inner = ({
   const wrapRef = useRef<HTMLDivElement>(null);
   const graphKey = useMemo(
     () =>
-      initialNodes.map((n) => n.id).join("|") +
-      "::" +
-      edges.length +
-      (vertical ? "::v" : "::h"),
-    [initialNodes, edges, vertical],
+      initialNodes.map((n) => n.id).join("|") + "::" + edges.length + (vertical ? "::v" : "::h"),
+    [initialNodes, edges, vertical]
   );
   useEffect(() => {
-    setNodes(
-      initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })),
-    );
+    setNodes(initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })));
     setEdges(edges);
     laidOutFor.current = ""; // force a fresh layout for the new graph
   }, [initialNodes, edges, setNodes, setEdges]);
@@ -242,10 +227,7 @@ const Inner = ({
     const heightOf = (n: Node<NodeData>): number =>
       liveHeights.current.get(n.id) ?? estimateHeight(n.data);
     laidOutHeights.current = new Map(
-      nodesRef.current.map((n) => [
-        n.id,
-        liveHeights.current.get(n.id) ?? null,
-      ]),
+      nodesRef.current.map((n) => [n.id, liveHeights.current.get(n.id) ?? null])
     );
     const laid = layout(initialNodes, edges, heightOf, vertical);
     const byId = new Map(laid.map((n) => [n.id, n.position]));
@@ -255,7 +237,7 @@ const Inner = ({
         return pos
           ? { ...n, position: pos, style: { visibility: "visible" } }
           : { ...n, style: { visibility: "visible" } };
-      }),
+      })
     );
     // A DRIFT re-layout only nudges node positions a few px to straighten edges; it
     // must NOT re-fit the view. Otherwise staging a decision (which tints the card and
@@ -295,15 +277,14 @@ const Inner = ({
         if (c.type !== "dimensions" || !c.dimensions) continue;
         liveHeights.current.set(c.id, c.dimensions.height);
         const used = laidOutHeights.current.get(c.id);
-        if (used == null || Math.abs(used - c.dimensions.height) > 1)
-          resized = true;
+        if (used == null || Math.abs(used - c.dimensions.height) > 1) resized = true;
       }
       if (resized && laidOutFor.current === graphKey) {
         driftRelayout.current = true; // silent: straighten edges, don't re-fit the view
         laidOutFor.current = "";
         setRelayoutTick((t) => t + 1);
       }
-    },
+    }
   );
 
   // Re-fit when the container resizes so nodes never sit clipped past an edge after a
@@ -331,8 +312,8 @@ const Inner = ({
       cur.map((n) =>
         n.data.selected === (n.id === selectedId)
           ? n
-          : { ...n, data: { ...n.data, selected: n.id === selectedId } },
-      ),
+          : { ...n, data: { ...n.data, selected: n.id === selectedId } }
+      )
     );
   }, [selectedId, setNodes]);
 
@@ -363,13 +344,9 @@ const Inner = ({
         const choice = decisions?.[n.id] ?? undefined;
         const reason = reasons?.[n.id] ?? undefined;
         const handler =
-          isDecidable && onDecide
-            ? (c: "approve" | "reject") => onDecide(n.id, c)
-            : undefined;
+          isDecidable && onDecide ? (c: "approve" | "reject") => onDecide(n.id, c) : undefined;
         const reasonHandler =
-          isDecidable && onReason
-            ? (r: string) => onReason(n.id, r)
-            : undefined;
+          isDecidable && onReason ? (r: string) => onReason(n.id, r) : undefined;
         // The AI recommendation rides only on a decidable gate (where it helps the
         // decision); other nodes carry none.
         const rec = isDecidable ? (recommendation ?? undefined) : undefined;
@@ -395,7 +372,7 @@ const Inner = ({
             recommendation: rec,
           },
         };
-      }),
+      })
     );
   }, [
     decidableKey,
@@ -422,7 +399,7 @@ const Inner = ({
   useEffect(() => {
     if (!initialized || laidOutFor.current !== graphKey) return;
     const raf = requestAnimationFrame(() =>
-      frameForFocus(focusKey ? focusKey.split("|") : [], 400),
+      frameForFocus(focusKey ? focusKey.split("|") : [], 400)
     );
     return () => cancelAnimationFrame(raf);
   }, [focusKey, initialized, graphKey, frameForFocus]);
@@ -443,19 +420,13 @@ const Inner = ({
     setEdges((cur) =>
       cur.map((e) => {
         const src = st[e.source];
-        const live =
-          (src === "approved" || src === "done") &&
-          REACHED.has(st[e.target] ?? "");
+        const live = (src === "approved" || src === "done") && REACHED.has(st[e.target] ?? "");
         // A traversed edge reads as a SOLID accent line (no marching-ants animation,
         // which drew the eye and looked busy); an untraversed edge stays quiet grey.
         const stroke = live ? "#5B53D6" : "#CBCDD4";
         const strokeWidth = live ? 2 : 1.5;
         const prev = e.style ?? {};
-        if (
-          e.animated === false &&
-          prev.stroke === stroke &&
-          prev.strokeWidth === strokeWidth
-        ) {
+        if (e.animated === false && prev.stroke === stroke && prev.strokeWidth === strokeWidth) {
           return e;
         }
         return {
@@ -463,7 +434,7 @@ const Inner = ({
           animated: false,
           style: { ...prev, stroke, strokeWidth },
         };
-      }),
+      })
     );
   }, [statusKey, statuses, setEdges]);
 

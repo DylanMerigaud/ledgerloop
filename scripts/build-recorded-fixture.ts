@@ -41,8 +41,7 @@ const build = (): void => {
     // Resolve the manager by name to an id. An unmatched name (the intentionally
     // absent "Riley Stone") resolves to null, exactly what BambooHR does on write,
     // which is what makes Morgan Vega surface as an orphan.
-    const supervisorEId =
-      p.managerName !== null ? (idByName.get(p.managerName) ?? null) : null;
+    const supervisorEId = p.managerName !== null ? (idByName.get(p.managerName) ?? null) : null;
     return {
       id: String(i + 100),
       firstName: p.firstName,
@@ -79,13 +78,7 @@ const build = (): void => {
     employees,
   };
 
-  const out = path.join(
-    process.cwd(),
-    "db",
-    "fixtures",
-    "bamboohr",
-    "report.json",
-  );
+  const out = path.join(process.cwd(), "db", "fixtures", "bamboohr", "report.json");
   mkdirSync(path.dirname(out), { recursive: true });
   writeFileSync(out, JSON.stringify(payload, null, 2) + "\n");
   console.log(`Wrote ${employees.length} employees to ${out}`);

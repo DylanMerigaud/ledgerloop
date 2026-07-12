@@ -72,11 +72,9 @@ export const executeWorkflow = (
   workflow: ApprovalWorkflow,
   ctx: InvoiceContext,
   decisions: Decisions = {},
-  reasons: Reasons = {},
+  reasons: Reasons = {}
 ): ExecutionState => {
-  const byId = new Map<string, WorkflowStep>(
-    workflow.steps.map((s) => [s.id, s]),
-  );
+  const byId = new Map<string, WorkflowStep>(workflow.steps.map((s) => [s.id, s]));
   // Reverse edges: who feeds into each step (its predecessors).
   const predecessors = new Map<string, string[]>();
   for (const s of workflow.steps) predecessors.set(s.id, []);
@@ -98,13 +96,11 @@ export const executeWorkflow = (
     const preds = predecessors.get(step.id) ?? [];
     // Predecessors are resolved before this step (topo order), so each is present.
     const predStates = preds.map((p) =>
-      nonNull(state.get(p), `predecessor ${p} resolved before ${step.id}`),
+      nonNull(state.get(p), `predecessor ${p} resolved before ${step.id}`)
     );
 
     const anyPredRejected = predStates.some((p) => p.status === "rejected");
-    const anyPredWaiting = predStates.some(
-      (p) => p.status === "pending" || p.status === "blocked",
-    );
+    const anyPredWaiting = predStates.some((p) => p.status === "pending" || p.status === "blocked");
 
     // A rejection anywhere upstream blocks this step (the bill won't post).
     if (anyPredRejected) {
@@ -159,17 +155,13 @@ export const executeWorkflow = (
       return {
         id: step.id,
         status: "rejected",
-        detail: reason
-          ? `Rejected by ${who}: ${reason}`
-          : `Rejected by ${who}.`,
+        detail: reason ? `Rejected by ${who}: ${reason}` : `Rejected by ${who}.`,
       };
     }
     return {
       id: step.id,
       status: "pending",
-      detail: `Awaiting ${who}${
-        condText === "always" ? "" : ` (${condText})`
-      }.`,
+      detail: `Awaiting ${who}${condText === "always" ? "" : ` (${condText})`}.`,
     };
   };
 
@@ -181,9 +173,7 @@ export const executeWorkflow = (
   }
 
   // Every step was resolved in the loop above, so each has a state.
-  const steps = workflow.steps.map((s) =>
-    nonNull(state.get(s.id), `step ${s.id} was resolved`),
-  );
+  const steps = workflow.steps.map((s) => nonNull(state.get(s.id), `step ${s.id} was resolved`));
   const pending = steps.filter((s) => s.status === "pending").map((s) => s.id);
   const rejected = steps.some((s) => s.status === "rejected");
 
@@ -203,9 +193,7 @@ const topoOrder = (workflow: ApprovalWorkflow): string[] => {
   for (const s of workflow.steps) {
     for (const n of s.next) indegree.set(n, (indegree.get(n) ?? 0) + 1);
   }
-  const queue = [...indegree.entries()]
-    .filter(([, d]) => d === 0)
-    .map(([id]) => id);
+  const queue = [...indegree.entries()].filter(([, d]) => d === 0).map(([id]) => id);
   const order: string[] = [];
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {

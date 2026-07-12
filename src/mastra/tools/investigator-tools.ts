@@ -2,11 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 import { isRecord } from "@/lib/assert";
-import {
-  vendorPriceHistory,
-  vendorPoNotes,
-  vendorReceiptNotes,
-} from "@/lib/vendor-context";
+import { vendorPriceHistory, vendorPoNotes, vendorReceiptNotes } from "@/lib/vendor-context";
 import { CTX } from "@/src/mastra/tools/context";
 
 /**
@@ -27,8 +23,7 @@ import { CTX } from "@/src/mastra/tools/context";
  * decision stays with the reviewer, and the routing stays deterministic.
  */
 /** A getter is a function taking a string key and returning unknown. */
-const isGetter = (v: unknown): v is (k: string) => unknown =>
-  typeof v === "function";
+const isGetter = (v: unknown): v is (k: string) => unknown => typeof v === "function";
 
 const vendorFromContext = (context: unknown): string => {
   // `context` is Mastra's tool context (typed loosely as unknown here); read the
@@ -38,13 +33,11 @@ const vendorFromContext = (context: unknown): string => {
   const rc = context["requestContext"];
   if (!isRecord(rc) || !isGetter(rc["get"])) throw noContext();
   const value: unknown = rc["get"](CTX.investigation);
-  if (!isRecord(value) || typeof value["vendor"] !== "string")
-    throw noContext();
+  if (!isRecord(value) || typeof value["vendor"] !== "string") throw noContext();
   return value["vendor"];
 };
 
-const noContext = (): Error =>
-  new Error("investigator tool: no investigation context set");
+const noContext = (): Error => new Error("investigator tool: no investigation context set");
 
 export const priceHistoryTool = createTool({
   id: "get-vendor-price-history",

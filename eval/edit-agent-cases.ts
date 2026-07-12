@@ -130,8 +130,7 @@ export const AGENT_CASES: AgentCase[] = [
   },
   {
     id: "add-co-approver",
-    instruction:
-      "The director review should also need Jordan Ellis to sign off",
+    instruction: "The director review should also need Jordan Ellis to sign off",
     minOps: 1,
     why: "a co-approver added to an existing gate; the result still validates clean",
     stub: [

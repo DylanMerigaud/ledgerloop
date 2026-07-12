@@ -49,7 +49,7 @@ const main = async (): Promise<void> => {
   if (!clientId || !clientSecret || !refreshToken || !realmId) {
     console.error(
       "Missing QBO_CLIENT_ID / QBO_CLIENT_SECRET / QBO_REFRESH_TOKEN / QBO_REALM_ID.\n" +
-        "Set them in .env.local, this script needs the live sandbox app to capture.",
+        "Set them in .env.local, this script needs the live sandbox app to capture."
     );
     process.exit(1);
   }
@@ -75,7 +75,7 @@ const main = async (): Promise<void> => {
   if (pos.length === 0) {
     console.error(
       "Mapped 0 purchase orders. The sandbox has no item-based POs to read, " +
-        "run `pnpm erp:seed` first to create the scenario, then retry.",
+        "run `pnpm erp:seed` first to create the scenario, then retry."
     );
     process.exit(1);
   }
@@ -85,8 +85,7 @@ const main = async (): Promise<void> => {
   // (it's a company id, not a secret); tokens are NOT.
   const payload = {
     _meta: {
-      source:
-        "QuickBooks Online API, queries for PurchaseOrder / Vendor / Item / Bill",
+      source: "QuickBooks Online API, queries for PurchaseOrder / Vendor / Item / Bill",
       note: "Real API responses captured from the live sandbox. Replayed offline by recordedErp(). Not a mock.",
       capturedAt: new Date().toISOString(),
       realmId,

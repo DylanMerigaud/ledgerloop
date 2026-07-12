@@ -65,14 +65,10 @@ test("resetAndReseed re-inserts every invoice and de-duplicates shared POs/GRs",
 
   // POs/GRs are shared across the duplicate pair, so they're inserted once each.
   const uniquePos = new Set(
-    SEED_BUNDLES.flatMap((b) =>
-      b.purchaseOrder ? [b.purchaseOrder.poNumber] : [],
-    ),
+    SEED_BUNDLES.flatMap((b) => (b.purchaseOrder ? [b.purchaseOrder.poNumber] : []))
   ).size;
   const uniqueGrs = new Set(
-    SEED_BUNDLES.flatMap((b) =>
-      b.goodsReceipt ? [b.goodsReceipt.grNumber] : [],
-    ),
+    SEED_BUNDLES.flatMap((b) => (b.goodsReceipt ? [b.goodsReceipt.grNumber] : []))
   ).size;
   assert.equal(poInserts, uniquePos);
   assert.equal(grInserts, uniqueGrs);

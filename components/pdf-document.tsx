@@ -45,7 +45,7 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
         "pdfjs-dist/build/pdf.worker.min.mjs",
-        import.meta.url,
+        import.meta.url
       ).toString();
       return pdfjs.getDocument({ data: buf }).promise;
     };
@@ -106,9 +106,7 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
     // The wrapper reserves the A4 footprint via aspect-ratio, so the skeleton and
     // the eventual canvas occupy the same box (no layout jump, no overflow).
     <div className="relative w-full" style={{ aspectRatio: `1 / ${A4_RATIO}` }}>
-      {!ready && !error && (
-        <div className="absolute inset-0 animate-pulse rounded bg-line/30" />
-      )}
+      {!ready && !error && <div className="absolute inset-0 animate-pulse rounded bg-line/30" />}
       {error && (
         <div className="absolute inset-0 flex items-center justify-center rounded bg-canvas text-center text-[12px] text-muted">
           Couldn&apos;t render the PDF preview.

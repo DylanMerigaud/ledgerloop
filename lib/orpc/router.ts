@@ -40,7 +40,7 @@ const enforce = async (headers: Headers, tier: RateTier): Promise<void> => {
     throw new ORPCError("TOO_MANY_REQUESTS", {
       message: `You've hit the demo limit. Try again in about ${Math.max(
         1,
-        Math.ceil(verdict.retryAfterSeconds / 60),
+        Math.ceil(verdict.retryAfterSeconds / 60)
       )} minute(s).`,
     });
   }
@@ -69,19 +69,13 @@ const onboarding = rateLimited.output(OnboardingResult).handler(async () => {
   }
   if (org.employees.length === 0) {
     throw new ORPCError("NOT_FOUND", {
-      message:
-        "The HRIS returned no employees for this client (is the org seeded?).",
+      message: "The HRIS returned no employees for this client (is the org seeded?).",
     });
   }
   try {
-    const { workflow, proposal, issues } = await deriveWorkflow(
-      anthropicProposalModel,
-      org,
-    );
+    const { workflow, proposal, issues } = await deriveWorkflow(anthropicProposalModel, org);
     // Suggestions are best-effort, never fail discovery over them.
-    const suggestions = await anthropicSuggestModel
-      .suggest(workflow)
-      .catch(() => []);
+    const suggestions = await anthropicSuggestModel.suggest(workflow).catch(() => []);
     return {
       source: org.source,
       employeeCount: org.employees.length,
@@ -113,7 +107,7 @@ const editWorkflow = rateLimited
           departments: input.departments,
           vendors: input.vendors,
           currencies: input.currencies,
-        },
+        }
       );
       return { proposed, changes, reason, clarify };
     } catch {
