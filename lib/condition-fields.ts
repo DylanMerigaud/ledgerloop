@@ -125,6 +125,7 @@ export const defaultLeafFor = (
 ): ConditionLeaf => {
   const meta = fieldMeta(field, available);
   const op = meta.ops[0] ?? "==";
+  // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the documented sensible default for a text field with no enum options (see the doc comment above).
   const value: string | number = meta.kind === "number" ? 0 : (meta.options?.[0] ?? "");
   return { kind: "leaf", field, op, value };
 };

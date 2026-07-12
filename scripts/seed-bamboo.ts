@@ -35,6 +35,7 @@ import { z } from "zod";
 
 import { SEED_DIVISION, SEED_ORG, type SeedPerson } from "@/db/fixtures/bamboohr/seed-org";
 import { nonNull } from "@/lib/assert";
+import { invariant } from "@/lib/utils/invariant";
 
 /** Same env loading as eval/run.ts, native, no dotenv dep. */
 const loadEnv = (): void => {
@@ -146,9 +147,10 @@ const createEmployee = async (c: Creds, p: SeedPerson): Promise<string> => {
       `create ${p.firstName} ${p.lastName} failed: HTTP ${res.status} ${res.statusText}`
     );
   }
-  const location = res.headers.get("location") ?? "";
+  const location = res.headers.get("location");
+  invariant(location, `no Location header in 201 response for ${p.firstName}`);
   const id = location.match(/employees\/(\d+)/)?.[1];
-  if (!id) throw new Error(`no id in Location header for ${p.firstName}`);
+  invariant(id, `no id in Location header for ${p.firstName}`);
   return id;
 };
 

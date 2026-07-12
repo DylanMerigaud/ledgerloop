@@ -332,18 +332,23 @@ export const mapQboPurchaseOrders = (raw: unknown): TPurchaseOrder[] => {
 
   const out: TPurchaseOrder[] = [];
   for (const po of rows) {
+    // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the valid "no vendor" value; a PO with no vendor is dropped by the guard below, not asserted.
     const vendor = po.VendorRef?.name?.trim() ?? "";
+    // eslint-disable-next-line custom/no-empty-string-fallback -- terminal fallback of the DocNumber||Id key chain; "" means "no key" and is dropped by the guard below.
     const poNumber = po.DocNumber?.trim() || po.Id?.trim() || "";
     const currency = po.CurrencyRef?.value.trim() || "USD";
 
     // Keep only item-based lines that carry an item NAME, that name is the SKU
     // the matcher joins on (see cleanup 3). Map each to our LineItem shape.
     const lineItems = (po.Line ?? [])
+      // eslint-disable-next-line custom/no-empty-string-fallback -- normalizing a missing item name to "" so the .trim() truthiness filter drops nameless lines.
       .filter((l) => (l.ItemBasedExpenseLineDetail?.ItemRef?.name ?? "").trim())
       .map((l) => {
         const d = l.ItemBasedExpenseLineDetail;
         const item = d?.ItemRef;
+        // eslint-disable-next-line custom/no-empty-string-fallback -- "" is a valid SKU-absent value written into the LineItem shape (schema accepts it).
         const sku = item?.name?.trim() ?? "";
+        // eslint-disable-next-line custom/no-empty-string-fallback -- description is optional; "" is the intended "no description" value for the LineItem.
         const description = (l.Description?.trim() || item?.name?.trim()) ?? "";
         const qty = d?.Qty ?? 0;
         const unitPrice = d?.UnitPrice ?? 0;

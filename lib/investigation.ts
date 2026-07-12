@@ -51,6 +51,7 @@ const finalText = (res: AgentResult): string => {
     const t = steps[i]?.text?.trim();
     if (t) return t;
   }
+  // eslint-disable-next-line custom/no-empty-string-fallback -- terminal fallback: no step and no res.text legitimately means the agent produced no closing text; "" is the correct empty result.
   return (res.text ?? "").trim();
 };
 

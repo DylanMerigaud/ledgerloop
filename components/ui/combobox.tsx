@@ -57,6 +57,7 @@ export const Combobox = ({
     const q = query.trim().toLowerCase();
     if (!q) return options;
     return options.filter((o) =>
+      // eslint-disable-next-line custom/no-empty-string-fallback -- building a search haystack: an absent sublabel/keywords contributes "" (nothing to match on).
       `${o.label} ${o.sublabel ?? ""} ${o.keywords ?? ""}`.toLowerCase().includes(q)
     );
   }, [options, query]);

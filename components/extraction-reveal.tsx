@@ -134,6 +134,7 @@ export const ExtractionReveal = ({
             <FieldRow
               key={label}
               label={label}
+              // eslint-disable-next-line custom/no-empty-string-fallback -- display fallback: a not-yet-extracted field shows blank, "" is the intended empty display value.
               value={fields[i]?.value ?? ""}
               state={isDone ? (i < revealed ? "shown" : "pending") : "reading"}
             />

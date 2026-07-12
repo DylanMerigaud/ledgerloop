@@ -327,6 +327,7 @@ const Inner = ({
   const decidableKey = (decidableIds ?? []).join("|");
   const choiceKey = decisions
     ? Object.entries(decisions)
+        // eslint-disable-next-line custom/no-empty-string-fallback -- building a cache key: an undecided (null) choice contributes "" to the key string.
         .map(([k, v]) => `${k}:${v ?? ""}`)
         .sort()
         .join("|")
@@ -421,6 +422,7 @@ const Inner = ({
     setEdges((cur) =>
       cur.map((e) => {
         const src = st[e.source];
+        // eslint-disable-next-line custom/no-empty-string-fallback -- a target with no status contributes "", which is not in REACHED, so the edge reads as not-yet-traversed.
         const isLive = (src === "approved" || src === "done") && REACHED.has(st[e.target] ?? "");
         // A traversed edge reads as a SOLID accent line (no marching-ants animation,
         // which drew the eye and looked busy); an untraversed edge stays quiet grey.

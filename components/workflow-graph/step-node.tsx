@@ -213,6 +213,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           </div>
           {onReason && choice === "reject" && (
             <input
+              // eslint-disable-next-line custom/no-empty-string-fallback -- controlled input value: "" is the intended empty reason field (the reason is optional).
               value={reason ?? ""}
               onChange={(e) => onReason(e.target.value)}
               placeholder="Reason (optional)"

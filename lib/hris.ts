@@ -117,6 +117,7 @@ export const mapBambooReport = (raw: unknown, source: string, division?: string)
     (r) =>
       (r.status ?? "Active") === "Active" &&
       r.id &&
+      // eslint-disable-next-line custom/no-empty-string-fallback -- comparing a possibly-absent division against the scope; "" (no division) simply never equals a real scope name.
       (division === undefined || (r.division ?? "") === division)
   );
   const employees = active.map((r) => {
@@ -129,8 +130,11 @@ export const mapBambooReport = (raw: unknown, source: string, division?: string)
       // `active` was filtered on `r.id` being present, so it's a string here.
       id: nonNull(r.id, "active row has an id (filtered above)"),
       name,
+      // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the intended "no title" value written into the Employee schema (blank title is valid).
       title: r.jobTitle?.trim() ?? "",
+      // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the intended "no department" value for the Employee schema (unassigned is valid).
       department: r.department?.trim() ?? "",
+      // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the intended "no division" value for the Employee schema (unscoped is valid).
       division: r.division?.trim() ?? "",
       managerId,
     });

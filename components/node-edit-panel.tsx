@@ -125,6 +125,7 @@ const ApprovalFields = ({
     <>
       <Field label={`Approver · ${step.approverTitle}`}>
         <Combobox
+          // eslint-disable-next-line custom/no-empty-string-fallback -- controlled Combobox value: "" is the intended "no approver selected yet" state.
           value={step.approverName ?? ""}
           onChange={(name) => onApply({ op: "set-approver", stepId: step.id, approverName: name })}
           options={optionsFor(extras)}

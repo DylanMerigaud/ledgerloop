@@ -40,6 +40,7 @@ test("posted outcome → books to the ERP", async () => {
   const r = await reconcileFromOutcome("posted", match({ verdict: "clean" }), "Acme");
   assert.equal(r.outcome, "posted");
   assert.equal(r.posted, true);
+  // eslint-disable-next-line custom/no-empty-string-fallback -- test: normalize a possibly-undefined erpRef to "" so assert.match reports a clean assertion failure instead of a type throw.
   assert.match(r.erpRef ?? "", /NETSUITE-BILL-/);
   assert.equal(r.glEntries.length, 2);
 });

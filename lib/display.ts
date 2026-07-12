@@ -111,6 +111,7 @@ export const outcomeDot = (outcome: Outcome): string => {
 export type ScenarioKind = "exception" | "blocked" | "clean";
 
 export const scenarioKind = (scenario: string | null): ScenarioKind => {
+  // eslint-disable-next-line custom/no-empty-string-fallback -- a null scenario legitimately has no label; "" matches no keyword and falls through to "clean".
   const s = (scenario ?? "").toLowerCase();
   if (s.includes("duplicate") || s.includes("already paid")) return "blocked";
   if (
@@ -146,6 +147,7 @@ export const scenarioBadge = (kind: ScenarioKind): { tone: BadgeTone; label: str
  * the reason an AP reviewer actually wants. Null for a clean row (nothing to explain).
  */
 export const scenarioExplain = (scenario: string | null): string | null => {
+  // eslint-disable-next-line custom/no-empty-string-fallback -- a null scenario legitimately has no label; "" matches no keyword and returns null (nothing to explain).
   const s = (scenario ?? "").toLowerCase();
   if (s.includes("already paid")) return "A bill with this number is already posted in the ERP.";
   if (s.includes("duplicate")) return "This invoice number was already submitted in the queue.";

@@ -102,6 +102,7 @@ export const runMatch = (
   const currency = invoice.currency;
   // The buying department comes from the PO (the internal team that ordered); "" when
   // there's no PO. Carried into the result so a department-scoped approval gate routes.
+  // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the documented "no PO / no buying department" value; a department-scoped gate then just doesn't fire.
   const department = purchaseOrder?.department ?? "";
   const matchType: MatchResult["matchType"] = goodsReceipt ? "three_way" : "two_way";
 

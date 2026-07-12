@@ -131,6 +131,7 @@ export const WorkflowEditor = ({
   /** The user picked a clarification option → re-submit the original instruction
       completed with the choice (re-uses the whole edit flow). */
   const pickClarifyOption = (option: string) => {
+    // eslint-disable-next-line custom/no-empty-string-fallback -- defensive: if no clarify instruction is pending, "" yields a harmless base for the re-submit string.
     const base = clarify?.instruction ?? "";
     setClarify(null);
     void submit(`${base} for ${option}`);

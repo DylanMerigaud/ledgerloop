@@ -107,6 +107,7 @@ test("returns a reason when the plan is all no-ops (no change)", async () => {
     currencies: [],
   });
   assert.equal(changes.filter((c) => c.kind !== "unchanged").length, 0, "no real change");
+  // eslint-disable-next-line custom/no-empty-string-fallback -- test: normalize a possibly-undefined reason to "" so assert.match reports a clean assertion failure instead of a type throw.
   assert.match(reason ?? "", /already does that/);
 });
 

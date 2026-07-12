@@ -280,7 +280,8 @@ const Lever = ({ name, hint, values }: { name: string; hint?: string; values?: s
     ? values.length === 0
       ? "(none)"
       : values.slice(0, 4).join(", ") + (values.length > 4 ? `, +${values.length - 4}` : "")
-    : (hint ?? "");
+    : // eslint-disable-next-line custom/no-empty-string-fallback -- display fallback: a lever with neither values nor a hint renders blank, "" is the intended empty text.
+      (hint ?? "");
   return (
     <div className="flex gap-2 text-[10.5px] leading-snug">
       <span className="shrink-0 font-mono font-medium text-ink">{name}</span>

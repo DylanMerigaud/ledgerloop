@@ -44,6 +44,7 @@ const pauseReason = (trace: TraceEvent[]): string => {
   // 7.50/unit (9.1% over)."), the "why".
   let why = "";
   const mt = MatchingData.safeParse(matching?.data);
+  // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the initialized "no exception message" value (declared above); the `if (why)` checks below treat it as absent.
   if (mt.success) why = mt.data.exceptions?.[0]?.message ?? "";
 
   if (gates && why) return `Paused: ${gates}. ${why}`;
