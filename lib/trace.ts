@@ -113,18 +113,24 @@ const asRecord = (v: unknown): Record<string, unknown> | undefined => (isRecord(
     agentic stage (investigation) says "agent". */
 const stageLabel = (stage: TraceStage): string => {
   switch (stage) {
-    case "intake":
+    case "intake": {
       return "Intake";
-    case "matching":
+    }
+    case "matching": {
       return "Matching";
-    case "investigation":
+    }
+    case "investigation": {
       return "Exception investigator";
-    case "approval":
+    }
+    case "approval": {
       return "Approval routing";
-    case "reconciliation":
+    }
+    case "reconciliation": {
       return "Reconciliation";
-    case "pipeline":
+    }
+    case "pipeline": {
       return "Pipeline";
+    }
   }
 };
 
@@ -145,7 +151,7 @@ export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> |
     const stage = stageForStep(stepId);
 
     switch (type) {
-      case "workflow-start":
+      case "workflow-start": {
         return {
           kind: "run",
           stage: "pipeline",
@@ -154,8 +160,9 @@ export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> |
           label: "Pipeline started",
           detail: "Intake → Matching → Investigation → Approval → Reconciliation",
         };
+      }
 
-      case "workflow-step-start":
+      case "workflow-step-start": {
         if (isMappingStep(stepId)) return null; // hide the .map() plumbing step
         // Intake owns its node via the intake-document/intake-result chunks it
         // writes (they carry the document + extraction result); its bare
@@ -168,6 +175,7 @@ export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> |
           stepId,
           label: stageLabel(stage),
         };
+      }
 
       case "workflow-step-output": {
         // Custom chunks a step writes (via its stream writer) arrive wrapped:
@@ -226,24 +234,24 @@ export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> |
           // The intake result (`runIntake`): on success the extracted invoice +
           // whether its header reconciled with the record; on failure a reason.
           // Upserts the same intake node.
-          const ok = innerPayload?.["ok"] === true;
+          const isOk = innerPayload?.["ok"] === true;
           // `ok` being true means innerPayload is present (narrowed), so no `?.`.
-          const extracted = ok ? (innerPayload["invoice"] ?? null) : null;
-          const matches = innerPayload?.["matchesRecord"] === true;
+          const extracted = isOk ? (innerPayload["invoice"] ?? null) : null;
+          const isMatches = innerPayload?.["matchesRecord"] === true;
           return {
             kind: "step",
             stage: "intake",
-            status: ok ? "ok" : "error",
+            status: isOk ? "ok" : "error",
             stepId: "intake",
-            label: ok ? "Intake, extracted" : "Intake, failed",
-            detail: ok
-              ? matches
+            label: isOk ? "Intake, extracted" : "Intake, failed",
+            detail: isOk
+              ? isMatches
                 ? "Read the document and reconciled it with the PO record."
                 : "Read the document; header differs from the PO record."
               : typeof innerPayload?.["reason"] === "string"
                 ? innerPayload["reason"]
                 : "Could not read the document.",
-            data: { extracted, matches },
+            data: { extracted, matches: isMatches },
           };
         }
 
@@ -289,7 +297,7 @@ export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> |
         };
       }
 
-      case "workflow-finish":
+      case "workflow-finish": {
         return {
           kind: "run",
           stage: "pipeline",
@@ -297,8 +305,9 @@ export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> |
           stepId: "",
           label: "Pipeline complete",
         };
+      }
 
-      case "workflow-canceled":
+      case "workflow-canceled": {
         return {
           kind: "run",
           stage: "pipeline",
@@ -306,9 +315,11 @@ export const toTraceEvent = (chunk: unknown): Omit<TraceEvent, "seq" | "atMs"> |
           stepId: "",
           label: "Pipeline canceled",
         };
+      }
 
-      default:
+      default: {
         return null; // step-output/-progress/-waiting/reasoning/etc, not surfaced
+      }
     }
   } catch {
     return null; // never let a weird chunk crash the stream

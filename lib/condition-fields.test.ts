@@ -3,10 +3,10 @@ import { test } from "node:test";
 
 import { Condition } from "@/lib/approval-workflow";
 import {
+  type AvailableValues,
   CONDITION_FIELDS,
   defaultLeafFor,
   fieldMeta,
-  type AvailableValues,
 } from "@/lib/condition-fields";
 
 /**

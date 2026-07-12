@@ -1,12 +1,13 @@
+import type { OrgChart } from "@/lib/schema";
+
 import {
+  type ApprovalWorkflow,
+  type Condition,
   OnboardingProposal,
   type OnboardingProposal as TProposal,
-  type ApprovalWorkflow,
   type WorkflowStep,
-  type Condition,
 } from "@/lib/approval-workflow";
 import { DEFAULT_APPROVAL_POLICY } from "@/lib/client-profile";
-import type { OrgChart } from "@/lib/schema";
 
 /**
  * Onboarding discovery, turn a client's org into an approval workflow.
@@ -204,7 +205,7 @@ export const orgForPrompt = (org: OrgChart): string => {
       return `- ${e.name} | ${e.title || "(no title)"} | dept: ${e.department || "?"} | manager: ${mgr}`;
     })
     .join("\n");
-  const issues = org.issues.length
+  const issues = org.issues.length > 0
     ? org.issues.map((i) => `- [${i.kind}] ${i.detail}`).join("\n")
     : "- (none)";
   return `EMPLOYEES (${org.employees.length}):\n${people}\n\nDATA-QUALITY ISSUES (${org.issues.length}):\n${issues}`;

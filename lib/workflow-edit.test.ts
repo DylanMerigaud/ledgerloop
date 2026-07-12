@@ -3,15 +3,15 @@ import { test } from "node:test";
 
 import {
   ApprovalWorkflow,
-  diffWorkflows,
   describeCondition,
+  diffWorkflows,
   type ApprovalWorkflow as TWorkflow,
 } from "@/lib/approval-workflow";
 import {
   applyEditOp,
+  type EditModel,
   parseEditPlan,
   proposeEdit,
-  type EditModel,
   type WorkflowEditOp,
 } from "@/lib/workflow-edit";
 import { validateWorkflow } from "@/lib/workflow-validate";
@@ -48,7 +48,7 @@ const base: TWorkflow = {
           {
             kind: "any",
             conditions: [
-              { kind: "leaf", field: "amount", op: ">=", value: 10000 },
+              { kind: "leaf", field: "amount", op: ">=", value: 10_000 },
               { kind: "leaf", field: "variancePct", op: ">=", value: 0.1 },
             ],
           },
@@ -83,7 +83,7 @@ test("add-approval: adds a gate, wires it, leaves every other step untouched", (
     op: "add-approval",
     label: "CFO approval",
     approverTitle: "CFO",
-    amountOver: 50000,
+    amountOver: 50_000,
     department: null,
     vendor: null,
     currency: null,
@@ -228,7 +228,7 @@ test("an approval added AFTER a notification converges on the ERP post", () => {
     op: "add-approval",
     label: "VP sign-off",
     approverTitle: "VP",
-    amountOver: 100000,
+    amountOver: 100_000,
     department: null,
     vendor: null,
     currency: null,
@@ -373,7 +373,7 @@ test("adding a parallel gate orders the shared join (post) LAST in the parent", 
     op: "add-approval",
     label: "CFO approval",
     approverTitle: "CFO",
-    amountOver: 50000,
+    amountOver: 50_000,
     department: null,
     vendor: null,
     currency: null,
@@ -388,7 +388,7 @@ test("adding a parallel gate orders the shared join (post) LAST in the parent", 
   });
   assert.ok(post, "manager still reaches post directly");
   assert.equal(
-    mgr.next[mgr.next.length - 1],
+    mgr.next.at(-1),
     post,
     "the shared join (post) is ordered last, gates first"
   );
@@ -566,7 +566,7 @@ test("set-threshold: changes only the targeted gate's amount", () => {
   const next = applyEditOp(base, {
     op: "set-threshold",
     stepId: "director",
-    amountOver: 25000,
+    amountOver: 25_000,
   });
   const w = whenOf(next, "director");
   assert.match(w, /amount > \$25,000/);
@@ -581,7 +581,7 @@ test("set-condition: replaces only the targeted gate's trigger", () => {
       kind: "any",
       conditions: [
         { kind: "leaf", field: "verdict", op: "==", value: "exception" },
-        { kind: "leaf", field: "amount", op: ">", value: 10000 },
+        { kind: "leaf", field: "amount", op: ">", value: 10_000 },
       ],
     },
   });
@@ -627,7 +627,7 @@ test("set-approver: assigning a person clears the unresolved-approver warning", 
     approverName: "Cameron Diaz",
   });
   assert.ok(
-    !validateWorkflow(fixed).some((i) => i.code === "unresolved-approver"),
+    validateWorkflow(fixed).every((i) => i.code !== "unresolved-approver"),
     "assigning a person clears the warning"
   );
 });
@@ -768,8 +768,8 @@ test("diffWorkflows: adding a co-approver reads as a changed approver, not uncha
 
 test("remove-step: drops the step and every edge into it", () => {
   const next = applyEditOp(base, { op: "remove-step", stepId: "director" });
-  assert.ok(!next.steps.some((s) => s.id === "director"));
-  assert.ok(!next.steps.some((s) => s.next.includes("director")));
+  assert.ok(next.steps.every((s) => s.id !== "director"));
+  assert.ok(next.steps.every((s) => !s.next.includes("director")));
 });
 
 test("none: changes nothing", () => {
@@ -801,7 +801,7 @@ test("proposeEdit runs the model -> op -> apply -> diff", async () => {
         op: "add-approval",
         label: "CFO approval",
         approverTitle: "CFO",
-        amountOver: 50000,
+        amountOver: 50_000,
         department: null,
         vendor: null,
         currency: null,

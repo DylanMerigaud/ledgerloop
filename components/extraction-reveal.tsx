@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import type { Invoice } from "@/lib/schema";
+
 import { PdfDocument } from "@/components/pdf-document";
 import { formatMoney } from "@/lib/format";
-import type { Invoice } from "@/lib/schema";
 
 /**
  * The intake "extraction reveal", the visible proof that the AI reads the real
@@ -47,7 +48,7 @@ export const ExtractionReveal = ({
   // Three modes: preview (no run), running (scanning), done (fields shown).
   const mode: "preview" | "running" | "done" =
     state == null ? "preview" : state.status === "running" ? "running" : "done";
-  const done = mode === "done";
+  const isDone = mode === "done";
 
   // Reveal fields one by one once extraction is done (sequential pop-in).
   const fields = extractedInvoice ? buildFields(extractedInvoice) : [];
@@ -56,7 +57,7 @@ export const ExtractionReveal = ({
   const rows = FIELD_LABELS;
   const [revealed, setRevealed] = useState(0);
   useEffect(() => {
-    if (!done) {
+    if (!isDone) {
       setRevealed(0);
       return;
     }
@@ -67,12 +68,12 @@ export const ExtractionReveal = ({
       if (i >= fields.length) clearInterval(t);
     }, FIELD_DELAY_MS);
     return () => clearInterval(t);
-  }, [done, fields.length]);
+  }, [isDone, fields.length]);
 
   // Preview = the PDF on its own, full width. Once a run starts it shares the row
   // with the Extracted panel. (A small reflow at Run is fine; a preview that looks
   // like it's mid-extraction is not.)
-  const running = mode === "running";
+  const isRunning = mode === "running";
 
   // Preview: the document alone, centered and a comfortable size (wider than the
   // run split's column so it isn't lost in whitespace). Width-driven so it never
@@ -101,13 +102,13 @@ export const ExtractionReveal = ({
       doesn't paint over the frame. */}
       <div className="relative overflow-hidden rounded-lg border border-line bg-white shadow-card">
         {/* scan sweep only while the model is actually reading */}
-        {running && (
+        {isRunning && (
           <div
             aria-hidden
             className="animate-scan pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-accent/0 via-accent/25 to-accent/0"
           />
         )}
-        <PdfDocument src={pdfSrc} dim={running} />
+        <PdfDocument src={pdfSrc} dim={isRunning} />
       </div>
 
       {/* Extracted structure (the run share-the-row panel). */}
@@ -116,7 +117,7 @@ export const ExtractionReveal = ({
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
             Extracted
           </span>
-          {done && state?.matches != null && (
+          {isDone && state?.matches != null && (
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                 state.matches
@@ -134,7 +135,7 @@ export const ExtractionReveal = ({
               key={label}
               label={label}
               value={fields[i]?.value ?? ""}
-              state={!done ? "reading" : i < revealed ? "shown" : "pending"}
+              state={isDone ? i < revealed ? "shown" : "pending" : "reading"}
             />
           ))}
         </dl>

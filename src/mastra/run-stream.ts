@@ -4,8 +4,8 @@ import { loadRunBundle } from "@/db/client";
 import { saveAgentRun } from "@/db/runs";
 import { type RunRequest, type StreamDone } from "@/lib/api-types";
 import { isRecord } from "@/lib/assert";
-import { DEFAULT_TOLERANCES, DEFAULT_APPROVAL_POLICY } from "@/lib/client-profile";
-import { toTraceEvent, pipelineErrorEvent, type TraceEvent } from "@/lib/trace";
+import { DEFAULT_APPROVAL_POLICY, DEFAULT_TOLERANCES } from "@/lib/client-profile";
+import { pipelineErrorEvent, toTraceEvent, type TraceEvent } from "@/lib/trace";
 import { mastra } from "@/src/mastra";
 import { PIPELINE_MODEL } from "@/src/mastra/model";
 
@@ -35,9 +35,9 @@ export const runPipelineStream = async function* (
   let bundle: Awaited<ReturnType<typeof loadRunBundle>>;
   try {
     bundle = await loadRunBundle(input.id);
-  } catch (err) {
+  } catch (error) {
     const message =
-      err instanceof Error && err.message.includes("DATABASE_URL")
+      error instanceof Error && error.message.includes("DATABASE_URL")
         ? "Server is missing DATABASE_URL. Point it at Supabase (see README)."
         : "Could not load the invoice from the database.";
     throw new ORPCError("INTERNAL_SERVER_ERROR", { message });
@@ -114,8 +114,8 @@ export const runPipelineStream = async function* (
       }
       yield stamped;
     }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unexpected pipeline error.";
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected pipeline error.";
     const errEvent = stamp(pipelineErrorEvent(message));
     collected.push(errEvent);
     yield errEvent;

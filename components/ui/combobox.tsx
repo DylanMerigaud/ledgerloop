@@ -79,18 +79,32 @@ export const Combobox = ({
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") {
+    switch (e.key) {
+    case "ArrowDown": {
       e.preventDefault();
       setActive((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === "ArrowUp") {
+    
+    break;
+    }
+    case "ArrowUp": {
       e.preventDefault();
       setActive((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter") {
+    
+    break;
+    }
+    case "Enter": {
       e.preventDefault();
       const opt = filtered[active];
       if (opt) commit(opt.value);
-    } else if (e.key === "Escape") {
+    
+    break;
+    }
+    case "Escape": {
       setOpen(false);
+    
+    break;
+    }
+    // No default
     }
   };
 

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { saveAgentRun, toHistoryItem, parseStoredTrace, type SaveAgentRunInput } from "@/db/runs";
 import type { TraceEvent } from "@/lib/trace";
+
+import { parseStoredTrace, saveAgentRun, type SaveAgentRunInput, toHistoryItem } from "@/db/runs";
 
 /**
  * The audit log helpers. We don't touch a real database (the suite is all-faked):

@@ -2,17 +2,17 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { invoices, purchaseOrders, goodsReceipts } from "@/db/schema";
+import { goodsReceipts, invoices, purchaseOrders } from "@/db/schema";
 import { env } from "@/lib/env";
 import { defaultErp, type PoSourceAdapter } from "@/lib/erp";
 import { billKey } from "@/lib/matching";
 import {
+  GoodsReceipt,
   Invoice,
   PurchaseOrder,
-  GoodsReceipt,
+  type GoodsReceipt as TGoodsReceipt,
   type Invoice as TInvoice,
   type PurchaseOrder as TPurchaseOrder,
-  type GoodsReceipt as TGoodsReceipt,
 } from "@/lib/schema";
 
 /**

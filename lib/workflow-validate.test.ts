@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
-import { validateWorkflow, isActivatable, MATERIALITY } from "@/lib/workflow-validate";
+
+import { isActivatable, MATERIALITY, validateWorkflow } from "@/lib/workflow-validate";
 
 /**
  * The validator is the tool that decides whether a workflow "makes sense", both
@@ -28,7 +29,7 @@ const sound = (): ApprovalWorkflow => ({
       id: "director",
       kind: "approval",
       label: "Director review",
-      when: { kind: "leaf", field: "amount", op: ">", value: 25000 },
+      when: { kind: "leaf", field: "amount", op: ">", value: 25_000 },
       approverTitle: "CFO",
       approverName: "Cameron Diaz",
       next: ["post"],
@@ -100,7 +101,7 @@ test("no posting step is an error", () => {
   const wf = sound();
   // turn the post into a non-terminal by removing it and re-pointing
   wf.steps = wf.steps.filter((s) => s.id !== "post");
-  wf.steps.forEach((s) => (s.next = s.next.filter((n) => n !== "post")));
+  for (const s of wf.steps) (s.next = s.next.filter((n) => n !== "post"));
   assert.ok(codes(wf).includes("no-post"));
 });
 

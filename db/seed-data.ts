@@ -1,4 +1,4 @@
-import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
+import type { GoodsReceipt, Invoice, PurchaseOrder } from "@/lib/schema";
 
 /**
  * The seeded dataset, the demo scenario.
@@ -59,7 +59,7 @@ const clean: SeedBundle = {
     currency: "USD",
     lineItems: cleanLines,
     subtotal: sum(cleanLines),
-    tax: round2(sum(cleanLines) * 0.0),
+    tax: round2(sum(cleanLines) * 0),
     total: sum(cleanLines),
   },
   purchaseOrder: {

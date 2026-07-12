@@ -1,8 +1,8 @@
 import type { PgTable } from "drizzle-orm/pg-core";
 
-import { invoices, purchaseOrders, goodsReceipts, agentRuns } from "@/db/schema";
+import { agentRuns, goodsReceipts, invoices, purchaseOrders } from "@/db/schema";
 import { SEED_BUNDLES } from "@/db/seed-data";
-import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
+import { GoodsReceipt, Invoice, PurchaseOrder } from "@/lib/schema";
 
 /**
  * Truncate the document tables + `agent_runs`, then re-insert the seeded dataset,

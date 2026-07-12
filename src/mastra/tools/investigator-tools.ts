@@ -2,7 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 import { isRecord } from "@/lib/assert";
-import { vendorPriceHistory, vendorPoNotes, vendorReceiptNotes } from "@/lib/vendor-context";
+import { vendorPoNotes, vendorPriceHistory, vendorReceiptNotes } from "@/lib/vendor-context";
 import { CTX } from "@/src/mastra/tools/context";
 
 /**

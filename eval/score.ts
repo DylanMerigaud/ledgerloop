@@ -70,11 +70,11 @@ export const overchargeConfusion = (scores: CaseScore[]): Confusion => {
   let fp = 0;
   let fn = 0;
   for (const s of scores) {
-    const gotPos = s.got === POSITIVE;
-    const expPos = s.expected === POSITIVE;
-    if (expPos && gotPos) tp++;
-    else if (!expPos && gotPos) fp++;
-    else if (expPos && !gotPos) fn++;
+    const isGotPos = s.got === POSITIVE;
+    const isExpPos = s.expected === POSITIVE;
+    if (isExpPos && isGotPos) tp++;
+    else if (!isExpPos && isGotPos) fp++;
+    else if (isExpPos && !isGotPos) fn++;
   }
   const precision = tp + fp === 0 ? 1 : tp / (tp + fp);
   const recall = tp + fn === 0 ? 1 : tp / (tp + fn);

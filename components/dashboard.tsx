@@ -4,6 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { QueueItem } from "@/db/client";
+
 import { CollapsedIntake } from "@/components/dashboard/collapsed-intake";
 import { OutcomeBanner } from "@/components/dashboard/outcome-banner";
 import { PlayIcon } from "@/components/dashboard/play-icon";
@@ -20,17 +22,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { WorkflowGraph } from "@/components/workflow-graph";
-import type { QueueItem } from "@/db/client";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { API_ROUTES } from "@/lib/api-routes";
 import { type ApprovalWorkflow as TApprovalWorkflow } from "@/lib/approval-workflow";
 import { DEFAULT_APPROVAL_POLICY, workflowFromPolicy } from "@/lib/client-profile";
 import {
+  type Outcome,
   outcomeDot,
   outcomeLabel,
   outcomeTone,
   scenarioExplain,
-  type Outcome,
 } from "@/lib/display";
 import { formatMoney } from "@/lib/format";
 import { client, orpc } from "@/lib/orpc/client";
@@ -114,11 +115,11 @@ export const Dashboard = ({
   useEffect(() => {
     if (!urlRunId || urlRunId === loadedRunRef.current || urlRunId === ownRunRef.current) return;
     loadedRunRef.current = urlRunId;
-    let cancelled = false;
+    let isCancelled = false;
     void client
       .replayRun({ id: urlRunId })
       .then((stored) => {
-        if (cancelled) return;
+        if (isCancelled) return;
         const row = queue.find((q) => q.invoiceNumber === stored.invoiceNumber);
         if (row) setSelectedId(row.id);
         replay(stored.trace, urlRunId);
@@ -127,10 +128,10 @@ export const Dashboard = ({
         // Not found (a stale/expired id, or reset since): let the id go so a retry can
         // re-fetch, but leave the URL alone rather than yanking it out from under a
         // shared link the user may just be early to.
-        if (!cancelled) loadedRunRef.current = null;
+        if (!isCancelled) loadedRunRef.current = null;
       });
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [urlRunId, queue, replay]);
 
@@ -171,13 +172,13 @@ export const Dashboard = ({
   // has events. Selecting another invoice is always allowed, it aborts the stream and
   // starts clean; what we DON'T do while a run is shown is let a hover swap the pane out
   // from under it.
-  const runShown = state.trace.length > 0;
+  const isRunShown = state.trace.length > 0;
 
   // Hovering a row previews its PDF on the right, but only when NO run is shown (idle):
   // once a run is on the pane the header + document stay on the selected invoice, a hover
   // over another row doesn't override them. Falls back to the selected row.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const previewId = (!runShown && hoveredId) || selectedId;
+  const previewId = (!isRunShown && hoveredId) || selectedId;
   // The trace-pane title follows whatever document is shown (hover preview or the
   // selected/running invoice) so the header never contradicts the PDF on screen.
   const previewItem = queue.find((q) => q.id === previewId) ?? selected;
@@ -217,8 +218,8 @@ export const Dashboard = ({
   // `doneIntake` is the read document ONCE the run is past intake (else null), so
   // it both flags the phase and carries the data the collapsed node needs.
   const intake = readIntake(state.trace);
-  const movedPastIntake = state.trace.some((e) => e.stage !== "intake" && e.kind !== "run");
-  const doneIntake = intake && intake.state.status === "done" && movedPastIntake ? intake : null;
+  const isMovedPastIntake = state.trace.some((e) => e.stage !== "intake" && e.kind !== "run");
+  const doneIntake = intake && intake.state.status === "done" && isMovedPastIntake ? intake : null;
 
   // Hold the full-screen extraction reveal for a beat AFTER the read completes, so
   // the extracted figures are actually READABLE before the pane collapses to the
@@ -248,7 +249,7 @@ export const Dashboard = ({
   }, [doneKey]);
 
   const holdRec = intakeDoneAtRef.current;
-  const revealHeld =
+  const isRevealHeld =
     holdRec !== null && holdRec.key === doneKey && Date.now() - holdRec.at < REVEAL_HOLD_MS;
 
   // Past intake once the read is done AND its reveal grace window has elapsed. Until
@@ -256,15 +257,15 @@ export const Dashboard = ({
   // completed run opened for viewing: skip the reveal entirely and go straight to the
   // graph/result (the document stays one click away in the trace drawer), so opening
   // a past run never looks like it re-reads the PDF.
-  const pastIntakeNow = state.replayed || (doneIntake !== null && !revealHeld);
+  const isPastIntakeNow = state.replayed || (doneIntake !== null && !isRevealHeld);
   // LATCH it: once a run has handed the pane to the graph it must not flicker back to
   // the reveal mid-run. During the matching→approval transition `doneIntake` can blink
   // null for a render (events reshuffle), which briefly flashed the document overlay
   // back over the graph. The latch clears when the trace empties (reset / new invoice).
   const pastIntakeLatch = useRef(false);
-  if (pastIntakeNow) pastIntakeLatch.current = true;
+  if (isPastIntakeNow) pastIntakeLatch.current = true;
   if (state.status === "idle" || state.trace.length === 0) pastIntakeLatch.current = false;
-  const pastIntake = pastIntakeNow || pastIntakeLatch.current;
+  const isPastIntake = isPastIntakeNow || pastIntakeLatch.current;
 
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.
@@ -284,15 +285,15 @@ export const Dashboard = ({
   const [traceOpen, setTraceOpen] = useState(false);
   // Clear all staged decision/reason state whenever the run leaves the awaiting
   // state (resolved, re-run, or a new wave streams in fresh) so nothing leaks.
-  const awaiting = state.status === "awaiting";
+  const isAwaiting = state.status === "awaiting";
   const wasAwaitingRef = useRef(false);
   useEffect(() => {
-    if (wasAwaitingRef.current && !awaiting) {
+    if (wasAwaitingRef.current && !isAwaiting) {
       setGateChoices({});
       setGateReasons({});
     }
-    wasAwaitingRef.current = awaiting;
-  }, [awaiting]);
+    wasAwaitingRef.current = isAwaiting;
+  }, [isAwaiting]);
 
   const setGate = useEventCallback((id: string, choice: "approve" | "reject") =>
     setGateChoices((m) => ({ ...m, [id]: choice }))
@@ -303,7 +304,7 @@ export const Dashboard = ({
   );
   const setAllGates = (choice: "approve" | "reject") =>
     setGateChoices(Object.fromEntries(pendingIds.map((id) => [id, choice])));
-  const allDecided = gates.length > 0 && pendingIds.every((id) => gateChoices[id]);
+  const isAllDecided = gates.length > 0 && pendingIds.every((id) => gateChoices[id]);
   // Only notes on gates still staged as reject go out (approve drops the note).
   const rejectReasons = (): Record<string, string> =>
     Object.fromEntries(
@@ -325,7 +326,7 @@ export const Dashboard = ({
   // Submit the staged gate decisions (one gate or several). decideMany rebuilds the
   // stateless run from the union of decisions, so it covers the single-gate case too.
   const submitDecisions = () => {
-    if (!selected || !allDecided) return;
+    if (!selected || !isAllDecided) return;
     void decideMany(selected.id, gateChoices, rejectReasons());
   };
 
@@ -470,16 +471,16 @@ export const Dashboard = ({
               statuses={graphStatuses}
               // The awaiting gate(s) accept a decision inline; one gate or several, the
               // node carries Approve / Reject (+ a reason on a staged reject).
-              decidableIds={awaiting ? pendingIds : undefined}
-              decisions={awaiting ? gateChoices : undefined}
-              reasons={awaiting ? gateReasons : undefined}
-              onDecide={awaiting ? setGate : undefined}
-              onReason={awaiting ? setGateReason : undefined}
+              decidableIds={isAwaiting ? pendingIds : undefined}
+              decisions={isAwaiting ? gateChoices : undefined}
+              reasons={isAwaiting ? gateReasons : undefined}
+              onDecide={isAwaiting ? setGate : undefined}
+              onReason={isAwaiting ? setGateReason : undefined}
               // The AI investigator's call, shown on the paused gate where the human
               // decides (verdict + reasoning on hover), not only in the trace drawer.
-              recommendation={awaiting ? readRecommendation(state.trace) : null}
+              recommendation={isAwaiting ? readRecommendation(state.trace) : null}
               // Pan to frame the waiting gate(s) the moment the run pauses.
-              focusIds={awaiting ? pendingIds : undefined}
+              focusIds={isAwaiting ? pendingIds : undefined}
             />
 
             {/* Top-left overlay: the context a header used to carry (which workflow,
@@ -499,7 +500,7 @@ export const Dashboard = ({
               <div className="pointer-events-auto">
                 <RunningAgainst workflow={workflow} onBuildWorkflow={onBuildWorkflow} />
               </div>
-              {pastIntake && (
+              {isPastIntake && (
                 <div className="mt-2 w-fit max-w-full">
                   <OutcomeBanner outcome={state.outcome} />
                 </div>
@@ -522,7 +523,7 @@ export const Dashboard = ({
               document on idle (with Run), then the live scan as the agent reads it.
               Once past intake it's gone and the lit graph is the whole story (the
               document stays one click away in the trace drawer). */}
-            {!pastIntake && previewId && (
+            {!isPastIntake && previewId && (
               // The overlay is the positioning context (`inset-0`), and it does NOT
               // scroll, only the inner document does. So the Run CTA, anchored to the
               // overlay's vertical center below, stays put no matter how far the PDF
@@ -575,7 +576,7 @@ export const Dashboard = ({
 
             {/* Floating action bar while a run is paused on gate(s): the resume control
               that used to live in the header. Decide on the nodes, submit here. */}
-            {awaiting && selected && (
+            {isAwaiting && selected && (
               <div
                 data-testid={gates.length >= 2 ? "approval-gate-multi" : "approval-gate"}
                 className="absolute inset-x-0 bottom-4 z-10 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink/90 px-2 py-1.5 shadow-lift backdrop-blur"
@@ -607,7 +608,7 @@ export const Dashboard = ({
                   size="sm"
                   variant="ok"
                   data-testid="submit-decisions"
-                  disabled={!allDecided}
+                  disabled={!isAllDecided}
                   onClick={submitDecisions}
                 >
                   {gates.length >= 2 ? "Submit decisions" : "Submit"}
@@ -616,7 +617,7 @@ export const Dashboard = ({
             )}
 
             {/* The running indicator (the centered Run is gone once a run starts). */}
-            {state.status === "running" && pastIntake && (
+            {state.status === "running" && isPastIntake && (
               <div className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur">
                 <Spinner />
                 Running…

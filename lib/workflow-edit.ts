@@ -1,16 +1,16 @@
 import { z } from "zod";
 
 import {
+  approversOf,
+  Condition,
+  describeCondition,
+  diffWorkflows,
+  IntegrationKind,
+  type StepChange,
   type ApprovalWorkflow as TWorkflow,
   type WorkflowStep,
-  Condition,
-  IntegrationKind,
-  diffWorkflows,
-  describeCondition,
-  approversOf,
-  type StepChange,
 } from "@/lib/approval-workflow";
-import { nonNull, assertUnreachable } from "@/lib/assert";
+import { assertUnreachable, nonNull } from "@/lib/assert";
 
 /**
  * Conversational workflow editing, turn a plain-language instruction into a
@@ -210,8 +210,8 @@ export type WorkflowEditOp = z.infer<typeof WorkflowEditOp>;
 const slug = (label: string): string =>
   label
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "step";
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/^-+|-+$/g, "") || "step";
 
 /** The scope fields a gate-creating op can carry, every lever a `when` is built
     from. All null/false = an unconditional gate. */
@@ -356,10 +356,11 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 
   switch (op.op) {
     case "none":
-    case "clarify":
+    case "clarify": {
       // Neither changes the workflow, `none` declined, `clarify` is a question the
       // agent surfaces to the user (handled in runEditAgent, never applied).
       return next;
+    }
 
     case "set-threshold": {
       const step = next.steps.find((s) => s.id === op.stepId);
@@ -394,9 +395,9 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       const step = next.steps.find((s) => s.id === op.stepId);
       // Append one co-approver, unless they're already the primary or on the gate.
       if (step && step.kind === "approval") {
-        const already =
+        const isAlready =
           op.approverName === step.approverName || (step.approvers ?? []).includes(op.approverName);
-        if (!already) step.approvers = [...(step.approvers ?? []), op.approverName];
+        if (!isAlready) step.approvers = [...(step.approvers ?? []), op.approverName];
       }
       return next;
     }
@@ -567,10 +568,11 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
       return wouldCycle(next) ? wf : next;
     }
 
-    default:
+    default: {
       // Exhaustiveness: if a new op kind is added without a case, this fails the
       // type check (op is `never` here only when every variant is handled).
       return assertUnreachable(op);
+    }
   }
 };
 
@@ -578,7 +580,7 @@ const applyEditOpInner = (wf: TWorkflow, op: WorkflowEditOp): TWorkflow => {
 const wouldCycle = (wf: TWorkflow): boolean => {
   const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
   for (const s of wf.steps) for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
-  const queue = [...indeg.entries()].filter(([, d]) => d === 0).map(([id]) => id);
+  const queue = [...indeg].filter(([, d]) => d === 0).map(([id]) => id);
   const byId = new Map(wf.steps.map((s) => [s.id, s]));
   let emitted = 0;
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
@@ -610,7 +612,7 @@ const mergeAmount = (when: Condition, amountOver: number): Condition => {
 };
 
 const uniqueId = (wf: TWorkflow, base: string): string => {
-  if (!wf.steps.some((s) => s.id === base)) return base;
+  if (wf.steps.every((s) => s.id !== base)) return base;
   let i = 2;
   while (wf.steps.some((s) => s.id === `${base}-${i}`)) i++;
   return `${base}-${i}`;

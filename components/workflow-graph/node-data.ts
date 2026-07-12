@@ -1,4 +1,4 @@
-import type { WorkflowStep, StepChange } from "@/lib/approval-workflow";
+import type { StepChange, WorkflowStep } from "@/lib/approval-workflow";
 
 /** The data each React Flow node carries. */
 export type NodeData = {

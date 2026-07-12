@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { scoreCase, accuracy, overchargeConfusion, type CaseScore } from "@/eval/score";
+import { accuracy, type CaseScore, overchargeConfusion, scoreCase } from "@/eval/score";
 
 /** Build a scored case quickly. */
 const sc = (expected: CaseScore["expected"], got: CaseScore["got"], failed?: string): CaseScore => {

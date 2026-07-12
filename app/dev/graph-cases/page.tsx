@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { WorkflowGraph } from "@/components/workflow-graph";
-import { resolvePath, type InvoiceContext } from "@/lib/approval-workflow";
+import { type InvoiceContext, resolvePath } from "@/lib/approval-workflow";
 import { DEFAULT_APPROVAL_POLICY, workflowFromPolicy } from "@/lib/client-profile";
 
 /**

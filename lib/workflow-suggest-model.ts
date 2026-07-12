@@ -4,11 +4,11 @@ import { anthropic } from "@/lib/anthropic";
 import { type ApprovalWorkflow as TWorkflow } from "@/lib/approval-workflow";
 import { toModelJsonSchema } from "@/lib/schema";
 import {
-  WORKFLOW_SUGGEST_SYSTEM_PROMPT,
-  WorkflowSuggestions,
-  suggestPrompt,
   parseSuggestions,
   type SuggestModel,
+  suggestPrompt,
+  WORKFLOW_SUGGEST_SYSTEM_PROMPT,
+  WorkflowSuggestions,
 } from "@/lib/workflow-suggest";
 
 /**

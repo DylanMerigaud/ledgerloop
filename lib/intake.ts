@@ -1,6 +1,7 @@
+import type { Invoice } from "@/lib/schema";
+
 import { extractInvoice, type ExtractionResult } from "@/lib/extract";
 import { renderInvoicePdfBase64 } from "@/lib/invoice-pdf";
-import type { Invoice } from "@/lib/schema";
 
 /**
  * The intake core, render the source document to a PDF, read it back with the
@@ -88,10 +89,10 @@ export const runIntake = async (
 
   // Did the extracted header reconcile with the source record on the key fields?
   // (A clean signal for the reveal; the line-level match is the matching step.)
-  const matchesRecord =
+  const isMatchesRecord =
     result.invoice.invoiceNumber === source.invoiceNumber &&
     (result.invoice.poNumber ?? null) === (source.poNumber ?? null) &&
     Math.abs(result.invoice.total - source.total) < 0.01;
 
-  return { ok: true, invoice: result.invoice, matchesRecord };
+  return { ok: true, invoice: result.invoice, matchesRecord: isMatchesRecord };
 };

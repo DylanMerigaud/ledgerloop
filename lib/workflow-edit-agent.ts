@@ -1,10 +1,10 @@
 import {
-  type ApprovalWorkflow as TWorkflow,
   diffWorkflows,
   type StepChange,
+  type ApprovalWorkflow as TWorkflow,
 } from "@/lib/approval-workflow";
-import { applyEditOp, type WorkflowEditOp, type AvailableScope } from "@/lib/workflow-edit";
-import { validateWorkflow, isActivatable, type WorkflowIssue } from "@/lib/workflow-validate";
+import { applyEditOp, type AvailableScope, type WorkflowEditOp } from "@/lib/workflow-edit";
+import { isActivatable, validateWorkflow, type WorkflowIssue } from "@/lib/workflow-validate";
 
 /**
  * The conversational EDIT AGENT, the real agentic layer.

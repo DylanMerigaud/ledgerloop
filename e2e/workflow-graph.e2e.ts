@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * Graphical checks on the workflow canvas, driven through the REAL browser. The
@@ -24,7 +24,7 @@ const RUN_TIMEOUT = 45_000;
 const handleCounts = async (page: Page, stepId: string) => {
   return page.evaluate((id) => {
     const node = document
-      .querySelector(`[data-testid="graph-node-${id}"]`)
+      .querySelector(`[data-testid="graph-node-${CSS.escape(id)}"]`)
       ?.closest(".react-flow__node");
     const n = (dir: string) =>
       node ? node.querySelectorAll(`.react-flow__handle-${dir}`).length : -1;
@@ -90,8 +90,8 @@ const handleY = async (page: Page, caseId: string, stepId: string) => {
   return page.evaluate(
     ({ caseId, stepId }) => {
       const node = document
-        .querySelector(`[data-testid="${caseId}"]`)
-        ?.querySelector(`[data-testid="graph-node-${stepId}"]`)
+        .querySelector(`[data-testid="${CSS.escape(caseId)}"]`)
+        ?.querySelector(`[data-testid="graph-node-${CSS.escape(stepId)}"]`)
         ?.closest(".react-flow__node");
       const mid = (sel: string): number | null => {
         const r = node?.querySelector(sel)?.getBoundingClientRect();

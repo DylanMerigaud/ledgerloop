@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+
 import { APIError } from "@anthropic-ai/sdk";
 
 import { anthropic, MissingAnthropicKeyError } from "@/lib/anthropic";
@@ -73,8 +74,8 @@ export const extractInvoice = async (pdfBase64: string): Promise<ExtractionResul
         },
       ],
     });
-  } catch (err) {
-    return mapApiError(err);
+  } catch (error) {
+    return mapApiError(error);
   }
 
   if (message.stop_reason === "refusal") return { ok: false, kind: "refusal" };

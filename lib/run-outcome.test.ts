@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { WorkflowStep } from "@/lib/approval-workflow";
-import { deriveOutcome, isAwaitingApproval, pendingGates } from "@/lib/run-outcome";
 import type { TraceEvent } from "@/lib/trace";
+
+import { deriveOutcome, isAwaitingApproval, pendingGates } from "@/lib/run-outcome";
 
 /**
  * Tests for the queue-pill outcome logic. This had a real bug: an `awaiting`

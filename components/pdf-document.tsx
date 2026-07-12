@@ -1,6 +1,7 @@
 "use client";
 
 import type { PDFPageProxy } from "pdfjs-dist";
+
 import { useEffect, useRef, useState } from "react";
 
 /**
@@ -46,7 +47,7 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
         "pdfjs-dist/build/pdf.worker.min.mjs",
         import.meta.url
-      ).toString();
+      ).href;
       return pdfjs.getDocument({ data: buf }).promise;
     };
 

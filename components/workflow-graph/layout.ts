@@ -1,7 +1,8 @@
-import { type Node, type Edge } from "@xyflow/react";
+import { type Edge, type Node } from "@xyflow/react";
 import dagre from "dagre";
 
 import type { NodeData } from "@/components/workflow-graph/node-data";
+
 import { statusTone } from "@/components/workflow-graph/visual-map";
 
 /* ── layout ────────────────────────────────────────────────────────────────── */
@@ -88,7 +89,7 @@ export const layout = (
     const branches = children.filter((c) => (parentsOf.get(c) ?? []).length === 1);
     if (branches.length < 2) continue;
     const slots = branches.map((c) => cross.get(c) ?? 0).sort((a, b) => a - b);
-    branches.forEach((c, i) => cross.set(c, slots[i] ?? cross.get(c) ?? 0));
+    for (const [i, c] of branches.entries()) cross.set(c, slots[i] ?? cross.get(c) ?? 0);
   }
 
   // Parents centered on their children (deepest rank first so children settle first).

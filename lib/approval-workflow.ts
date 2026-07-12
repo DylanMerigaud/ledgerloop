@@ -197,22 +197,30 @@ const valueFor = (
   ctx: InvoiceContext
 ): string | number => {
   switch (field) {
-    case "amount":
+    case "amount": {
       return ctx.amount;
-    case "exceptionAmount":
+    }
+    case "exceptionAmount": {
       return ctx.exceptionAmount;
-    case "variancePct":
+    }
+    case "variancePct": {
       return ctx.variancePct;
-    case "department":
+    }
+    case "department": {
       return ctx.department;
-    case "verdict":
+    }
+    case "verdict": {
       return ctx.verdict;
-    case "vendor":
+    }
+    case "vendor": {
       return ctx.vendor;
-    case "currency":
+    }
+    case "currency": {
       return ctx.currency;
-    case "matchType":
+    }
+    case "matchType": {
       return ctx.matchType;
+    }
   }
 };
 
@@ -221,67 +229,84 @@ const compare = (left: string | number, op: ConditionOp, right: string | number)
   // (only == / != are meaningful for strings).
   if (typeof left === "number" && typeof right === "number") {
     switch (op) {
-      case ">":
+      case ">": {
         return left > right;
-      case ">=":
+      }
+      case ">=": {
         return left >= right;
-      case "<":
+      }
+      case "<": {
         return left < right;
-      case "<=":
+      }
+      case "<=": {
         return left <= right;
-      case "==":
+      }
+      case "==": {
         return left === right;
-      case "!=":
+      }
+      case "!=": {
         return left !== right;
+      }
     }
   }
   const l = String(left);
   const r = String(right);
   switch (op) {
-    case "==":
+    case "==": {
       return l === r;
-    case "!=":
+    }
+    case "!=": {
       return l !== r;
+    }
     // Ordering on strings isn't meaningful here, treat as false rather than
     // surprising lexicographic results.
-    default:
+    default: {
       return false;
+    }
   }
 };
 
 /** Evaluate a condition against an invoice context. Pure. */
 export const evaluateCondition = (cond: Condition, ctx: InvoiceContext): boolean => {
   switch (cond.kind) {
-    case "always":
+    case "always": {
       return true;
-    case "leaf":
+    }
+    case "leaf": {
       // exceptionCode is set-membership, not a scalar compare: `== code` is "the
       // invoice raised this flag", `!= code` is "it didn't"; other ops are meaningless.
       if (cond.field === "exceptionCode") {
-        const has = ctx.exceptionCodes.includes(String(cond.value));
-        if (cond.op === "==") return has;
-        if (cond.op === "!=") return !has;
+        const isHas = ctx.exceptionCodes.includes(String(cond.value));
+        if (cond.op === "==") return isHas;
+        if (cond.op === "!=") return !isHas;
         return false;
       }
       return compare(valueFor(cond.field, ctx), cond.op, cond.value);
-    case "all":
+    }
+    case "all": {
       return cond.conditions.every((c) => evaluateCondition(c, ctx));
-    case "any":
+    }
+    case "any": {
       return cond.conditions.some((c) => evaluateCondition(c, ctx));
+    }
   }
 };
 
 /** Render a condition as a short human string, for traces and the UI. */
 export const describeCondition = (cond: Condition): string => {
   switch (cond.kind) {
-    case "always":
+    case "always": {
       return "always";
-    case "leaf":
+    }
+    case "leaf": {
       return `${cond.field} ${cond.op} ${describeLeafValue(cond)}`;
-    case "all":
+    }
+    case "all": {
       return cond.conditions.map(describeCondition).join(" and ");
-    case "any":
+    }
+    case "any": {
       return cond.conditions.map(describeCondition).join(" or ");
+    }
   }
 };
 
@@ -307,14 +332,18 @@ const describeLeafValue = (cond: Extract<Condition, { kind: "leaf" }>): string =
  */
 export const humanizeCondition = (cond: Condition): string => {
   switch (cond.kind) {
-    case "always":
+    case "always": {
       return "Always";
-    case "leaf":
+    }
+    case "leaf": {
       return humanizeLeaf(cond);
-    case "all":
+    }
+    case "all": {
       return cond.conditions.map(humanizeCondition).join(" · ");
-    case "any":
+    }
+    case "any": {
       return cond.conditions.map(humanizeCondition).join(" or ");
+    }
   }
 };
 
@@ -354,7 +383,7 @@ const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   }
   if (field === "exceptionCode") {
     // Codes read better with spaces: "vendor_inactive" → "vendor inactive".
-    const label = String(value).replace(/_/g, " ");
+    const label = String(value).replaceAll('_', " ");
     if (op === "==") return `Has ${label} flag`;
     if (op === "!=") return `No ${label} flag`;
   }
@@ -483,7 +512,7 @@ const pruneWorkflow = (
   workflow: ApprovalWorkflow,
   shouldDrop: (id: string) => boolean
 ): ApprovalWorkflow => {
-  if (!workflow.steps.some((s) => shouldDrop(s.id))) return workflow;
+  if (workflow.steps.every((s) => !shouldDrop(s.id))) return workflow;
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
 
   // Follow `next` through dropped nodes to the first kept descendants.

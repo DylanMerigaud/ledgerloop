@@ -28,7 +28,7 @@ export const EDIT_FIXTURE: ApprovalWorkflow = {
       id: "director-review",
       kind: "approval",
       label: "Director review",
-      when: { kind: "leaf", field: "amount", op: ">", value: 10000 },
+      when: { kind: "leaf", field: "amount", op: ">", value: 10_000 },
       approverTitle: "Director",
       approverName: "Cameron Diaz",
       // Jordan Ellis is a co-approver here so the remove-co-approver case has a real
@@ -73,7 +73,7 @@ export const EDIT_CASES: EditCase[] = [
     expectedOp: "add-approval",
     check: (op) =>
       op.op === "add-approval" &&
-      op.amountOver === 50000 &&
+      op.amountOver === 50_000 &&
       /cfo|chief financial/i.test(op.approverTitle),
     why: "a new gate above a NEW threshold (50k ≠ the existing 10k director)",
   },
@@ -83,7 +83,7 @@ export const EDIT_CASES: EditCase[] = [
     expectedOp: "add-approval",
     check: (op) =>
       op.op === "add-approval" &&
-      op.amountOver === 50000 &&
+      op.amountOver === 50_000 &&
       /cfo|chief financial/i.test(op.approverTitle),
     why: "a NEW CFO gate, not raising the existing director's threshold (the phrasing without 'also' must still add, not mutate)",
   },

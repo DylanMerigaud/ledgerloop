@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { SEED_BUNDLES } from "@/db/seed-data";
-import { scenarioKind, scenarioBadge } from "@/lib/display";
+import { scenarioBadge, scenarioKind } from "@/lib/display";
 
 /**
  * The queue signposting helpers, what marks a seeded row BEFORE it's run, so a

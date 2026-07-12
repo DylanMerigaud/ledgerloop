@@ -36,7 +36,7 @@ const main = async () => {
   }
 };
 
-main().catch((err) => {
-  console.error("✖ Seed failed:", err);
+main().catch((error) => {
+  console.error("✖ Seed failed:", error);
   process.exit(1);
 });

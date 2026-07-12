@@ -2,16 +2,17 @@ import { z } from "zod";
 
 import type { ExtractionState } from "@/components/extraction-reveal";
 import type { StepStatuses } from "@/components/workflow-graph";
+import type { TraceEvent } from "@/lib/trace";
+
 import { contextFromMatch } from "@/lib/approval-run";
 import {
   ApprovalWorkflow,
+  type InvoiceContext,
   resolvePath,
   type ApprovalWorkflow as TApprovalWorkflow,
-  type InvoiceContext,
 } from "@/lib/approval-workflow";
 import { isRecord } from "@/lib/assert";
 import { Invoice, MatchResult } from "@/lib/schema";
-import type { TraceEvent } from "@/lib/trace";
 
 /** The LAST trace event matching a predicate. A live run upserts a stage in place (one
     event), but a stored/replayed trace keeps the running (often empty) AND the done

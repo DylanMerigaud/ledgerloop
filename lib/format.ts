@@ -34,7 +34,7 @@ const ACRONYMS = new Set(["po", "erp", "sku", "gl", "ap", "id"]);
  *  keeping known domain acronyms (PO, ERP, SKU, …) upper-cased. */
 export const humanize = (token: string): string => {
   return token
-    .replace(/[_-]+/g, " ")
+    .replaceAll(/[_-]+/g, " ")
     .trim()
     .split(/\s+/)
     .map((w) =>

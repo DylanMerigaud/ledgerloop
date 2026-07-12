@@ -3,15 +3,15 @@ import { existsSync } from "node:fs";
 import { test } from "node:test";
 
 import {
-  reconcileFromOutcome,
   buildVendorBill,
-  mapQboPurchaseOrders,
-  mapQboVendors,
   mapQboItems,
   mapQboPostedBills,
+  mapQboPurchaseOrders,
+  mapQboVendors,
+  reconcileFromOutcome,
   recordedErp,
 } from "@/lib/erp";
-import { PurchaseOrder, VendorBill, type MatchResult } from "@/lib/schema";
+import { type MatchResult, PurchaseOrder, VendorBill } from "@/lib/schema";
 
 /**
  * Unit tests for reconciliation, the step that posts to the (fake) ERP, driven

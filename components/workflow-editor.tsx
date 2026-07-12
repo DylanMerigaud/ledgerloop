@@ -3,16 +3,17 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
+import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
+import type { OrgEmployee } from "@/lib/orpc/schemas";
+
 import { NodeEditPanel } from "@/components/node-edit-panel";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { useEventCallback } from "@/hooks/use-event-callback";
-import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
 import { orpc } from "@/lib/orpc/client";
-import type { OrgEmployee } from "@/lib/orpc/schemas";
 import { applyEditOp } from "@/lib/workflow-edit";
-import { validateWorkflow, isActivatable, type WorkflowIssue } from "@/lib/workflow-validate";
+import { isActivatable, validateWorkflow, type WorkflowIssue } from "@/lib/workflow-validate";
 
 /**
  * The conversational workflow editor, the layer competitors don't have.
@@ -88,11 +89,11 @@ export const WorkflowEditor = ({
   // The edit is a TanStack Query mutation over the typed oRPC procedure;
   // `isPending` is the busy state.
   const editMutation = useMutation(orpc.editWorkflow.mutationOptions());
-  const busy = editMutation.isPending;
+  const isBusy = editMutation.isPending;
 
   const submit = async (text: string) => {
     const value = text.trim();
-    if (!value || busy) return;
+    if (!value || isBusy) return;
     setError(null);
     try {
       const data = await editMutation.mutateAsync({
@@ -122,8 +123,8 @@ export const WorkflowEditor = ({
       setInstruction("");
       // Drop the chip we just used (if this came from one).
       setChips((cs) => cs.filter((c) => c !== value));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Edit failed.");
+    } catch (error_) {
+      setError(error_ instanceof Error ? error_.message : "Edit failed.");
     }
   };
 
@@ -243,7 +244,7 @@ export const WorkflowEditor = ({
             <p className="text-[12.5px] font-medium text-ink">{clarify.question}</p>
             <div className="flex flex-wrap gap-1.5">
               {clarify.options.map((o) => (
-                <DeptChip key={o} label={o} onClick={() => pickClarifyOption(o)} disabled={busy} />
+                <DeptChip key={o} label={o} onClick={() => pickClarifyOption(o)} disabled={isBusy} />
               ))}
             </div>
           </div>
@@ -264,7 +265,7 @@ export const WorkflowEditor = ({
               <button
                 key={s}
                 onClick={() => submit(s)}
-                disabled={busy}
+                disabled={isBusy}
                 className="group inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-1.5 text-left text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/30 disabled:opacity-50"
               >
                 <span className="text-faint group-hover:text-accent">+</span>
@@ -283,7 +284,7 @@ export const WorkflowEditor = ({
           <input
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            disabled={busy}
+            disabled={isBusy}
             placeholder="Describe a change in plain language…"
             className="h-10 flex-1 rounded-lg bg-surface px-3.5 text-[13px] text-ink shadow-card outline-none ring-1 ring-inset ring-line-strong transition-shadow placeholder:text-faint focus:ring-2 focus:ring-accent-ring disabled:opacity-60"
           />
@@ -304,8 +305,8 @@ export const WorkflowEditor = ({
               Reset
             </Button>
           )}
-          <Button type="submit" loading={busy} disabled={busy || !instruction.trim()}>
-            {busy ? "Editing…" : "Edit"}
+          <Button type="submit" loading={isBusy} disabled={isBusy || !instruction.trim()}>
+            {isBusy ? "Editing…" : "Edit"}
           </Button>
         </form>
       </div>

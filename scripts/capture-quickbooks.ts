@@ -20,10 +20,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
+  fetchQboBills,
+  fetchQboItems,
   fetchQboPurchaseOrders,
   fetchQboVendors,
-  fetchQboItems,
-  fetchQboBills,
   mapQboPurchaseOrders,
   type QboCreds,
 } from "@/lib/erp";
@@ -105,8 +105,8 @@ const main = async (): Promise<void> => {
 
 main()
   .then(() => persistRotatedRefreshToken())
-  .catch((err: unknown) => {
+  .catch((error: unknown) => {
     persistRotatedRefreshToken();
-    console.error("Capture failed:", err instanceof Error ? err.message : err);
+    console.error("Capture failed:", error instanceof Error ? error.message : error);
     process.exit(1);
   });

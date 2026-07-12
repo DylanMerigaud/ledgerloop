@@ -4,10 +4,10 @@ import { test } from "node:test";
 import { executeWorkflow } from "@/lib/approval-engine";
 import { ApprovalWorkflow, type InvoiceContext } from "@/lib/approval-workflow";
 import {
-  workflowFromPolicy,
-  workflowFor,
-  DEFAULT_APPROVAL_POLICY,
   type ApprovalPolicy,
+  DEFAULT_APPROVAL_POLICY,
+  workflowFor,
+  workflowFromPolicy,
 } from "@/lib/client-profile";
 
 /**
@@ -67,8 +67,8 @@ test("big exception by amount: director gate also fires after the manager", () =
     wf,
     ctx({
       verdict: "exception",
-      amount: 15000,
-      exceptionAmount: 15000,
+      amount: 15_000,
+      exceptionAmount: 15_000,
       variancePct: 0.03,
     }),
     { "manager-review": "approve" }
@@ -96,7 +96,7 @@ test("big exception by variance alone: director still escalates", () => {
 test("a stricter profile escalates a smaller exception to the director", () => {
   const strict: ApprovalPolicy = {
     manager: { amount: 500, variancePct: 0.02 },
-    director: { amount: 5_000, variancePct: 0.05 },
+    director: { amount: 5000, variancePct: 0.05 },
   };
   const wf = workflowFromPolicy(strict);
   const s = executeWorkflow(

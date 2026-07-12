@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { type ApprovalWorkflow as TWorkflow, describeCondition } from "@/lib/approval-workflow";
+import { describeCondition, type ApprovalWorkflow as TWorkflow } from "@/lib/approval-workflow";
 
 /**
  * Suggested next edits for the chat editor, generated, never hardcoded.

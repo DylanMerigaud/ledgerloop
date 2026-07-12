@@ -2,13 +2,14 @@
 
 import { z } from "zod";
 
+import type { TraceEvent } from "@/lib/trace";
+import type { PipelineRunState } from "@/lib/use-pipeline-run";
+
 import { TraceDetail } from "@/components/trace-detail";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { statusDot, statusTone, stageLabel } from "@/lib/display";
+import { stageLabel, statusDot, statusTone } from "@/lib/display";
 import { formatDuration, humanize } from "@/lib/format";
-import type { TraceEvent } from "@/lib/trace";
-import type { PipelineRunState } from "@/lib/use-pipeline-run";
 
 /**
  * Compose a one-line reason the run paused, from the trace data already on screen:
@@ -147,7 +148,7 @@ const TraceNode = ({
 }) => {
   const dot = statusDot(event.status);
   const isRunning = event.status === "running" && live;
-  const showStageChip = event.stage !== "pipeline" && event.kind !== "tool";
+  const isShowStageChip = event.stage !== "pipeline" && event.kind !== "tool";
 
   return (
     <div
@@ -177,7 +178,7 @@ const TraceNode = ({
           >
             {event.label}
           </span>
-          {showStageChip && event.kind !== "run" && (
+          {isShowStageChip && event.kind !== "run" && (
             <Badge tone={statusTone(event.status)}>{verdictChip(event)}</Badge>
           )}
           <span className="ml-auto text-[10px] tabular-nums text-muted/70">

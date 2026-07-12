@@ -2,8 +2,8 @@ import { Agent } from "@mastra/core/agent";
 
 import { PIPELINE_MODEL } from "@/src/mastra/model";
 import {
-  priceHistoryTool,
   poNotesTool,
+  priceHistoryTool,
   receiptNotesTool,
 } from "@/src/mastra/tools/investigator-tools";
 

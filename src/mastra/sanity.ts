@@ -1,10 +1,11 @@
-import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import type { Decisions } from "@/lib/approval-engine";
+
+import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { runApproval } from "@/lib/approval-run";
 import {
-  workflowFromPolicy,
-  DEFAULT_APPROVAL_POLICY,
   type ApprovalPolicy,
+  DEFAULT_APPROVAL_POLICY,
+  workflowFromPolicy,
 } from "@/lib/client-profile";
 import { reconcileFromOutcome } from "@/lib/erp";
 import { runMatch } from "@/lib/matching";
@@ -25,7 +26,7 @@ import { PIPELINE_MODEL } from "@/src/mastra/model";
  * route is the real end-to-end exercise of the agent.)
  */
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const IS_DRY_RUN = process.argv.includes("--dry-run");
 const POLICY: ApprovalPolicy = DEFAULT_APPROVAL_POLICY;
 const WORKFLOW = workflowFromPolicy(POLICY);
 
@@ -52,9 +53,9 @@ const routeOf = async (bundle: SeedBundle, decisions: Decisions = {}) => {
 
 const main = async () => {
   console.log(`ledgerloop pipeline sanity, model: ${PIPELINE_MODEL}`);
-  console.log(DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n");
+  console.log(IS_DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n");
 
-  if (!DRY_RUN && !process.env.ANTHROPIC_API_KEY) {
+  if (!IS_DRY_RUN && !process.env.ANTHROPIC_API_KEY) {
     console.error("✖ Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.");
     process.exit(1);
   }
@@ -131,7 +132,7 @@ const main = async () => {
   console.log("✓ All edge cases route as expected. Pipeline logic is sound.");
 };
 
-main().catch((err) => {
-  console.error("✖ Sanity check crashed:", err);
+main().catch((error) => {
+  console.error("✖ Sanity check crashed:", error);
   process.exit(1);
 });

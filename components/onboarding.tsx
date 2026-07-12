@@ -3,14 +3,15 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+
 import { Badge } from "@/components/ui/badge";
-import { BambooHrIcon, SlackIcon, NetSuiteIcon, JiraIcon } from "@/components/ui/brand-icon";
+import { BambooHrIcon, JiraIcon, NetSuiteIcon, SlackIcon } from "@/components/ui/brand-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { useClickOutside } from "@/hooks/use-click-outside";
-import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { orpc } from "@/lib/orpc/client";
 import { type OnboardingResult, type OrgEmployee } from "@/lib/orpc/schemas";
 
@@ -492,7 +493,7 @@ const SAMPLE_WORKFLOW: ApprovalWorkflow = {
       id: "director",
       kind: "approval",
       label: "Director review",
-      when: { kind: "leaf", field: "amount", op: ">", value: 25000 },
+      when: { kind: "leaf", field: "amount", op: ">", value: 25_000 },
       approverTitle: "CFO",
       approverName: "Cameron Diaz",
       next: ["post"],

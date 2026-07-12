@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * The node editor (the Pivot-style side panel): in onboarding, clicking a gate in

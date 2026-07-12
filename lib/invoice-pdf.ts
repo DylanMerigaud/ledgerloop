@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
+import { PDFDocument, type PDFFont, rgb, StandardFonts } from "pdf-lib";
 
 import type { Invoice } from "@/lib/schema";
 

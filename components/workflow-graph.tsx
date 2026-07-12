@@ -1,27 +1,28 @@
 "use client";
 
 import {
-  ReactFlow,
   Background,
-  useReactFlow,
+  type Edge,
+  type Node,
+  ReactFlow,
+  ReactFlowProvider,
+  useEdgesState,
   useNodesInitialized,
   useNodesState,
-  useEdgesState,
-  ReactFlowProvider,
-  type Node,
-  type Edge,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { estimateHeight, layout } from "@/components/workflow-graph/layout";
 import type { NodeData } from "@/components/workflow-graph/node-data";
+import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
+import type { WorkflowIssue } from "@/lib/workflow-validate";
+
+import { estimateHeight, layout } from "@/components/workflow-graph/layout";
 import { nodeTypes } from "@/components/workflow-graph/step-node";
 import { REACHED, type StepStatuses } from "@/components/workflow-graph/visual-map";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
-import type { WorkflowIssue } from "@/lib/workflow-validate";
 
 export type { StepStatuses } from "@/components/workflow-graph/visual-map";
 
@@ -58,7 +59,7 @@ const Inner = ({
 }: WorkflowGraphProps) => {
   // Stack the DAG vertically below the `sm` breakpoint (640px), where a wide
   // left→right layout can't fit, each node then gets the full column width.
-  const vertical = useMediaQuery("(max-width: 639px)");
+  const isVertical = useMediaQuery("(max-width: 639px)");
 
   const changeOf = useMemo(() => new Map((changes ?? []).map((c) => [c.id, c.kind])), [changes]);
 
@@ -94,7 +95,7 @@ const Inner = ({
         status: statuses?.[step.id],
         change: changeOf.get(step.id),
         issue: issueOf.get(step.id),
-        vertical,
+        vertical: isVertical,
         hasIncoming: targets.has(step.id),
         hasOutgoing: step.next.some((n) => present.has(n)),
       },
@@ -114,11 +115,11 @@ const Inner = ({
           next: [],
         },
         change: "removed" as const,
-        vertical,
+        vertical: isVertical,
       },
     }));
     return [...real, ...gone];
-  }, [workflow, statuses, changeOf, removed, issueOf, vertical]);
+  }, [workflow, statuses, changeOf, removed, issueOf, isVertical]);
 
   // Structural edges only (no status) so the layout/reset path never re-fires on a
   // status change, the live "flow" styling is patched separately below.
@@ -161,7 +162,7 @@ const Inner = ({
     if (pending.length > 0) {
       const axis = (id: string): number => {
         const pos = nodesRef.current.find((m) => m.id === id)?.position;
-        return pos ? (vertical ? pos.x : pos.y) : Number.POSITIVE_INFINITY;
+        return pos ? (isVertical ? pos.x : pos.y) : Infinity;
       };
       const top = [...pending].sort((a, b) => axis(a) - axis(b))[0];
       void fitView({
@@ -179,7 +180,7 @@ const Inner = ({
   const [relayoutTick, setRelayoutTick] = useState(0);
 
   // True once every current node has been measured. Resets when the set changes.
-  const initialized = useNodesInitialized();
+  const isInitialized = useNodesInitialized();
 
   // When the source graph changes (new discovery / edit), reset to the new nodes
   // HIDDEN so they get re-measured, and mark that this set still needs a layout.
@@ -200,8 +201,8 @@ const Inner = ({
   const wrapRef = useRef<HTMLDivElement>(null);
   const graphKey = useMemo(
     () =>
-      initialNodes.map((n) => n.id).join("|") + "::" + edges.length + (vertical ? "::v" : "::h"),
-    [initialNodes, edges, vertical]
+      initialNodes.map((n) => n.id).join("|") + "::" + edges.length + (isVertical ? "::v" : "::h"),
+    [initialNodes, edges, isVertical]
   );
   useEffect(() => {
     setNodes(initialNodes.map((n) => ({ ...n, style: { visibility: "hidden" } })));
@@ -217,7 +218,7 @@ const Inner = ({
   // shows, not off to one side. The separate focus effect below handles later focus
   // changes (the next gate after an approve); this handles the initial appearance.
   useEffect(() => {
-    if (!initialized || laidOutFor.current === graphKey) return;
+    if (!isInitialized || laidOutFor.current === graphKey) return;
     laidOutFor.current = graphKey;
     // Layout from `liveHeights`, the authoritative measured heights kept up to date by
     // the onNodesChange interceptor below (which reads them straight off React Flow's
@@ -229,7 +230,7 @@ const Inner = ({
     laidOutHeights.current = new Map(
       nodesRef.current.map((n) => [n.id, liveHeights.current.get(n.id) ?? null])
     );
-    const laid = layout(initialNodes, edges, heightOf, vertical);
+    const laid = layout(initialNodes, edges, heightOf, isVertical);
     const byId = new Map(laid.map((n) => [n.id, n.position]));
     setNodes((cur) =>
       cur.map((n) => {
@@ -250,13 +251,13 @@ const Inner = ({
     }
     requestAnimationFrame(() => frameForFocus(focusIds ?? [], 200));
   }, [
-    initialized,
+    isInitialized,
     graphKey,
     initialNodes,
     edges,
     setNodes,
     fitView,
-    vertical,
+    isVertical,
     focusIds,
     frameForFocus,
     relayoutTick,
@@ -272,14 +273,14 @@ const Inner = ({
   const onNodesChangeWithRelayout = useEventCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
       onNodesChange(changes);
-      let resized = false;
+      let isResized = false;
       for (const c of changes) {
         if (c.type !== "dimensions" || !c.dimensions) continue;
         liveHeights.current.set(c.id, c.dimensions.height);
         const used = laidOutHeights.current.get(c.id);
-        if (used == null || Math.abs(used - c.dimensions.height) > 1) resized = true;
+        if (used == null || Math.abs(used - c.dimensions.height) > 1) isResized = true;
       }
-      if (resized && laidOutFor.current === graphKey) {
+      if (isResized && laidOutFor.current === graphKey) {
         driftRelayout.current = true; // silent: straighten edges, don't re-fit the view
         laidOutFor.current = "";
         setRelayoutTick((t) => t + 1);
@@ -294,7 +295,7 @@ const Inner = ({
     if (!el) return;
     let raf = 0;
     const ro = new ResizeObserver(() => {
-      if (!initialized) return;
+      if (!isInitialized) return;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => void fitView({ padding: 0.18 }));
     });
@@ -303,7 +304,7 @@ const Inner = ({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [initialized, fitView]);
+  }, [isInitialized, fitView]);
 
   // Patch the `selected` halo on the live nodes when the selection changes, cheap,
   // no re-layout (kept out of the layout pipeline so a click doesn't reflow the graph).
@@ -337,7 +338,7 @@ const Inner = ({
         .join("|")
     : "";
   useEffect(() => {
-    const decidable = new Set(decidableIds ?? []);
+    const decidable = new Set(decidableIds);
     setNodes((cur) =>
       cur.map((n) => {
         const isDecidable = decidable.has(n.id);
@@ -397,12 +398,12 @@ const Inner = ({
   // Approve/Reject doesn't change the pending set, so the view stays put on a click.
   const focusKey = (focusIds ?? []).join("|");
   useEffect(() => {
-    if (!initialized || laidOutFor.current !== graphKey) return;
+    if (!isInitialized || laidOutFor.current !== graphKey) return;
     const raf = requestAnimationFrame(() =>
       frameForFocus(focusKey ? focusKey.split("|") : [], 400)
     );
     return () => cancelAnimationFrame(raf);
-  }, [focusKey, initialized, graphKey, frameForFocus]);
+  }, [focusKey, isInitialized, graphKey, frameForFocus]);
 
   // Patch edge "flow" styling from the live statuses, cheap, no relayout (kept out of
   // the structural `edges` so a status tick never resets/re-measures the graph). An edge
@@ -420,11 +421,11 @@ const Inner = ({
     setEdges((cur) =>
       cur.map((e) => {
         const src = st[e.source];
-        const live = (src === "approved" || src === "done") && REACHED.has(st[e.target] ?? "");
+        const isLive = (src === "approved" || src === "done") && REACHED.has(st[e.target] ?? "");
         // A traversed edge reads as a SOLID accent line (no marching-ants animation,
         // which drew the eye and looked busy); an untraversed edge stays quiet grey.
-        const stroke = live ? "#5B53D6" : "#CBCDD4";
-        const strokeWidth = live ? 2 : 1.5;
+        const stroke = isLive ? "#5B53D6" : "#CBCDD4";
+        const strokeWidth = isLive ? 2 : 1.5;
         const prev = e.style ?? {};
         if (e.animated === false && prev.stroke === stroke && prev.strokeWidth === strokeWidth) {
           return e;

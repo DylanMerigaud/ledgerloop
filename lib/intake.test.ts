@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { runIntake, type Extractor } from "@/lib/intake";
 import type { Invoice } from "@/lib/schema";
+
+import { type Extractor, runIntake } from "@/lib/intake";
 
 /**
  * Intake tests, the "mock vision" coverage. The real extraction calls the

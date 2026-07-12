@@ -31,10 +31,9 @@
  * job info with reportsTo.
  */
 import path from "node:path";
-
 import { z } from "zod";
 
-import { SEED_ORG, SEED_DIVISION, type SeedPerson } from "@/db/fixtures/bamboohr/seed-org";
+import { SEED_DIVISION, SEED_ORG, type SeedPerson } from "@/db/fixtures/bamboohr/seed-org";
 import { nonNull } from "@/lib/assert";
 
 /** Same env loading as eval/run.ts, native, no dotenv dep. */
@@ -210,7 +209,7 @@ const seededEmployees = async (c: Creds): Promise<{ id: string; name: string }[]
     .parse(await res.json());
   return data.employees
     .filter((e) => e.division === SEED_DIVISION)
-    .map((e) => ({ id: String(e.id), name: e.displayName ?? `id ${e.id}` }));
+    .map((e) => ({ id: e.id, name: e.displayName ?? `id ${e.id}` }));
 };
 
 const seed = async (): Promise<void> => {
@@ -291,7 +290,7 @@ const main = async (): Promise<void> => {
   }
 };
 
-main().catch((err: unknown) => {
-  console.error("Failed:", err instanceof Error ? err.message : err);
+main().catch((error: unknown) => {
+  console.error("Failed:", error instanceof Error ? error.message : error);
   process.exit(1);
 });

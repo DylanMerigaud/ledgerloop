@@ -174,12 +174,12 @@ export const mapBambooReport = (raw: unknown, source: string, division?: string)
   const roots = employees.filter((e) => e.managerId === null);
   if (roots.length > 1) {
     for (const r of roots) {
-      const blank = r.title.trim() === "";
+      const isBlank = r.title.trim() === "";
       issues.push({
         employeeId: r.id,
         employeeName: r.name,
         kind: "orphan",
-        detail: blank
+        detail: isBlank
           ? `${r.name} has no manager and no job title, likely a junk top-level record (1 of ${roots.length} roots; an org should have one).`
           : `${r.name} (${r.title}) has no manager, 1 of ${roots.length} roots; only the CEO should be at the top, so this needs review.`,
       });

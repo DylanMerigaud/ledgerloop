@@ -38,11 +38,11 @@ export type RateVerdict =
 
 const limiters = new Map<RateTier, Ratelimit | null>();
 let redis: Redis | null = null;
-let redisResolved = false;
+let isRedisResolved = false;
 
 const getRedis = (): Redis | null => {
-  if (redisResolved) return redis;
-  redisResolved = true;
+  if (isRedisResolved) return redis;
+  isRedisResolved = true;
 
   // Accept either naming convention so it works however you provision Redis:
   //   • Upstash directly  → UPSTASH_REDIS_REST_URL / _TOKEN
@@ -95,10 +95,10 @@ export const checkRateLimit = async (ip: string, tier: RateTier): Promise<RateVe
     }
     const retryAfterSeconds = Math.max(0, Math.ceil((reset - Date.now()) / 1000));
     return { ok: false, limit, reset, retryAfterSeconds };
-  } catch (err) {
+  } catch (error) {
     // If Redis itself errors, don't take the whole endpoint down, fail open but
     // log it so the operator notices.
-    log.error("[ratelimit] Upstash error, failing open:", { err });
+    log.error("[ratelimit] Upstash error, failing open:", { err: error });
     return { ok: true, remaining: null };
   }
 };
@@ -107,7 +107,7 @@ export const checkRateLimit = async (ip: string, tier: RateTier): Promise<RateVe
 export const clientIpFrom = (headers: Headers): string => {
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
+    const first = forwarded.split(",", 1)[0]?.trim();
     if (first) return first;
   }
   return headers.get("x-real-ip") ?? "anonymous";

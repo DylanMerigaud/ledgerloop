@@ -21,23 +21,22 @@
  * (a perfect score is the expected dry-run output), what CI runs.
  */
 
-import { join } from "node:path";
-
 import { RequestContext } from "@mastra/core/request-context";
+import { join } from "node:path";
 
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { EVAL_CASES, type EvalCase } from "@/eval/cases";
 import {
-  scoreCase,
   accuracy,
-  overchargeConfusion,
   type CaseScore,
+  overchargeConfusion,
   type Recommendation,
+  scoreCase,
 } from "@/eval/score";
 import {
-  runInvestigation,
   INVESTIGATION_CTX_KEY,
   type InvestigatorAgent,
+  runInvestigation,
 } from "@/lib/investigation";
 import { runMatch } from "@/lib/matching";
 import { mastra } from "@/src/mastra";
@@ -45,17 +44,17 @@ import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 // ── ANSI helpers (no dependency) ────────────────────────────────────────────
 const C = {
-  reset: "\x1b[0m",
-  dim: "\x1b[2m",
-  bold: "\x1b[1m",
-  green: "\x1b[32m",
-  red: "\x1b[31m",
-  yellow: "\x1b[33m",
-  cyan: "\x1b[36m",
-  gray: "\x1b[90m",
+  reset: "\u{1B}[0m",
+  dim: "\u{1B}[2m",
+  bold: "\u{1B}[1m",
+  green: "\u{1B}[32m",
+  red: "\u{1B}[31m",
+  yellow: "\u{1B}[33m",
+  cyan: "\u{1B}[36m",
+  gray: "\u{1B}[90m",
 };
-const useColor = process.stdout.isTTY;
-const col = (code: string, s: string) => (useColor ? `${code}${s}${C.reset}` : s);
+const isUseColor = process.stdout.isTTY;
+const col = (code: string, s: string) => (isUseColor ? `${code}${s}${C.reset}` : s);
 
 const loadEnv = () => {
   for (const f of [".env.local", ".env"]) {
@@ -116,13 +115,13 @@ const runOneCase = async (c: EvalCase, dryRun: boolean): Promise<CaseScore> => {
   try {
     const out = await runInvestigation(agent, match, bundle.invoice.vendor, requestContext);
     got = out?.investigation.recommendation;
-  } catch (err) {
+  } catch (error) {
     return scoreCase(
       c.id,
       c.stresses,
       c.expected,
       undefined,
-      err instanceof Error ? err.message : "agent call failed"
+      error instanceof Error ? error.message : "agent call failed"
     );
   }
   return scoreCase(c.id, c.stresses, c.expected, got);
@@ -154,7 +153,7 @@ const printTable = (scores: CaseScore[]) => {
         "  " +
         s.expected.padEnd(18) +
         " " +
-        String(got).padEnd(18) +
+        got.padEnd(18) +
         " " +
         mark +
         col(C.dim, `  ${s.stresses}`)
@@ -187,10 +186,10 @@ const main = async () => {
   loadEnv();
 
   const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
+  const isDryRun = args.includes("--dry-run");
   const filter = args.filter((a) => !a.startsWith("--"));
 
-  if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
+  if (!isDryRun && !process.env.ANTHROPIC_API_KEY) {
     console.error(
       col(C.red, "ANTHROPIC_API_KEY is not set.") +
         " Add it to .env.local (see .env.example), then re-run `pnpm eval`." +
@@ -211,14 +210,14 @@ const main = async () => {
         C.gray,
         `  (${cases.length} case${cases.length === 1 ? "" : "s"}, model ${PIPELINE_MODEL})`
       ) +
-      (dryRun ? col(C.yellow, "  [dry-run: scoring ground truth, no API calls]") : "")
+      (isDryRun ? col(C.yellow, "  [dry-run: scoring ground truth, no API calls]") : "")
   );
 
   const scores: CaseScore[] = [];
   for (const c of cases) {
     process.stdout.write(col(C.gray, `  · ${c.id} … `));
     const t0 = Date.now();
-    const score = await runOneCase(c, dryRun);
+    const score = await runOneCase(c, isDryRun);
     const dt = Date.now() - t0;
     scores.push(score);
     process.stdout.write(
@@ -238,19 +237,19 @@ const main = async () => {
   // overcharge (recall < 1) is the expensive error, so CI/local should see it.
   const hardFailures = scores.filter((s) => s.failed).length;
   const conf = overchargeConfusion(scores);
-  const recallMiss = !dryRun && conf.falseNegatives > 0;
+  const isRecallMiss = !isDryRun && conf.falseNegatives > 0;
   if (hardFailures > 0) {
     console.error(col(C.red, `✖ ${hardFailures} case(s) hard-failed.`));
   }
-  if (recallMiss) {
+  if (isRecallMiss) {
     console.error(
       col(C.red, `✖ missed ${conf.falseNegatives} real overcharge(s) (recall < 100%).`)
     );
   }
-  process.exit(hardFailures > 0 || recallMiss ? 1 : 0);
+  process.exit(hardFailures > 0 || isRecallMiss ? 1 : 0);
 };
 
-main().catch((err) => {
-  console.error(err);
+main().catch((error) => {
+  console.error(error);
   process.exit(1);
 });

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { outcomeDot, type Outcome } from "@/lib/display";
+import { type Outcome, outcomeDot } from "@/lib/display";
 import { formatDuration } from "@/lib/format";
 import { orpc } from "@/lib/orpc/client";
 

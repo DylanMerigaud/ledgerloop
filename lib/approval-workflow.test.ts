@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  ApprovalWorkflow,
-  type ApprovalWorkflow as TApprovalWorkflow,
   type ApprovalStep,
-  type Condition,
+  ApprovalWorkflow,
   approversOf,
-  evaluateCondition,
+  type Condition,
   describeCondition,
+  evaluateCondition,
   humanizeCondition,
-  resolvePath,
   type InvoiceContext,
+  resolvePath,
+  type ApprovalWorkflow as TApprovalWorkflow,
 } from "@/lib/approval-workflow";
 
 /**
@@ -166,7 +166,7 @@ test("nested combinators evaluate correctly", () => {
       {
         kind: "any",
         conditions: [
-          { kind: "leaf", field: "amount", op: ">", value: 10000 },
+          { kind: "leaf", field: "amount", op: ">", value: 10_000 },
           { kind: "leaf", field: "variancePct", op: ">=", value: 0.1 },
         ],
       },
@@ -174,7 +174,7 @@ test("nested combinators evaluate correctly", () => {
   };
   assert.equal(evaluateCondition(cond, ctx({ verdict: "exception", variancePct: 0.12 })), true);
   assert.equal(evaluateCondition(cond, ctx({ verdict: "exception", amount: 500 })), false);
-  assert.equal(evaluateCondition(cond, ctx({ verdict: "clean", amount: 99999 })), false);
+  assert.equal(evaluateCondition(cond, ctx({ verdict: "clean", amount: 99_999 })), false);
 });
 
 test("describeCondition renders a readable string", () => {

@@ -1,7 +1,6 @@
+import { Mastra } from "@mastra/core";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-
-import { Mastra } from "@mastra/core";
 
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { type ApprovalWorkflow } from "@/lib/approval-workflow";
@@ -79,11 +78,11 @@ const runTrace = async (b: SeedBundle, profile?: ClientProfile): Promise<TraceEv
     const e: TraceEvent = { ...partial, seq: seq++, atMs: 0 };
     if (e.stepId) {
       const existing = stepIndex.get(e.stepId);
-      if (existing !== undefined) events[existing] = e;
-      else {
+      if (existing === undefined) {
         stepIndex.set(e.stepId, events.length);
         events.push(e);
       }
+      else {events[existing] = e;}
     } else {
       events.push(e);
     }
@@ -107,7 +106,7 @@ test("a passed-in always-gate workflow pauses a CLEAN invoice that would otherwi
     // Default tolerances, keep the verdict clean; only the workflow changes.
     tolerances: { pricePct: 0.01, lineAmountAbs: 0.01, qtyAbs: 0 },
     approvalPolicy: {
-      manager: { amount: 1_000, variancePct: 0.05 },
+      manager: { amount: 1000, variancePct: 0.05 },
       director: { amount: 10_000, variancePct: 0.1 },
     },
     workflow: ALWAYS_GATE,

@@ -8,7 +8,7 @@ import {
   parseProposal,
   type ProposalModel,
 } from "@/lib/onboarding";
-import { toModelJsonSchema, type OrgChart } from "@/lib/schema";
+import { type OrgChart, toModelJsonSchema } from "@/lib/schema";
 
 /**
  * The real onboarding model, a structured-output Anthropic call that produces an

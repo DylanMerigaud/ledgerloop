@@ -1,5 +1,6 @@
-import { EDIT_FIXTURE } from "@/eval/edit-cases";
 import type { WorkflowEditOp } from "@/lib/workflow-edit";
+
+
 
 /**
  * Corpus for the EDIT-AGENT eval. Unlike the single-op edit eval (which scores the
@@ -8,7 +9,7 @@ import type { WorkflowEditOp } from "@/lib/workflow-edit";
  * it dispatch the expected number of ops for a multi-part instruction.
  */
 
-export { EDIT_FIXTURE };
+
 
 export type AgentCase = {
   id: string;
@@ -31,7 +32,7 @@ export const AGENT_CASES: AgentCase[] = [
         op: "add-approval",
         label: "CFO review",
         approverTitle: "CFO",
-        amountOver: 50000,
+        amountOver: 50_000,
         department: null,
         vendor: null,
         currency: null,
@@ -51,7 +52,7 @@ export const AGENT_CASES: AgentCase[] = [
         op: "add-approval",
         label: "CFO review",
         approverTitle: "CFO",
-        amountOver: 50000,
+        amountOver: 50_000,
         department: null,
         vendor: null,
         currency: null,
@@ -161,3 +162,5 @@ export const AGENT_CASES: AgentCase[] = [
     ],
   },
 ];
+
+export {EDIT_FIXTURE} from "@/eval/edit-cases";

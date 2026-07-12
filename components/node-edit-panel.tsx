@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
+import type { AvailableValues } from "@/lib/condition-fields";
+import type { OrgEmployee } from "@/lib/orpc/schemas";
+
 import { ConditionEditor } from "@/components/condition-editor";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
-import type { AvailableValues } from "@/lib/condition-fields";
-import type { OrgEmployee } from "@/lib/orpc/schemas";
 import { applyEditOp, type WorkflowEditOp } from "@/lib/workflow-edit";
-import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
+import { isActivatable, validateWorkflow } from "@/lib/workflow-validate";
 
 /**
  * The node editor, click a gate in the graph (onboarding only) and this side panel
@@ -104,7 +105,7 @@ const ApprovalFields = ({
   onApply: (op: WorkflowEditOp) => void;
 }) => {
   const ordered = peopleFor(people, step.approverTitle);
-  const unresolved = step.approverName === null;
+  const isUnresolved = step.approverName === null;
   const optionsFor = (taken: string[]): ComboboxOption[] =>
     ordered
       .filter((p) => !taken.includes(p.name))
@@ -127,8 +128,8 @@ const ApprovalFields = ({
           value={step.approverName ?? ""}
           onChange={(name) => onApply({ op: "set-approver", stepId: step.id, approverName: name })}
           options={optionsFor(extras)}
-          placeholder={unresolved ? "⚠ Choose a person…" : "Choose a person…"}
-          invalid={unresolved}
+          placeholder={isUnresolved ? "⚠ Choose a person…" : "Choose a person…"}
+          invalid={isUnresolved}
           testid="approver-combobox"
         />
       </Field>

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { Invoice, PurchaseOrder } from "@/lib/schema";
+
 import { type MatchTolerances } from "@/lib/client-profile";
 import { runMatch } from "@/lib/matching";
-import type { Invoice, PurchaseOrder } from "@/lib/schema";
 
 /**
  * The config-driven claim, at the tolerance layer: the SAME invoice gets a

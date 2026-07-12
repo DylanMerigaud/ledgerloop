@@ -21,9 +21,9 @@ export default async function Page() {
   let dbError: string | null = null;
   try {
     queue = await listInvoiceQueue();
-  } catch (err) {
+  } catch (error) {
     dbError =
-      err instanceof Error && err.message.includes("DATABASE_URL")
+      error instanceof Error && error.message.includes("DATABASE_URL")
         ? "DATABASE_URL is not set."
         : "Could not reach the database.";
   }

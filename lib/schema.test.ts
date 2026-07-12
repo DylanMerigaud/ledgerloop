@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { Invoice, MatchResult, INVOICE_JSON_SCHEMA } from "@/lib/schema";
+import { Invoice, INVOICE_JSON_SCHEMA, MatchResult } from "@/lib/schema";
 
 /**
  * Schema accept/reject tests, the single-source-of-truth guarantee in action.

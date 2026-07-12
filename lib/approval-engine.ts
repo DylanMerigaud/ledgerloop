@@ -1,10 +1,10 @@
 import {
-  evaluateCondition,
-  describeCondition,
-  approversOf,
   type ApprovalWorkflow,
-  type WorkflowStep,
+  approversOf,
+  describeCondition,
+  evaluateCondition,
   type InvoiceContext,
+  type WorkflowStep,
 } from "@/lib/approval-workflow";
 import { nonNull } from "@/lib/assert";
 
@@ -99,11 +99,11 @@ export const executeWorkflow = (
       nonNull(state.get(p), `predecessor ${p} resolved before ${step.id}`)
     );
 
-    const anyPredRejected = predStates.some((p) => p.status === "rejected");
-    const anyPredWaiting = predStates.some((p) => p.status === "pending" || p.status === "blocked");
+    const isAnyPredRejected = predStates.some((p) => p.status === "rejected");
+    const isAnyPredWaiting = predStates.some((p) => p.status === "pending" || p.status === "blocked");
 
     // A rejection anywhere upstream blocks this step (the bill won't post).
-    if (anyPredRejected) {
+    if (isAnyPredRejected) {
       return {
         id: step.id,
         status: "blocked",
@@ -112,7 +112,7 @@ export const executeWorkflow = (
     }
     // Any predecessor still pending/blocked → not reached yet; recompute after the
     // human acts. (For the AND-join, ALL paths must settle before we proceed.)
-    if (anyPredWaiting) {
+    if (isAnyPredWaiting) {
       return {
         id: step.id,
         status: "blocked",
@@ -175,9 +175,9 @@ export const executeWorkflow = (
   // Every step was resolved in the loop above, so each has a state.
   const steps = workflow.steps.map((s) => nonNull(state.get(s.id), `step ${s.id} was resolved`));
   const pending = steps.filter((s) => s.status === "pending").map((s) => s.id);
-  const rejected = steps.some((s) => s.status === "rejected");
+  const isRejected = steps.some((s) => s.status === "rejected");
 
-  const outcome: ExecutionState["outcome"] = rejected
+  const outcome: ExecutionState["outcome"] = isRejected
     ? "rejected"
     : pending.length > 0
       ? "awaiting"
@@ -193,7 +193,7 @@ const topoOrder = (workflow: ApprovalWorkflow): string[] => {
   for (const s of workflow.steps) {
     for (const n of s.next) indegree.set(n, (indegree.get(n) ?? 0) + 1);
   }
-  const queue = [...indegree.entries()].filter(([, d]) => d === 0).map(([id]) => id);
+  const queue = [...indegree].filter(([, d]) => d === 0).map(([id]) => id);
   const order: string[] = [];
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {

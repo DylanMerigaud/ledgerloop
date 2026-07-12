@@ -62,7 +62,7 @@ const main = async (): Promise<void> => {
       note: "Real API response captured from the live trial. Replayed offline by recordedHris(). Not a mock.",
       capturedAt: new Date().toISOString(),
     },
-    ...(isRecord(raw) ? raw : {}),
+    ...(isRecord(raw) && raw),
   };
 
   const outDir = path.join(process.cwd(), "db", "fixtures", "bamboohr");
@@ -72,7 +72,7 @@ const main = async (): Promise<void> => {
   console.log(`Wrote ${path.relative(process.cwd(), outFile)}`);
 };
 
-main().catch((err: unknown) => {
-  console.error("Capture failed:", err instanceof Error ? err.message : err);
+main().catch((error: unknown) => {
+  console.error("Capture failed:", error instanceof Error ? error.message : error);
   process.exit(1);
 });

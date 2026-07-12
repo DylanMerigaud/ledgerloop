@@ -1,9 +1,10 @@
 import { useState } from "react";
 
+import type { Invoice } from "@/lib/schema";
+
 import { ExtractionReveal, type ExtractionState } from "@/components/extraction-reveal";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/format";
-import type { Invoice } from "@/lib/schema";
 
 /**
  * Once the document has been READ and the run moves on, the big extraction reveal

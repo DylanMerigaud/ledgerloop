@@ -3,7 +3,8 @@ import { test } from "node:test";
 
 import type { ApprovalWorkflow as TWorkflow } from "@/lib/approval-workflow";
 import type { WorkflowEditOp } from "@/lib/workflow-edit";
-import { runEditAgent, type PlanModel } from "@/lib/workflow-edit-agent";
+
+import { type PlanModel, runEditAgent } from "@/lib/workflow-edit-agent";
 
 /**
  * The agent's ORCHESTRATION is what's tested here (the model is faked): it applies a
@@ -44,7 +45,7 @@ test("dispatches a multi-op plan in order (one round)", async () => {
           op: "add-approval",
           label: "CFO review",
           approverTitle: "CFO",
-          amountOver: 50000,
+          amountOver: 50_000,
           department: null,
           vendor: null,
           currency: null,
@@ -74,12 +75,12 @@ test("on an erroring plan, it re-plans with the validator's errors as feedback",
   // The defining agentic behaviour: if the first plan leaves the workflow with a
   // validation ERROR, the agent calls the planner AGAIN and hands it those errors so
   // it can correct. (We assert the feedback contract, the loop's correction round.)
-  let sawFeedbackError = false;
+  let isSawFeedbackError = false;
   let call = 0;
   const model: PlanModel = {
     planOps: ({ feedback }) => {
       call++;
-      if (feedback?.issues.some((i) => i.severity === "error")) sawFeedbackError = true;
+      if (feedback?.issues.some((i) => i.severity === "error")) isSawFeedbackError = true;
       if (call === 1) {
         // remove the post → "no-post" / "post-not-reached" error
         return Promise.resolve<WorkflowEditOp[]>([{ op: "remove-step", stepId: "post" }]);
@@ -93,7 +94,7 @@ test("on an erroring plan, it re-plans with the validator's errors as feedback",
     currencies: [],
   });
   assert.equal(call >= 2, true, "it ran a correction round");
-  assert.equal(sawFeedbackError, true, "the errors were fed back to the planner");
+  assert.equal(isSawFeedbackError, true, "the errors were fed back to the planner");
 });
 
 test("returns a reason when the plan is all no-ops (no change)", async () => {

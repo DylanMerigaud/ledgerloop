@@ -1,8 +1,9 @@
-import { desc, eq } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 
-import { getDb, type Database } from "@/db/client";
-import { agentRuns, type AgentRunRow } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
+
+import { type Database, getDb } from "@/db/client";
+import { type AgentRunRow, agentRuns } from "@/db/schema";
 import { log } from "@/lib/logger";
 import { TraceEvent } from "@/lib/trace";
 
@@ -72,10 +73,10 @@ export const saveAgentRun = async (
       .insert(agentRuns)
       .values({ id, ...row })
       .onConflictDoUpdate({ target: agentRuns.id, set: row });
-  } catch (err) {
+  } catch (error) {
     // Never let an audit-write failure surface to the visitor mid-run.
     log.warn("saveAgentRun failed (audit log skipped)", {
-      error: err instanceof Error ? err.message : String(err),
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 };

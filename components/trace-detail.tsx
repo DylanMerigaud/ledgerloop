@@ -1,7 +1,8 @@
-import { Badge } from "@/components/ui/badge";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+import type { Investigation, MatchResult, ReconResult } from "@/lib/schema";
+
+import { Badge } from "@/components/ui/badge";
 import { formatMoney, formatPct, humanize } from "@/lib/format";
-import type { MatchResult, ReconResult, Investigation } from "@/lib/schema";
 
 /**
  * Rich, type-aware detail for a completed stage. Each stage emits a different

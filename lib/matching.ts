@@ -1,11 +1,12 @@
-import { DEFAULT_TOLERANCES, type MatchTolerances } from "@/lib/client-profile";
 import type {
-  Invoice,
-  PurchaseOrder,
   GoodsReceipt,
-  MatchResult,
+  Invoice,
   MatchException,
+  MatchResult,
+  PurchaseOrder,
 } from "@/lib/schema";
+
+import { DEFAULT_TOLERANCES, type MatchTolerances } from "@/lib/client-profile";
 
 /**
  * The 2/3-way matcher, the deterministic core of the demo.
@@ -205,16 +206,7 @@ export const runMatch = (
 
     // 3. Against the PO: no PO line → can't authorize; else compare price & qty.
     const po = poLines.get(line.sku);
-    if (!po) {
-      exceptions.push({
-        sku: line.sku,
-        code: "no_po_line",
-        message: `Line ${line.sku} (${line.description}) isn't on PO ${purchaseOrder?.poNumber ?? invoice.poNumber ?? "-"}.`,
-        variancePct: 0,
-        invoiceValue: line.amount,
-        expectedValue: null,
-      });
-    } else {
+    if (po) {
       const priceVar = relDiff(line.unitPrice, po.unitPrice);
       if (priceVar > tolerances.pricePct) {
         exceptions.push({
@@ -236,6 +228,15 @@ export const runMatch = (
           expectedValue: po.qty,
         });
       }
+    } else {
+      exceptions.push({
+        sku: line.sku,
+        code: "no_po_line",
+        message: `Line ${line.sku} (${line.description}) isn't on PO ${purchaseOrder?.poNumber ?? invoice.poNumber ?? "-"}.`,
+        variancePct: 0,
+        invoiceValue: line.amount,
+        expectedValue: null,
+      });
     }
 
     // 4. Against the goods receipt (3-way only): never pay for more than was

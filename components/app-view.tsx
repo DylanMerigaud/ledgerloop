@@ -3,10 +3,11 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { Dashboard } from "@/components/dashboard";
-import { Onboarding } from "@/components/onboarding";
 import type { QueueItem } from "@/db/client";
 import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+
+import { Dashboard } from "@/components/dashboard";
+import { Onboarding } from "@/components/onboarding";
 
 /**
  * The top-level view switch. Two halves of the product, in the order a

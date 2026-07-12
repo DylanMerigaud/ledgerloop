@@ -1,9 +1,9 @@
 import {
-  type ApprovalWorkflow,
-  type WorkflowStep,
   type ApprovalStep,
-  type Condition,
+  type ApprovalWorkflow,
   approversOf,
+  type Condition,
+  type WorkflowStep,
 } from "@/lib/approval-workflow";
 
 /**
@@ -38,7 +38,7 @@ export type WorkflowIssue = {
 };
 
 /** Spend above this (in a path's amount gate) is "high value" → wants 2 approvers. */
-export const MATERIALITY = 25000;
+export const MATERIALITY = 25_000;
 
 export const validateWorkflow = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   return [
@@ -57,7 +57,7 @@ export const validateWorkflow = (wf: ApprovalWorkflow): WorkflowIssue[] => {
 
 /** True when the workflow has no errors (warnings are allowed). */
 export const isActivatable = (issues: WorkflowIssue[]): boolean =>
-  !issues.some((i) => i.severity === "error");
+  issues.every((i) => i.severity !== "error");
 
 /* ── condition helpers ──────────────────────────────────────────────────────── */
 
@@ -168,7 +168,7 @@ const cycleFree = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   // Kahn: if not all nodes get emitted, there's a cycle.
   const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
   for (const s of wf.steps) for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
-  const queue = [...indeg.entries()].filter(([, d]) => d === 0).map(([id]) => id);
+  const queue = [...indeg].filter(([, d]) => d === 0).map(([id]) => id);
   const byId = new Map(wf.steps.map((s) => [s.id, s]));
   let emitted = 0;
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
@@ -246,9 +246,9 @@ const duplicateGates = (wf: ApprovalWorkflow): WorkflowIssue[] => {
       const a = gates[i];
       const b = gates[j];
       if (!a || !b) continue;
-      const sameDept = departmentScope(a) === departmentScope(b);
-      const sameRole = a.approverTitle === b.approverTitle;
-      if (sameRole && sameDept) {
+      const isSameDept = departmentScope(a) === departmentScope(b);
+      const isSameRole = a.approverTitle === b.approverTitle;
+      if (isSameRole && isSameDept) {
         out.push({
           severity: "warning",
           code: "duplicate-gate",

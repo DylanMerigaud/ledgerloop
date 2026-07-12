@@ -1,7 +1,8 @@
 import type { WorkflowStep } from "@/lib/approval-workflow";
-import { isRecord } from "@/lib/assert";
 import type { Outcome } from "@/lib/display";
 import type { TraceEvent } from "@/lib/trace";
+
+import { isRecord } from "@/lib/assert";
 
 /**
  * Pure helpers that derive the coarse per-invoice state from the streamed trace.

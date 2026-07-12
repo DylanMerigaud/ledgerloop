@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { executeWorkflow, type Decisions } from "@/lib/approval-engine";
+import { type Decisions, executeWorkflow } from "@/lib/approval-engine";
 import { type ApprovalWorkflow, type InvoiceContext } from "@/lib/approval-workflow";
 
 /**

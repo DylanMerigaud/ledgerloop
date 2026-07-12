@@ -1,16 +1,15 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
-
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { isRecord } from "@/lib/assert";
 import { toTraceEvent, type TraceEvent } from "@/lib/trace";
 import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
 import {
-  priceHistoryTool,
   poNotesTool,
+  priceHistoryTool,
   receiptNotesTool,
 } from "@/src/mastra/tools/investigator-tools";
 import { p2pWorkflow } from "@/src/mastra/workflows/p2p";
@@ -89,11 +88,11 @@ const timelineFrom = (raw: unknown[]): TraceEvent[] => {
     const e: TraceEvent = { ...partial, seq: seq++, atMs: 0 };
     if (e.kind === "step" && e.stepId) {
       const existing = stepIndex.get(e.stepId);
-      if (existing !== undefined) events[existing] = e;
-      else {
+      if (existing === undefined) {
         stepIndex.set(e.stepId, events.length);
         events.push(e);
       }
+      else {events[existing] = e;}
     } else {
       events.push(e);
     }
@@ -144,7 +143,7 @@ test("a clean invoice skips investigation and stays green end to end", async () 
 
   // Clean → no investigation node at all (the agent must not run).
   assert.ok(
-    !events.some((e) => e.stage === "investigation"),
+    events.every((e) => e.stage !== "investigation"),
     "a clean invoice must not trigger the investigator"
   );
 
@@ -166,7 +165,7 @@ test("a duplicate is blocked without investigation", async () => {
   const events = timelineFrom(raw);
 
   assert.ok(
-    !events.some((e) => e.stage === "investigation"),
+    events.every((e) => e.stage !== "investigation"),
     "a duplicate must not trigger the investigator"
   );
   const recon = events.find((e) => e.kind === "step" && e.stage === "reconciliation");

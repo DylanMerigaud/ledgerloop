@@ -1,5 +1,6 @@
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { NodeData } from "@/components/workflow-graph/node-data";
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { VERDICT_META } from "@/components/workflow-graph/visual-map";
 
 /** A gate decision button (Reject / Approve). When it carries the AI recommendation it

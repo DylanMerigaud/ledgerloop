@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { runApproval } from "@/lib/approval-run";
-import type { ApprovalWorkflow } from "@/lib/approval-workflow";
-import { workflowFromPolicy, DEFAULT_APPROVAL_POLICY } from "@/lib/client-profile";
+import { DEFAULT_APPROVAL_POLICY, workflowFromPolicy } from "@/lib/client-profile";
 import { runMatch } from "@/lib/matching";
-import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
+import { GoodsReceipt, Invoice, PurchaseOrder } from "@/lib/schema";
 
 const WORKFLOW = workflowFromPolicy(DEFAULT_APPROVAL_POLICY);
 
@@ -74,9 +75,9 @@ test("price mismatch is a price_variance on the steel-bar line", () => {
 
 test("quantity mismatch is caught by the 3-way receipt check, not the PO check", () => {
   const m = matchOf(byId("INV-2048"));
-  const codes = m.exceptions.map((e) => e.code);
-  assert.ok(codes.includes("qty_variance_receipt"), "receipt overbill must fire");
-  assert.ok(!codes.includes("qty_variance_po"), "PO qty agrees (ordered = invoiced)");
+  const codes = new Set(m.exceptions.map((e) => e.code));
+  assert.ok(codes.has("qty_variance_receipt"), "receipt overbill must fire");
+  assert.ok(!codes.has("qty_variance_po"), "PO qty agrees (ordered = invoiced)");
   assert.equal(m.matchType, "three_way");
 });
 
@@ -166,7 +167,7 @@ test("mixed parallel decision: rejecting one gate blocks the bill", () => {
     "department-review": "approve",
   });
   assert.equal(run.outcome, "rejected");
-  assert.ok(!run.pending.length, "no gate is left pending once both are decided");
+  assert.ok(run.pending.length === 0, "no gate is left pending once both are decided");
 });
 
 test("the services invoice is a clean 2-way match (no receipt)", () => {
@@ -180,7 +181,7 @@ test("exceptions need a human gate; the duplicate is a (pre-workflow) block", ()
   for (const id of ["INV-2042", "INV-2045", "INV-2046"]) {
     const run = runApproval(WORKFLOW, matchOf(byId(id)));
     assert.equal(run.outcome, "awaiting", `${id} should await approval`);
-    assert.ok(run.pending.length >= 1, `${id} should have a pending gate`);
+    assert.ok(run.pending.length > 0, `${id} should have a pending gate`);
   }
   // The duplicate is a control failure caught at matching, never routed.
   assert.equal(matchOf(byId("INV-2041-RESEND")).verdict, "duplicate");

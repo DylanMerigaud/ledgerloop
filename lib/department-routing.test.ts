@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { Invoice, OrgChart, PurchaseOrder } from "@/lib/schema";
+
 import { runApproval } from "@/lib/approval-run";
 import { type OnboardingProposal } from "@/lib/approval-workflow";
 import { runMatch } from "@/lib/matching";
 import { assembleWorkflow } from "@/lib/onboarding";
-import type { Invoice, PurchaseOrder, OrgChart } from "@/lib/schema";
 
 /**
  * The department lever, end to end: a buying department lives on the PO, flows

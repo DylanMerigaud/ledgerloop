@@ -1,14 +1,15 @@
-import { Handle, NodeToolbar, Position, type Node, type NodeProps } from "@xyflow/react";
+import { Handle, type Node, type NodeProps, NodeToolbar, Position } from "@xyflow/react";
+
+import type { NodeData } from "@/components/workflow-graph/node-data";
 
 import { Badge } from "@/components/ui/badge";
 import { GateButton } from "@/components/workflow-graph/gate-button";
-import type { NodeData } from "@/components/workflow-graph/node-data";
 import {
-  statusTone,
-  integrationBrand,
   changeBadge,
   changeRing,
+  integrationBrand,
   issueRing,
+  statusTone,
 } from "@/components/workflow-graph/visual-map";
 import { humanizeCondition } from "@/lib/approval-workflow";
 
@@ -36,7 +37,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const condition = humanizeCondition(step.when);
   // Co-approvers beyond the primary (the panel's "Also requires").
   const extraApprovers = step.kind === "approval" ? (step.approvers ?? []) : [];
-  const unconditional = step.when.kind === "always";
+  const isUnconditional = step.when.kind === "always";
 
   const badge = cb ?? st;
   // A staged decision tints the whole card (so the canvas shows at a glance which
@@ -152,7 +153,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
           </div>
         )}
 
-        {!unconditional && (
+        {!isUnconditional && (
           <div className="mt-2">
             {/* The trigger as a plain-English rule pill (not code/monospace). */}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">

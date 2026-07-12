@@ -48,5 +48,5 @@ test("genuinely ambiguous prose → unclear", () => {
 
 test("empty / contentless text → unclear", () => {
   assert.equal(classify(""), "unclear");
-  assert.equal(classify("   "), "unclear");
+  assert.equal(classify(' '.repeat(3)), "unclear");
 });

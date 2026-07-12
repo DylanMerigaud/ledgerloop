@@ -1,4 +1,4 @@
-import { outcomeExplain, outcomeLabel, outcomeTone, type Outcome } from "@/lib/display";
+import { type Outcome, outcomeExplain, outcomeLabel, outcomeTone } from "@/lib/display";
 
 /**
  * The outcome banner across the top of the run pane: colour-coded to the result

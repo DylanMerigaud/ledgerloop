@@ -1,12 +1,13 @@
+import type { MatchResult } from "@/lib/schema";
+
 import {
-  executeWorkflow,
   type Decisions,
-  type Reasons,
+  executeWorkflow,
   type ExecutionState,
+  type Reasons,
   type StepState,
 } from "@/lib/approval-engine";
 import { type ApprovalWorkflow, type InvoiceContext } from "@/lib/approval-workflow";
-import type { MatchResult } from "@/lib/schema";
 
 /**
  * The bridge between the conditional-workflow ENGINE and the per-invoice pipeline.

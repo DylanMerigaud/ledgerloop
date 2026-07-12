@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * Per-gate approve/reject across a PARALLEL wave, end to end in the real browser.

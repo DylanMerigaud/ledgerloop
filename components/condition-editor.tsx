@@ -1,17 +1,18 @@
 "use client";
 
-import { Combobox } from "@/components/ui/combobox";
 import type {
   Condition,
   ConditionField,
   ConditionLeaf,
   ConditionOp,
 } from "@/lib/approval-workflow";
+
+import { Combobox } from "@/components/ui/combobox";
 import {
+  type AvailableValues,
   CONDITION_FIELDS,
   defaultLeafFor,
   fieldMeta,
-  type AvailableValues,
 } from "@/lib/condition-fields";
 
 /**
@@ -248,7 +249,7 @@ const ValueInput = ({
   onChange: (next: ConditionLeaf) => void;
 }) => {
   if (meta.kind === "enum" && meta.options) {
-    const labelOf = (o: string) => (meta.label === "Exception flag" ? o.replace(/_/g, " ") : o);
+    const labelOf = (o: string) => (meta.label === "Exception flag" ? o.replaceAll('_', " ") : o);
     // Long lists (vendors, exception codes) get a searchable combobox; short enums
     // (verdict, matchType) stay a plain select, search there is overkill.
     if (meta.options.length > 6) {

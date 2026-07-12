@@ -1,9 +1,10 @@
+import type { Metadata } from "next";
+
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-import type { Metadata } from "next";
 import { Toaster } from "sonner";
-import "@/app/globals.css";
 
+import "@/app/globals.css";
 import { QueryProvider } from "@/components/query-provider";
 
 const SITE_URL = "https://ledgerloop-eta.vercel.app";

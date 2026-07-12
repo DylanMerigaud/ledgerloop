@@ -1,6 +1,6 @@
-import { pgTable, text, jsonb, timestamp, integer, numeric, index } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-import type { LineItem, GoodsReceiptLine, TraceEvent } from "@/lib/schema-types";
+import type { GoodsReceiptLine, LineItem, TraceEvent } from "@/lib/schema-types";
 
 /**
  * Drizzle schema, the four tables the spec calls for:

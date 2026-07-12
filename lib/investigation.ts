@@ -1,4 +1,4 @@
-import type { MatchResult, Investigation } from "@/lib/schema";
+import type { Investigation, MatchResult } from "@/lib/schema";
 
 /**
  * The reusable core of the exception investigation, shared by the workflow step
@@ -79,19 +79,19 @@ const toolsUsedFrom = (res: AgentResult): string[] => {
 export const classify = (text: string): Investigation["recommendation"] => {
   const t = text.toLowerCase();
   const lead = t.slice(0, 120);
-  const leadOvercharge = /overcharge|over-charge|not legitimate|error|dispute/.test(lead);
-  const leadLegit = /legitimate|justified|in line|expected/.test(lead);
-  if (leadOvercharge && !leadLegit) return "likely_overcharge";
-  if (leadLegit && !leadOvercharge) return "likely_legitimate";
+  const isLeadOvercharge = /overcharge|over-charge|not legitimate|error|dispute/.test(lead);
+  const isLeadLegit = /legitimate|justified|in line|expected/.test(lead);
+  if (isLeadOvercharge && !isLeadLegit) return "likely_overcharge";
+  if (isLeadLegit && !isLeadOvercharge) return "likely_legitimate";
 
   // Ambiguous lead, fall back to weighing the whole text.
-  const legit = /legitimate|justified|in line|expected/.test(t);
-  const bad =
+  const isLegit = /legitimate|justified|in line|expected/.test(t);
+  const isBad =
     /overcharge|over-charge|no (notice|basis|contractual|surcharge)|typo|bill(ing)? (slip|error)/.test(
       t
     );
-  if (bad && !legit) return "likely_overcharge";
-  if (legit && !bad) return "likely_legitimate";
+  if (isBad && !isLegit) return "likely_overcharge";
+  if (isLegit && !isBad) return "likely_legitimate";
   return "unclear";
 };
 

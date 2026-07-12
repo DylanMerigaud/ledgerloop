@@ -28,18 +28,18 @@
  *      per scenario line, referencing the item + vendor by id.
  */
 import path from "node:path";
-
 import { z } from "zod";
 
+import type { LineItem, PurchaseOrder } from "@/lib/schema";
+
 import {
-  scenarioPurchaseOrders,
   ERP_INACTIVE_VENDOR,
-  ERP_PAID_VENDOR,
   ERP_PAID_INVOICE_NUMBER,
+  ERP_PAID_VENDOR,
+  scenarioPurchaseOrders,
 } from "@/db/seed-data";
 import { isRecord, nonNull } from "@/lib/assert";
-import { qboPostEntity, qboQuery, type QboCreds } from "@/lib/erp";
-import type { LineItem, PurchaseOrder } from "@/lib/schema";
+import { type QboCreds, qboPostEntity, qboQuery } from "@/lib/erp";
 import { persistRotatedRefreshToken } from "@/scripts/qbo-token-writeback";
 
 /** Same env loading as eval/run.ts, native, no dotenv dep. */
@@ -357,9 +357,9 @@ const reset = async (): Promise<void> => {
         SyncToken: t.syncToken,
       });
       console.log(`  - ${t.docNumber} (${t.id})`);
-    } catch (err) {
+    } catch (error) {
       failed++;
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = error instanceof Error ? error.message : String(error);
       console.log(`  ! could not delete ${t.docNumber}: ${reason}`);
     }
   }
@@ -372,9 +372,9 @@ const reset = async (): Promise<void> => {
         SyncToken: bill.syncToken,
       });
       console.log(`  - bill ${ERP_PAID_INVOICE_NUMBER} (${bill.id})`);
-    } catch (err) {
+    } catch (error) {
       failed++;
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = error instanceof Error ? error.message : String(error);
       console.log(`  ! could not delete bill ${ERP_PAID_INVOICE_NUMBER}: ${reason}`);
     }
   }
@@ -390,7 +390,7 @@ const reset = async (): Promise<void> => {
 
 /* ── small helpers ──────────────────────────────────────────────────────────*/
 /** QBO query strings are single-quoted; escape embedded quotes. */
-const escapeQuery = (s: string): string => s.replace(/'/g, "\\'");
+const escapeQuery = (s: string): string => s.replaceAll('\'', String.raw`\'`);
 
 const firstEntity = (raw: unknown, entity: string): string | null => {
   // A query response is `{ QueryResponse: { <Entity>: [...], maxResults, ... } }`.
@@ -431,10 +431,10 @@ const main = async (): Promise<void> => {
 
 main()
   .then(() => persistRotatedRefreshToken())
-  .catch((err: unknown) => {
+  .catch((error: unknown) => {
     // Persist any rotation even on failure, the token may have rotated before
     // the error, and we don't want to lose it.
     persistRotatedRefreshToken();
-    console.error("Failed:", err instanceof Error ? err.message : err);
+    console.error("Failed:", error instanceof Error ? error.message : error);
     process.exit(1);
   });

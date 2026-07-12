@@ -88,7 +88,7 @@ export const DEFAULT_TOLERANCES: MatchTolerances = {
 };
 
 export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
-  manager: { amount: 1_000, variancePct: 0.05 },
+  manager: { amount: 1000, variancePct: 0.05 },
   director: { amount: 10_000, variancePct: 0.1 },
 };
 

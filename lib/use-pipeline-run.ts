@@ -3,14 +3,15 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+import type { Outcome } from "@/lib/display";
+import type { TraceEvent } from "@/lib/trace";
+
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { isStreamDone } from "@/lib/api-types";
-import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { isRecord } from "@/lib/assert";
-import type { Outcome } from "@/lib/display";
 import { client } from "@/lib/orpc/client";
-import { deriveOutcome, isAwaitingApproval, decisionsForPending } from "@/lib/run-outcome";
-import type { TraceEvent } from "@/lib/trace";
+import { decisionsForPending, deriveOutcome, isAwaitingApproval } from "@/lib/run-outcome";
 
 /**
  * Client hook that runs the pipeline for an invoice and exposes the live trace.
@@ -126,7 +127,7 @@ export const usePipelineRun = (
         replayed: false, // a live run, not a replayed stored trace
       }));
 
-      const resuming = decisions !== undefined;
+      const isResuming = decisions !== undefined;
       const push = (e: TraceEvent) => {
         const events = eventsRef.current;
         const stepIndex = stepIndexRef.current;
@@ -139,21 +140,21 @@ export const usePipelineRun = (
         // approval node updates its per-step states, a just-approved gate, and a
         // NEXT gate that a wave reached now pends), upserting in place by stepId. This
         // is what lets a multi-wave workflow re-pause instead of silently posting.
-        if (resuming && e.stage !== "approval" && e.stage !== "reconciliation") {
+        if (isResuming && e.stage !== "approval" && e.stage !== "reconciliation") {
           return;
         }
-        if (resuming && e.kind === "run") return; // never replay run markers
+        if (isResuming && e.kind === "run") return; // never replay run markers
 
         // UPSERT anything with a stepId (steps AND tool nodes carry stable ids) so a
         // stage is a single node that transitions running → done, and across phases
         // awaiting → posted, instead of stacking duplicates. Run markers append.
         if (e.stepId) {
           const existing = stepIndex.get(e.stepId);
-          if (existing !== undefined) {
-            events[existing] = e;
-          } else {
+          if (existing === undefined) {
             stepIndex.set(e.stepId, events.length);
             events.push(e);
+          } else {
+            events[existing] = e;
           }
         } else {
           events.push(e);
@@ -207,35 +208,35 @@ export const usePipelineRun = (
         // after EVERY phase, resume included: approving one wave can reach a NEXT gate
         // that pends, so a resume must be able to re-pause rather than assume it
         // always completes.
-        const awaiting = isAwaitingApproval(eventsRef.current);
+        const isAwaiting = isAwaitingApproval(eventsRef.current);
 
         // The workflow runs to completion even when reconciliation is HELD, so it
         // emits a "Pipeline complete" run marker, misleading while paused. Drop the
         // run markers so the trace ends on the awaiting step, matching the "Paused,
         // needs a decision" banner. Rebuild the stepId→index map afterwards so the
         // upserts on the eventual resume still target the right nodes.
-        if (awaiting) {
+        if (isAwaiting) {
           eventsRef.current = eventsRef.current.filter((e) => e.kind !== "run");
           stepIndexRef.current = new Map();
-          eventsRef.current.forEach((e, i) => {
+          for (const [i, e] of eventsRef.current.entries()) {
             if (e.stepId) stepIndexRef.current.set(e.stepId, i);
-          });
+          }
         }
 
         setState((s) => ({
           ...s,
           trace: [...eventsRef.current],
-          status: awaiting ? "awaiting" : "done",
+          status: isAwaiting ? "awaiting" : "done",
           durationMs,
-          outcome: awaiting ? "needs-approval" : deriveOutcome(eventsRef.current, true),
+          outcome: isAwaiting ? "needs-approval" : deriveOutcome(eventsRef.current, true),
         }));
-      } catch (err) {
+      } catch (error) {
         if (controller.signal.aborted) return;
-        const message = err instanceof Error ? err.message : "Network error during run.";
+        const message = error instanceof Error ? error.message : "Network error during run.";
         // Rate-limit (the demo guard) is expected traffic, not a crash: surface it
         // as a toast the user actually sees, rather than a silent `error` state.
-        const rateLimited = isRecord(err) && err["code"] === "TOO_MANY_REQUESTS";
-        if (rateLimited) {
+        const isRateLimited = isRecord(error) && error["code"] === "TOO_MANY_REQUESTS";
+        if (isRateLimited) {
           toast.warning("Demo limit reached", { description: message });
         }
         setState((s) => ({
@@ -277,9 +278,9 @@ export const usePipelineRun = (
     abortRef.current = null;
     eventsRef.current = [...trace];
     stepIndexRef.current = new Map();
-    trace.forEach((e, i) => {
+    for (const [i, e] of trace.entries()) {
       if (e.stepId) stepIndexRef.current.set(e.stepId, i);
-    });
+    }
     decisionsRef.current = {};
     // Adopt the replayed instance's id: if this stored run is still awaiting and the
     // reviewer then approves, the resume upserts THIS row (not a new instance).
@@ -287,11 +288,11 @@ export const usePipelineRun = (
     // A stored run that PAUSED for a human is still actionable when reopened: surface it
     // as `awaiting` (not `done`) so the gate's Approve / Reject render and a decision
     // resumes THIS instance. Otherwise it's a finished run, opened for viewing (`done`).
-    const awaiting = isAwaitingApproval(trace);
+    const isAwaiting = isAwaitingApproval(trace);
     setState({
-      status: awaiting ? "awaiting" : "done",
+      status: isAwaiting ? "awaiting" : "done",
       trace: [...trace],
-      outcome: awaiting ? "needs-approval" : deriveOutcome(trace, true),
+      outcome: isAwaiting ? "needs-approval" : deriveOutcome(trace, true),
       durationMs: null,
       error: null,
       replayed: true, // stored run opened for viewing, not streamed live
