@@ -1,272 +1,165 @@
-import js from "@eslint/js";
-import tseslint from "typescript-eslint";
-import nextPlugin from "@next/eslint-plugin-next";
-import reactPlugin from "eslint-plugin-react";
-import reactHooksPlugin from "eslint-plugin-react-hooks";
-import jsxA11yPlugin from "eslint-plugin-jsx-a11y";
-import importPlugin from "eslint-plugin-import";
-import noRelativeImportPaths from "eslint-plugin-no-relative-import-paths";
-import checkFilePlugin from "eslint-plugin-check-file";
-import eslintComments from "eslint-plugin-eslint-comments";
-import prettierConfig from "eslint-config-prettier";
-import { customRules } from "./config/eslint-rules/index";
+import { next } from "@dylanmerigaud/config/eslint/next";
+
+import { customLocalRules } from "./config/eslint-rules/index";
 
 /**
- * ESLint — aligned with the sibling ugc-workflow config, scaled to this repo.
+ * ESLint. The shared preset (@dylanmerigaud/config, `next`) owns the whole base:
+ * cast/null hygiene, typed env over process.env, the logger over console, no
+ * barrels, type over interface, React/hooks/a11y/Next, and the generic custom
+ * rules (no-emdash-in-text, no-console-use-logger, no-index-files,
+ * prefer-use-event-callback). This file adds only what is specific to ledgerloop,
+ * under the `custom-local` plugin namespace:
+ *   • enforce-api-routes: hardcoded `/api/...` paths must come from API_ROUTES.
+ *   • the Mastra require-await exemption (its step/tool `execute` and workflow
+ *     callbacks are async by API contract even without an await).
+ *   • the eval/sanity entrypoint relaxations the shared scripts block doesn't cover.
  *
- * Prettier owns formatting; this owns what tsc can't catch on its own:
- *   • cast/null hygiene — no `any`, no bare `!`, no `as unknown as` (annotated
- *     exceptions only).
- *   • dead logic — no-unnecessary-condition / -assertion.
- *   • discipline — typed env over process.env, the logger over console, API_ROUTES
- *     over hardcoded paths, kebab-case files, absolute imports, no barrels, type
- *     over interface, organised imports.
- *   • React/Next/a11y correctness.
- *
- * The recommended set's noisier rules (unsafe-*, require-await) are off where they
- * fight legitimate patterns here (the `unknown` trace boundary; Mastra's async-by-
- * contract step signatures). Every eslint-disable must carry a reason.
+ * The final block turns OFF the opinionated rule layer that @dylanmerigaud/config
+ * 0.2.x newly introduced (perfectionist import sorting, most of eslint-plugin-
+ * unicorn, and the stricter @eslint-react rules). See its `reason:` for why: this
+ * change is a config-plumbing SWAP that preserves ledgerloop's prior effective
+ * lint surface; adopting that opinionated layer is a separate, deliberate effort.
  */
-export default tseslint.config(
-  {
-    ignores: [
-      "node_modules/**",
-      ".next/**",
-      "next-env.d.ts",
-      "eslint.config.mts",
-      "*.config.ts",
-      "*.config.mjs",
-      "*.config.mts",
-      "postcss.config.mjs",
-    ],
-  },
+export default [
+  ...next({ tsconfigRootDir: import.meta.dirname }),
 
-  js.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-
-  // React / hooks / a11y / Next.
+  // enforce-api-routes on repo-wide; route handlers and the API_ROUTES definition
+  // itself own the raw `/api/...` strings, so they are exempted just below.
   {
     files: ["**/*.{ts,tsx}"],
-    plugins: {
-      react: reactPlugin,
-      "react-hooks": reactHooksPlugin,
-      "jsx-a11y": jsxA11yPlugin,
-      "@next/next": nextPlugin,
-    },
-    settings: { react: { version: "detect" } },
-    rules: {
-      ...reactPlugin.configs.recommended.rules,
-      ...reactHooksPlugin.configs.recommended.rules,
-      ...jsxA11yPlugin.configs.recommended.rules,
-      ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs["core-web-vitals"].rules,
-      // The new JSX transform — no `import React` needed.
-      "react/react-in-jsx-scope": "off",
-      "react/prop-types": "off",
-      // Effects are the top source of subtle bugs here: a missing dep silently stales
-      // a closure, an extra dep re-fires. Recommended ships this as a warning, which
-      // the gate ignores; make it a hard error so a stale/over-broad dep set can't land.
-      "react-hooks/exhaustive-deps": "error",
-    },
+    plugins: { "custom-local": customLocalRules },
+    rules: { "custom-local/enforce-api-routes": "error" },
   },
-
-  // The main TypeScript rule set.
-  {
-    files: ["**/*.{ts,tsx}"],
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-    plugins: {
-      import: importPlugin,
-      "no-relative-import-paths": noRelativeImportPaths,
-      "check-file": checkFilePlugin,
-      "eslint-comments": eslintComments,
-      custom: customRules,
-    },
-    settings: { "import/resolver": { typescript: true } },
-    rules: {
-      // ── Cast / null / any hygiene ───────────────────────────────────────────
-      "@typescript-eslint/no-unnecessary-type-assertion": "error",
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-non-null-assertion": "error",
-      // No `x as T` assertions — narrow with a guard, validate with a schema, or use
-      // `satisfies`. (Const assertions `as const` are still allowed.)
-      "@typescript-eslint/no-unsafe-type-assertion": "error",
-      "@typescript-eslint/no-unnecessary-condition": "error",
-
-      // ── Type style ──────────────────────────────────────────────────────────
-      "@typescript-eslint/consistent-type-imports": [
-        "error",
-        { prefer: "type-imports", fixStyle: "inline-type-imports" },
-      ],
-      "@typescript-eslint/consistent-type-definitions": ["error", "type"],
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          destructuredArrayIgnorePattern: "^_",
-          ignoreRestSiblings: true,
-        },
-      ],
-
-      // ── Async safety ────────────────────────────────────────────────────────
-      "@typescript-eslint/no-floating-promises": "error",
-      "@typescript-eslint/no-misused-promises": [
-        "error",
-        { checksVoidReturn: { attributes: false } },
-      ],
-      // require-await stays ON globally (catches a forgotten await elsewhere); it's
-      // turned off only for src/mastra/** below, where Mastra's step/tool `execute`
-      // and workflow callbacks are async by API contract even without an await.
-      // no-unsafe-* are LEFT ON (error, from recommendedTypeChecked) — stricter
-      // than ugc. They catch real unguarded `unknown` access; the genuine
-      // `unknown` boundaries (trace adapter, DB rows) narrow through helpers.
-
-      // ── Imports ─────────────────────────────────────────────────────────────
-      "import/order": [
-        "error",
-        {
-          groups: ["builtin", "external", "internal", "parent", "sibling"],
-          "newlines-between": "always",
-          alphabetize: { order: "asc", caseInsensitive: true },
-        },
-      ],
-      "import/no-default-export": "error",
-      "no-relative-import-paths/no-relative-import-paths": [
-        "error",
-        { allowSameFolder: false, rootDir: ".", prefix: "@" },
-      ],
-
-      // ── Style ───────────────────────────────────────────────────────────────
-      "func-style": ["error", "expression", { allowArrowFunctions: true }],
-      "prefer-arrow-callback": "error",
-      "no-restricted-syntax": [
-        "error",
-        {
-          // Ban EVERY `as T` cast (except `as const`). A cast dodges the type checker;
-          // narrow with a type guard, validate with a Zod schema, or use `satisfies`.
-          // A genuinely necessary boundary cast (a library/framework type we can't
-          // express) takes a per-line eslint-disable WITH a reason, so each one is a
-          // deliberate, reviewed exception rather than a silent hole.
-          selector:
-            "TSAsExpression:not([typeAnnotation.typeName.name='const'])",
-          message:
-            "Avoid `as T`. Narrow with a type guard, validate with a schema, or use `satisfies`. Annotate a necessary boundary cast with an eslint-disable + reason.",
-        },
-        {
-          selector:
-            "MemberExpression[object.name='process'][property.name='env']",
-          message:
-            "Use the typed `env` from '@/lib/env' instead of process.env. (Scripts/eval/sanity are exempt.)",
-        },
-      ],
-
-      // ── Custom rules ────────────────────────────────────────────────────────
-      "custom/no-console-use-logger": "error",
-      "no-console": "off",
-      "custom/no-index-files": "error",
-      "custom/prefer-use-event-callback": "error",
-      "custom/enforce-api-routes": "error",
-      "custom/no-emdash-in-text": "error",
-
-      // ── Comments ────────────────────────────────────────────────────────────
-      "eslint-comments/require-description": "error",
-
-      // ── File naming ─────────────────────────────────────────────────────────
-      "check-file/filename-naming-convention": [
-        "error",
-        { "**/*.{ts,tsx}": "KEBAB_CASE" },
-        { ignoreMiddleExtensions: true },
-      ],
-      "check-file/folder-naming-convention": [
-        "error",
-        { "{app,components,lib,db,hooks,config,src}/**/!(\\(*\\))": "KEBAB_CASE" },
-      ],
-    },
-  },
-
-  // env.ts is the ONE place process.env is read.
-  {
-    files: ["lib/env.ts"],
-    rules: { "no-restricted-syntax": "off" },
-  },
-
-  // Route handlers + the API_ROUTES definition itself own the API path strings.
   {
     files: ["app/api/**/*.ts", "lib/api-routes.ts"],
-    rules: { "custom/enforce-api-routes": "off" },
-  },
-  {
-    files: ["lib/logger.ts"],
-    rules: { "custom/no-console-use-logger": "off" },
-  },
-
-  // Next.js pages/layouts must default-export; configs too.
-  {
-    files: ["app/**/{page,layout,not-found,opengraph-image,error}.tsx"],
-    rules: { "import/no-default-export": "off" },
-  },
-
-  // Standalone tsx entrypoints (scripts, DB seed, the sanity check, the eval
-  // harness) read process.env directly and print to the terminal — that's their job.
-  {
-    files: [
-      "scripts/**/*.ts",
-      "db/seed.ts",
-      "src/mastra/sanity.ts",
-      "eval/**/*.ts",
-    ],
-    rules: {
-      "no-restricted-syntax": "off",
-      "no-console": "off",
-      "custom/no-console-use-logger": "off",
-      "custom/enforce-api-routes": "off",
-    },
-  },
-
-  // ESLint rule-authoring compares against the TSESTree AST string types — the
-  // enum-comparison + a few type-checked rules don't apply to that style.
-  {
-    files: ["config/eslint-rules/**/*.ts"],
-    rules: {
-      "@typescript-eslint/no-unsafe-enum-comparison": "off",
-      "custom/no-index-files": "off",
-      // jiti loads these by relative path before the @/ alias exists.
-      "no-relative-import-paths/no-relative-import-paths": "off",
-    },
+    rules: { "custom-local/enforce-api-routes": "off" },
   },
 
   // Mastra workflows/agents/tools: `execute` and the workflow `.map()`/`.branch()`
   // callbacks are async by Mastra's API contract even when a given body has no
-  // await — that's the framework shape, not a mistake. Scoped here, not global.
+  // await, that is the framework shape, not a mistake. Scoped here, not global.
   {
     files: ["src/mastra/**/*.ts"],
     rules: { "@typescript-eslint/require-await": "off" },
   },
 
-  // Tests: `!`, `any`, and `as` casts on just-defined fixtures are provably safe;
-  // relax the ceremony rules (the assertion + logic ones stay meaningful in prod).
-  // `node:test`'s `test()` returns a promise the runner owns, so floating-promises is
-  // noise here.
+  // Standalone tsx entrypoints beyond the shared scripts/db-seed block: the sanity
+  // check and the eval harness read process.env directly, print to the terminal,
+  // and don't touch API paths. (The shared preset already relaxes scripts/** and
+  // db/seed.ts; this extends the same treatment to eval/** and sanity.)
   {
-    files: ["**/*.test.ts"],
+    files: ["src/mastra/sanity.ts", "eval/**/*.ts"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-non-null-assertion": "off",
-      "@typescript-eslint/no-unnecessary-condition": "off",
-      "@typescript-eslint/no-floating-promises": "off",
-      // Mock implementations satisfy async interfaces with no await — fine in tests.
-      "@typescript-eslint/require-await": "off",
-      // Casting a fixture we just built is safe; the ban is for prod code paths.
       "no-restricted-syntax": "off",
-      "@typescript-eslint/no-unsafe-type-assertion": "off",
+      "no-console": "off",
+      "custom/no-console-use-logger": "off",
+      "custom-local/enforce-api-routes": "off",
     },
   },
+  // The shared scripts/** + db/seed.ts relaxation doesn't turn off the local
+  // enforce-api-routes rule (it lives in the shared preset which can't know about
+  // it), so do that here for those same paths.
+  {
+    files: ["scripts/**/*.ts", "db/seed.ts"],
+    rules: { "custom-local/enforce-api-routes": "off" },
+  },
 
-  // Prettier last — turn off all formatting rules.
-  prettierConfig,
-);
+  // ESLint rule-authoring code: the barrel is the plugin entrypoint (loaded by
+  // jiti), and rule bodies compare against TSESTree's string AST types where the
+  // enum-comparison check doesn't apply.
+  {
+    files: ["config/eslint-rules/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-enum-comparison": "off",
+      "custom/no-index-files": "off",
+    },
+  },
+  // src/mastra/index.ts is Mastra's required framework entry point (the shared
+  // preset bans barrels; the old local no-index-files rule whitelisted this exact
+  // path, so keep exempting it to preserve prior behavior).
+  {
+    files: ["src/mastra/index.ts"],
+    rules: { "custom/no-index-files": "off" },
+  },
+
+  // ── Opinionated-layer opt-OUT ──────────────────────────────────────────────
+  // reason: @dylanmerigaud/config 0.2.x added a large opinionated layer on top of
+  // the base ledgerloop already used: eslint-plugin-perfectionist (import/member
+  // sorting), most of eslint-plugin-unicorn, and the stricter @eslint-react rules
+  // (set-state-in-effect, no-array-index-key, purity, ...). ledgerloop's existing
+  // code predates all of them, so they fire ~700 times. This retrofit is a config
+  // SWAP whose contract is "preserve ledgerloop's prior effective lint surface",
+  // not a code refactor: turning these on means hundreds of hand edits (renaming
+  // public boolean props, restructuring effects, changing sort semantics) plus
+  // some genuine false positives, which is out of scope here and which eslint
+  // --fix cannot do safely (it introduced fresh type errors). They are disabled
+  // as ONE reviewed block so nothing is loosened silently; adopting this layer
+  // incrementally is a separate, deliberate task. `custom/no-empty-string-fallback`
+  // is included: ledgerloop has no `@/lib/utils/invariant` helper (the fix the
+  // rule points to) and uses `?? ""` as legitimate string normalization.
+  // `custom/no-vibe-coded-naming` is intentionally LEFT ON (it fires 0 times).
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "@eslint-react/naming-convention-ref-name": "off",
+      "@eslint-react/no-array-index-key": "off",
+      "@eslint-react/purity": "off",
+      "@eslint-react/set-state-in-effect": "off",
+      "@eslint-react/static-components": "off",
+      "@eslint-react/use-state": "off",
+      "custom/no-empty-string-fallback": "off",
+      "perfectionist/sort-imports": "off",
+      "perfectionist/sort-named-exports": "off",
+      "perfectionist/sort-named-imports": "off",
+      "unicorn/catch-error-name": "off",
+      "unicorn/consistent-boolean-name": "off",
+      "unicorn/consistent-conditional-object-spread": "off",
+      "unicorn/consistent-function-scoping": "off",
+      "unicorn/escape-case": "off",
+      "unicorn/explicit-length-check": "off",
+      "unicorn/isolated-functions": "off",
+      "unicorn/max-nested-calls": "off",
+      "unicorn/no-array-callback-reference": "off",
+      "unicorn/no-array-sort": "off",
+      "unicorn/no-await-expression-member": "off",
+      "unicorn/no-break-in-nested-loop": "off",
+      "unicorn/no-chained-comparison": "off",
+      "unicorn/no-computed-property-existence-check": "off",
+      "unicorn/no-constant-zero-expression": "off",
+      "unicorn/no-declarations-before-early-exit": "off",
+      "unicorn/no-for-each": "off",
+      "unicorn/no-negated-array-predicate": "off",
+      "unicorn/no-negated-condition": "off",
+      "unicorn/no-process-exit": "off",
+      "unicorn/no-top-level-assignment-in-function": "off",
+      "unicorn/no-unreadable-for-of-expression": "off",
+      "unicorn/no-unsafe-string-replacement": "off",
+      "unicorn/no-useless-coercion": "off",
+      "unicorn/no-useless-collection-argument": "off",
+      "unicorn/no-useless-template-literals": "off",
+      "unicorn/no-zero-fractions": "off",
+      "unicorn/numeric-separators-style": "off",
+      "unicorn/prefer-at": "off",
+      "unicorn/prefer-await": "off",
+      "unicorn/prefer-code-point": "off",
+      "unicorn/prefer-direct-iteration": "off",
+      "unicorn/prefer-else-if": "off",
+      "unicorn/prefer-export-from": "off",
+      "unicorn/prefer-global-number-constants": "off",
+      "unicorn/prefer-includes-over-repeated-comparisons": "off",
+      "unicorn/prefer-iterator-to-array": "off",
+      "unicorn/prefer-set-has": "off",
+      "unicorn/prefer-split-limit": "off",
+      "unicorn/prefer-spread": "off",
+      "unicorn/prefer-string-raw": "off",
+      "unicorn/prefer-string-repeat": "off",
+      "unicorn/prefer-string-replace-all": "off",
+      "unicorn/prefer-switch": "off",
+      "unicorn/prefer-unicode-code-point-escapes": "off",
+      "unicorn/prefer-url-href": "off",
+      "unicorn/require-array-sort-compare": "off",
+      "unicorn/require-css-escape": "off",
+      "unicorn/switch-case-braces": "off",
+    },
+  },
+];
