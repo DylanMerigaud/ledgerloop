@@ -244,7 +244,12 @@ export const WorkflowEditor = ({
             <p className="text-[12.5px] font-medium text-ink">{clarify.question}</p>
             <div className="flex flex-wrap gap-1.5">
               {clarify.options.map((o) => (
-                <DeptChip key={o} label={o} onClick={() => pickClarifyOption(o)} disabled={isBusy} />
+                <DeptChip
+                  key={o}
+                  label={o}
+                  onClick={() => pickClarifyOption(o)}
+                  disabled={isBusy}
+                />
               ))}
             </div>
           </div>

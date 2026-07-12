@@ -1,15 +1,11 @@
 import type { WorkflowEditOp } from "@/lib/workflow-edit";
 
-
-
 /**
  * Corpus for the EDIT-AGENT eval. Unlike the single-op edit eval (which scores the
  * chosen op kind), this scores the OUTCOME of the multi-instruction agent: after it
  * plans + applies + self-corrects, does the final workflow VALIDATE CLEAN, and did
  * it dispatch the expected number of ops for a multi-part instruction.
  */
-
-
 
 export type AgentCase = {
   id: string;
@@ -163,4 +159,4 @@ export const AGENT_CASES: AgentCase[] = [
   },
 ];
 
-export {EDIT_FIXTURE} from "@/eval/edit-cases";
+export { EDIT_FIXTURE } from "@/eval/edit-cases";

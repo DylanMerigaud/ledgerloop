@@ -100,7 +100,9 @@ export const executeWorkflow = (
     );
 
     const isAnyPredRejected = predStates.some((p) => p.status === "rejected");
-    const isAnyPredWaiting = predStates.some((p) => p.status === "pending" || p.status === "blocked");
+    const isAnyPredWaiting = predStates.some(
+      (p) => p.status === "pending" || p.status === "blocked"
+    );
 
     // A rejection anywhere upstream blocks this step (the bill won't post).
     if (isAnyPredRejected) {

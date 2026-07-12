@@ -387,11 +387,7 @@ test("adding a parallel gate orders the shared join (post) LAST in the parent", 
     return step?.kind === "integration";
   });
   assert.ok(post, "manager still reaches post directly");
-  assert.equal(
-    mgr.next.at(-1),
-    post,
-    "the shared join (post) is ordered last, gates first"
-  );
+  assert.equal(mgr.next.at(-1), post, "the shared join (post) is ordered last, gates first");
   // Every edge is preserved (nothing dropped by the reorder).
   assert.equal(mgr.next.length, 3, "director + new gate + post");
 });

@@ -383,7 +383,7 @@ const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   }
   if (field === "exceptionCode") {
     // Codes read better with spaces: "vendor_inactive" → "vendor inactive".
-    const label = String(value).replaceAll('_', " ");
+    const label = String(value).replaceAll("_", " ");
     if (op === "==") return `Has ${label} flag`;
     if (op === "!=") return `No ${label} flag`;
   }

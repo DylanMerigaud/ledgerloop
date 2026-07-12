@@ -135,7 +135,7 @@ export const ExtractionReveal = ({
               key={label}
               label={label}
               value={fields[i]?.value ?? ""}
-              state={isDone ? i < revealed ? "shown" : "pending" : "reading"}
+              state={isDone ? (i < revealed ? "shown" : "pending") : "reading"}
             />
           ))}
         </dl>

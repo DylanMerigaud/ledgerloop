@@ -205,9 +205,10 @@ export const orgForPrompt = (org: OrgChart): string => {
       return `- ${e.name} | ${e.title || "(no title)"} | dept: ${e.department || "?"} | manager: ${mgr}`;
     })
     .join("\n");
-  const issues = org.issues.length > 0
-    ? org.issues.map((i) => `- [${i.kind}] ${i.detail}`).join("\n")
-    : "- (none)";
+  const issues =
+    org.issues.length > 0
+      ? org.issues.map((i) => `- [${i.kind}] ${i.detail}`).join("\n")
+      : "- (none)";
   return `EMPLOYEES (${org.employees.length}):\n${people}\n\nDATA-QUALITY ISSUES (${org.issues.length}):\n${issues}`;
 };
 

@@ -91,8 +91,9 @@ const timelineFrom = (raw: unknown[]): TraceEvent[] => {
       if (existing === undefined) {
         stepIndex.set(e.stepId, events.length);
         events.push(e);
+      } else {
+        events[existing] = e;
       }
-      else {events[existing] = e;}
     } else {
       events.push(e);
     }

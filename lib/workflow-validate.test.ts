@@ -101,7 +101,7 @@ test("no posting step is an error", () => {
   const wf = sound();
   // turn the post into a non-terminal by removing it and re-pointing
   wf.steps = wf.steps.filter((s) => s.id !== "post");
-  for (const s of wf.steps) (s.next = s.next.filter((n) => n !== "post"));
+  for (const s of wf.steps) s.next = s.next.filter((n) => n !== "post");
   assert.ok(codes(wf).includes("no-post"));
 });
 

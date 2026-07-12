@@ -390,7 +390,7 @@ const reset = async (): Promise<void> => {
 
 /* ── small helpers ──────────────────────────────────────────────────────────*/
 /** QBO query strings are single-quoted; escape embedded quotes. */
-const escapeQuery = (s: string): string => s.replaceAll('\'', String.raw`\'`);
+const escapeQuery = (s: string): string => s.replaceAll("'", String.raw`\'`);
 
 const firstEntity = (raw: unknown, entity: string): string | null => {
   // A query response is `{ QueryResponse: { <Entity>: [...], maxResults, ... } }`.

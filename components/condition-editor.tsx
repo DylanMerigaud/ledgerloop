@@ -249,7 +249,7 @@ const ValueInput = ({
   onChange: (next: ConditionLeaf) => void;
 }) => {
   if (meta.kind === "enum" && meta.options) {
-    const labelOf = (o: string) => (meta.label === "Exception flag" ? o.replaceAll('_', " ") : o);
+    const labelOf = (o: string) => (meta.label === "Exception flag" ? o.replaceAll("_", " ") : o);
     // Long lists (vendors, exception codes) get a searchable combobox; short enums
     // (verdict, matchType) stay a plain select, search there is overkill.
     if (meta.options.length > 6) {

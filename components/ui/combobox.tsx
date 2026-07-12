@@ -80,31 +80,31 @@ export const Combobox = ({
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     switch (e.key) {
-    case "ArrowDown": {
-      e.preventDefault();
-      setActive((i) => Math.min(i + 1, filtered.length - 1));
-    
-    break;
-    }
-    case "ArrowUp": {
-      e.preventDefault();
-      setActive((i) => Math.max(i - 1, 0));
-    
-    break;
-    }
-    case "Enter": {
-      e.preventDefault();
-      const opt = filtered[active];
-      if (opt) commit(opt.value);
-    
-    break;
-    }
-    case "Escape": {
-      setOpen(false);
-    
-    break;
-    }
-    // No default
+      case "ArrowDown": {
+        e.preventDefault();
+        setActive((i) => Math.min(i + 1, filtered.length - 1));
+
+        break;
+      }
+      case "ArrowUp": {
+        e.preventDefault();
+        setActive((i) => Math.max(i - 1, 0));
+
+        break;
+      }
+      case "Enter": {
+        e.preventDefault();
+        const opt = filtered[active];
+        if (opt) commit(opt.value);
+
+        break;
+      }
+      case "Escape": {
+        setOpen(false);
+
+        break;
+      }
+      // No default
     }
   };
 
