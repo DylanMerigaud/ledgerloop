@@ -15,7 +15,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { SEED_ORG, SEED_DIVISION } from "@/db/fixtures/bamboohr/seed-org";
+import { SEED_DIVISION, SEED_ORG } from "@/db/fixtures/bamboohr/seed-org";
 
 type BambooRow = {
   id: string;
@@ -35,14 +35,13 @@ const fullName = (p: { firstName: string; lastName: string }): string =>
 const build = (): void => {
   // Stable ids by seed order (BambooHR uses string ids).
   const idByName = new Map<string, string>();
-  SEED_ORG.forEach((p, i) => idByName.set(fullName(p), String(i + 100)));
+  for (const [i, p] of SEED_ORG.entries()) idByName.set(fullName(p), String(i + 100));
 
   const employees: BambooRow[] = SEED_ORG.map((p, i) => {
     // Resolve the manager by name to an id. An unmatched name (the intentionally
     // absent "Riley Stone") resolves to null, exactly what BambooHR does on write,
     // which is what makes Morgan Vega surface as an orphan.
-    const supervisorEId =
-      p.managerName !== null ? (idByName.get(p.managerName) ?? null) : null;
+    const supervisorEId = p.managerName === null ? null : (idByName.get(p.managerName) ?? null);
     return {
       id: String(i + 100),
       firstName: p.firstName,
@@ -79,13 +78,7 @@ const build = (): void => {
     employees,
   };
 
-  const out = path.join(
-    process.cwd(),
-    "db",
-    "fixtures",
-    "bamboohr",
-    "report.json",
-  );
+  const out = path.join(process.cwd(), "db", "fixtures", "bamboohr", "report.json");
   mkdirSync(path.dirname(out), { recursive: true });
   writeFileSync(out, JSON.stringify(payload, null, 2) + "\n");
   console.log(`Wrote ${employees.length} employees to ${out}`);

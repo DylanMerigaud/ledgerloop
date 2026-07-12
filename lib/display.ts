@@ -1,5 +1,5 @@
 import type { BadgeTone } from "@/components/ui/badge";
-import type { TraceStatus, TraceStage } from "@/lib/trace";
+import type { TraceStage, TraceStatus } from "@/lib/trace";
 
 /**
  * The shared visual vocabulary, the single place that maps pipeline concepts
@@ -19,31 +19,41 @@ export type Outcome =
 
 export const outcomeTone = (outcome: Outcome): BadgeTone => {
   switch (outcome) {
-    case "reconciled":
+    case "reconciled": {
       return "ok";
-    case "needs-approval":
+    }
+    case "needs-approval": {
       return "warn";
-    case "blocked":
+    }
+    case "blocked": {
       return "danger";
-    case "running":
+    }
+    case "running": {
       return "accent";
-    case "pending":
+    }
+    case "pending": {
       return "neutral";
+    }
   }
 };
 
 export const outcomeLabel = (outcome: Outcome): string => {
   switch (outcome) {
-    case "reconciled":
+    case "reconciled": {
       return "Reconciled";
-    case "needs-approval":
+    }
+    case "needs-approval": {
       return "Needs approval";
-    case "blocked":
+    }
+    case "blocked": {
       return "Blocked";
-    case "running":
+    }
+    case "running": {
       return "Running…";
-    case "pending":
+    }
+    case "pending": {
       return "Not run";
+    }
   }
 };
 
@@ -51,31 +61,40 @@ export const outcomeLabel = (outcome: Outcome): string => {
     the transient/idle states (nothing worth explaining yet). */
 export const outcomeExplain = (outcome: Outcome): string | null => {
   switch (outcome) {
-    case "reconciled":
+    case "reconciled": {
       return "Cleared the 3-way match and posted to NetSuite.";
-    case "needs-approval":
+    }
+    case "needs-approval": {
       return "An exception routed this to a human before it can post.";
-    case "blocked":
+    }
+    case "blocked": {
       return "A control failed (duplicate); not posted, held for AP review.";
+    }
     case "running":
-    case "pending":
+    case "pending": {
       return null;
+    }
   }
 };
 
 /** Hex dot color per outcome (for the queue's leading status dot). */
 export const outcomeDot = (outcome: Outcome): string => {
   switch (outcome) {
-    case "reconciled":
+    case "reconciled": {
       return "#047857";
-    case "needs-approval":
+    }
+    case "needs-approval": {
       return "#B45309";
-    case "blocked":
+    }
+    case "blocked": {
       return "#B91C1C";
-    case "running":
+    }
+    case "running": {
       return "#4F46E5";
-    case "pending":
+    }
+    case "pending": {
       return "#D1D5DB";
+    }
   }
 };
 
@@ -92,6 +111,7 @@ export const outcomeDot = (outcome: Outcome): string => {
 export type ScenarioKind = "exception" | "blocked" | "clean";
 
 export const scenarioKind = (scenario: string | null): ScenarioKind => {
+  // eslint-disable-next-line custom/no-empty-string-fallback -- a null scenario legitimately has no label; "" matches no keyword and falls through to "clean".
   const s = (scenario ?? "").toLowerCase();
   if (s.includes("duplicate") || s.includes("already paid")) return "blocked";
   if (
@@ -107,16 +127,17 @@ export const scenarioKind = (scenario: string | null): ScenarioKind => {
 
 /** The badge tone + short label for a signposted scenario kind (queue, pre-run).
  *  `clean` returns null, clean rows stay unmarked so the marks draw the eye. */
-export const scenarioBadge = (
-  kind: ScenarioKind,
-): { tone: BadgeTone; label: string } | null => {
+export const scenarioBadge = (kind: ScenarioKind): { tone: BadgeTone; label: string } | null => {
   switch (kind) {
-    case "exception":
+    case "exception": {
       return { tone: "warn", label: "exception" };
-    case "blocked":
+    }
+    case "blocked": {
       return { tone: "danger", label: "blocked" };
-    case "clean":
+    }
+    case "clean": {
       return null;
+    }
   }
 };
 
@@ -126,19 +147,15 @@ export const scenarioBadge = (
  * the reason an AP reviewer actually wants. Null for a clean row (nothing to explain).
  */
 export const scenarioExplain = (scenario: string | null): string | null => {
+  // eslint-disable-next-line custom/no-empty-string-fallback -- a null scenario legitimately has no label; "" matches no keyword and returns null (nothing to explain).
   const s = (scenario ?? "").toLowerCase();
-  if (s.includes("already paid"))
-    return "A bill with this number is already posted in the ERP.";
-  if (s.includes("duplicate"))
-    return "This invoice number was already submitted in the queue.";
-  if (s.includes("price mismatch"))
-    return "Invoiced unit price is over the PO price.";
-  if (s.includes("quantity mismatch"))
-    return "Invoiced quantity exceeds what was received.";
+  if (s.includes("already paid")) return "A bill with this number is already posted in the ERP.";
+  if (s.includes("duplicate")) return "This invoice number was already submitted in the queue.";
+  if (s.includes("price mismatch")) return "Invoiced unit price is over the PO price.";
+  if (s.includes("quantity mismatch")) return "Invoiced quantity exceeds what was received.";
   if (s.includes("arithmetic") || s.includes("error"))
     return "A line's amount doesn't equal unit price times quantity.";
-  if (s.includes("not on po"))
-    return "A billed line isn't on the purchase order.";
+  if (s.includes("not on po")) return "A billed line isn't on the purchase order.";
   if (s.includes("inactive")) return "The ERP marks this vendor inactive.";
   return null;
 };
@@ -146,53 +163,71 @@ export const scenarioExplain = (scenario: string | null): string | null => {
 /** Map a trace step's status to a badge tone (for the timeline). */
 export const statusTone = (status: TraceStatus): BadgeTone => {
   switch (status) {
-    case "ok":
+    case "ok": {
       return "ok";
-    case "warn":
+    }
+    case "warn": {
       return "warn";
-    case "error":
+    }
+    case "error": {
       return "danger";
-    case "running":
+    }
+    case "running": {
       return "accent";
-    case "waiting":
+    }
+    case "waiting": {
       return "warn";
-    case "skipped":
+    }
+    case "skipped": {
       return "neutral";
+    }
   }
 };
 
 /** Hex color for a trace step's connector dot. */
 export const statusDot = (status: TraceStatus): string => {
   switch (status) {
-    case "ok":
+    case "ok": {
       return "#047857";
-    case "warn":
+    }
+    case "warn": {
       return "#B45309";
-    case "error":
+    }
+    case "error": {
       return "#B91C1C";
-    case "running":
+    }
+    case "running": {
       return "#4F46E5";
-    case "waiting":
+    }
+    case "waiting": {
       return "#B45309";
-    case "skipped":
+    }
+    case "skipped": {
       return "#D1D5DB";
+    }
   }
 };
 
 /** Human label for a pipeline stage. */
 export const stageLabel = (stage: TraceStage): string => {
   switch (stage) {
-    case "intake":
+    case "intake": {
       return "Intake";
-    case "matching":
+    }
+    case "matching": {
       return "Matching";
-    case "investigation":
+    }
+    case "investigation": {
       return "Investigation";
-    case "approval":
+    }
+    case "approval": {
       return "Approval";
-    case "reconciliation":
+    }
+    case "reconciliation": {
       return "Reconciliation";
-    case "pipeline":
+    }
+    case "pipeline": {
       return "Pipeline";
+    }
   }
 };

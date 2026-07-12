@@ -1,4 +1,4 @@
-import type { MatchResult, Investigation } from "@/lib/schema";
+import type { Investigation, MatchResult } from "@/lib/schema";
 
 /**
  * The reusable core of the exception investigation, shared by the workflow step
@@ -27,10 +27,7 @@ type AgentResult = {
 
 /** Anything that can run a prompt, the real Mastra Agent, or a test/eval fake. */
 export type InvestigatorAgent = {
-  generate: (
-    prompt: string,
-    options?: { requestContext?: unknown },
-  ) => Promise<AgentResult>;
+  generate: (prompt: string, options?: { requestContext?: unknown }) => Promise<AgentResult>;
 };
 
 /** The requestContext key the investigator's tools read the trusted vendor from. */
@@ -54,13 +51,15 @@ const finalText = (res: AgentResult): string => {
     const t = steps[i]?.text?.trim();
     if (t) return t;
   }
+  // eslint-disable-next-line custom/no-empty-string-fallback -- terminal fallback: no step and no res.text legitimately means the agent produced no closing text; "" is the correct empty result.
   return (res.text ?? "").trim();
 };
 
 /** Which tools the agent actually called, in order, de-duplicated. */
 const toolsUsedFrom = (res: AgentResult): string[] => {
   const names: string[] = [];
-  for (const call of res.toolCalls ?? []) {
+  const toolCalls = res.toolCalls ?? [];
+  for (const call of toolCalls) {
     const name = call.payload?.toolName;
     if (typeof name === "string" && !names.includes(name)) {
       names.push(name);
@@ -82,20 +81,19 @@ const toolsUsedFrom = (res: AgentResult): string[] => {
 export const classify = (text: string): Investigation["recommendation"] => {
   const t = text.toLowerCase();
   const lead = t.slice(0, 120);
-  const leadOvercharge =
-    /overcharge|over-charge|not legitimate|error|dispute/.test(lead);
-  const leadLegit = /legitimate|justified|in line|expected/.test(lead);
-  if (leadOvercharge && !leadLegit) return "likely_overcharge";
-  if (leadLegit && !leadOvercharge) return "likely_legitimate";
+  const isLeadOvercharge = /overcharge|over-charge|not legitimate|error|dispute/.test(lead);
+  const isLeadLegit = /legitimate|justified|in line|expected/.test(lead);
+  if (isLeadOvercharge && !isLeadLegit) return "likely_overcharge";
+  if (isLeadLegit && !isLeadOvercharge) return "likely_legitimate";
 
   // Ambiguous lead, fall back to weighing the whole text.
-  const legit = /legitimate|justified|in line|expected/.test(t);
-  const bad =
+  const isLegit = /legitimate|justified|in line|expected/.test(t);
+  const isBad =
     /overcharge|over-charge|no (notice|basis|contractual|surcharge)|typo|bill(ing)? (slip|error)/.test(
-      t,
+      t
     );
-  if (bad && !legit) return "likely_overcharge";
-  if (legit && !bad) return "likely_legitimate";
+  if (isBad && !isLegit) return "likely_overcharge";
+  if (isLegit && !isBad) return "likely_legitimate";
   return "unclear";
 };
 
@@ -110,7 +108,7 @@ export const runInvestigation = async (
   agent: InvestigatorAgent,
   match: MatchResult,
   vendor: string,
-  requestContext: unknown,
+  requestContext: unknown
 ): Promise<{ investigation: Investigation; toolsUsed: string[] } | null> => {
   const res = await agent.generate(investigationPrompt(match, vendor), {
     requestContext,

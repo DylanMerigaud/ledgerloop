@@ -1,10 +1,6 @@
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { NodeData } from "@/components/workflow-graph/node-data";
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { VERDICT_META } from "@/components/workflow-graph/visual-map";
 
 /** A gate decision button (Reject / Approve). When it carries the AI recommendation it
@@ -56,15 +52,11 @@ export const GateButton = ({
         <TooltipTrigger asChild>{btn}</TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[280px]">
           <span className="flex items-center gap-1.5 font-medium">
-            <span
-              className={`inline-block size-1.5 rounded-full ${meta.dot}`}
-            />
+            <span className={`inline-block size-1.5 rounded-full ${meta.dot}`} />
             AI: {meta.label}
           </span>
           {recommendation.rationale && (
-            <span className="mt-1 block text-muted">
-              {recommendation.rationale}
-            </span>
+            <span className="mt-1 block text-muted">{recommendation.rationale}</span>
           )}
         </TooltipContent>
       </Tooltip>

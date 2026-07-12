@@ -12,19 +12,11 @@
  */
 import { join } from "node:path";
 
-import {
-  AGENT_CASES,
-  EDIT_FIXTURE,
-  type AgentCase,
-} from "@/eval/edit-agent-cases";
-import {
-  runEditAgent,
-  type PlanModel,
-  type AgentEditResult,
-} from "@/lib/workflow-edit-agent";
-import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
+import { AGENT_CASES, type AgentCase, EDIT_FIXTURE } from "@/eval/edit-agent-cases";
+import { type AgentEditResult, type PlanModel, runEditAgent } from "@/lib/workflow-edit-agent";
+import { isActivatable, validateWorkflow } from "@/lib/workflow-validate";
 
-const dryRun = process.argv.includes("--dry-run");
+const isDryRun = process.argv.includes("--dry-run");
 
 /** The departments the agent may scope a gate to (the demo org's set). A live case
     naming one outside this list should make the planner clarify, not invent. */
@@ -42,11 +34,11 @@ const loadEnv = (): void => {
 
 /** A fake planner that returns the case's stub once, then nothing (loop ends). */
 const stubModel = (c: AgentCase): PlanModel => {
-  let called = false;
+  let isCalled = false;
   return {
     planOps: () => {
-      if (called) return Promise.resolve([]);
-      called = true;
+      if (isCalled) return Promise.resolve([]);
+      isCalled = true;
       return Promise.resolve(c.stub);
     },
   };
@@ -56,43 +48,39 @@ type Row = { id: string; pass: boolean; detail: string };
 
 const score = (c: AgentCase, r: AgentEditResult): Row => {
   const realOps = r.ops.filter((o) => o.op !== "none").length;
-  const sound = isActivatable(r.issues);
-  const enoughOps = realOps >= c.minOps;
-  const pass = sound && enoughOps;
+  const isSound = isActivatable(r.issues);
+  const isEnoughOps = realOps >= c.minOps;
+  const isPass = isSound && isEnoughOps;
   return {
     id: c.id,
-    pass,
-    detail: `${realOps} op(s), ${sound ? "sound" : `${r.issues.filter((i) => i.severity === "error").length} error(s)`}`,
+    pass: isPass,
+    detail: `${realOps} op(s), ${isSound ? "sound" : `${r.issues.filter((i) => i.severity === "error").length} error(s)`}`,
   };
 };
 
 const main = async (): Promise<void> => {
   loadEnv();
-  console.log(`edit-agent eval, ${dryRun ? "dry-run (no API)" : "live"}\n`);
+  console.log(`edit-agent eval, ${isDryRun ? "dry-run (no API)" : "live"}\n`);
 
-  if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
-    console.error(
-      "✖ Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.",
-    );
-    process.exit(1);
+  if (!isDryRun && !process.env.ANTHROPIC_API_KEY) {
+    throw new Error("Live mode needs ANTHROPIC_API_KEY. Use --dry-run offline.");
   }
 
   // The real planner loads lib/env; import it only for a live run.
   let liveModel: PlanModel | null = null;
-  if (!dryRun) {
+  if (!isDryRun) {
     const mod = await import("@/lib/workflow-edit-model");
     liveModel = mod.anthropicPlanModel;
   }
 
   // The fixture is sound to start (sanity) so any final error is the agent's doing.
   if (!isActivatable(validateWorkflow(EDIT_FIXTURE))) {
-    console.error("✖ The eval fixture itself isn't sound, fix the fixture.");
-    process.exit(1);
+    throw new Error("The eval fixture itself isn't sound, fix the fixture.");
   }
 
   const rows: Row[] = [];
   for (const c of AGENT_CASES) {
-    const model = dryRun ? stubModel(c) : (liveModel ?? stubModel(c));
+    const model = isDryRun ? stubModel(c) : (liveModel ?? stubModel(c));
     const result = await runEditAgent(model, EDIT_FIXTURE, c.instruction, {
       departments: EVAL_DEPARTMENTS,
       vendors: [],
@@ -105,8 +93,19 @@ const main = async (): Promise<void> => {
 
   const passed = rows.filter((r) => r.pass).length;
   console.log(`\n${passed}/${rows.length} sound`);
-  if (passed !== rows.length) process.exit(1);
+  if (passed !== rows.length) {
+    throw new Error(`${rows.length - passed} case(s) produced an unsound workflow.`);
+  }
   console.log("✓ Every instruction produced a sound workflow.");
 };
 
-void main();
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
+})();

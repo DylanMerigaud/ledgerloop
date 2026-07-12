@@ -3,11 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { WorkflowGraph } from "@/components/workflow-graph";
-import { resolvePath, type InvoiceContext } from "@/lib/approval-workflow";
-import {
-  DEFAULT_APPROVAL_POLICY,
-  workflowFromPolicy,
-} from "@/lib/client-profile";
+import { type InvoiceContext, resolvePath } from "@/lib/approval-workflow";
+import { DEFAULT_APPROVAL_POLICY, workflowFromPolicy } from "@/lib/client-profile";
 
 /**
  * A deterministic render harness for the graph LAYOUT, no model calls, so the e2e
@@ -41,9 +38,8 @@ const LinearLit = () => {
   const [statuses, setStatuses] = useState<Record<string, string>>({});
   useEffect(() => {
     const t = setTimeout(
-      () =>
-        setStatuses({ "manager-review": "approved", "post-netsuite": "done" }),
-      1200,
+      () => setStatuses({ "manager-review": "approved", "post-netsuite": "done" }),
+      1200
     );
     return () => clearTimeout(t);
   }, []);

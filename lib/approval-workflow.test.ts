@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  ApprovalWorkflow,
-  type ApprovalWorkflow as TApprovalWorkflow,
   type ApprovalStep,
-  type Condition,
+  ApprovalWorkflow,
   approversOf,
-  evaluateCondition,
+  type Condition,
   describeCondition,
+  evaluateCondition,
   humanizeCondition,
-  resolvePath,
   type InvoiceContext,
+  resolvePath,
+  type ApprovalWorkflow as TApprovalWorkflow,
 } from "@/lib/approval-workflow";
 
 /**
@@ -67,10 +67,7 @@ test("vendor / currency / matchType leaves match on equality", () => {
     op: "==",
     value: "Severn Steelworks",
   };
-  assert.equal(
-    evaluateCondition(vendor, ctx({ vendor: "Severn Steelworks" })),
-    true,
-  );
+  assert.equal(evaluateCondition(vendor, ctx({ vendor: "Severn Steelworks" })), true);
   assert.equal(evaluateCondition(vendor, ctx({ vendor: "Atlas" })), false);
 
   const cur: Condition = {
@@ -99,14 +96,8 @@ test("exceptionCode is set membership: == has the flag, != lacks it", () => {
     op: "==",
     value: "vendor_inactive",
   };
-  assert.equal(
-    evaluateCondition(has, ctx({ exceptionCodes: ["vendor_inactive"] })),
-    true,
-  );
-  assert.equal(
-    evaluateCondition(has, ctx({ exceptionCodes: ["price_variance"] })),
-    false,
-  );
+  assert.equal(evaluateCondition(has, ctx({ exceptionCodes: ["vendor_inactive"] })), true);
+  assert.equal(evaluateCondition(has, ctx({ exceptionCodes: ["price_variance"] })), false);
   assert.equal(evaluateCondition(has, ctx({ exceptionCodes: [] })), false);
 
   const lacks: Condition = {
@@ -116,26 +107,18 @@ test("exceptionCode is set membership: == has the flag, != lacks it", () => {
     value: "vendor_inactive",
   };
   assert.equal(evaluateCondition(lacks, ctx({ exceptionCodes: [] })), true);
-  assert.equal(
-    evaluateCondition(lacks, ctx({ exceptionCodes: ["vendor_inactive"] })),
-    false,
-  );
+  assert.equal(evaluateCondition(lacks, ctx({ exceptionCodes: ["vendor_inactive"] })), false);
 });
 
+const h = (c: Condition) => humanizeCondition(c);
+
 test("humanizeCondition reads the new levers plainly", () => {
-  const h = (c: Condition) => humanizeCondition(c);
   assert.equal(
     h({ kind: "leaf", field: "vendor", op: "==", value: "Severn Steelworks" }),
-    "Vendor: Severn Steelworks",
+    "Vendor: Severn Steelworks"
   );
-  assert.equal(
-    h({ kind: "leaf", field: "currency", op: "==", value: "EUR" }),
-    "EUR only",
-  );
-  assert.equal(
-    h({ kind: "leaf", field: "matchType", op: "==", value: "two_way" }),
-    "2-way match",
-  );
+  assert.equal(h({ kind: "leaf", field: "currency", op: "==", value: "EUR" }), "EUR only");
+  assert.equal(h({ kind: "leaf", field: "matchType", op: "==", value: "two_way" }), "2-way match");
   assert.equal(
     h({
       kind: "leaf",
@@ -143,7 +126,7 @@ test("humanizeCondition reads the new levers plainly", () => {
       op: "==",
       value: "vendor_inactive",
     }),
-    "Has vendor inactive flag",
+    "Has vendor inactive flag"
   );
 });
 
@@ -154,10 +137,7 @@ test("ordering ops on a string are false, not a surprise sort", () => {
     op: ">",
     value: "IT",
   };
-  assert.equal(
-    evaluateCondition(cond, ctx({ department: "Marketing" })),
-    false,
-  );
+  assert.equal(evaluateCondition(cond, ctx({ department: "Marketing" })), false);
 });
 
 test("all requires every sub-condition; any requires one", () => {
@@ -170,24 +150,12 @@ test("all requires every sub-condition; any requires one", () => {
   } as const;
 
   const all: Condition = { kind: "all", conditions: [big, it] };
-  assert.equal(
-    evaluateCondition(all, ctx({ amount: 9000, department: "IT" })),
-    true,
-  );
-  assert.equal(
-    evaluateCondition(all, ctx({ amount: 9000, department: "Finance" })),
-    false,
-  );
+  assert.equal(evaluateCondition(all, ctx({ amount: 9000, department: "IT" })), true);
+  assert.equal(evaluateCondition(all, ctx({ amount: 9000, department: "Finance" })), false);
 
   const any: Condition = { kind: "any", conditions: [big, it] };
-  assert.equal(
-    evaluateCondition(any, ctx({ amount: 100, department: "IT" })),
-    true,
-  );
-  assert.equal(
-    evaluateCondition(any, ctx({ amount: 100, department: "Finance" })),
-    false,
-  );
+  assert.equal(evaluateCondition(any, ctx({ amount: 100, department: "IT" })), true);
+  assert.equal(evaluateCondition(any, ctx({ amount: 100, department: "Finance" })), false);
 });
 
 test("nested combinators evaluate correctly", () => {
@@ -199,30 +167,21 @@ test("nested combinators evaluate correctly", () => {
       {
         kind: "any",
         conditions: [
-          { kind: "leaf", field: "amount", op: ">", value: 10000 },
+          { kind: "leaf", field: "amount", op: ">", value: 10_000 },
           { kind: "leaf", field: "variancePct", op: ">=", value: 0.1 },
         ],
       },
     ],
   };
-  assert.equal(
-    evaluateCondition(cond, ctx({ verdict: "exception", variancePct: 0.12 })),
-    true,
-  );
-  assert.equal(
-    evaluateCondition(cond, ctx({ verdict: "exception", amount: 500 })),
-    false,
-  );
-  assert.equal(
-    evaluateCondition(cond, ctx({ verdict: "clean", amount: 99999 })),
-    false,
-  );
+  assert.equal(evaluateCondition(cond, ctx({ verdict: "exception", variancePct: 0.12 })), true);
+  assert.equal(evaluateCondition(cond, ctx({ verdict: "exception", amount: 500 })), false);
+  assert.equal(evaluateCondition(cond, ctx({ verdict: "clean", amount: 99_999 })), false);
 });
 
 test("describeCondition renders a readable string", () => {
   assert.equal(
     describeCondition({ kind: "leaf", field: "amount", op: ">", value: 5000 }),
-    "amount > $5,000",
+    "amount > $5,000"
   );
   assert.equal(
     describeCondition({
@@ -232,7 +191,7 @@ test("describeCondition renders a readable string", () => {
         { kind: "leaf", field: "department", op: "==", value: "IT" },
       ],
     }),
-    "amount > $5,000 and department == IT",
+    "amount > $5,000 and department == IT"
   );
 });
 
@@ -312,10 +271,11 @@ const gate = (over: Partial<ApprovalStep> = {}): ApprovalStep => ({
 });
 
 test("approversOf: primary then the extras, in order", () => {
-  assert.deepEqual(
-    approversOf(gate({ approvers: ["Cameron Diaz", "Sam Patel"] })),
-    ["Jordan Ellis", "Cameron Diaz", "Sam Patel"],
-  );
+  assert.deepEqual(approversOf(gate({ approvers: ["Cameron Diaz", "Sam Patel"] })), [
+    "Jordan Ellis",
+    "Cameron Diaz",
+    "Sam Patel",
+  ]);
 });
 
 test("approversOf: just the primary when there are no extras", () => {
@@ -323,10 +283,9 @@ test("approversOf: just the primary when there are no extras", () => {
 });
 
 test("approversOf: drops an unresolved primary but keeps the extras", () => {
-  assert.deepEqual(
-    approversOf(gate({ approverName: null, approvers: ["Cameron Diaz"] })),
-    ["Cameron Diaz"],
-  );
+  assert.deepEqual(approversOf(gate({ approverName: null, approvers: ["Cameron Diaz"] })), [
+    "Cameron Diaz",
+  ]);
 });
 
 test("approversOf: empty when unresolved with no extras", () => {
@@ -389,7 +348,7 @@ test("resolvePath: low-variance invoice bypasses Director to a linear Manager â†
   const pruned = resolvePath(diamond(), ctx({ variancePct: 0.09 }));
   assert.deepEqual(
     pruned.steps.map((s) => s.id),
-    ["manager", "post"],
+    ["manager", "post"]
   );
   // Manager's edge to the dropped director rewires to director's target (post),
   // deduped against manager's own direct edge to post. No dangling 'director'.

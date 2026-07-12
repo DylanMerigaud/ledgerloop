@@ -1,9 +1,9 @@
 import {
-  type ApprovalWorkflow,
-  type WorkflowStep,
   type ApprovalStep,
-  type Condition,
+  type ApprovalWorkflow,
   approversOf,
+  type Condition,
+  type WorkflowStep,
 } from "@/lib/approval-workflow";
 
 /**
@@ -38,7 +38,7 @@ export type WorkflowIssue = {
 };
 
 /** Spend above this (in a path's amount gate) is "high value" → wants 2 approvers. */
-export const MATERIALITY = 25000;
+export const MATERIALITY = 25_000;
 
 export const validateWorkflow = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   return [
@@ -57,30 +57,28 @@ export const validateWorkflow = (wf: ApprovalWorkflow): WorkflowIssue[] => {
 
 /** True when the workflow has no errors (warnings are allowed). */
 export const isActivatable = (issues: WorkflowIssue[]): boolean =>
-  !issues.some((i) => i.severity === "error");
+  issues.every((i) => i.severity !== "error");
 
 /* ── condition helpers ──────────────────────────────────────────────────────── */
 
 /** Flatten a condition tree into its leaves (ignores all/any structure). */
 const leaves = (c: Condition): Extract<Condition, { kind: "leaf" }>[] => {
   if (c.kind === "leaf") return [c];
-  if (c.kind === "all" || c.kind === "any") return c.conditions.flatMap(leaves);
+  if (c.kind === "all" || c.kind === "any") return c.conditions.flatMap((cond) => leaves(cond));
   return [];
 };
 
 /** The amount lower-bound a step requires (from a `>`/`>=` amount leaf), or null. */
 const amountFloor = (step: WorkflowStep): number | null => {
   const amt = leaves(step.when).find(
-    (l) => l.field === "amount" && (l.op === ">" || l.op === ">="),
+    (l) => l.field === "amount" && (l.op === ">" || l.op === ">=")
   );
   return amt && typeof amt.value === "number" ? amt.value : null;
 };
 
 /** The department a step is scoped to (from a `department ==` leaf), or null. */
 const departmentScope = (step: WorkflowStep): string | null => {
-  const dep = leaves(step.when).find(
-    (l) => l.field === "department" && l.op === "==",
-  );
+  const dep = leaves(step.when).find((l) => l.field === "department" && l.op === "==");
   return dep && typeof dep.value === "string" ? dep.value : null;
 };
 
@@ -103,7 +101,8 @@ const reachableFromRoots = (wf: ApprovalWorkflow): Set<string> => {
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     if (seen.has(id)) continue;
     seen.add(id);
-    for (const n of succ.get(id) ?? []) queue.push(n);
+    const succs = succ.get(id) ?? [];
+    for (const n of succs) queue.push(n);
   }
   return seen;
 };
@@ -135,7 +134,7 @@ const pathsToPosts = (wf: ApprovalWorkflow): string[][] => {
 const danglingEdges = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   const ids = new Set(wf.steps.map((s) => s.id));
   const bad = wf.steps.flatMap((s) =>
-    s.next.filter((n) => !ids.has(n)).map((n) => ({ from: s.id, to: n })),
+    s.next.filter((n) => !ids.has(n)).map((n) => ({ from: s.id, to: n }))
   );
   return bad.map((b) => ({
     severity: "error",
@@ -169,16 +168,14 @@ const rootsValid = (wf: ApprovalWorkflow): WorkflowIssue[] => {
 const cycleFree = (wf: ApprovalWorkflow): WorkflowIssue[] => {
   // Kahn: if not all nodes get emitted, there's a cycle.
   const indeg = new Map(wf.steps.map((s) => [s.id, 0]));
-  for (const s of wf.steps)
-    for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
-  const queue = [...indeg.entries()]
-    .filter(([, d]) => d === 0)
-    .map(([id]) => id);
+  for (const s of wf.steps) for (const n of s.next) indeg.set(n, (indeg.get(n) ?? 0) + 1);
+  const queue = [...indeg].filter(([, d]) => d === 0).map(([id]) => id);
   const byId = new Map(wf.steps.map((s) => [s.id, s]));
   let emitted = 0;
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     emitted++;
-    for (const n of byId.get(id)?.next ?? []) {
+    const nextIds = byId.get(id)?.next ?? [];
+    for (const n of nextIds) {
       const d = (indeg.get(n) ?? 0) - 1;
       indeg.set(n, d);
       if (d === 0) queue.push(n);
@@ -208,9 +205,7 @@ const allReachable = (wf: ApprovalWorkflow): WorkflowIssue[] => {
 };
 
 const postReached = (wf: ApprovalWorkflow): WorkflowIssue[] => {
-  const posts = wf.steps.filter(
-    (s) => s.kind === "integration" && s.next.length === 0,
-  );
+  const posts = wf.steps.filter((s) => s.kind === "integration" && s.next.length === 0);
   if (posts.length === 0)
     return [
       {
@@ -252,16 +247,17 @@ const duplicateGates = (wf: ApprovalWorkflow): WorkflowIssue[] => {
     for (let j = i + 1; j < gates.length; j++) {
       const a = gates[i];
       const b = gates[j];
-      if (!a || !b) continue;
-      const sameDept = departmentScope(a) === departmentScope(b);
-      const sameRole = a.approverTitle === b.approverTitle;
-      if (sameRole && sameDept) {
-        out.push({
-          severity: "warning",
-          code: "duplicate-gate",
-          message: `"${a.label}" and "${b.label}" overlap (same role and scope), merge them or narrow one.`,
-          stepIds: [a.id, b.id],
-        });
+      if (a && b) {
+        const isSameDept = departmentScope(a) === departmentScope(b);
+        const isSameRole = a.approverTitle === b.approverTitle;
+        if (isSameRole && isSameDept) {
+          out.push({
+            severity: "warning",
+            code: "duplicate-gate",
+            message: `"${a.label}" and "${b.label}" overlap (same role and scope), merge them or narrow one.`,
+            stepIds: [a.id, b.id],
+          });
+        }
       }
     }
   }
@@ -275,20 +271,21 @@ const segregationOfDuties = (wf: ApprovalWorkflow): WorkflowIssue[] => {
     const seen = new Map<string, string>(); // person → first step label
     for (const id of path) {
       const s = byId.get(id);
-      if (!s || s.kind !== "approval") continue;
-      // Every approver on the gate counts, a co-approver who already signed an
-      // earlier gate on this path breaks segregation just as a primary would.
-      for (const person of approversOf(s)) {
-        const prev = seen.get(person);
-        if (prev) {
-          out.push({
-            severity: "warning",
-            code: "segregation-of-duties",
-            message: `${person} approves more than once on the same path ("${prev}" and "${s.label}"), a second person should sign off.`,
-            stepIds: [id],
-          });
-        } else {
-          seen.set(person, s.label);
+      if (s && s.kind === "approval") {
+        // Every approver on the gate counts, a co-approver who already signed an
+        // earlier gate on this path breaks segregation just as a primary would.
+        for (const person of approversOf(s)) {
+          const prev = seen.get(person);
+          if (prev) {
+            out.push({
+              severity: "warning",
+              code: "segregation-of-duties",
+              message: `${person} approves more than once on the same path ("${prev}" and "${s.label}"), a second person should sign off.`,
+              stepIds: [id],
+            });
+          } else {
+            seen.set(person, s.label);
+          }
         }
       }
     }

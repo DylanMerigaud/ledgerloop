@@ -14,9 +14,7 @@ export const QueryProvider = ({ children }: { children: React.ReactNode }) => {
     () =>
       new QueryClient({
         defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
-      }),
+      })
   );
-  return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };

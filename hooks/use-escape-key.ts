@@ -8,14 +8,14 @@ import { useEventCallback } from "@/hooks/use-event-callback";
  * re-implement the keydown listener + cleanup. The handler is wrapped so a fresh
  * closure each render doesn't re-subscribe; the listener attaches only while active.
  */
-export const useEscapeKey = (active: boolean, onEscape: () => void): void => {
+export const useEscapeKey = (isActive: boolean, onEscape: () => void): void => {
   const handler = useEventCallback(onEscape);
   useEffect(() => {
-    if (!active) return;
+    if (!isActive) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") handler();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [active, handler]);
+  }, [isActive, handler]);
 };

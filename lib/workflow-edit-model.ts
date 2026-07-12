@@ -1,18 +1,19 @@
 import type Anthropic from "@anthropic-ai/sdk";
 
+import type { PlanModel } from "@/lib/workflow-edit-agent";
+
 import { anthropic } from "@/lib/anthropic";
 import { type ApprovalWorkflow as TWorkflow } from "@/lib/approval-workflow";
 import {
-  WORKFLOW_EDIT_SYSTEM_PROMPT,
-  WORKFLOW_PLAN_SYSTEM_PROMPT,
+  type EditModel,
   editPrompt,
-  planPrompt,
+  jsonFromModelText,
   parseEditOp,
   parseEditPlan,
-  jsonFromModelText,
-  type EditModel,
+  planPrompt,
+  WORKFLOW_EDIT_SYSTEM_PROMPT,
+  WORKFLOW_PLAN_SYSTEM_PROMPT,
 } from "@/lib/workflow-edit";
-import type { PlanModel } from "@/lib/workflow-edit-agent";
 
 /**
  * The real conversational-edit model, a structured-output Anthropic call that maps

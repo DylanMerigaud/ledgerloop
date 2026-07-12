@@ -1,6 +1,7 @@
+import type { RouterClient } from "@orpc/server";
+
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
-import type { RouterClient } from "@orpc/server";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 
 import type { Router } from "@/lib/orpc/router";
@@ -13,10 +14,7 @@ import type { Router } from "@/lib/orpc/router";
  */
 const link = new RPCLink({
   // Relative to the current origin in the browser; absolute on the server (SSR).
-  url:
-    typeof window === "undefined"
-      ? "http://localhost/rpc"
-      : `${window.location.origin}/rpc`,
+  url: typeof window === "undefined" ? "http://localhost/rpc" : `${window.location.origin}/rpc`,
 });
 
 export const client: RouterClient<Router> = createORPCClient(link);

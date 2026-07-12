@@ -1,18 +1,6 @@
-import {
-  pgTable,
-  text,
-  jsonb,
-  timestamp,
-  integer,
-  numeric,
-  index,
-} from "drizzle-orm/pg-core";
+import { index, integer, jsonb, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-import type {
-  LineItem,
-  GoodsReceiptLine,
-  TraceEvent,
-} from "@/lib/schema-types";
+import type { GoodsReceiptLine, LineItem, TraceEvent } from "@/lib/schema-types";
 
 /**
  * Drizzle schema, the four tables the spec calls for:
@@ -51,9 +39,7 @@ export const invoices = pgTable("invoices", {
   total: numeric("total", { mode: "number" }).notNull(),
   /** Demo metadata: a short label for the queue (e.g. "Price mismatch"). Not business data. */
   scenario: text("scenario"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const purchaseOrders = pgTable("purchase_orders", {
@@ -66,9 +52,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   /** The buying department, so the approval workflow can route a department review.
       Defaults to '' (no department), a PO without one routes normally. */
   department: text("department").notNull().default(""),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const goodsReceipts = pgTable("goods_receipts", {
@@ -77,9 +61,7 @@ export const goodsReceipts = pgTable("goods_receipts", {
   poNumber: text("po_number").notNull(),
   receivedDate: text("received_date").notNull(),
   lineItems: jsonb("line_items").$type<GoodsReceiptLine[]>().notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 /**
@@ -104,11 +86,9 @@ export const agentRuns = pgTable(
     trace: jsonb("trace").$type<TraceEvent[]>().notNull(),
     durationMs: integer("duration_ms").notNull(),
     model: text("model").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("agent_runs_invoice_idx").on(t.invoiceNumber)],
+  (t) => [index("agent_runs_invoice_idx").on(t.invoiceNumber)]
 );
 
 /** Row types inferred from the table definitions (select shape). */

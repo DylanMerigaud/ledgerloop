@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react";
+import { type RefObject, useEffect } from "react";
 
 import { useEventCallback } from "@/hooks/use-event-callback";
 
@@ -11,22 +11,17 @@ import { useEventCallback } from "@/hooks/use-event-callback";
  */
 export const useClickOutside = (
   ref: RefObject<HTMLElement | null>,
-  active: boolean,
-  onOutside: () => void,
+  isActive: boolean,
+  onOutside: () => void
 ): void => {
   const handler = useEventCallback(onOutside);
   useEffect(() => {
-    if (!active) return;
+    if (!isActive) return;
     const onDown = (e: MouseEvent) => {
       const target = e.target;
-      if (
-        target instanceof Node &&
-        ref.current &&
-        !ref.current.contains(target)
-      )
-        handler();
+      if (target instanceof Node && ref.current && !ref.current.contains(target)) handler();
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [ref, active, handler]);
+  }, [ref, isActive, handler]);
 };

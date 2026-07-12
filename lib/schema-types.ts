@@ -8,5 +8,5 @@
  * while still sharing one source of truth for the shapes. (Other consumers import
  * their stage types straight from `lib/schema` / `lib/trace`.)
  */
-export type { LineItem, GoodsReceiptLine } from "./schema";
+export type { GoodsReceiptLine, LineItem } from "./schema";
 export type { TraceEvent } from "./trace";

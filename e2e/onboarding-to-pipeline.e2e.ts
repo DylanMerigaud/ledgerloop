@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * The flagship loop, through the REAL browser + backend: derive a workflow from the
@@ -20,20 +20,22 @@ import { test, expect, type Page } from "@playwright/test";
 const DISCOVERY_TIMEOUT = 90_000; // a live discovery model call + assembly
 const RUN_TIMEOUT = 40_000;
 
-const step = (page: Page, stage: string) =>
-  page.locator(`[data-testid="trace-step-${stage}"]`);
+const step = (page: Page, stage: string) => page.locator(`[data-testid="trace-step-${stage}"]`);
 
 /** The trace lives in a drawer over the graph; open it for trace asserts. */
-const openTrace = (page: Page) =>
-  page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
+const openTrace = (page: Page) => page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
 const closeTrace = async (page: Page) => {
   const close = page.getByTestId("trace-close");
-  if (await close.isVisible().catch(() => false)) await close.click();
+  let isCloseVisible: boolean;
+  try {
+    isCloseVisible = await close.isVisible();
+  } catch {
+    isCloseVisible = false; // locator resolution can race a teardown, treat as not shown
+  }
+  if (isCloseVisible) await close.click();
 };
 
-test("a derived workflow drives the run, department gate and all", async ({
-  page,
-}) => {
+test("a derived workflow drives the run, department gate and all", async ({ page }) => {
   await page.goto("/");
 
   // 1. Discover from the HRIS (recorded fixture) on the "Build the workflow" tab.
@@ -69,18 +71,13 @@ test("a derived workflow drives the run, department gate and all", async ({
   await closeTrace(page);
 
   // 5. Approve the Product gate on its node + submit → it posts.
-  await page
-    .getByTestId("graph-pane")
-    .getByTestId("gate-approve-department-review")
-    .click();
+  await page.getByTestId("graph-pane").getByTestId("gate-approve-department-review").click();
   await page.getByTestId("submit-decisions").click();
   await expect(page.getByTestId("approval-gate")).toHaveCount(0, {
     timeout: RUN_TIMEOUT,
   });
   await openTrace(page);
-  await expect(step(page, "reconciliation")).toHaveAttribute(
-    "data-status",
-    "ok",
-    { timeout: RUN_TIMEOUT },
-  );
+  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "ok", {
+    timeout: RUN_TIMEOUT,
+  });
 });

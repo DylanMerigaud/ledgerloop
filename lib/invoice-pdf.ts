@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
+import { PDFDocument, type PDFFont, rgb, StandardFonts } from "pdf-lib";
 
 import type { Invoice } from "@/lib/schema";
 
@@ -29,10 +29,12 @@ const money = (n: number, currency: string): string => {
   );
 };
 
+/** The x offset that right-aligns text `s` (in font `f` at `size`) to `xRight`. */
+const rightOf = (s: string, f: PDFFont, size: number, xRight: number): number =>
+  xRight - f.widthOfTextAtSize(s, size);
+
 /** Returns the invoice as PDF bytes (Uint8Array). */
-export const renderInvoicePdf = async (
-  invoice: Invoice,
-): Promise<Uint8Array> => {
+export const renderInvoicePdf = async (invoice: Invoice): Promise<Uint8Array> => {
   const doc = await PDFDocument.create();
   const page = doc.addPage([PAGE_W, PAGE_H]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -42,28 +44,12 @@ export const renderInvoicePdf = async (
   const line = rgb(0.85, 0.85, 0.85);
 
   // y is measured from the TOP here for readability; convert on draw.
-  const draw = (
-    s: string,
-    x: number,
-    yTop: number,
-    f: PDFFont = font,
-    size = 10,
-    color = ink,
-  ) => page.drawText(s, { x, y: PAGE_H - yTop, font: f, size, color });
-
-  const rightOf = (s: string, f: PDFFont, size: number, xRight: number) =>
-    xRight - f.widthOfTextAtSize(s, size);
+  const draw = (s: string, x: number, yTop: number, f: PDFFont = font, size = 10, color = ink) =>
+    page.drawText(s, { x, y: PAGE_H - yTop, font: f, size, color });
 
   // ── Header ────────────────────────────────────────────────────────────────
   draw(invoice.vendor, MARGIN, MARGIN + 6, bold, 18);
-  draw(
-    "INVOICE",
-    rightOf("INVOICE", bold, 18, PAGE_W - MARGIN),
-    MARGIN + 6,
-    bold,
-    18,
-    muted,
-  );
+  draw("INVOICE", rightOf("INVOICE", bold, 18, PAGE_W - MARGIN), MARGIN + 6, bold, 18, muted);
 
   // ── Meta block ──────────────────────────────────────────────────────────────
   let y = MARGIN + 56;
@@ -137,9 +123,7 @@ export const renderInvoicePdf = async (
 };
 
 /** Render and return base64, the form the vision model's `document` block wants. */
-export const renderInvoicePdfBase64 = async (
-  invoice: Invoice,
-): Promise<string> => {
+export const renderInvoicePdfBase64 = async (invoice: Invoice): Promise<string> => {
   const bytes = await renderInvoicePdf(invoice);
   return Buffer.from(bytes).toString("base64");
 };

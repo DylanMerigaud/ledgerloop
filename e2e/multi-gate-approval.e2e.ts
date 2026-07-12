@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * Per-gate approve/reject across a PARALLEL wave, end to end in the real browser.
@@ -20,30 +20,30 @@ const RUN_TIMEOUT = 30_000;
 const node = (page: Page, id: string) =>
   page.getByTestId("graph-pane").getByTestId(`graph-node-${id}`);
 
-const step = (page: Page, stage: string) =>
-  page.locator(`[data-testid="trace-step-${stage}"]`);
+const step = (page: Page, stage: string) => page.locator(`[data-testid="trace-step-${stage}"]`);
 
 /** The trace lives in a drawer over the graph; open it for trace-step asserts. */
-const openTrace = (page: Page) =>
-  page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
+const openTrace = (page: Page) => page.getByTestId("view-trace").click({ timeout: RUN_TIMEOUT });
 /** Close the drawer (the gate decision is on the canvas behind it). */
 const closeTrace = async (page: Page) => {
   const close = page.getByTestId("trace-close");
-  if (await close.isVisible().catch(() => false)) await close.click();
+  let isCloseVisible: boolean;
+  try {
+    isCloseVisible = await close.isVisible();
+  } catch {
+    isCloseVisible = false; // locator resolution can race a teardown, treat as not shown
+  }
+  if (isCloseVisible) await close.click();
 };
 
-test("two parallel gates: reject one, approve the other → bill blocked", async ({
-  page,
-}) => {
+test("two parallel gates: reject one, approve the other → bill blocked", async ({ page }) => {
   await page.goto("/");
 
   // 1. Derive the workflow from the org (parallel roots: manager + department).
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
   // Discovery done once the derived workflow has rendered its gates (scope to the
   // VISIBLE onboarding graph; both tabs stay mounted and share the workflow).
-  await expect(
-    page.getByTestId("graph-node-manager-review").locator("visible=true"),
-  ).toBeVisible({
+  await expect(page.getByTestId("graph-node-manager-review").locator("visible=true")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 
@@ -60,28 +60,19 @@ test("two parallel gates: reject one, approve the other → bill blocked", async
   await expect(node(page, "department-review")).toBeVisible();
   // The trace shows reconciliation waiting; nothing posted yet.
   await openTrace(page);
-  await expect(step(page, "reconciliation")).toHaveAttribute(
-    "data-status",
-    "waiting",
-  );
+  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "waiting");
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
   await closeTrace(page);
 
   // 4. Decide each gate independently on its node: reject manager, approve department.
-  await node(page, "manager-review")
-    .getByTestId("gate-reject-manager-review")
-    .click();
-  await node(page, "department-review")
-    .getByTestId("gate-approve-department-review")
-    .click();
+  await node(page, "manager-review").getByTestId("gate-reject-manager-review").click();
+  await node(page, "department-review").getByTestId("gate-approve-department-review").click();
 
   // 5. Submit the wave → the bill is BLOCKED (reject wins), nothing posts.
   await page.getByTestId("submit-decisions").click();
   await openTrace(page);
-  await expect(step(page, "reconciliation")).toHaveAttribute(
-    "data-status",
-    "error",
-    { timeout: RUN_TIMEOUT },
-  );
+  await expect(step(page, "reconciliation")).toHaveAttribute("data-status", "error", {
+    timeout: RUN_TIMEOUT,
+  });
   await expect(page.getByText(/NETSUITE-BILL-/)).toHaveCount(0);
 });

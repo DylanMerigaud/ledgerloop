@@ -3,19 +3,15 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
+import type { ApprovalWorkflow } from "@/lib/approval-workflow";
+
 import { Badge } from "@/components/ui/badge";
-import {
-  BambooHrIcon,
-  SlackIcon,
-  NetSuiteIcon,
-  JiraIcon,
-} from "@/components/ui/brand-icon";
+import { BambooHrIcon, JiraIcon, NetSuiteIcon, SlackIcon } from "@/components/ui/brand-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, Eyebrow } from "@/components/ui/card";
 import { WorkflowEditor } from "@/components/workflow-editor";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { useClickOutside } from "@/hooks/use-click-outside";
-import type { ApprovalWorkflow } from "@/lib/approval-workflow";
 import { orpc } from "@/lib/orpc/client";
 import { type OnboardingResult, type OrgEmployee } from "@/lib/orpc/schemas";
 
@@ -71,7 +67,7 @@ export const Onboarding = ({
           status: "error",
           message: err instanceof Error ? err.message : "Discovery failed.",
         }),
-    }),
+    })
   );
   const discover = () => discovery.mutate({});
 
@@ -81,18 +77,16 @@ export const Onboarding = ({
       <Card className="flex max-h-[80vh] flex-col overflow-hidden lg:max-h-none">
         <CardHeader>
           <CardTitle>HRIS discovery</CardTitle>
-          {state.status === "done" && (
-            <Badge tone="neutral">{state.data.source}</Badge>
-          )}
+          {state.status === "done" && <Badge tone="neutral">{state.data.source}</Badge>}
         </CardHeader>
         <div className="scrollbar-slim flex flex-1 flex-col gap-4 overflow-y-auto p-5">
           {/* The pitch is only useful BEFORE a run, once results are in, it just
               repeats what the panel now shows, so drop it. */}
           {state.status !== "done" && (
             <p className="text-[13px] leading-relaxed text-muted">
-              Point the agent at the client&apos;s HR system. It reads the org
-              chart, derives who signs off on what (resolved to real people),
-              and flags the data issues to fix before going live.
+              Point the agent at the client&apos;s HR system. It reads the org chart, derives who
+              signs off on what (resolved to real people), and flags the data issues to fix before
+              going live.
             </p>
           )}
           <div>
@@ -236,8 +230,8 @@ const WhatCanIChange = ({
       {open && (
         <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl bg-surface p-2 shadow-lift ring-1 ring-inset ring-line">
           <p className="px-2 pb-1.5 pt-1 text-[11px] leading-snug text-faint">
-            Describe a change in plain language. It proposes a rewrite and you
-            review the diff before anything applies.
+            Describe a change in plain language. It proposes a rewrite and you review the diff
+            before anything applies.
           </p>
           <ul className="space-y-0.5">
             {EDIT_ACTIONS.map((a) => (
@@ -249,9 +243,7 @@ const WhatCanIChange = ({
                   {a.icon}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[12.5px] font-medium text-ink">
-                    {a.title}
-                  </span>
+                  <span className="block text-[12.5px] font-medium text-ink">{a.title}</span>
                   <span className="block text-[11px] italic leading-snug text-faint">
                     {a.example}
                   </span>
@@ -283,21 +275,13 @@ const WhatCanIChange = ({
 
 /** One routing lever in the "what can I change" doc: its name plus either a hint or
     the real values present (the latter truncated so a long vendor list stays tidy). */
-const Lever = ({
-  name,
-  hint,
-  values,
-}: {
-  name: string;
-  hint?: string;
-  values?: string[];
-}) => {
+const Lever = ({ name, hint, values }: { name: string; hint?: string; values?: string[] }) => {
   const shown = values
     ? values.length === 0
       ? "(none)"
-      : values.slice(0, 4).join(", ") +
-        (values.length > 4 ? `, +${values.length - 4}` : "")
-    : (hint ?? "");
+      : values.slice(0, 4).join(", ") + (values.length > 4 ? `, +${values.length - 4}` : "")
+    : // eslint-disable-next-line custom/no-empty-string-fallback -- display fallback: a lever with neither values nor a hint renders blank, "" is the intended empty text.
+      (hint ?? "");
   return (
     <div className="flex gap-2 text-[10.5px] leading-snug">
       <span className="shrink-0 font-mono font-medium text-ink">{name}</span>
@@ -312,11 +296,9 @@ const Lever = ({
     dropped. */
 const departmentsOf = (employees: OrgEmployee[]): string[] => {
   const set = new Set(
-    employees
-      .map((e) => e.department.trim())
-      .filter((d) => d.length > 0 && d !== "Company"),
+    employees.map((e) => e.department.trim()).filter((d) => d.length > 0 && d !== "Company")
   );
-  return [...set].sort();
+  return [...set].toSorted((a, b) => a.localeCompare(b));
 };
 
 /** Initials for an avatar chip ("Riley Carter" → "RC"). */
@@ -346,9 +328,7 @@ const OrgTree = ({
   // Flag exactly the people an issue is ABOUT (by subject name), not anyone merely
   // mentioned in a note.
   const flaggedNames = new Set(issues.map((i) => i.employeeName));
-  const flagged = new Set(
-    employees.filter((e) => flaggedNames.has(e.name)).map((e) => e.id),
-  );
+  const flagged = new Set(employees.filter((e) => flaggedNames.has(e.name)).map((e) => e.id));
 
   // Build children-by-manager. Anyone whose managerId isn't a real employee (or is
   // null) is a root, which surfaces the orphans/dangling managers visually.
@@ -380,9 +360,7 @@ const OrgTree = ({
             </span>
             <span className="min-w-0 flex-1 truncate">
               <span className="text-[12px] font-medium text-ink">{e.name}</span>
-              <span className="ml-1 text-[11px] text-faint">
-                {e.title || "(no title)"}
-              </span>
+              <span className="ml-1 text-[11px] text-faint">{e.title || "(no title)"}</span>
             </span>
             {isFlagged && (
               <span className="shrink-0 text-[11px] text-warn" title="flagged">
@@ -391,20 +369,14 @@ const OrgTree = ({
             )}
           </div>
           {/* reports nest under a guide rail, not ASCII connectors */}
-          {children && (
-            <div className="ml-[10px] border-l border-line pl-3">
-              {children}
-            </div>
-          )}
+          {children && <div className="ml-[10px] border-l border-line pl-3">{children}</div>}
         </div>
       );
     });
   };
 
   return (
-    <div className="scrollbar-slim max-h-72 space-y-0.5 overflow-y-auto">
-      {renderNodes(null)}
-    </div>
+    <div className="scrollbar-slim max-h-72 space-y-0.5 overflow-y-auto">{renderNodes(null)}</div>
   );
 };
 
@@ -417,9 +389,7 @@ const DiscoverySummary = ({ data }: { data: OnboardingResult }) => {
         <Badge tone="neutral">
           {resolved}/{data.proposal.roles.length} approvers resolved
         </Badge>
-        {data.issues.length > 0 && (
-          <Badge tone="warn">{data.issues.length} to fix</Badge>
-        )}
+        {data.issues.length > 0 && <Badge tone="warn">{data.issues.length} to fix</Badge>}
       </div>
 
       {/* (The agent's prose summary was dropped, it duplicated the workflow on the
@@ -449,9 +419,7 @@ const DiscoverySummary = ({ data }: { data: OnboardingResult }) => {
                   <Chevron />
                 </span>
                 <span className="text-[12px] font-medium text-muted">
-                  {r.employeeName ?? (
-                    <span className="text-warn">unresolved</span>
-                  )}
+                  {r.employeeName ?? <span className="text-warn">unresolved</span>}
                 </span>
               </summary>
               <p className="border-t border-line px-3 py-2 text-[11.5px] leading-snug text-faint">
@@ -467,9 +435,9 @@ const DiscoverySummary = ({ data }: { data: OnboardingResult }) => {
         <section className="space-y-2">
           <Eyebrow>Fix before activating</Eyebrow>
           <ul className="space-y-1.5">
-            {data.issues.map((iss, i) => (
+            {data.issues.map((iss) => (
               <li
-                key={i}
+                key={`${iss.employeeName}-${iss.note}`}
                 className="flex gap-2 rounded-lg bg-warn-soft/60 px-3 py-2 text-[11.5px] leading-snug text-ink ring-1 ring-inset ring-warn-line/50"
               >
                 <span className="mt-px shrink-0 text-warn">⚠</span>
@@ -526,7 +494,7 @@ const SAMPLE_WORKFLOW: ApprovalWorkflow = {
       id: "director",
       kind: "approval",
       label: "Director review",
-      when: { kind: "leaf", field: "amount", op: ">", value: 25000 },
+      when: { kind: "leaf", field: "amount", op: ">", value: 25_000 },
       approverTitle: "CFO",
       approverName: "Cameron Diaz",
       next: ["post"],
@@ -575,13 +543,11 @@ const EmptyState = ({ running }: { running: boolean }) => {
             </>
           ) : (
             <>
-              <p className="text-[14px] font-semibold text-ink">
-                No workflow yet
-              </p>
+              <p className="text-[14px] font-semibold text-ink">No workflow yet</p>
               <p className="text-[12.5px] leading-relaxed text-muted">
-                Run discovery and the agent derives a conditional approval
-                workflow like this from the client&apos;s org chart, resolved to
-                real approvers and ready to edit in plain language.
+                Run discovery and the agent derives a conditional approval workflow like this from
+                the client&apos;s org chart, resolved to real approvers and ready to edit in plain
+                language.
               </p>
             </>
           )}
@@ -621,12 +587,8 @@ const DiscoveryPreview = ({ running }: { running: boolean }) => {
               {i + 1}
             </span>
             <span>
-              <span className="block text-[12.5px] font-semibold text-ink">
-                {it.title}
-              </span>
-              <span className="mt-0.5 block text-[11.5px] leading-snug text-muted">
-                {it.body}
-              </span>
+              <span className="block text-[12.5px] font-semibold text-ink">{it.title}</span>
+              <span className="mt-0.5 block text-[11.5px] leading-snug text-muted">{it.body}</span>
             </span>
           </li>
         ))}

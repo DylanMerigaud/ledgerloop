@@ -2,12 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { WorkflowStep } from "@/lib/approval-workflow";
-import {
-  deriveOutcome,
-  isAwaitingApproval,
-  pendingGates,
-} from "@/lib/run-outcome";
 import type { TraceEvent } from "@/lib/trace";
+
+import { deriveOutcome, isAwaitingApproval, pendingGates } from "@/lib/run-outcome";
 
 /**
  * Tests for the queue-pill outcome logic. This had a real bug: an `awaiting`
@@ -29,11 +26,9 @@ const ev = (data: Record<string, unknown>): TraceEvent => {
 };
 
 const matching = (verdict: string) => ev({ verdict });
-const approval = (
-  outcome: string,
-  steps: { id: string; status: string; detail: string }[] = [],
-) => ev({ outcome, steps });
-const recon = (outcome: string, posted: boolean) => ev({ outcome, posted });
+const approval = (outcome: string, steps: { id: string; status: string; detail: string }[] = []) =>
+  ev({ outcome, steps });
+const recon = (outcome: string, isPosted: boolean) => ev({ outcome, posted: isPosted });
 
 test("clean → reconciled (posted)", () => {
   const trace = [matching("clean"), approval("auto"), recon("posted", true)];
@@ -41,40 +36,24 @@ test("clean → reconciled (posted)", () => {
 });
 
 test("exception awaiting → needs-approval (NOT blocked, despite posted:false)", () => {
-  const trace = [
-    matching("exception"),
-    approval("manager"),
-    recon("awaiting", false),
-  ];
+  const trace = [matching("exception"), approval("manager"), recon("awaiting", false)];
   assert.equal(deriveOutcome(trace, true), "needs-approval");
   assert.equal(isAwaitingApproval(trace), true);
 });
 
 test("exception approved → reconciled", () => {
-  const trace = [
-    matching("exception"),
-    approval("director"),
-    recon("posted", true),
-  ];
+  const trace = [matching("exception"), approval("director"), recon("posted", true)];
   assert.equal(deriveOutcome(trace, true), "reconciled");
   assert.equal(isAwaitingApproval(trace), false);
 });
 
 test("exception rejected → blocked (red)", () => {
-  const trace = [
-    matching("exception"),
-    approval("manager"),
-    recon("rejected", false),
-  ];
+  const trace = [matching("exception"), approval("manager"), recon("rejected", false)];
   assert.equal(deriveOutcome(trace, true), "blocked");
 });
 
 test("duplicate → blocked", () => {
-  const trace = [
-    matching("duplicate"),
-    approval("blocked"),
-    recon("blocked", false),
-  ];
+  const trace = [matching("duplicate"), approval("blocked"), recon("blocked", false)];
   assert.equal(deriveOutcome(trace, true), "blocked");
 });
 
@@ -116,45 +95,33 @@ const post = (id: string): WorkflowStep => ({
 });
 
 test("pendingGates: two pending gates → two rows in workflow order", () => {
-  const steps = [
-    gate("manager-review", "Esther Howard"),
-    gate("department-review", "Sam Patel"),
-  ];
-  const rows = pendingGates(
-    { "manager-review": "pending", "department-review": "pending" },
-    steps,
-  );
+  const steps = [gate("manager-review", "Esther Howard"), gate("department-review", "Sam Patel")];
+  const rows = pendingGates({ "manager-review": "pending", "department-review": "pending" }, steps);
   assert.deepEqual(
     rows.map((r) => r.id),
-    ["manager-review", "department-review"],
+    ["manager-review", "department-review"]
   );
   assert.equal(rows[0]?.approverName, "Esther Howard");
 });
 
 test("pendingGates: a settled gate is excluded", () => {
-  const steps = [
-    gate("manager-review", "Esther Howard"),
-    gate("department-review", "Sam Patel"),
-  ];
+  const steps = [gate("manager-review", "Esther Howard"), gate("department-review", "Sam Patel")];
   const rows = pendingGates(
     { "manager-review": "approved", "department-review": "pending" },
-    steps,
+    steps
   );
   assert.deepEqual(
     rows.map((r) => r.id),
-    ["department-review"],
+    ["department-review"]
   );
 });
 
 test("pendingGates: a pending integration step is never a gate", () => {
   const steps = [gate("manager-review", "Esther Howard"), post("post")];
-  const rows = pendingGates(
-    { "manager-review": "pending", post: "pending" },
-    steps,
-  );
+  const rows = pendingGates({ "manager-review": "pending", post: "pending" }, steps);
   assert.deepEqual(
     rows.map((r) => r.id),
-    ["manager-review"],
+    ["manager-review"]
   );
 });
 

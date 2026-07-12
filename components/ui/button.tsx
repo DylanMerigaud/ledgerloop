@@ -24,11 +24,9 @@ const VARIANTS: Record<Variant, string> = {
   // Ink primary (Attio register), compact black button, hairline shadow, no
   // coloured halo. The accent shows up only as the focus ring.
   primary: "bg-ink text-white shadow-button hover:bg-[#2A2C30]",
-  ghost:
-    "bg-surface text-ink ring-1 ring-inset ring-line-strong hover:bg-subtle",
+  ghost: "bg-surface text-ink ring-1 ring-inset ring-line-strong hover:bg-subtle",
   ok: "bg-ok text-white shadow-button hover:bg-ok/90",
-  danger:
-    "bg-surface text-danger ring-1 ring-inset ring-danger-line hover:bg-danger-soft",
+  danger: "bg-surface text-danger ring-1 ring-inset ring-danger-line hover:bg-danger-soft",
 };
 
 const SIZES: Record<Size, string> = {

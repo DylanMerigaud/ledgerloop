@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { outcomeDot, type Outcome } from "@/lib/display";
+import { type Outcome, outcomeDot } from "@/lib/display";
 import { formatDuration } from "@/lib/format";
 import { orpc } from "@/lib/orpc/client";
 
@@ -24,11 +24,7 @@ import { orpc } from "@/lib/orpc/client";
 /** Map a stored verdict/outcome to the shared Outcome display vocabulary (the same
  *  dots the queue uses), so history reads consistently with the live run. */
 const toOutcome = (verdict: string, outcome: string): Outcome => {
-  if (
-    verdict === "duplicate" ||
-    outcome === "blocked" ||
-    outcome === "rejected"
-  ) {
+  if (verdict === "duplicate" || outcome === "blocked" || outcome === "rejected") {
     return "blocked";
   }
   if (outcome === "awaiting") return "needs-approval";
@@ -66,6 +62,7 @@ export const RecentRuns = ({
     const el = listRef.current;
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- measures real DOM (scrollHeight/clientHeight), which only exists after layout; can't be derived during render. Called from the effect + a ResizeObserver.
     setHiddenBelow(remaining < 8 ? 0 : remaining);
   };
   useEffect(() => {
@@ -78,8 +75,7 @@ export const RecentRuns = ({
   }, [runs.length]);
 
   const ROW_PX = 45; // approx height of one run row
-  const moreCount =
-    hiddenBelow > 0 ? Math.max(1, Math.round(hiddenBelow / ROW_PX)) : 0;
+  const moreCount = hiddenBelow > 0 ? Math.max(1, Math.round(hiddenBelow / ROW_PX)) : 0;
 
   const open = (id: string) => onOpen(id);
 
@@ -87,14 +83,13 @@ export const RecentRuns = ({
     <Card className="flex flex-col overflow-hidden">
       <CardHeader className="flex items-center justify-between">
         <CardTitle>Recent runs</CardTitle>
-        <span className="text-[11px] text-muted tnum">
+        <span className="tnum text-[11px] text-muted">
           {runs.length > 0 ? `${runs.length} logged` : "audit log"}
         </span>
       </CardHeader>
       {runs.length === 0 ? (
         <p className="px-4 py-3 text-[12px] text-faint">
-          No runs yet. Run an invoice and it&apos;ll be logged here. The trail
-          resets daily.
+          No runs yet. Run an invoice and it&apos;ll be logged here. The trail resets daily.
         </p>
       ) : (
         <div className="relative min-h-0">
@@ -123,11 +118,10 @@ export const RecentRuns = ({
                         {r.invoiceNumber}
                       </span>
                       <span className="block truncate text-[11px] text-muted">
-                        {r.verdict} · {r.outcome} ·{" "}
-                        {formatDuration(r.durationMs)}
+                        {r.verdict} · {r.outcome} · {formatDuration(r.durationMs)}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[10px] text-faint tnum">
+                    <span className="tnum shrink-0 text-[10px] text-faint">
                       {timeAgo(r.createdAt)}
                     </span>
                   </button>

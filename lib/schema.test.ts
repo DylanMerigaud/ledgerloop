@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { Invoice, MatchResult, INVOICE_JSON_SCHEMA } from "@/lib/schema";
+import { Invoice, INVOICE_JSON_SCHEMA, MatchResult } from "@/lib/schema";
 
 /**
  * Schema accept/reject tests, the single-source-of-truth guarantee in action.
@@ -16,9 +16,7 @@ const validInvoice = () => {
     vendor: "Acme",
     issueDate: "2026-05-01",
     currency: "USD",
-    lineItems: [
-      { sku: "A", description: "thing", qty: 2, unitPrice: 10, amount: 20 },
-    ],
+    lineItems: [{ sku: "A", description: "thing", qty: 2, unitPrice: 10, amount: 20 }],
     subtotal: 20,
     tax: null,
     total: 20,
@@ -84,8 +82,6 @@ test("INVOICE_JSON_SCHEMA is an object schema without a $schema meta key", () =>
   assert.equal(INVOICE_JSON_SCHEMA["type"], "object");
   assert.equal("$schema" in INVOICE_JSON_SCHEMA, false);
   // derived from the same object → it must mention the required top-level fields
-  const props = (
-    INVOICE_JSON_SCHEMA as { properties?: Record<string, unknown> }
-  ).properties;
+  const props = (INVOICE_JSON_SCHEMA as { properties?: Record<string, unknown> }).properties;
   assert.ok(props && "invoiceNumber" in props && "lineItems" in props);
 });

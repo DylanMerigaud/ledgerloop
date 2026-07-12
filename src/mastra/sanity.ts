@@ -1,10 +1,11 @@
-import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import type { Decisions } from "@/lib/approval-engine";
+
+import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { runApproval } from "@/lib/approval-run";
 import {
-  workflowFromPolicy,
-  DEFAULT_APPROVAL_POLICY,
   type ApprovalPolicy,
+  DEFAULT_APPROVAL_POLICY,
+  workflowFromPolicy,
 } from "@/lib/client-profile";
 import { reconcileFromOutcome } from "@/lib/erp";
 import { runMatch } from "@/lib/matching";
@@ -25,7 +26,7 @@ import { PIPELINE_MODEL } from "@/src/mastra/model";
  * route is the real end-to-end exercise of the agent.)
  */
 
-const DRY_RUN = process.argv.includes("--dry-run");
+const IS_DRY_RUN = process.argv.includes("--dry-run");
 const POLICY: ApprovalPolicy = DEFAULT_APPROVAL_POLICY;
 const WORKFLOW = workflowFromPolicy(POLICY);
 
@@ -46,25 +47,16 @@ const routeOf = async (bundle: SeedBundle, decisions: Decisions = {}) => {
     match.verdict === "duplicate"
       ? { outcome: "blocked" as const, pending: [] }
       : runApproval(WORKFLOW, match, decisions);
-  const recon = await reconcileFromOutcome(
-    approval.outcome,
-    match,
-    bundle.invoice.vendor,
-  );
+  const recon = await reconcileFromOutcome(approval.outcome, match, bundle.invoice.vendor);
   return { match, approval, recon };
 };
 
 const main = async () => {
   console.log(`ledgerloop pipeline sanity, model: ${PIPELINE_MODEL}`);
-  console.log(
-    DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n",
-  );
+  console.log(IS_DRY_RUN ? "mode: dry-run (deterministic, no LLM)\n" : "mode: full\n");
 
-  if (!DRY_RUN && !process.env.ANTHROPIC_API_KEY) {
-    console.error(
-      "✖ Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.",
-    );
-    process.exit(1);
+  if (!IS_DRY_RUN && !process.env.ANTHROPIC_API_KEY) {
+    throw new Error("Full mode needs ANTHROPIC_API_KEY. Use --dry-run for the offline check.");
   }
 
   const rows: string[] = [];
@@ -78,14 +70,10 @@ const main = async () => {
         : approval.outcome === "blocked"
           ? "BLOCKED (not posted)"
           : `→ ${approval.pending.map((p) => p.id).join(", ")} → ⏸ awaiting human decision`;
-    rows.push(
-      `  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`,
-    );
+    rows.push(`  ${b.invoice.invoiceNumber.padEnd(16)} ${match.verdict.padEnd(10)} ${route}`);
   }
 
-  console.log(
-    "Invoice          Verdict    Routing (no reviewer decisions yet)",
-  );
+  console.log("Invoice          Verdict    Routing (no reviewer decisions yet)");
   console.log(rows.join("\n"));
   console.log();
 
@@ -114,46 +102,45 @@ const main = async () => {
   const priceMismatch = SEED_BUNDLES.find((b) => b.id === "INV-2042");
   if (priceMismatch) {
     // The price-mismatch exception activates the manager gate; decide it by step id.
-    const pending = (await routeOf(priceMismatch, {})).recon;
-    const approved = (
-      await routeOf(priceMismatch, { "manager-review": "approve" })
-    ).recon;
-    const rejected = (
-      await routeOf(priceMismatch, { "manager-review": "reject" })
-    ).recon;
+    const pendingRun = await routeOf(priceMismatch, {});
+    const pending = pendingRun.recon;
+    const approvedRun = await routeOf(priceMismatch, { "manager-review": "approve" });
+    const approved = approvedRun.recon;
+    const rejectedRun = await routeOf(priceMismatch, { "manager-review": "reject" });
+    const rejected = rejectedRun.recon;
     if (pending.outcome !== "awaiting" || pending.posted) {
-      console.error(
-        `✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`,
-      );
+      console.error(`✖ INV-2042 pending: expected awaiting/un-posted, got ${pending.outcome}`);
       failures++;
     }
     if (approved.outcome !== "posted" || !approved.posted) {
-      console.error(
-        `✖ INV-2042 approve: expected posted, got ${approved.outcome}`,
-      );
+      console.error(`✖ INV-2042 approve: expected posted, got ${approved.outcome}`);
       failures++;
     }
     if (rejected.outcome !== "rejected" || rejected.posted) {
-      console.error(
-        `✖ INV-2042 reject: expected rejected/un-posted, got ${rejected.outcome}`,
-      );
+      console.error(`✖ INV-2042 reject: expected rejected/un-posted, got ${rejected.outcome}`);
       failures++;
     }
     if (!failures) {
       console.log(
-        "✓ Human-in-the-loop gate: INV-2042 pauses (awaiting) → posts on approve → stays un-posted on reject.",
+        "✓ Human-in-the-loop gate: INV-2042 pauses (awaiting) → posts on approve → stays un-posted on reject."
       );
     }
   }
 
   if (failures > 0) {
-    console.error(`\n✖ ${failures} sanity check(s) failed.`);
-    process.exit(1);
+    throw new Error(`\n${failures} sanity check(s) failed.`);
   }
   console.log("✓ All edge cases route as expected. Pipeline logic is sound.");
 };
 
-main().catch((err) => {
-  console.error("✖ Sanity check crashed:", err);
-  process.exit(1);
-});
+// Run via an async IIFE (not top-level await) so the tsx/esbuild CJS transform
+// this script is executed under (`pnpm sanity`) still accepts it. A crash sets a
+// non-zero exit code instead of calling process.exit().
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("✖ Sanity check crashed:", error);
+    process.exitCode = 1;
+  }
+})();

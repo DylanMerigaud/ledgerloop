@@ -21,23 +21,22 @@
  * (a perfect score is the expected dry-run output), what CI runs.
  */
 
-import { join } from "node:path";
-
 import { RequestContext } from "@mastra/core/request-context";
+import { join } from "node:path";
 
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { EVAL_CASES, type EvalCase } from "@/eval/cases";
 import {
-  scoreCase,
   accuracy,
-  overchargeConfusion,
   type CaseScore,
+  overchargeConfusion,
   type Recommendation,
+  scoreCase,
 } from "@/eval/score";
 import {
-  runInvestigation,
   INVESTIGATION_CTX_KEY,
   type InvestigatorAgent,
+  runInvestigation,
 } from "@/lib/investigation";
 import { runMatch } from "@/lib/matching";
 import { mastra } from "@/src/mastra";
@@ -45,18 +44,17 @@ import { PIPELINE_MODEL } from "@/src/mastra/model";
 
 // ── ANSI helpers (no dependency) ────────────────────────────────────────────
 const C = {
-  reset: "\x1b[0m",
-  dim: "\x1b[2m",
-  bold: "\x1b[1m",
-  green: "\x1b[32m",
-  red: "\x1b[31m",
-  yellow: "\x1b[33m",
-  cyan: "\x1b[36m",
-  gray: "\x1b[90m",
+  reset: "\u{1B}[0m",
+  dim: "\u{1B}[2m",
+  bold: "\u{1B}[1m",
+  green: "\u{1B}[32m",
+  red: "\u{1B}[31m",
+  yellow: "\u{1B}[33m",
+  cyan: "\u{1B}[36m",
+  gray: "\u{1B}[90m",
 };
-const useColor = process.stdout.isTTY;
-const col = (code: string, s: string) =>
-  useColor ? `${code}${s}${C.reset}` : s;
+const isUseColor = process.stdout.isTTY;
+const col = (code: string, s: string) => (isUseColor ? `${code}${s}${C.reset}` : s);
 
 const loadEnv = () => {
   for (const f of [".env.local", ".env"]) {
@@ -74,7 +72,7 @@ const priorNumbersFor = (bundle: SeedBundle): string[] => {
   return SEED_BUNDLES.slice(0, idx).map((b) => b.invoice.invoiceNumber);
 };
 
-const runOneCase = async (c: EvalCase, dryRun: boolean): Promise<CaseScore> => {
+const runOneCase = async (c: EvalCase, isDryRun: boolean): Promise<CaseScore> => {
   const bundle = SEED_BUNDLES.find((b) => b.id === c.id);
   if (!bundle) {
     return scoreCase(c.id, c.stresses, c.expected, undefined, "no seed bundle");
@@ -95,27 +93,19 @@ const runOneCase = async (c: EvalCase, dryRun: boolean): Promise<CaseScore> => {
       c.stresses,
       c.expected,
       undefined,
-      `not an exception (verdict: ${match.verdict})`,
+      `not an exception (verdict: ${match.verdict})`
     );
   }
 
   // --dry-run: skip the model, "predict" the ground truth verbatim. Exercises the
   // match + scoring + reporting path with no API call; a perfect run is expected.
-  if (dryRun) {
+  if (isDryRun) {
     return scoreCase(c.id, c.stresses, c.expected, c.expected);
   }
 
-  const agent = mastra.getAgent("investigator") as
-    | InvestigatorAgent
-    | undefined;
+  const agent = mastra.getAgent("investigator") as InvestigatorAgent | undefined;
   if (!agent) {
-    return scoreCase(
-      c.id,
-      c.stresses,
-      c.expected,
-      undefined,
-      "investigator agent not registered",
-    );
+    return scoreCase(c.id, c.stresses, c.expected, undefined, "investigator agent not registered");
   }
 
   const requestContext = new RequestContext();
@@ -123,20 +113,15 @@ const runOneCase = async (c: EvalCase, dryRun: boolean): Promise<CaseScore> => {
 
   let got: Recommendation | undefined;
   try {
-    const out = await runInvestigation(
-      agent,
-      match,
-      bundle.invoice.vendor,
-      requestContext,
-    );
+    const out = await runInvestigation(agent, match, bundle.invoice.vendor, requestContext);
     got = out?.investigation.recommendation;
-  } catch (err) {
+  } catch (error) {
     return scoreCase(
       c.id,
       c.stresses,
       c.expected,
       undefined,
-      err instanceof Error ? err.message : "agent call failed",
+      error instanceof Error ? error.message : "agent call failed"
     );
   }
   return scoreCase(c.id, c.stresses, c.expected, got);
@@ -153,23 +138,17 @@ const colorPct = (n: number): string => {
   if (n >= 0.75) return col(C.yellow, s);
   return col(C.red, s);
 };
+const row = (label: string, value: string): void => {
+  console.log("  " + label.padEnd(28) + value);
+};
 
 const printTable = (scores: CaseScore[]) => {
   console.log(col(C.bold, "\nPer-case results\n"));
   const idW = Math.max(8, ...scores.map((s) => s.id.length));
-  console.log(
-    col(
-      C.gray,
-      "  " + "case".padEnd(idW) + "  expected           got                ",
-    ),
-  );
+  console.log(col(C.gray, "  " + "case".padEnd(idW) + "  expected           got                "));
   console.log(col(C.gray, "  " + "─".repeat(idW + 40)));
   for (const s of scores) {
-    const mark = s.failed
-      ? col(C.red, "FAIL")
-      : s.correct
-        ? col(C.green, "✓")
-        : col(C.red, "✗");
+    const mark = s.failed ? col(C.red, "FAIL") : s.correct ? col(C.green, "✓") : col(C.red, "✗");
     const got = s.failed ? col(C.red, s.failed) : (s.got ?? "-");
     console.log(
       "  " +
@@ -177,10 +156,10 @@ const printTable = (scores: CaseScore[]) => {
         "  " +
         s.expected.padEnd(18) +
         " " +
-        String(got).padEnd(18) +
+        got.padEnd(18) +
         " " +
         mark +
-        col(C.dim, `  ${s.stresses}`),
+        col(C.dim, `  ${s.stresses}`)
     );
   }
 };
@@ -188,26 +167,18 @@ const printTable = (scores: CaseScore[]) => {
 const printSummary = (scores: CaseScore[]) => {
   const conf = overchargeConfusion(scores);
   console.log(col(C.bold, "\nSummary\n"));
-  const row = (label: string, value: string) =>
-    console.log("  " + label.padEnd(28) + value);
   row("Model", col(C.cyan, PIPELINE_MODEL));
   row("Cases", String(scores.length));
   row("Accuracy", colorPct(accuracy(scores)));
   row(
     "Overcharge precision",
     colorPct(conf.precision) +
-      col(
-        C.gray,
-        `  ${conf.truePositives}tp / ${conf.truePositives + conf.falsePositives}`,
-      ),
+      col(C.gray, `  ${conf.truePositives}tp / ${conf.truePositives + conf.falsePositives}`)
   );
   row(
     "Overcharge recall",
     colorPct(conf.recall) +
-      col(
-        C.gray,
-        `  ${conf.truePositives}tp / ${conf.truePositives + conf.falseNegatives}`,
-      ),
+      col(C.gray, `  ${conf.truePositives}tp / ${conf.truePositives + conf.falseNegatives}`)
   );
   row("Overcharge F1", colorPct(conf.f1));
   console.log();
@@ -217,48 +188,37 @@ const main = async () => {
   loadEnv();
 
   const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
-  const filter = args.filter((a) => !a.startsWith("--"));
+  const isDryRun = args.includes("--dry-run");
 
-  if (!dryRun && !process.env.ANTHROPIC_API_KEY) {
+  if (!isDryRun && !process.env.ANTHROPIC_API_KEY) {
     console.error(
       col(C.red, "ANTHROPIC_API_KEY is not set.") +
         " Add it to .env.local (see .env.example), then re-run `pnpm eval`." +
-        col(
-          C.gray,
-          "\n(Tip: `pnpm eval --dry-run` validates the harness without calling the API.)",
-        ),
+        col(C.gray, "\n(Tip: `pnpm eval --dry-run` validates the harness without calling the API.)")
     );
-    process.exit(1);
+    throw new Error("ANTHROPIC_API_KEY is not set.");
   }
 
-  const cases =
-    filter.length === 0
-      ? EVAL_CASES
-      : EVAL_CASES.filter((c) => filter.includes(c.id));
+  const filter = args.filter((a) => !a.startsWith("--"));
+  const cases = filter.length === 0 ? EVAL_CASES : EVAL_CASES.filter((c) => filter.includes(c.id));
   if (cases.length === 0) {
-    console.error(
-      `No matching cases. Known ids: ${EVAL_CASES.map((c) => c.id).join(", ")}`,
-    );
-    process.exit(1);
+    throw new Error(`No matching cases. Known ids: ${EVAL_CASES.map((c) => c.id).join(", ")}`);
   }
 
   console.log(
     col(C.bold, `\nledgerloop, investigator eval`) +
       col(
         C.gray,
-        `  (${cases.length} case${cases.length === 1 ? "" : "s"}, model ${PIPELINE_MODEL})`,
+        `  (${cases.length} case${cases.length === 1 ? "" : "s"}, model ${PIPELINE_MODEL})`
       ) +
-      (dryRun
-        ? col(C.yellow, "  [dry-run: scoring ground truth, no API calls]")
-        : ""),
+      (isDryRun ? col(C.yellow, "  [dry-run: scoring ground truth, no API calls]") : "")
   );
 
   const scores: CaseScore[] = [];
   for (const c of cases) {
     process.stdout.write(col(C.gray, `  · ${c.id} … `));
     const t0 = Date.now();
-    const score = await runOneCase(c, dryRun);
+    const score = await runOneCase(c, isDryRun);
     const dt = Date.now() - t0;
     scores.push(score);
     process.stdout.write(
@@ -266,7 +226,7 @@ const main = async () => {
         ? col(C.red, `fail`)
         : score.correct
           ? col(C.green, `ok`)
-          : col(C.yellow, `miss`)) + col(C.gray, ` (${dt}ms)\n`),
+          : col(C.yellow, `miss`)) + col(C.gray, ` (${dt}ms)\n`)
     );
   }
 
@@ -278,22 +238,27 @@ const main = async () => {
   // overcharge (recall < 1) is the expensive error, so CI/local should see it.
   const hardFailures = scores.filter((s) => s.failed).length;
   const conf = overchargeConfusion(scores);
-  const recallMiss = !dryRun && conf.falseNegatives > 0;
+  const isRecallMiss = !isDryRun && conf.falseNegatives > 0;
   if (hardFailures > 0) {
     console.error(col(C.red, `✖ ${hardFailures} case(s) hard-failed.`));
   }
-  if (recallMiss) {
+  if (isRecallMiss) {
     console.error(
-      col(
-        C.red,
-        `✖ missed ${conf.falseNegatives} real overcharge(s) (recall < 100%).`,
-      ),
+      col(C.red, `✖ missed ${conf.falseNegatives} real overcharge(s) (recall < 100%).`)
     );
   }
-  process.exit(hardFailures > 0 || recallMiss ? 1 : 0);
+  if (hardFailures > 0 || isRecallMiss) {
+    throw new Error("eval gate failed (see the errors above).");
+  }
 };
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
+})();

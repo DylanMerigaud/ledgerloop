@@ -1,6 +1,7 @@
 "use client";
 
 import type { PDFPageProxy } from "pdfjs-dist";
+
 import { useEffect, useRef, useState } from "react";
 
 /**
@@ -29,11 +30,13 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
     // not the variable) inside the IIFE: TS narrows a bare boolean to `false` after
     // the first check and can't see the cleanup flip it across awaits, a function
     // call isn't narrowed, so each check is honest (not flagged as "always false").
-    let cancelled = false;
-    const isCancelled = () => cancelled;
+    let wasCancelled = false;
+    const isCancelled = () => wasCancelled;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- resetting load status when `src` changes: the effect owns a fresh async PDF load, so the skeleton must show again while the new document renders.
     setReady(false);
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- paired with the setReady reset above: clear any prior error before the new src's load starts.
     setError(false);
 
     // Keep the loaded page around so a container resize can re-render at the new
@@ -45,8 +48,8 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
         "pdfjs-dist/build/pdf.worker.min.mjs",
-        import.meta.url,
-      ).toString();
+        import.meta.url
+      ).href;
       return pdfjs.getDocument({ data: buf }).promise;
     };
 
@@ -67,19 +70,29 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
     };
 
     const ro = new ResizeObserver(() => {
-      // Serialise renders, pdf.js throws if a render starts while one is live.
-      rendering = (rendering ?? Promise.resolve())
-        .catch(() => {})
-        .then(renderAtCurrentWidth)
-        .catch(() => {});
+      // Serialise renders, pdf.js throws if a render starts while one is live. Each
+      // resize queues behind the previous render (awaiting it, errors swallowed) so
+      // the ResizeObserver callback never blocks and renders never overlap.
+      const previous = rendering ?? Promise.resolve();
+      rendering = (async () => {
+        try {
+          await previous;
+        } catch {
+          /* a prior render failed, still attempt this one */
+        }
+        try {
+          await renderAtCurrentWidth();
+        } catch {
+          /* swallow: a resize mid-teardown can throw, harmless */
+        }
+      })();
     });
 
     void (async () => {
       try {
-        const buf = await fetch(src).then((r) => {
-          if (!r.ok) throw new Error(`pdf fetch ${r.status}`);
-          return r.arrayBuffer();
-        });
+        const res = await fetch(src);
+        if (!res.ok) throw new Error(`pdf fetch ${res.status}`);
+        const buf = await res.arrayBuffer();
         if (isCancelled()) return;
 
         const pdf = await loadPage(buf);
@@ -97,7 +110,7 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
     })();
 
     return () => {
-      cancelled = true;
+      wasCancelled = true;
       ro.disconnect();
     };
   }, [src]);
@@ -106,9 +119,7 @@ export const PdfDocument = ({ src, dim }: { src: string; dim: boolean }) => {
     // The wrapper reserves the A4 footprint via aspect-ratio, so the skeleton and
     // the eventual canvas occupy the same box (no layout jump, no overflow).
     <div className="relative w-full" style={{ aspectRatio: `1 / ${A4_RATIO}` }}>
-      {!ready && !error && (
-        <div className="absolute inset-0 animate-pulse rounded bg-line/30" />
-      )}
+      {!ready && !error && <div className="absolute inset-0 animate-pulse rounded bg-line/30" />}
       {error && (
         <div className="absolute inset-0 flex items-center justify-center rounded bg-canvas text-center text-[12px] text-muted">
           Couldn&apos;t render the PDF preview.

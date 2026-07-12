@@ -1,6 +1,6 @@
 import { ESLintUtils, type TSESTree } from "@typescript-eslint/utils";
 
-const createRule = ESLintUtils.RuleCreator((name) => `${name}`);
+const createRule = ESLintUtils.RuleCreator((name) => name);
 
 /**
  * Forbid hardcoded `/api/...` path strings, import from `API_ROUTES`

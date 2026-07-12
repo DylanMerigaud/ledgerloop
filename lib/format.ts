@@ -34,13 +34,11 @@ const ACRONYMS = new Set(["po", "erp", "sku", "gl", "ap", "id"]);
  *  keeping known domain acronyms (PO, ERP, SKU, …) upper-cased. */
 export const humanize = (token: string): string => {
   return token
-    .replace(/[_-]+/g, " ")
+    .replaceAll(/[_-]+/g, " ")
     .trim()
     .split(/\s+/)
     .map((w) =>
-      ACRONYMS.has(w.toLowerCase())
-        ? w.toUpperCase()
-        : w.charAt(0).toUpperCase() + w.slice(1),
+      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
     )
     .join(" ");
 };

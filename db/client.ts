@@ -2,17 +2,17 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { invoices, purchaseOrders, goodsReceipts } from "@/db/schema";
+import { goodsReceipts, invoices, purchaseOrders } from "@/db/schema";
 import { env } from "@/lib/env";
 import { defaultErp, type PoSourceAdapter } from "@/lib/erp";
 import { billKey } from "@/lib/matching";
 import {
+  GoodsReceipt,
   Invoice,
   PurchaseOrder,
-  GoodsReceipt,
+  type GoodsReceipt as TGoodsReceipt,
   type Invoice as TInvoice,
   type PurchaseOrder as TPurchaseOrder,
-  type GoodsReceipt as TGoodsReceipt,
 } from "@/lib/schema";
 
 /**
@@ -42,6 +42,7 @@ const db = (): Database => {
     // and validated at env load, so a missing value fails clearly there (the error
     // names DATABASE_URL, which the run route keys its setup notice off).
     const sql = postgres(env.DATABASE_URL, { prepare: false, max: 1 });
+    // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton cache (module-scoped handle, assigned once on first call)
     cached = drizzle(sql);
   }
   return cached;
@@ -114,15 +115,11 @@ export const loadRunBundle = async (
   /* The ERP the open POs are pulled from. Defaults to `defaultErp()` (live QBO
      when keyed, else the recorded fixture). Injectable so tests pin behaviour
      without a network call or a key. */
-  erp: PoSourceAdapter = defaultErp(),
+  erp: PoSourceAdapter = defaultErp()
 ): Promise<RunBundle | null> => {
   const d = db();
 
-  const [invoiceRow] = await d
-    .select()
-    .from(invoices)
-    .where(eq(invoices.id, id))
-    .limit(1);
+  const [invoiceRow] = await d.select().from(invoices).where(eq(invoices.id, id)).limit(1);
   if (!invoiceRow) return null;
 
   const invoice = Invoice.parse(toInvoiceShape(invoiceRow));
@@ -150,9 +147,7 @@ export const loadRunBundle = async (
       // department-scoped approval gate still routes. Same split everywhere: the ERP
       // is the source for what was ordered; the department is our own overlay.
       purchaseOrder =
-        pulled.department === "" && seeded
-          ? { ...pulled, department: seeded.department }
-          : pulled;
+        pulled.department === "" && seeded ? { ...pulled, department: seeded.department } : pulled;
     } else {
       purchaseOrder = seeded;
     }
@@ -218,7 +213,7 @@ export const loadRunBundle = async (
  */
 const pulledPoByNumber = async (
   erp: PoSourceAdapter,
-  poNumber: string,
+  poNumber: string
 ): Promise<TPurchaseOrder | null> => {
   try {
     const pos = await erp.pullPurchaseOrders();
@@ -235,10 +230,8 @@ const pulledPoByNumber = async (
  * disable the others or blank the run. Read-only.
  */
 const pulledMasterData = async (
-  erp: PoSourceAdapter,
-): Promise<
-  Pick<RunBundle, "postedBillKeys" | "inactiveVendors" | "catalogSkus">
-> => {
+  erp: PoSourceAdapter
+): Promise<Pick<RunBundle, "postedBillKeys" | "inactiveVendors" | "catalogSkus">> => {
   const safe = async <T>(fn: () => Promise<T[]>): Promise<T[]> => {
     try {
       return await fn();
@@ -265,11 +258,7 @@ const pulledMasterData = async (
  * row doesn't exist.
  */
 export const loadInvoiceById = async (id: string): Promise<TInvoice | null> => {
-  const [row] = await db()
-    .select()
-    .from(invoices)
-    .where(eq(invoices.id, id))
-    .limit(1);
+  const [row] = await db().select().from(invoices).where(eq(invoices.id, id)).limit(1);
   if (!row) return null;
   return Invoice.parse(toInvoiceShape(row));
 };

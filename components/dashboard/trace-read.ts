@@ -2,16 +2,17 @@ import { z } from "zod";
 
 import type { ExtractionState } from "@/components/extraction-reveal";
 import type { StepStatuses } from "@/components/workflow-graph";
+import type { TraceEvent } from "@/lib/trace";
+
 import { contextFromMatch } from "@/lib/approval-run";
 import {
   ApprovalWorkflow,
+  type InvoiceContext,
   resolvePath,
   type ApprovalWorkflow as TApprovalWorkflow,
-  type InvoiceContext,
 } from "@/lib/approval-workflow";
 import { isRecord } from "@/lib/assert";
 import { Invoice, MatchResult } from "@/lib/schema";
-import type { TraceEvent } from "@/lib/trace";
 
 /** The LAST trace event matching a predicate. A live run upserts a stage in place (one
     event), but a stored/replayed trace keeps the running (often empty) AND the done
@@ -19,11 +20,12 @@ import type { TraceEvent } from "@/lib/trace";
     (Local helper rather than Array.findLast, which needs a newer lib target.) */
 const findLastEvent = (
   trace: TraceEvent[],
-  pred: (e: TraceEvent) => boolean,
+  // eslint-disable-next-line unicorn/consistent-boolean-name -- this is a predicate CALLBACK (e) => boolean, not a boolean value; an is/has prefix would misrepresent it as a flag.
+  predicate: (e: TraceEvent) => boolean
 ): TraceEvent | undefined => {
   for (let i = trace.length - 1; i >= 0; i--) {
     const e = trace[i];
-    if (e && pred(e)) return e;
+    if (e && predicate(e)) return e;
   }
   return undefined;
 };
@@ -42,7 +44,7 @@ const IntakeData = z
   })
   .passthrough();
 export const readIntake = (
-  trace: TraceEvent[],
+  trace: TraceEvent[]
 ): { document: Invoice; state: ExtractionState } | null => {
   const intake = trace.find((e) => e.stage === "intake" && e.kind === "step");
   if (!intake) return null;
@@ -72,17 +74,14 @@ export const readIntake = (
  * Returns null until the run has produced an approval node (intake/matching first).
  */
 export const readRunGraph = (
-  trace: TraceEvent[],
+  trace: TraceEvent[]
 ): { workflow: TApprovalWorkflow; statuses: StepStatuses } | null => {
   // findLast, not find: a live run upserts the approval node in place (one event), but
   // a STORED/replayed trace keeps both the "running" event (empty data) AND the "done"
   // event (which carries the workflow + steps) under the same stepId. `find` grabbed the
   // running one → no workflow → the graph fell back to the full unresolved default. Take
   // the LAST approval event so replay resolves the same lit path a live run shows.
-  const approval = findLastEvent(
-    trace,
-    (e) => e.stage === "approval" && e.kind === "step",
-  );
+  const approval = findLastEvent(trace, (e) => e.stage === "approval" && e.kind === "step");
   if (!approval || !isRecord(approval.data)) return null;
   const parsed = ApprovalWorkflow.safeParse(approval.data["workflow"]);
   if (!parsed.success) return null;
@@ -91,11 +90,7 @@ export const readRunGraph = (
   const steps = approval.data["steps"];
   if (Array.isArray(steps)) {
     for (const s of steps) {
-      if (
-        isRecord(s) &&
-        typeof s["id"] === "string" &&
-        typeof s["status"] === "string"
-      ) {
+      if (isRecord(s) && typeof s["id"] === "string" && typeof s["status"] === "string") {
         statuses[s["id"]] = s["status"];
       }
     }
@@ -124,17 +119,11 @@ export const readRunGraph = (
 
 /** True when the run was blocked at a pre-workflow control (a duplicate), so nothing
     routed. Reads the approval event's `outcome` (blocked) or the matching verdict. */
-const isBlockedRun = (
-  trace: TraceEvent[],
-  approvalData: Record<string, unknown>,
-): boolean => {
+const isBlockedRun = (trace: TraceEvent[], approvalData: Record<string, unknown>): boolean => {
   if (approvalData["outcome"] === "blocked") return true;
   // findLast: the stored trace keeps the running (empty) + done matching events; the
   // verdict is on the done one.
-  const matching = findLastEvent(
-    trace,
-    (e) => e.stage === "matching" && e.kind === "step",
-  );
+  const matching = findLastEvent(trace, (e) => e.stage === "matching" && e.kind === "step");
   return isRecord(matching?.data) && matching.data["verdict"] === "duplicate";
 };
 
@@ -146,13 +135,8 @@ export type Recommendation = {
   verdict: "likely_legitimate" | "likely_overcharge" | "unclear";
   rationale: string | null;
 };
-export const readRecommendation = (
-  trace: TraceEvent[],
-): Recommendation | null => {
-  const inv = findLastEvent(
-    trace,
-    (e) => e.stage === "investigation" && e.data != null,
-  );
+export const readRecommendation = (trace: TraceEvent[]): Recommendation | null => {
+  const inv = findLastEvent(trace, (e) => e.stage === "investigation" && e.data != null);
   if (!inv || !isRecord(inv.data)) return null;
   const rec = inv.data["recommendation"];
   const verdict =
@@ -161,8 +145,7 @@ export const readRecommendation = (
       : rec === "likely_overcharge"
         ? "likely_overcharge"
         : "unclear";
-  const rationale =
-    typeof inv.data["rationale"] === "string" ? inv.data["rationale"] : null;
+  const rationale = typeof inv.data["rationale"] === "string" ? inv.data["rationale"] : null;
   return { verdict, rationale };
 };
 
@@ -176,10 +159,7 @@ export const readRecommendation = (
 const MatchResultLoose = MatchResult.passthrough();
 const readMatchContext = (trace: TraceEvent[]): InvoiceContext | undefined => {
   // findLast: the done matching event (with the MatchResult) follows the running one.
-  const matching = findLastEvent(
-    trace,
-    (e) => e.stage === "matching" && e.kind === "step",
-  );
+  const matching = findLastEvent(trace, (e) => e.stage === "matching" && e.kind === "step");
   if (!matching || !isRecord(matching.data)) return undefined;
   const parsed = MatchResultLoose.safeParse(matching.data);
   return parsed.success ? contextFromMatch(parsed.data) : undefined;

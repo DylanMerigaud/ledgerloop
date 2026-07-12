@@ -37,11 +37,10 @@ const main = async (): Promise<void> => {
   const key = process.env.BAMBOO_HR_API_KEY;
   const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
   if (!key || !subdomain) {
-    console.error(
+    throw new Error(
       "Missing BAMBOO_HR_API_KEY and/or BAMBOO_HR_SUBDOMAIN. Set them in .env.\n" +
-        "(This script needs the LIVE trial key, it is the only step that does.)",
+        "(This script needs the LIVE trial key, it is the only step that does.)"
     );
-    process.exit(1);
   }
 
   console.log(`Fetching org from ${subdomain}.bamboohr.com …`);
@@ -51,7 +50,7 @@ const main = async (): Promise<void> => {
   // mapped is worse than no fixture. mapBambooReport throws on a bad shape.
   const org = mapBambooReport(raw, "bamboohr (recorded)");
   console.log(
-    `Mapped OK: ${org.employees.length} active employees, ${org.issues.length} org issue(s) flagged.`,
+    `Mapped OK: ${org.employees.length} active employees, ${org.issues.length} org issue(s) flagged.`
   );
 
   // Provenance: the snapshot is real data; record exactly when/where from. The
@@ -62,7 +61,7 @@ const main = async (): Promise<void> => {
       note: "Real API response captured from the live trial. Replayed offline by recordedHris(). Not a mock.",
       capturedAt: new Date().toISOString(),
     },
-    ...(isRecord(raw) ? raw : {}),
+    ...(isRecord(raw) && raw),
   };
 
   const outDir = path.join(process.cwd(), "db", "fixtures", "bamboohr");
@@ -72,7 +71,13 @@ const main = async (): Promise<void> => {
   console.log(`Wrote ${path.relative(process.cwd(), outFile)}`);
 };
 
-main().catch((err: unknown) => {
-  console.error("Capture failed:", err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("Capture failed:", error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
+})();

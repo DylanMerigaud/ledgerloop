@@ -29,6 +29,12 @@ const RoleResolution = z.object({
   rationale: z.string(),
 });
 
+const OnboardingIssue = z.object({
+  employeeName: z.string(),
+  detail: z.string(),
+  note: z.string(),
+});
+
 export const OnboardingResult = z.object({
   source: z.string(),
   employeeCount: z.number(),
@@ -39,13 +45,7 @@ export const OnboardingResult = z.object({
     roles: z.array(RoleResolution),
     summary: z.string(),
   }),
-  issues: z.array(
-    z.object({
-      employeeName: z.string(),
-      detail: z.string(),
-      note: z.string(),
-    }),
-  ),
+  issues: z.array(OnboardingIssue),
   /** Up to three AI-generated next-edit suggestions for the derived workflow. */
   suggestions: z.array(z.string()),
 });
@@ -53,15 +53,17 @@ export type OnboardingResult = z.infer<typeof OnboardingResult>;
 
 /* ── workflow edit ───────────────────────────────────────────────────────────── */
 
+const StepChangedSchema = z.object({
+  kind: z.literal("changed"),
+  id: z.string(),
+  label: z.string(),
+  fields: z.array(z.string()),
+});
+
 const StepChangeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("added"), id: z.string(), label: z.string() }),
   z.object({ kind: z.literal("removed"), id: z.string(), label: z.string() }),
-  z.object({
-    kind: z.literal("changed"),
-    id: z.string(),
-    label: z.string(),
-    fields: z.array(z.string()),
-  }),
+  StepChangedSchema,
   z.object({ kind: z.literal("unchanged"), id: z.string(), label: z.string() }),
 ]);
 

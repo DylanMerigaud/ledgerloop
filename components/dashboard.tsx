@@ -4,6 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { QueueItem } from "@/db/client";
+
 import { CollapsedIntake } from "@/components/dashboard/collapsed-intake";
 import { OutcomeBanner } from "@/components/dashboard/outcome-banner";
 import { PlayIcon } from "@/components/dashboard/play-icon";
@@ -11,38 +13,25 @@ import { QueueHint } from "@/components/dashboard/queue-hint";
 import { RunningAgainst } from "@/components/dashboard/running-against";
 import { Spinner } from "@/components/dashboard/spinner";
 import { TraceDrawer } from "@/components/dashboard/trace-drawer";
-import {
-  readIntake,
-  readRecommendation,
-  readRunGraph,
-} from "@/components/dashboard/trace-read";
+import { readIntake, readRecommendation, readRunGraph } from "@/components/dashboard/trace-read";
 import { ExtractionReveal } from "@/components/extraction-reveal";
 import { RecentRuns } from "@/components/recent-runs";
 import { TraceTimeline } from "@/components/trace-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { WorkflowGraph } from "@/components/workflow-graph";
-import type { QueueItem } from "@/db/client";
 import { useEventCallback } from "@/hooks/use-event-callback";
 import { API_ROUTES } from "@/lib/api-routes";
 import { type ApprovalWorkflow as TApprovalWorkflow } from "@/lib/approval-workflow";
+import { DEFAULT_APPROVAL_POLICY, workflowFromPolicy } from "@/lib/client-profile";
 import {
-  DEFAULT_APPROVAL_POLICY,
-  workflowFromPolicy,
-} from "@/lib/client-profile";
-import {
+  type Outcome,
   outcomeDot,
   outcomeLabel,
   outcomeTone,
   scenarioExplain,
-  type Outcome,
 } from "@/lib/display";
 import { formatMoney } from "@/lib/format";
 import { client, orpc } from "@/lib/orpc/client";
@@ -76,9 +65,7 @@ export const Dashboard = ({
   /** Switch to the "Build the workflow" tab (the trace's no-workflow hint links here). */
   onBuildWorkflow: () => void;
 }) => {
-  const [selectedId, setSelectedId] = useState<string | null>(
-    queue[0]?.id ?? null,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(queue[0]?.id ?? null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -94,21 +81,17 @@ export const Dashboard = ({
   // own in-flight run (which would 404, it isn't stored yet) and don't clobber the URL.
   const loadedRunRef = useRef<string | null>(null);
   const ownRunRef = useRef<string | null>(null);
-  const setRunUrl = useEventCallback(
-    (runId: string | null, own: boolean = false) => {
-      if (own && runId) ownRunRef.current = runId;
-      const url = runId
-        ? `${pathname}?run=${encodeURIComponent(runId)}`
-        : pathname;
-      router.push(url, { scroll: false });
-    },
-  );
+  const setRunUrl = useEventCallback((runId: string | null, isOwn: boolean = false) => {
+    if (isOwn && runId) ownRunRef.current = runId;
+    const url = runId ? `${pathname}?run=${encodeURIComponent(runId)}` : pathname;
+    router.push(url, { scroll: false });
+  });
 
   const { state, run, decideMany, reset, replay } = usePipelineRun(
     workflow,
     // On a fresh run start, put its instance id in the URL (refresh-safe, shareable),
     // flagged `own` so the read-effect doesn't try to replay our own live run.
-    (runId) => setRunUrl(runId, true),
+    (runId) => setRunUrl(runId, true)
   );
   const queryClient = useQueryClient();
 
@@ -130,18 +113,13 @@ export const Dashboard = ({
   // so replaying it would 404 (the live stream already owns the screen). `loadedRunRef`
   // dedupes so a re-render doesn't re-fetch the same id.
   useEffect(() => {
-    if (
-      !urlRunId ||
-      urlRunId === loadedRunRef.current ||
-      urlRunId === ownRunRef.current
-    )
-      return;
+    if (!urlRunId || urlRunId === loadedRunRef.current || urlRunId === ownRunRef.current) return;
     loadedRunRef.current = urlRunId;
-    let cancelled = false;
+    let isCancelled = false;
     void client
       .replayRun({ id: urlRunId })
       .then((stored) => {
-        if (cancelled) return;
+        if (isCancelled) return;
         const row = queue.find((q) => q.invoiceNumber === stored.invoiceNumber);
         if (row) setSelectedId(row.id);
         replay(stored.trace, urlRunId);
@@ -150,10 +128,10 @@ export const Dashboard = ({
         // Not found (a stale/expired id, or reset since): let the id go so a retry can
         // re-fetch, but leave the URL alone rather than yanking it out from under a
         // shared link the user may just be early to.
-        if (!cancelled) loadedRunRef.current = null;
+        if (!isCancelled) loadedRunRef.current = null;
       });
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [urlRunId, queue, replay]);
 
@@ -166,11 +144,9 @@ export const Dashboard = ({
     const el = listRef.current;
     if (!el) return;
     const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- measures real DOM (scrollHeight/clientHeight), which only exists after layout; can't be derived during render. Called from the mount effect + a ResizeObserver.
     setScroll({
-      hiddenBelow: Math.max(
-        0,
-        el.scrollHeight - el.clientHeight - el.scrollTop,
-      ),
+      hiddenBelow: Math.max(0, el.scrollHeight - el.clientHeight - el.scrollTop),
       atBottom: remaining < 8,
     });
   };
@@ -187,9 +163,7 @@ export const Dashboard = ({
   }, []);
 
   const ROW_PX = 63; // approx height of one queue row
-  const moreCount = scroll.atBottom
-    ? 0
-    : Math.max(1, Math.round(scroll.hiddenBelow / ROW_PX));
+  const moreCount = scroll.atBottom ? 0 : Math.max(1, Math.round(scroll.hiddenBelow / ROW_PX));
 
   const selected = queue.find((q) => q.id === selectedId) ?? null;
   // Lock the queue while a run is in flight, switching invoices mid-run would
@@ -199,13 +173,13 @@ export const Dashboard = ({
   // has events. Selecting another invoice is always allowed, it aborts the stream and
   // starts clean; what we DON'T do while a run is shown is let a hover swap the pane out
   // from under it.
-  const runShown = state.trace.length > 0;
+  const isRunShown = state.trace.length > 0;
 
   // Hovering a row previews its PDF on the right, but only when NO run is shown (idle):
   // once a run is on the pane the header + document stay on the selected invoice, a hover
   // over another row doesn't override them. Falls back to the selected row.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const previewId = (!runShown && hoveredId) || selectedId;
+  const previewId = (!isRunShown && hoveredId) || selectedId;
   // The trace-pane title follows whatever document is shown (hover preview or the
   // selected/running invoice) so the header never contradicts the PDF on screen.
   const previewItem = queue.find((q) => q.id === previewId) ?? selected;
@@ -226,19 +200,15 @@ export const Dashboard = ({
   // and would fall back to the generic full workflow (the graph visibly "swaps" to the
   // default DAG mid-resume). Keep the last resolved graph until a new one arrives or
   // the run resets, so the lit path stays put through the re-stream.
-  const runGraphLatch = useRef<ReturnType<typeof readRunGraph>>(null);
-  if (runGraphNow) runGraphLatch.current = runGraphNow;
-  if (state.status === "idle" || state.trace.length === 0)
-    runGraphLatch.current = null;
-  const runGraph = runGraphNow ?? runGraphLatch.current;
+  const runGraphLatchRef = useRef<ReturnType<typeof readRunGraph>>(null);
+  if (runGraphNow) runGraphLatchRef.current = runGraphNow;
+  if (state.status === "idle" || state.trace.length === 0) runGraphLatchRef.current = null;
+  const runGraph = runGraphNow ?? runGraphLatchRef.current;
   // The graph is the hero and always drawn: the run's lit workflow if a run has
   // reached approval, else the active derived workflow, else the default DAG (so a
   // cold visit with no onboarding still shows what an invoice will route through). The
   // default is memoized so the fallback reference is stable too (same reset concern).
-  const defaultGraph = useMemo(
-    () => workflowFromPolicy(DEFAULT_APPROVAL_POLICY),
-    [],
-  );
+  const defaultGraph = useMemo(() => workflowFromPolicy(DEFAULT_APPROVAL_POLICY), []);
   const graphToShow = runGraph?.workflow ?? workflow ?? defaultGraph;
   const graphStatuses = runGraph?.statuses;
 
@@ -249,11 +219,8 @@ export const Dashboard = ({
   // `doneIntake` is the read document ONCE the run is past intake (else null), so
   // it both flags the phase and carries the data the collapsed node needs.
   const intake = readIntake(state.trace);
-  const movedPastIntake = state.trace.some(
-    (e) => e.stage !== "intake" && e.kind !== "run",
-  );
-  const doneIntake =
-    intake && intake.state.status === "done" && movedPastIntake ? intake : null;
+  const isMovedPastIntake = state.trace.some((e) => e.stage !== "intake" && e.kind !== "run");
+  const doneIntake = intake && intake.state.status === "done" && isMovedPastIntake ? intake : null;
 
   // Hold the full-screen extraction reveal for a beat AFTER the read completes, so
   // the extracted figures are actually READABLE before the pane collapses to the
@@ -265,45 +232,46 @@ export const Dashboard = ({
   // window elapses. `revealHeld` is derived from the ref each render, so React state
   // stays a single boolean tick and can't get stuck.
   const REVEAL_HOLD_MS = 3500;
-  const intakeDoneAtRef = useRef<{ key: string; at: number } | null>(null);
-  const [, forceTick] = useState(0);
+  // Which done-invoice the current hold is timing, so a re-render mid-hold doesn't
+  // restart it and a new invoice starts a fresh hold.
+  const heldKeyRef = useRef<string | null>(null);
+  // Whether the reveal is still in its grace window. Held as real state flipped by
+  // the timer (not derived from Date.now() during render, which would be impure):
+  // it goes true when a live read finishes and false when the window elapses.
+  const [isRevealHeld, setIsRevealHeld] = useState(false);
   // Only hold for a LIVE run's read. A replayed stored run jumps straight to `done`
   // with a full trace, nothing was read live, so holding the reveal there just makes
   // opening a past run look like it re-parses the document (it doesn't).
-  const doneKey =
-    doneIntake && !state.replayed ? doneIntake.document.invoiceNumber : null;
+  const doneKey = doneIntake && !state.replayed ? doneIntake.document.invoiceNumber : null;
   useEffect(() => {
     if (doneKey === null) {
-      intakeDoneAtRef.current = null;
+      heldKeyRef.current = null;
+      // eslint-disable-next-line @eslint-react/set-state-in-effect -- clearing the reveal-hold when the read is no longer done (a discrete transition), paired with the timer-driven set below.
+      setIsRevealHeld(false);
       return;
     }
-    if (intakeDoneAtRef.current?.key === doneKey) return; // already timing
-    intakeDoneAtRef.current = { key: doneKey, at: Date.now() };
-    const t = setTimeout(() => forceTick((n) => n + 1), REVEAL_HOLD_MS);
+    if (heldKeyRef.current === doneKey) return; // already timing this invoice
+    heldKeyRef.current = doneKey;
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- begins the timed reveal-hold phase when a live read finishes (a discrete transition + a timer), not a render-derived value; the timer below flips it back off.
+    setIsRevealHeld(true);
+    const t = setTimeout(() => setIsRevealHeld(false), REVEAL_HOLD_MS);
     return () => clearTimeout(t);
   }, [doneKey]);
-
-  const holdRec = intakeDoneAtRef.current;
-  const revealHeld =
-    holdRec !== null &&
-    holdRec.key === doneKey &&
-    Date.now() - holdRec.at < REVEAL_HOLD_MS;
 
   // Past intake once the read is done AND its reveal grace window has elapsed. Until
   // then the reveal owns the pane so the figures can be read. A REPLAYED run is a
   // completed run opened for viewing: skip the reveal entirely and go straight to the
   // graph/result (the document stays one click away in the trace drawer), so opening
   // a past run never looks like it re-reads the PDF.
-  const pastIntakeNow = state.replayed || (doneIntake !== null && !revealHeld);
+  const isPastIntakeNow = state.replayed || (doneIntake !== null && !isRevealHeld);
   // LATCH it: once a run has handed the pane to the graph it must not flicker back to
   // the reveal mid-run. During the matching→approval transition `doneIntake` can blink
   // null for a render (events reshuffle), which briefly flashed the document overlay
   // back over the graph. The latch clears when the trace empties (reset / new invoice).
-  const pastIntakeLatch = useRef(false);
-  if (pastIntakeNow) pastIntakeLatch.current = true;
-  if (state.status === "idle" || state.trace.length === 0)
-    pastIntakeLatch.current = false;
-  const pastIntake = pastIntakeNow || pastIntakeLatch.current;
+  const pastIntakeLatchRef = useRef(false);
+  if (isPastIntakeNow) pastIntakeLatchRef.current = true;
+  if (state.status === "idle" || state.trace.length === 0) pastIntakeLatchRef.current = false;
+  const isPastIntake = isPastIntakeNow || pastIntakeLatchRef.current;
 
   // The gates the paused run is waiting on (joined: live status + the workflow's
   // people). Drives the inline per-node Approve/Reject and the submit affordance.
@@ -315,9 +283,7 @@ export const Dashboard = ({
 
   // Decisions staged on the parallel gates, before the reviewer submits the wave.
   // (One gate → the header buttons resume immediately; this is for 2+ at once.)
-  const [gateChoices, setGateChoices] = useState<
-    Record<string, "approve" | "reject">
-  >({});
+  const [gateChoices, setGateChoices] = useState<Record<string, "approve" | "reject">>({});
   // Reject notes staged per gate (multi-gate), keyed by step id.
   const [gateReasons, setGateReasons] = useState<Record<string, string>>({});
   // The trace drawer (the step-by-step log) slides over the graph on demand, so the
@@ -325,33 +291,30 @@ export const Dashboard = ({
   const [traceOpen, setTraceOpen] = useState(false);
   // Clear all staged decision/reason state whenever the run leaves the awaiting
   // state (resolved, re-run, or a new wave streams in fresh) so nothing leaks.
-  const awaiting = state.status === "awaiting";
+  const isAwaiting = state.status === "awaiting";
   const wasAwaitingRef = useRef(false);
   useEffect(() => {
-    if (wasAwaitingRef.current && !awaiting) {
+    if (wasAwaitingRef.current && !isAwaiting) {
       setGateChoices({});
       setGateReasons({});
     }
-    wasAwaitingRef.current = awaiting;
-  }, [awaiting]);
+    wasAwaitingRef.current = isAwaiting;
+  }, [isAwaiting]);
 
   const setGate = useEventCallback((id: string, choice: "approve" | "reject") =>
-    setGateChoices((m) => ({ ...m, [id]: choice })),
+    setGateChoices((m) => ({ ...m, [id]: choice }))
   );
   // A gate flipped back to approve drops any reject note it had staged.
   const setGateReason = useEventCallback((id: string, reason: string) =>
-    setGateReasons((m) => ({ ...m, [id]: reason })),
+    setGateReasons((m) => ({ ...m, [id]: reason }))
   );
   const setAllGates = (choice: "approve" | "reject") =>
     setGateChoices(Object.fromEntries(pendingIds.map((id) => [id, choice])));
-  const allDecided =
-    gates.length > 0 && pendingIds.every((id) => gateChoices[id]);
+  const isAllDecided = gates.length > 0 && pendingIds.every((id) => gateChoices[id]);
   // Only notes on gates still staged as reject go out (approve drops the note).
   const rejectReasons = (): Record<string, string> =>
     Object.fromEntries(
-      Object.entries(gateReasons).filter(
-        ([id, r]) => gateChoices[id] === "reject" && r.trim(),
-      ),
+      Object.entries(gateReasons).filter(([id, r]) => gateChoices[id] === "reject" && r.trim())
     );
 
   const select = (id: string) => {
@@ -369,7 +332,7 @@ export const Dashboard = ({
   // Submit the staged gate decisions (one gate or several). decideMany rebuilds the
   // stateless run from the union of decisions, so it covers the single-gate case too.
   const submitDecisions = () => {
-    if (!selected || !allDecided) return;
+    if (!selected || !isAllDecided) return;
     void decideMany(selected.id, gateChoices, rejectReasons());
   };
 
@@ -381,12 +344,10 @@ export const Dashboard = ({
       <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-[minmax(300px,380px)_1fr]">
         {/* LEFT, queue (fills the column) + the Recent runs audit panel below it. */}
         <div className="flex min-h-0 flex-col gap-4 lg:h-full">
-          <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:min-h-0 lg:max-h-none lg:flex-1">
+          <Card className="flex max-h-[70vh] flex-col overflow-hidden lg:max-h-none lg:min-h-0 lg:flex-1">
             <CardHeader className="flex items-center justify-between">
               <CardTitle>Invoice queue</CardTitle>
-              <span className="text-[11px] text-muted tnum">
-                {queue.length} invoices
-              </span>
+              <span className="tnum text-[11px] text-muted">{queue.length} invoices</span>
             </CardHeader>
             {/* relative wrapper so the fade + "N more" pill can overlay the scroll
         area, on macOS the overlay scrollbar is hidden, so these are the cue
@@ -401,9 +362,7 @@ export const Dashboard = ({
                   const isSelected = item.id === selectedId;
                   // The pill reflects the live run only for the selected row; others
                   // show their seeded scenario hint as a neutral label.
-                  const outcome: Outcome = isSelected
-                    ? state.outcome
-                    : "pending";
+                  const outcome: Outcome = isSelected ? state.outcome : "pending";
                   // Hovering a flagged row reveals WHY in plain English (a Radix tooltip),
                   // so the queue explains itself before you run anything. Clean rows have
                   // nothing to explain.
@@ -414,9 +373,7 @@ export const Dashboard = ({
                       data-testid={`queue-row-${item.id}`}
                       onClick={() => select(item.id)}
                       onMouseEnter={() => setHoveredId(item.id)}
-                      onMouseLeave={() =>
-                        setHoveredId((h) => (h === item.id ? null : h))
-                      }
+                      onMouseLeave={() => setHoveredId((h) => (h === item.id ? null : h))}
                       className={`relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
                         isSelected ? "bg-accent-soft/50" : "hover:bg-subtle/70"
                       }`}
@@ -453,9 +410,7 @@ export const Dashboard = ({
                       mean something. INV-2042 (price mismatch → investigator +
                       pause: the full wow) also gets a single "Start here" chip. */}
                           {isSelected && state.status !== "idle" ? (
-                            <Badge tone={outcomeTone(outcome)}>
-                              {outcomeLabel(outcome)}
-                            </Badge>
+                            <Badge tone={outcomeTone(outcome)}>{outcomeLabel(outcome)}</Badge>
                           ) : (
                             <QueueHint
                               scenario={item.scenario}
@@ -471,11 +426,7 @@ export const Dashboard = ({
                       {explain ? (
                         <Tooltip>
                           <TooltipTrigger asChild>{row}</TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            align="end"
-                            data-testid={`why-${item.id}`}
-                          >
+                          <TooltipContent side="top" align="end" data-testid={`why-${item.id}`}>
                             {explain}
                           </TooltipContent>
                         </Tooltip>
@@ -526,16 +477,16 @@ export const Dashboard = ({
               statuses={graphStatuses}
               // The awaiting gate(s) accept a decision inline; one gate or several, the
               // node carries Approve / Reject (+ a reason on a staged reject).
-              decidableIds={awaiting ? pendingIds : undefined}
-              decisions={awaiting ? gateChoices : undefined}
-              reasons={awaiting ? gateReasons : undefined}
-              onDecide={awaiting ? setGate : undefined}
-              onReason={awaiting ? setGateReason : undefined}
+              decidableIds={isAwaiting ? pendingIds : undefined}
+              decisions={isAwaiting ? gateChoices : undefined}
+              reasons={isAwaiting ? gateReasons : undefined}
+              onDecide={isAwaiting ? setGate : undefined}
+              onReason={isAwaiting ? setGateReason : undefined}
               // The AI investigator's call, shown on the paused gate where the human
               // decides (verdict + reasoning on hover), not only in the trace drawer.
-              recommendation={awaiting ? readRecommendation(state.trace) : null}
+              recommendation={isAwaiting ? readRecommendation(state.trace) : null}
               // Pan to frame the waiting gate(s) the moment the run pauses.
-              focusIds={awaiting ? pendingIds : undefined}
+              focusIds={isAwaiting ? pendingIds : undefined}
             />
 
             {/* Top-left overlay: the context a header used to carry (which workflow,
@@ -553,12 +504,9 @@ export const Dashboard = ({
                 )}
               </p>
               <div className="pointer-events-auto">
-                <RunningAgainst
-                  workflow={workflow}
-                  onBuildWorkflow={onBuildWorkflow}
-                />
+                <RunningAgainst workflow={workflow} onBuildWorkflow={onBuildWorkflow} />
               </div>
-              {pastIntake && (
+              {isPastIntake && (
                 <div className="mt-2 w-fit max-w-full">
                   <OutcomeBanner outcome={state.outcome} />
                 </div>
@@ -581,7 +529,7 @@ export const Dashboard = ({
               document on idle (with Run), then the live scan as the agent reads it.
               Once past intake it's gone and the lit graph is the whole story (the
               document stays one click away in the trace drawer). */}
-            {!pastIntake && previewId && (
+            {!isPastIntake && previewId && (
               // The overlay is the positioning context (`inset-0`), and it does NOT
               // scroll, only the inner document does. So the Run CTA, anchored to the
               // overlay's vertical center below, stays put no matter how far the PDF
@@ -634,11 +582,9 @@ export const Dashboard = ({
 
             {/* Floating action bar while a run is paused on gate(s): the resume control
               that used to live in the header. Decide on the nodes, submit here. */}
-            {awaiting && selected && (
+            {isAwaiting && selected && (
               <div
-                data-testid={
-                  gates.length >= 2 ? "approval-gate-multi" : "approval-gate"
-                }
+                data-testid={gates.length >= 2 ? "approval-gate-multi" : "approval-gate"}
                 className="absolute inset-x-0 bottom-4 z-10 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink/90 px-2 py-1.5 shadow-lift backdrop-blur"
               >
                 {gates.length >= 2 && (
@@ -668,7 +614,7 @@ export const Dashboard = ({
                   size="sm"
                   variant="ok"
                   data-testid="submit-decisions"
-                  disabled={!allDecided}
+                  disabled={!isAllDecided}
                   onClick={submitDecisions}
                 >
                   {gates.length >= 2 ? "Submit decisions" : "Submit"}
@@ -677,7 +623,7 @@ export const Dashboard = ({
             )}
 
             {/* The running indicator (the centered Run is gone once a run starts). */}
-            {state.status === "running" && pastIntake && (
+            {state.status === "running" && isPastIntake && (
               <div className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-[12px] font-medium text-muted shadow-card ring-1 ring-inset ring-line-strong backdrop-blur">
                 <Spinner />
                 Running…

@@ -3,25 +3,17 @@
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
+import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
+import type { OrgEmployee } from "@/lib/orpc/schemas";
+
 import { NodeEditPanel } from "@/components/node-edit-panel";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { WorkflowGraph } from "@/components/workflow-graph";
 import { useEventCallback } from "@/hooks/use-event-callback";
-import type { ApprovalWorkflow, StepChange } from "@/lib/approval-workflow";
 import { orpc } from "@/lib/orpc/client";
-import type { OrgEmployee } from "@/lib/orpc/schemas";
 import { applyEditOp } from "@/lib/workflow-edit";
-import {
-  validateWorkflow,
-  isActivatable,
-  type WorkflowIssue,
-} from "@/lib/workflow-validate";
+import { isActivatable, validateWorkflow, type WorkflowIssue } from "@/lib/workflow-validate";
 
 /**
  * The conversational workflow editor, the layer competitors don't have.
@@ -91,19 +83,17 @@ export const WorkflowEditor = ({
   // the initial derived one and every kept edit, so the pipeline runs against
   // exactly this. Stable callback (useEventCallback) so the effect keys only on
   // `current`. The proposal never flows here: it's preview-only until approved.
-  const emitCurrent = useEventCallback((wf: ApprovalWorkflow) =>
-    onCurrentChange?.(wf),
-  );
+  const emitCurrent = useEventCallback((wf: ApprovalWorkflow) => onCurrentChange?.(wf));
   useEffect(() => emitCurrent(current), [current, emitCurrent]);
 
   // The edit is a TanStack Query mutation over the typed oRPC procedure;
   // `isPending` is the busy state.
   const editMutation = useMutation(orpc.editWorkflow.mutationOptions());
-  const busy = editMutation.isPending;
+  const isBusy = editMutation.isPending;
 
   const submit = async (text: string) => {
     const value = text.trim();
-    if (!value || busy) return;
+    if (!value || isBusy) return;
     setError(null);
     try {
       const data = await editMutation.mutateAsync({
@@ -125,9 +115,7 @@ export const WorkflowEditor = ({
       if (realChanges.length === 0) {
         // The agent declined (redundant / off-topic), say so, don't offer a no-op.
         setError(
-          data.reason
-            ? `No change: ${data.reason}`
-            : "No change. The workflow already does that.",
+          data.reason ? `No change: ${data.reason}` : "No change. The workflow already does that."
         );
         return;
       }
@@ -135,14 +123,15 @@ export const WorkflowEditor = ({
       setInstruction("");
       // Drop the chip we just used (if this came from one).
       setChips((cs) => cs.filter((c) => c !== value));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Edit failed.");
+    } catch (error_) {
+      setError(error_ instanceof Error ? error_.message : "Edit failed.");
     }
   };
 
   /** The user picked a clarification option → re-submit the original instruction
       completed with the choice (re-uses the whole edit flow). */
   const pickClarifyOption = (option: string) => {
+    // eslint-disable-next-line custom/no-empty-string-fallback -- defensive: if no clarify instruction is pending, "" yields a harmless base for the re-submit string.
     const base = clarify?.instruction ?? "";
     setClarify(null);
     void submit(`${base} for ${option}`);
@@ -155,8 +144,7 @@ export const WorkflowEditor = ({
   const canApply = isActivatable(issues);
 
   const approve = () => {
-    if (!proposal || !isActivatable(validateWorkflow(proposal.proposed)))
-      return;
+    if (!proposal || !isActivatable(validateWorkflow(proposal.proposed))) return;
     setCurrent(proposal.proposed); // the proposal becomes live
     setProposal(null);
   };
@@ -175,9 +163,7 @@ export const WorkflowEditor = ({
     setSelectedId(null);
   };
 
-  const changedCount = proposal
-    ? proposal.changes.filter((c) => c.kind !== "unchanged").length
-    : 0;
+  const changedCount = proposal ? proposal.changes.filter((c) => c.kind !== "unchanged").length : 0;
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -191,11 +177,7 @@ export const WorkflowEditor = ({
         {proposal ? (
           // Previewing an edit, no node-editing while a proposal is pending (approve
           // or revert first), so the two edit paths can't collide.
-          <WorkflowGraph
-            workflow={proposal.proposed}
-            changes={proposal.changes}
-            issues={issues}
-          />
+          <WorkflowGraph workflow={proposal.proposed} changes={proposal.changes} issues={issues} />
         ) : (
           <WorkflowGraph
             workflow={current}
@@ -260,16 +242,14 @@ export const WorkflowEditor = ({
             instruction. Takes over the chip area while it's pending. */}
         {!proposal && clarify && (
           <div className="space-y-1.5 rounded-xl bg-accent-soft/40 px-3 py-2.5 ring-1 ring-inset ring-accent/15">
-            <p className="text-[12.5px] font-medium text-ink">
-              {clarify.question}
-            </p>
+            <p className="text-[12.5px] font-medium text-ink">{clarify.question}</p>
             <div className="flex flex-wrap gap-1.5">
               {clarify.options.map((o) => (
                 <DeptChip
                   key={o}
                   label={o}
                   onClick={() => pickClarifyOption(o)}
-                  disabled={busy}
+                  disabled={isBusy}
                 />
               ))}
             </div>
@@ -291,7 +271,7 @@ export const WorkflowEditor = ({
               <button
                 key={s}
                 onClick={() => submit(s)}
-                disabled={busy}
+                disabled={isBusy}
                 className="group inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-1.5 text-left text-[12px] font-medium text-muted ring-1 ring-inset ring-line-strong transition-colors hover:bg-accent-soft hover:text-accent hover:ring-accent/30 disabled:opacity-50"
               >
                 <span className="text-faint group-hover:text-accent">+</span>
@@ -310,7 +290,7 @@ export const WorkflowEditor = ({
           <input
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            disabled={busy}
+            disabled={isBusy}
             placeholder="Describe a change in plain language…"
             className="h-10 flex-1 rounded-lg bg-surface px-3.5 text-[13px] text-ink shadow-card outline-none ring-1 ring-inset ring-line-strong transition-shadow placeholder:text-faint focus:ring-2 focus:ring-accent-ring disabled:opacity-60"
           />
@@ -321,7 +301,7 @@ export const WorkflowEditor = ({
               onClick={() => {
                 if (
                   window.confirm(
-                    "Discard all edits and restore the workflow the agent first derived?",
+                    "Discard all edits and restore the workflow the agent first derived?"
                   )
                 )
                   reset();
@@ -331,12 +311,8 @@ export const WorkflowEditor = ({
               Reset
             </Button>
           )}
-          <Button
-            type="submit"
-            loading={busy}
-            disabled={busy || !instruction.trim()}
-          >
-            {busy ? "Editing…" : "Edit"}
+          <Button type="submit" loading={isBusy} disabled={isBusy || !instruction.trim()}>
+            {isBusy ? "Editing…" : "Edit"}
           </Button>
         </form>
       </div>
@@ -365,24 +341,21 @@ const ChecksBadges = ({ issues }: { issues: WorkflowIssue[] }) => {
             )}
             {warnings.length > 0 && (
               <span className="rounded-full bg-warn-soft px-1.5 py-0.5 text-warn">
-                {warnings.length}{" "}
-                {warnings.length === 1 ? "warning" : "warnings"}
+                {warnings.length} {warnings.length === 1 ? "warning" : "warnings"}
               </span>
             )}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" align="end" className="max-w-[360px]">
           <ul className="space-y-1">
-            {issues.map((iss, i) => (
+            {issues.map((iss) => (
               <li
-                key={`${iss.code}-${i}`}
+                key={`${iss.code}-${iss.stepIds.join(",")}`}
                 className="flex gap-2 text-[12px] leading-snug"
               >
                 <span
                   aria-hidden
-                  className={
-                    iss.severity === "error" ? "text-danger" : "text-warn"
-                  }
+                  className={iss.severity === "error" ? "text-danger" : "text-warn"}
                 >
                   {iss.severity === "error" ? "✕" : "⚠"}
                 </span>
@@ -407,8 +380,7 @@ const ValidationPanel = ({ issues }: { issues: WorkflowIssue[] }) => {
   // row; the checks only surface when there's an error or a best-practice warning.
   if (issues.length === 0) return null;
   const top =
-    issues.find((i) => i.severity === "error") ??
-    issues.find((i) => i.severity === "warning");
+    issues.find((i) => i.severity === "error") ?? issues.find((i) => i.severity === "warning");
   return (
     <div className="flex min-w-0 items-center gap-2 rounded-xl bg-subtle/60 px-3 py-2 ring-1 ring-inset ring-line">
       <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-faint">
@@ -438,7 +410,7 @@ const SparkIcon = () => {
  */
 const hueFor = (label: string): number => {
   let h = 0;
-  for (const ch of label) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  for (const ch of label) h = (h * 31 + (ch.codePointAt(0) ?? 0)) % 360;
   return h;
 };
 

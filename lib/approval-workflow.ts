@@ -80,6 +80,8 @@ export type Condition =
 /** @public, a single comparison in a condition (the editor's row unit). */
 export type ConditionLeaf = Extract<Condition, { kind: "leaf" }>;
 
+const ConditionValue = z.union([z.string(), z.number()]);
+
 export const Condition: z.ZodType<Condition> = z.lazy(() =>
   z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("always") }).strict(),
@@ -88,16 +90,12 @@ export const Condition: z.ZodType<Condition> = z.lazy(() =>
         kind: z.literal("leaf"),
         field: ConditionField,
         op: ConditionOp,
-        value: z.union([z.string(), z.number()]),
+        value: ConditionValue,
       })
       .strict(),
-    z
-      .object({ kind: z.literal("all"), conditions: z.array(Condition) })
-      .strict(),
-    z
-      .object({ kind: z.literal("any"), conditions: z.array(Condition) })
-      .strict(),
-  ]),
+    z.object({ kind: z.literal("all"), conditions: z.array(Condition) }).strict(),
+    z.object({ kind: z.literal("any"), conditions: z.array(Condition) }).strict(),
+  ])
 );
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -133,9 +131,7 @@ export type ApprovalStep = z.infer<typeof ApprovalStep>;
 /** @public, everyone who approves a gate: the primary (if resolved) then the extras,
     in order. Empty when the gate is unresolved with no extras. */
 export const approversOf = (step: ApprovalStep): string[] =>
-  [step.approverName, ...(step.approvers ?? [])].filter(
-    (n): n is string => !!n,
-  );
+  [step.approverName, ...(step.approvers ?? [])].filter((n): n is string => !!n);
 
 /** @public, the system actions an integration step can run. */
 export const IntegrationKind = z.enum(["slack", "jira", "netsuite"]);
@@ -159,10 +155,7 @@ export const IntegrationStep = z
   .strict();
 export type IntegrationStep = z.infer<typeof IntegrationStep>;
 
-export const WorkflowStep = z.discriminatedUnion("kind", [
-  ApprovalStep,
-  IntegrationStep,
-]);
+export const WorkflowStep = z.discriminatedUnion("kind", [ApprovalStep, IntegrationStep]);
 export type WorkflowStep = z.infer<typeof WorkflowStep>;
 
 /**
@@ -203,101 +196,121 @@ export type InvoiceContext = {
     (set membership), handled directly in `evaluateCondition`. */
 const valueFor = (
   field: Exclude<ConditionField, "exceptionCode">,
-  ctx: InvoiceContext,
+  ctx: InvoiceContext
 ): string | number => {
   switch (field) {
-    case "amount":
+    case "amount": {
       return ctx.amount;
-    case "exceptionAmount":
+    }
+    case "exceptionAmount": {
       return ctx.exceptionAmount;
-    case "variancePct":
+    }
+    case "variancePct": {
       return ctx.variancePct;
-    case "department":
+    }
+    case "department": {
       return ctx.department;
-    case "verdict":
+    }
+    case "verdict": {
       return ctx.verdict;
-    case "vendor":
+    }
+    case "vendor": {
       return ctx.vendor;
-    case "currency":
+    }
+    case "currency": {
       return ctx.currency;
-    case "matchType":
+    }
+    case "matchType": {
       return ctx.matchType;
+    }
   }
 };
 
-const compare = (
-  left: string | number,
-  op: ConditionOp,
-  right: string | number,
-): boolean => {
+// eslint-disable-next-line unicorn/consistent-boolean-name -- comparison predicate; the name states the operation, not a boolean subject
+const compare = (left: string | number, op: ConditionOp, right: string | number): boolean => {
   // Numeric comparison when both sides are numbers; otherwise string equality
   // (only == / != are meaningful for strings).
   if (typeof left === "number" && typeof right === "number") {
     switch (op) {
-      case ">":
+      case ">": {
         return left > right;
-      case ">=":
+      }
+      case ">=": {
         return left >= right;
-      case "<":
+      }
+      case "<": {
         return left < right;
-      case "<=":
+      }
+      case "<=": {
         return left <= right;
-      case "==":
+      }
+      case "==": {
         return left === right;
-      case "!=":
+      }
+      case "!=": {
         return left !== right;
+      }
     }
   }
   const l = String(left);
   const r = String(right);
   switch (op) {
-    case "==":
+    case "==": {
       return l === r;
-    case "!=":
+    }
+    case "!=": {
       return l !== r;
+    }
     // Ordering on strings isn't meaningful here, treat as false rather than
     // surprising lexicographic results.
-    default:
+    default: {
       return false;
+    }
   }
 };
 
 /** Evaluate a condition against an invoice context. Pure. */
-export const evaluateCondition = (
-  cond: Condition,
-  ctx: InvoiceContext,
-): boolean => {
+// eslint-disable-next-line unicorn/consistent-boolean-name -- exported predicate; renaming would break lib/approval-engine.ts and the test suites that import it
+export const evaluateCondition = (cond: Condition, ctx: InvoiceContext): boolean => {
   switch (cond.kind) {
-    case "always":
+    case "always": {
       return true;
-    case "leaf":
+    }
+    case "leaf": {
       // exceptionCode is set-membership, not a scalar compare: `== code` is "the
       // invoice raised this flag", `!= code` is "it didn't"; other ops are meaningless.
       if (cond.field === "exceptionCode") {
-        const has = ctx.exceptionCodes.includes(String(cond.value));
-        if (cond.op === "==") return has;
-        if (cond.op === "!=") return !has;
+        const isHas = ctx.exceptionCodes.includes(String(cond.value));
+        if (cond.op === "==") return isHas;
+        if (cond.op === "!=") return !isHas;
         return false;
       }
       return compare(valueFor(cond.field, ctx), cond.op, cond.value);
-    case "all":
+    }
+    case "all": {
       return cond.conditions.every((c) => evaluateCondition(c, ctx));
-    case "any":
+    }
+    case "any": {
       return cond.conditions.some((c) => evaluateCondition(c, ctx));
+    }
   }
 };
 
 /** Render a condition as a short human string, for traces and the UI. */
 export const describeCondition = (cond: Condition): string => {
   switch (cond.kind) {
-    case "always":
+    case "always": {
       return "always";
-    case "leaf":
+    }
+    case "leaf": {
       return `${cond.field} ${cond.op} ${describeLeafValue(cond)}`;
-    case "all":
-      return cond.conditions.map(describeCondition).join(" and ");
-    case "any":
-      return cond.conditions.map(describeCondition).join(" or ");
+    }
+    case "all": {
+      return cond.conditions.map((c) => describeCondition(c)).join(" and ");
+    }
+    case "any": {
+      return cond.conditions.map((c) => describeCondition(c)).join(" or ");
+    }
   }
 };
 
@@ -307,9 +320,7 @@ export const describeCondition = (cond: Condition): string => {
  * the threshold itself is currency-agnostic (it's compared to the invoice amount
  * whatever its currency), but "$25,000" reads far better than a bare "25000".
  */
-const describeLeafValue = (
-  cond: Extract<Condition, { kind: "leaf" }>,
-): string => {
+const describeLeafValue = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   if (cond.field === "amount" && typeof cond.value === "number") {
     return `$${cond.value.toLocaleString("en-US")}`;
   }
@@ -325,14 +336,18 @@ const describeLeafValue = (
  */
 export const humanizeCondition = (cond: Condition): string => {
   switch (cond.kind) {
-    case "always":
+    case "always": {
       return "Always";
-    case "leaf":
+    }
+    case "leaf": {
       return humanizeLeaf(cond);
-    case "all":
-      return cond.conditions.map(humanizeCondition).join(" · ");
-    case "any":
-      return cond.conditions.map(humanizeCondition).join(" or ");
+    }
+    case "all": {
+      return cond.conditions.map((c) => humanizeCondition(c)).join(" · ");
+    }
+    case "any": {
+      return cond.conditions.map((c) => humanizeCondition(c)).join(" or ");
+    }
   }
 };
 
@@ -343,27 +358,25 @@ const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   const { field, op, value } = cond;
   const num = typeof value === "number" ? value : 0;
 
+  // eslint-disable-next-line unicorn/prefer-switch -- not all field branches are pure equality (verdict/matchType also test op) and non-matching ops fall through to the fallback return, a switch would change that
   if (field === "amount" || field === "exceptionAmount") {
     const what = field === "amount" ? "" : "exception ";
     if (op === ">" || op === ">=") return `Over ${what}${money(num)}`;
     if (op === "<" || op === "<=") return `Under ${what}${money(num)}`;
-  }
-  if (field === "variancePct") {
+  } else if (field === "variancePct") {
     if (op === ">" || op === ">=") return `Variance ≥ ${pct(num)}`;
     if (op === "<" || op === "<=") return `Variance < ${pct(num)}`;
-  }
-  if (field === "department") {
+  } else if (field === "department") {
     if (op === "==") return `${String(value)} only`;
     if (op === "!=") return `Not ${String(value)}`;
   }
   if (field === "verdict" && op === "==") {
-    return value === "exception" ? "Exception" : `${String(value)}`;
+    return value === "exception" ? "Exception" : String(value);
   }
   if (field === "vendor") {
     if (op === "==") return `Vendor: ${String(value)}`;
     if (op === "!=") return `Not ${String(value)}`;
-  }
-  if (field === "currency") {
+  } else if (field === "currency") {
     if (op === "==") return `${String(value)} only`;
     if (op === "!=") return `Not ${String(value)}`;
   }
@@ -372,7 +385,7 @@ const humanizeLeaf = (cond: Extract<Condition, { kind: "leaf" }>): string => {
   }
   if (field === "exceptionCode") {
     // Codes read better with spaces: "vendor_inactive" → "vendor inactive".
-    const label = String(value).replace(/_/g, " ");
+    const label = String(value).replaceAll("_", " ");
     if (op === "==") return `Has ${label} flag`;
     if (op === "!=") return `No ${label} flag`;
   }
@@ -401,8 +414,7 @@ const stepFieldDiffs = (a: WorkflowStep, b: WorkflowStep): string[] => {
   const fields: string[] = [];
   if (a.kind !== b.kind) fields.push("type");
   if (a.label !== b.label) fields.push("label");
-  if (describeCondition(a.when) !== describeCondition(b.when))
-    fields.push("condition");
+  if (describeCondition(a.when) !== describeCondition(b.when)) fields.push("condition");
   // "approver" covers the whole gate roster (primary + co-approvers), so adding or
   // dropping an "Also requires" person reads as a change, not "unchanged".
   const aAppr = a.kind === "approval" ? approversOf(a).join(",") : "";
@@ -418,7 +430,7 @@ const stepFieldDiffs = (a: WorkflowStep, b: WorkflowStep): string[] => {
 /** Diff two workflows by step id: added / removed / changed / unchanged. @public */
 export const diffWorkflows = (
   current: ApprovalWorkflow,
-  proposed: ApprovalWorkflow,
+  proposed: ApprovalWorkflow
 ): StepChange[] => {
   const cur = new Map(current.steps.map((s) => [s.id, s]));
   const prop = new Map(proposed.steps.map((s) => [s.id, s]));
@@ -435,7 +447,7 @@ export const diffWorkflows = (
     changes.push(
       fields.length > 0
         ? { kind: "changed", id, label: p.label, fields }
-        : { kind: "unchanged", id, label: p.label },
+        : { kind: "unchanged", id, label: p.label }
     );
   }
   // Removed, in current but not in the proposal.
@@ -500,9 +512,9 @@ export type OnboardingProposal = z.infer<typeof OnboardingProposal>;
  */
 const pruneWorkflow = (
   workflow: ApprovalWorkflow,
-  shouldDrop: (id: string) => boolean,
+  shouldDrop: (id: string) => boolean
 ): ApprovalWorkflow => {
-  if (!workflow.steps.some((s) => shouldDrop(s.id))) return workflow;
+  if (workflow.steps.every((s) => !shouldDrop(s.id))) return workflow;
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));
 
   // Follow `next` through dropped nodes to the first kept descendants.
@@ -528,7 +540,7 @@ const pruneWorkflow = (
     .filter((s) => !shouldDrop(s.id))
     .map((s) => ({ ...s, next: keptTargets(s.next) }));
   const roots = workflow.roots.flatMap((r) =>
-    shouldDrop(r) ? keptTargets(byId.get(r)?.next ?? []) : [r],
+    shouldDrop(r) ? keptTargets(byId.get(r)?.next ?? []) : [r]
   );
   return { ...workflow, steps, roots };
 };
@@ -550,7 +562,7 @@ const pruneWorkflow = (
  */
 export const resolvePath = (
   workflow: ApprovalWorkflow,
-  ctx: InvoiceContext | undefined,
+  ctx: InvoiceContext | undefined
 ): ApprovalWorkflow => {
   if (!ctx) return workflow;
   const byId = new Map(workflow.steps.map((s) => [s.id, s]));

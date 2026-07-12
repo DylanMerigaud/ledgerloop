@@ -1,4 +1,3 @@
-import { EDIT_FIXTURE } from "@/eval/edit-cases";
 import type { WorkflowEditOp } from "@/lib/workflow-edit";
 
 /**
@@ -7,8 +6,6 @@ import type { WorkflowEditOp } from "@/lib/workflow-edit";
  * plans + applies + self-corrects, does the final workflow VALIDATE CLEAN, and did
  * it dispatch the expected number of ops for a multi-part instruction.
  */
-
-export { EDIT_FIXTURE };
 
 export type AgentCase = {
   id: string;
@@ -31,7 +28,7 @@ export const AGENT_CASES: AgentCase[] = [
         op: "add-approval",
         label: "CFO review",
         approverTitle: "CFO",
-        amountOver: 50000,
+        amountOver: 50_000,
         department: null,
         vendor: null,
         currency: null,
@@ -51,7 +48,7 @@ export const AGENT_CASES: AgentCase[] = [
         op: "add-approval",
         label: "CFO review",
         approverTitle: "CFO",
-        amountOver: 50000,
+        amountOver: 50_000,
         department: null,
         vendor: null,
         currency: null,
@@ -130,8 +127,7 @@ export const AGENT_CASES: AgentCase[] = [
   },
   {
     id: "add-co-approver",
-    instruction:
-      "The director review should also need Jordan Ellis to sign off",
+    instruction: "The director review should also need Jordan Ellis to sign off",
     minOps: 1,
     why: "a co-approver added to an existing gate; the result still validates clean",
     stub: [
@@ -162,3 +158,5 @@ export const AGENT_CASES: AgentCase[] = [
     ],
   },
 ];
+
+export { EDIT_FIXTURE } from "@/eval/edit-cases";

@@ -34,9 +34,9 @@ export const GET = async (request: Request): Promise<Response> => {
     const counts = await resetAndReseed(getDb());
     log.info("nightly reset complete", counts);
     return Response.json({ ok: true, ...counts });
-  } catch (err) {
+  } catch (error) {
     log.error("nightly reset failed", {
-      error: err instanceof Error ? err.message : String(err),
+      error: error instanceof Error ? error.message : String(error),
     });
     return new Response("Reset failed.", { status: 500 });
   }

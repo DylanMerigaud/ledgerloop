@@ -38,10 +38,10 @@ export const isRecord = (v: unknown): v is Record<string, unknown> =>
  * are cast-free, and throws a named error if the invariant is ever violated, instead of
  * an `as` cast silently papering over a bug.
  */
-export const assertRecord: (
-  v: unknown,
-  why: string,
-) => asserts v is Record<string, unknown> = (v, why) => {
+export const assertRecord: (v: unknown, why: string) => asserts v is Record<string, unknown> = (
+  v,
+  why
+) => {
   if (!isRecord(v)) {
     throw new Error(`Invariant violated: ${why}`);
   }

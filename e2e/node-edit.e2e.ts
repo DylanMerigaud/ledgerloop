@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * The node editor (the Pivot-style side panel): in onboarding, clicking a gate in
@@ -15,9 +15,7 @@ const DISCOVERY_TIMEOUT = 90_000;
 const node = (page: Page, id: string) =>
   page.getByTestId(`graph-node-${id}`).locator("visible=true");
 
-test("clicking a gate opens the panel and the approver picker resolves it", async ({
-  page,
-}) => {
+test("clicking a gate opens the panel and the approver picker resolves it", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
   // Discovery done once the derived workflow has rendered its gates.
@@ -36,23 +34,17 @@ test("clicking a gate opens the panel and the approver picker resolves it", asyn
   // Pick the first person in the open list.
   await page.locator('[role="option"]').first().click();
   // The chosen person now shows on the department gate (no more "unresolved").
-  await expect(
-    node(page, "department-review").getByText("unresolved"),
-  ).toHaveCount(0);
+  await expect(node(page, "department-review").getByText("unresolved")).toHaveCount(0);
 });
 
-test("the pipeline graph is read-only, clicking a node does nothing", async ({
-  page,
-}) => {
+test("the pipeline graph is read-only, clicking a node does nothing", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Run it on invoices/ }).click();
   await page.getByTestId("queue-row-INV-2042").click();
   await page.getByTestId("run-btn").click();
   // The pipeline graph (the hero pane) is read-only: clicking a node does NOT open
   // the editor (that's an onboarding-only affordance).
-  const liveNode = page
-    .getByTestId("graph-pane")
-    .getByTestId("graph-node-manager-review");
+  const liveNode = page.getByTestId("graph-pane").getByTestId("graph-node-manager-review");
   await expect(liveNode).toBeVisible({ timeout: 45_000 });
   await liveNode.click();
   await expect(page.getByText(/Triggers when/)).toHaveCount(0);

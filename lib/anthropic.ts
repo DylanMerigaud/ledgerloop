@@ -23,6 +23,7 @@ let cached: Anthropic | null = null;
 export const anthropic = (): Anthropic => {
   if (!cached) {
     if (!env.ANTHROPIC_API_KEY) throw new MissingAnthropicKeyError();
+    // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton cache, assigned once on first use
     cached = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   }
   return cached;

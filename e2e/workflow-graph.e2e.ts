@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 /**
  * Graphical checks on the workflow canvas, driven through the REAL browser. The
@@ -24,7 +24,7 @@ const RUN_TIMEOUT = 45_000;
 const handleCounts = async (page: Page, stepId: string) => {
   return page.evaluate((id) => {
     const node = document
-      .querySelector(`[data-testid="graph-node-${id}"]`)
+      .querySelector(`[data-testid="graph-node-${CSS.escape(id)}"]`)
       ?.closest(".react-flow__node");
     const n = (dir: string) =>
       node ? node.querySelectorAll(`.react-flow__handle-${dir}`).length : -1;
@@ -61,21 +61,15 @@ test("run graph: no dangling handles (leaf has no source, root has no target)", 
   // The root gate (whatever the run entered on) has an outgoing edge but no incoming
   // handle. Find the first node with zero incoming edges in the rendered graph.
   const roots = await page.evaluate(() => {
-    const nodes = [
-      ...document.querySelectorAll('[data-testid^="graph-node-"]'),
-    ];
+    const nodes = [...document.querySelectorAll('[data-testid^="graph-node-"]')];
     return nodes
       .map((el) => {
         const wrap = el.closest(".react-flow__node");
         const inc = wrap
-          ? wrap.querySelectorAll(
-              ".react-flow__handle-left,.react-flow__handle-top",
-            ).length
+          ? wrap.querySelectorAll(".react-flow__handle-left,.react-flow__handle-top").length
           : 0;
         const out = wrap
-          ? wrap.querySelectorAll(
-              ".react-flow__handle-right,.react-flow__handle-bottom",
-            ).length
+          ? wrap.querySelectorAll(".react-flow__handle-right,.react-flow__handle-bottom").length
           : 0;
         return { inc, out };
       })
@@ -96,20 +90,19 @@ const handleY = async (page: Page, caseId: string, stepId: string) => {
   return page.evaluate(
     ({ caseId, stepId }) => {
       const node = document
-        .querySelector(`[data-testid="${caseId}"]`)
-        ?.querySelector(`[data-testid="graph-node-${stepId}"]`)
+        .querySelector(`[data-testid="${CSS.escape(caseId)}"]`)
+        ?.querySelector(`[data-testid="graph-node-${CSS.escape(stepId)}"]`)
         ?.closest(".react-flow__node");
       const mid = (sel: string): number | null => {
         const r = node?.querySelector(sel)?.getBoundingClientRect();
         return r ? Math.round(r.y + r.height / 2) : null;
       };
       return {
-        src:
-          mid(".react-flow__handle-right") ?? mid(".react-flow__handle-bottom"),
+        src: mid(".react-flow__handle-right") ?? mid(".react-flow__handle-bottom"),
         tgt: mid(".react-flow__handle-left") ?? mid(".react-flow__handle-top"),
       };
     },
-    { caseId, stepId },
+    { caseId, stepId }
   );
 };
 
@@ -120,16 +113,12 @@ test.describe("graph layout: handles never kink", () => {
     await page.goto("/dev/graph-cases");
     // Wait for all three sub-canvases to have laid out (their post nodes are visible).
     await expect(
-      page.locator(
-        '[data-testid="case-linear"] [data-testid="graph-node-post-netsuite"]',
-      ),
+      page.locator('[data-testid="case-linear"] [data-testid="graph-node-post-netsuite"]')
     ).toBeVisible();
     await page.waitForTimeout(700); // let any measured-height re-layout settle
   });
 
-  test("linear chain: a Manager → Post run graph is dead straight", async ({
-    page,
-  }) => {
+  test("linear chain: a Manager → Post run graph is dead straight", async ({ page }) => {
     // Different-height nodes on one line (tall gate → short integration). The straighten
     // pass snaps the target's center onto the source's, so the two handles share a Y.
     const mgr = await handleY(page, "case-linear", "manager-review");
@@ -139,9 +128,7 @@ test.describe("graph layout: handles never kink", () => {
     expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
   });
 
-  test("linear chain stays straight when statuses arrive AFTER layout", async ({
-    page,
-  }) => {
+  test("linear chain stays straight when statuses arrive AFTER layout", async ({ page }) => {
     // case-linear-lit renders the chain, then applies Approved/Done badges a beat later
     // (a live run's sequence). The status is patched onto nodes without a re-layout and
     // the badge row is a fixed height, so the handles must still line up, no kink from a
@@ -154,9 +141,7 @@ test.describe("graph layout: handles never kink", () => {
     expect(Math.abs((mgr.src ?? 0) - (post.tgt ?? 0))).toBeLessThanOrEqual(2);
   });
 
-  test("fan-out: branches straddle a straight Manager ↔ Post spine", async ({
-    page,
-  }) => {
+  test("fan-out: branches straddle a straight Manager ↔ Post spine", async ({ page }) => {
     // Manager → {Director, Dept} → Post: manager and post stay colinear (the spine),
     // and the two branches sit symmetrically above/below it.
     const mgr = await handleY(page, "case-fanout", "manager-review");
@@ -182,10 +167,7 @@ test.describe("graph layout: handles never kink", () => {
     const dir = await handleY(page, "case-diamond", "director-review");
     const post = await handleY(page, "case-diamond", "post-netsuite");
     expect(mgr.src, "manager present").not.toBeNull();
-    expect(
-      dir.tgt,
-      "director present (base keeps the escalation gate)",
-    ).not.toBeNull();
+    expect(dir.tgt, "director present (base keeps the escalation gate)").not.toBeNull();
     expect(post.tgt, "post present").not.toBeNull();
     // Manager, Director and Post sit within a modest band (a card-height's worth), i.e.
     // the diamond stays a tidy near-line, not a staircase.
@@ -194,9 +176,7 @@ test.describe("graph layout: handles never kink", () => {
   });
 });
 
-test("run graph: the skipped conditional gate is pruned to a linear path", async ({
-  page,
-}) => {
+test("run graph: the skipped conditional gate is pruned to a linear path", async ({ page }) => {
   // INV-2042 trips the manager gate but stays under the director-escalation
   // threshold, so the director gate is SKIPPED. The realized path prunes it: the
   // director node must NOT be in the rendered graph, leaving a clean linear chain.

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { runIntake, type Extractor } from "@/lib/intake";
 import type { Invoice } from "@/lib/schema";
+
+import { type Extractor, runIntake } from "@/lib/intake";
 
 /**
  * Intake tests, the "mock vision" coverage. The real extraction calls the
@@ -16,9 +17,7 @@ const SOURCE: Invoice = {
   vendor: "Acme Corp",
   issueDate: "2026-05-01",
   currency: "USD",
-  lineItems: [
-    { sku: "A-1", description: "Widget", qty: 2, unitPrice: 10, amount: 20 },
-  ],
+  lineItems: [{ sku: "A-1", description: "Widget", qty: 2, unitPrice: 10, amount: 20 }],
   subtotal: 20,
   tax: null,
   total: 20,

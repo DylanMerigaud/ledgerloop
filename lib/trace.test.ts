@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { isRecord } from "@/lib/assert";
-import {
-  toTraceEvent,
-  stageForStep,
-  pipelineErrorEvent,
-  TraceEvent,
-} from "@/lib/trace";
+import { pipelineErrorEvent, stageForStep, toTraceEvent, TraceEvent } from "@/lib/trace";
 
 /**
  * Tests for the Mastra-chunk → TraceEvent adapter. The two properties that
@@ -117,19 +112,20 @@ test("un-posted ReconResult → error status", () => {
   assert.equal(e.status, "error");
 });
 
+const reconStatus = (outcome: string) =>
+  toTraceEvent({
+    type: "workflow-step-result",
+    payload: {
+      id: "reconciliation",
+      output: { outcome, posted: outcome === "posted" },
+    },
+  })?.status;
+
 test("reconciliation outcomes map to the right status", () => {
-  const status = (outcome: string) =>
-    toTraceEvent({
-      type: "workflow-step-result",
-      payload: {
-        id: "reconciliation",
-        output: { outcome, posted: outcome === "posted" },
-      },
-    })?.status;
-  assert.equal(status("awaiting"), "waiting"); // the human-gate pause
-  assert.equal(status("posted"), "ok");
-  assert.equal(status("rejected"), "error");
-  assert.equal(status("blocked"), "error");
+  assert.equal(reconStatus("awaiting"), "waiting"); // the human-gate pause
+  assert.equal(reconStatus("posted"), "ok");
+  assert.equal(reconStatus("rejected"), "error");
+  assert.equal(reconStatus("blocked"), "error");
 });
 
 test("narration in output becomes the detail line", () => {
@@ -145,10 +141,7 @@ test("narration in output becomes the detail line", () => {
 });
 
 test("unknown chunk types are dropped (null), not surfaced", () => {
-  assert.equal(
-    toTraceEvent({ type: "workflow-step-progress", payload: {} }),
-    null,
-  );
+  assert.equal(toTraceEvent({ type: "workflow-step-progress", payload: {} }), null);
   assert.equal(toTraceEvent({ type: "reasoning", payload: {} }), null);
 });
 
@@ -206,7 +199,7 @@ test("the internal .map() step is dropped, not surfaced", () => {
       type: "workflow-step-start",
       payload: { id: "mapping_abc-123" },
     }),
-    null,
+    null
   );
   assert.equal(
     toTraceEvent({
@@ -216,7 +209,7 @@ test("the internal .map() step is dropped, not surfaced", () => {
         output: { decision: {}, match: {}, vendor: "x" },
       },
     }),
-    null,
+    null
   );
 });
 
@@ -268,11 +261,7 @@ test("approval step output is unwrapped: nested approval summary drives status +
   assert.ok(e);
   assert.equal(e.status, "waiting", "awaiting outcome → amber/pause");
   assert.ok(isRecord(e.data), "event data is an object");
-  assert.equal(
-    e.data["outcome"],
-    "awaiting",
-    "data is the unwrapped approval summary",
-  );
+  assert.equal(e.data["outcome"], "awaiting", "data is the unwrapped approval summary");
   assert.equal(e.detail, "Needs manager sign-off.");
 });
 

@@ -1,13 +1,8 @@
 import type { PgTable } from "drizzle-orm/pg-core";
 
-import {
-  invoices,
-  purchaseOrders,
-  goodsReceipts,
-  agentRuns,
-} from "@/db/schema";
+import { agentRuns, goodsReceipts, invoices, purchaseOrders } from "@/db/schema";
 import { SEED_BUNDLES } from "@/db/seed-data";
-import { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
+import { GoodsReceipt, Invoice, PurchaseOrder } from "@/lib/schema";
 
 /**
  * Truncate the document tables + `agent_runs`, then re-insert the seeded dataset,
@@ -45,9 +40,7 @@ type SeedWritableDb = {
   };
 };
 
-export const resetAndReseed = async (
-  db: SeedWritableDb,
-): Promise<ResetCounts> => {
+export const resetAndReseed = async (db: SeedWritableDb): Promise<ResetCounts> => {
   // Validate the whole corpus up front, fail before touching the DB if the seed
   // data ever drifts from the schema.
   for (const b of SEED_BUNDLES) {

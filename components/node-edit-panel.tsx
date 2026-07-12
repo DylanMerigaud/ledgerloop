@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
+import type { AvailableValues } from "@/lib/condition-fields";
+import type { OrgEmployee } from "@/lib/orpc/schemas";
+
 import { ConditionEditor } from "@/components/condition-editor";
 import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import type { ApprovalWorkflow, WorkflowStep } from "@/lib/approval-workflow";
-import type { AvailableValues } from "@/lib/condition-fields";
-import type { OrgEmployee } from "@/lib/orpc/schemas";
 import { applyEditOp, type WorkflowEditOp } from "@/lib/workflow-edit";
-import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
+import { isActivatable, validateWorkflow } from "@/lib/workflow-validate";
 
 /**
  * The node editor, click a gate in the graph (onboarding only) and this side panel
@@ -26,7 +27,7 @@ import { validateWorkflow, isActivatable } from "@/lib/workflow-validate";
     (a "Director" gate surfaces VPs / C-level), then everyone else, by name. */
 const peopleFor = (people: OrgEmployee[], role: string): OrgEmployee[] => {
   const r = role.toLowerCase();
-  const relevant = (p: OrgEmployee): boolean => {
+  const isRelevant = (p: OrgEmployee): boolean => {
     const t = p.title.toLowerCase();
     if (!t) return false;
     // Share a word with the role, or both read as senior (VP / chief / head / director).
@@ -36,10 +37,8 @@ const peopleFor = (people: OrgEmployee[], role: string): OrgEmployee[] => {
       (senior.test(r) && senior.test(t))
     );
   };
-  const score = (p: OrgEmployee): number => (relevant(p) ? 0 : 1);
-  return [...people].sort(
-    (a, b) => score(a) - score(b) || a.name.localeCompare(b.name),
-  );
+  const score = (p: OrgEmployee): number => (isRelevant(p) ? 0 : 1);
+  return [...people].toSorted((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
 };
 
 /** A person row for the approver combobox: initials avatar + name + title. */
@@ -82,24 +81,14 @@ export const NodeEditPanel = ({
   return (
     <PanelShell title={step.label} onClose={onClose}>
       {step.kind === "approval" ? (
-        <ApprovalFields
-          step={step}
-          people={people}
-          available={available}
-          onApply={onApply}
-        />
+        <ApprovalFields step={step} people={people} available={available} onApply={onApply} />
       ) : (
         <p className="text-[12px] text-faint">
           A system step (posts the bill / notifies). Rename or remove it below.
         </p>
       )}
       <LabelField step={step} onApply={onApply} />
-      <RemoveField
-        workflow={workflow}
-        stepId={stepId}
-        onApply={onApply}
-        onClose={onClose}
-      />
+      <RemoveField workflow={workflow} stepId={stepId} onApply={onApply} onClose={onClose} />
     </PanelShell>
   );
 };
@@ -116,7 +105,7 @@ const ApprovalFields = ({
   onApply: (op: WorkflowEditOp) => void;
 }) => {
   const ordered = peopleFor(people, step.approverTitle);
-  const unresolved = step.approverName === null;
+  const isUnresolved = step.approverName === null;
   const optionsFor = (taken: string[]): ComboboxOption[] =>
     ordered
       .filter((p) => !taken.includes(p.name))
@@ -136,13 +125,12 @@ const ApprovalFields = ({
     <>
       <Field label={`Approver · ${step.approverTitle}`}>
         <Combobox
+          // eslint-disable-next-line custom/no-empty-string-fallback -- controlled Combobox value: "" is the intended "no approver selected yet" state.
           value={step.approverName ?? ""}
-          onChange={(name) =>
-            onApply({ op: "set-approver", stepId: step.id, approverName: name })
-          }
+          onChange={(name) => onApply({ op: "set-approver", stepId: step.id, approverName: name })}
           options={optionsFor(extras)}
-          placeholder={unresolved ? "⚠ Choose a person…" : "Choose a person…"}
-          invalid={unresolved}
+          placeholder={isUnresolved ? "⚠ Choose a person…" : "Choose a person…"}
+          invalid={isUnresolved}
           testid="approver-combobox"
         />
       </Field>
@@ -172,10 +160,7 @@ const ApprovalFields = ({
         <Combobox
           value=""
           onChange={(name) => name && setExtras([...extras, name])}
-          options={optionsFor([
-            ...(step.approverName ? [step.approverName] : []),
-            ...extras,
-          ])}
+          options={optionsFor([...(step.approverName ? [step.approverName] : []), ...extras])}
           placeholder="Add another approver…"
           testid="add-approver-combobox"
         />
@@ -185,9 +170,7 @@ const ApprovalFields = ({
         <ConditionEditor
           value={step.when}
           available={available}
-          onChange={(when) =>
-            onApply({ op: "set-condition", stepId: step.id, when })
-          }
+          onChange={(when) => onApply({ op: "set-condition", stepId: step.id, when })}
         />
       </Field>
     </>
@@ -208,8 +191,7 @@ const LabelField = ({
         onSubmit={(e) => {
           e.preventDefault();
           const v = label.trim();
-          if (v && v !== step.label)
-            onApply({ op: "rename-step", stepId: step.id, label: v });
+          if (v && v !== step.label) onApply({ op: "rename-step", stepId: step.id, label: v });
         }}
         className="flex items-center gap-1.5"
       >
@@ -244,9 +226,7 @@ const RemoveField = ({
     // refused, the validator is the same one the editor blocks Approve on.
     const after = applyEditOp(workflow, { op: "remove-step", stepId });
     if (!isActivatable(validateWorkflow(after))) {
-      setError(
-        "Can't remove this. It would break the workflow (nothing would post).",
-      );
+      setError("Can't remove this. It would break the workflow (nothing would post).");
       return;
     }
     onApply({ op: "remove-step", stepId });
@@ -254,9 +234,7 @@ const RemoveField = ({
   };
   return (
     <div className="mt-1 border-t border-line pt-3">
-      {error && (
-        <p className="mb-2 text-[11.5px] leading-snug text-danger">{error}</p>
-      )}
+      {error && <p className="mb-2 text-[11.5px] leading-snug text-danger">{error}</p>}
       <Button variant="danger" size="sm" onClick={remove}>
         Remove this step
       </Button>
@@ -280,6 +258,7 @@ const PanelShell = ({
   // that owns its own scroll, so a tall condition editor is never cut off. Escape and a
   // backdrop click close it. Portalled to <body> after mount (SSR-safe).
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line @eslint-react/set-state-in-effect -- SSR-safe portal: flip `mounted` true on mount so createPortal(<body>) only runs client-side. Standard React pattern, runs once, empty deps.
   useEffect(() => setMounted(true), []); // portal to <body> only after mount (SSR-safe)
   useEscapeKey(mounted, onClose);
   if (!mounted) return null;
@@ -293,9 +272,7 @@ const PanelShell = ({
       <div aria-hidden className="absolute inset-0 bg-ink/10" />
       <div className="pointer-events-auto relative flex h-full w-full max-w-[380px] flex-col overflow-y-auto bg-surface p-5 shadow-lift ring-1 ring-inset ring-line">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <span className="truncate text-[14px] font-semibold text-ink">
-            {title}
-          </span>
+          <span className="truncate text-[14px] font-semibold text-ink">{title}</span>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -307,17 +284,11 @@ const PanelShell = ({
         <div className="space-y-3">{children}</div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 };
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => (
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div>
     <span className="mb-1 block text-[10.5px] font-medium uppercase tracking-wider text-faint">
       {label}

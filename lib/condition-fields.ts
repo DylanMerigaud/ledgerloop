@@ -1,8 +1,5 @@
-import type {
-  ConditionField,
-  ConditionLeaf,
-  ConditionOp,
-} from "@/lib/approval-workflow";
+import type { ConditionField, ConditionLeaf, ConditionOp } from "@/lib/approval-workflow";
+
 import { MatchExceptionCode } from "@/lib/schema";
 
 /**
@@ -106,10 +103,7 @@ export const CONDITION_FIELDS: ConditionField[] = [
  * text input (kind "text") so the gate can still be edited (and the chat-derived value
  * is preserved) before the queue has surfaced any value for it.
  */
-export const fieldMeta = (
-  field: ConditionField,
-  available: AvailableValues,
-): FieldMeta => {
+export const fieldMeta = (field: ConditionField, available: AvailableValues): FieldMeta => {
   const meta = STATIC_META[field];
   if (meta.source) {
     const options = available[meta.source];
@@ -127,11 +121,11 @@ export const fieldMeta = (
  */
 export const defaultLeafFor = (
   field: ConditionField,
-  available: AvailableValues,
+  available: AvailableValues
 ): ConditionLeaf => {
   const meta = fieldMeta(field, available);
   const op = meta.ops[0] ?? "==";
-  const value: string | number =
-    meta.kind === "number" ? 0 : (meta.options?.[0] ?? "");
+  // eslint-disable-next-line custom/no-empty-string-fallback -- "" is the documented sensible default for a text field with no enum options (see the doc comment above).
+  const value: string | number = meta.kind === "number" ? 0 : (meta.options?.[0] ?? "");
   return { kind: "leaf", field, op, value };
 };

@@ -23,7 +23,7 @@ export const runtime = "nodejs";
 
 export const GET = async (
   _request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> => {
   const { id } = await params;
 
@@ -38,10 +38,10 @@ export const GET = async (
   }
 
   const bytes = await renderInvoicePdf(invoice);
-  // Copy into a fresh ArrayBuffer so the body is a plain BodyInit (not a typed
-  // array view over a possibly-larger buffer).
-  const body = bytes.slice().buffer;
-  return new Response(body, {
+  // Copy into a fresh, exactly-sized ArrayBuffer so the body is a plain BodyInit
+  // (not a typed-array view over a possibly-larger backing buffer).
+  const copy = new Uint8Array(bytes);
+  return new Response(copy.buffer, {
     status: 200,
     headers: {
       "content-type": "application/pdf",

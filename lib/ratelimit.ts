@@ -38,11 +38,12 @@ export type RateVerdict =
 
 const limiters = new Map<RateTier, Ratelimit | null>();
 let redis: Redis | null = null;
-let redisResolved = false;
+let isRedisResolved = false;
 
 const getRedis = (): Redis | null => {
-  if (redisResolved) return redis;
-  redisResolved = true;
+  if (isRedisResolved) return redis;
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton, resolve Redis once and cache the outcome
+  isRedisResolved = true;
 
   // Accept either naming convention so it works however you provision Redis:
   //   • Upstash directly  → UPSTASH_REDIS_REST_URL / _TOKEN
@@ -55,11 +56,13 @@ const getRedis = (): Redis | null => {
     log.warn(
       "[ratelimit] No Redis credentials found " +
         "(UPSTASH_REDIS_REST_URL/_TOKEN or KV_REST_API_URL/_TOKEN), " +
-        "rate limiting is DISABLED (failing open).",
+        "rate limiting is DISABLED (failing open)."
     );
+    // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton cache, memoizes the no-credentials outcome
     redis = null;
     return redis;
   }
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- lazy singleton cache, assigned once on first use
   redis = new Redis({ url, token });
   return redis;
 };
@@ -81,10 +84,7 @@ const getLimiter = (tier: RateTier): Ratelimit | null => {
 };
 
 /** Check (and consume) one unit of the given tier's rate budget for the IP. */
-export const checkRateLimit = async (
-  ip: string,
-  tier: RateTier,
-): Promise<RateVerdict> => {
+export const checkRateLimit = async (ip: string, tier: RateTier): Promise<RateVerdict> => {
   const rl = getLimiter(tier);
   if (!rl) {
     // Failing open: always allow.
@@ -96,15 +96,12 @@ export const checkRateLimit = async (
     if (success) {
       return { ok: true, remaining };
     }
-    const retryAfterSeconds = Math.max(
-      0,
-      Math.ceil((reset - Date.now()) / 1000),
-    );
+    const retryAfterSeconds = Math.max(0, Math.ceil((reset - Date.now()) / 1000));
     return { ok: false, limit, reset, retryAfterSeconds };
-  } catch (err) {
+  } catch (error) {
     // If Redis itself errors, don't take the whole endpoint down, fail open but
     // log it so the operator notices.
-    log.error("[ratelimit] Upstash error, failing open:", { err });
+    log.error("[ratelimit] Upstash error, failing open:", { err: error });
     return { ok: true, remaining: null };
   }
 };
@@ -113,7 +110,7 @@ export const checkRateLimit = async (
 export const clientIpFrom = (headers: Headers): string => {
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
+    const first = forwarded.split(",", 1)[0]?.trim();
     if (first) return first;
   }
   return headers.get("x-real-ip") ?? "anonymous";

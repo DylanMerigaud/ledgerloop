@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { runMatch, billKey, type MatchInput } from "@/lib/matching";
-import type { Invoice, PurchaseOrder, GoodsReceipt } from "@/lib/schema";
+import type { GoodsReceipt, Invoice, PurchaseOrder } from "@/lib/schema";
+
+import { billKey, type MatchInput, runMatch } from "@/lib/matching";
 
 /**
  * Unit tests for the 2/3-way matcher, the deterministic core the matching step
@@ -93,7 +94,7 @@ test("the match result carries the invoice vendor (for vendor-scoped gates)", ()
   assert.equal(run().vendor, "Acme Steel");
   assert.equal(
     run({ invoice: invoice({ vendor: "Severn Steelworks" }) }).vendor,
-    "Severn Steelworks",
+    "Severn Steelworks"
   );
 });
 
@@ -248,20 +249,18 @@ test("inactive vendor in the ERP → vendor_inactive exception", () => {
 
 test("an active vendor raises no vendor_inactive flag", () => {
   const r = run({ inactiveVendors: new Set(["Some Other Co"]) });
-  assert.ok(!r.exceptions.some((e) => e.code === "vendor_inactive"));
+  assert.ok(r.exceptions.every((e) => e.code !== "vendor_inactive"));
 });
 
 test("invoiced SKU outside the ERP catalog → sku_not_in_catalog", () => {
   // Catalog has only one of the two invoiced SKUs.
   const r = run({ catalogSkus: new Set(["BOLT-M8"]) });
-  const offCatalog = r.exceptions.filter(
-    (e) => e.code === "sku_not_in_catalog",
-  );
+  const offCatalog = r.exceptions.filter((e) => e.code === "sku_not_in_catalog");
   assert.equal(offCatalog.length, 1);
   assert.equal(offCatalog[0]?.sku, "NUT-M8");
 });
 
 test("an empty catalog set means 'not pulled', no SKU is flagged", () => {
   const r = run({ catalogSkus: new Set() });
-  assert.ok(!r.exceptions.some((e) => e.code === "sku_not_in_catalog"));
+  assert.ok(r.exceptions.every((e) => e.code !== "sku_not_in_catalog"));
 });

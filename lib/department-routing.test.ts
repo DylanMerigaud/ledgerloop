@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { Invoice, OrgChart, PurchaseOrder } from "@/lib/schema";
+
 import { runApproval } from "@/lib/approval-run";
 import { type OnboardingProposal } from "@/lib/approval-workflow";
 import { runMatch } from "@/lib/matching";
 import { assembleWorkflow } from "@/lib/onboarding";
-import type { Invoice, PurchaseOrder, OrgChart } from "@/lib/schema";
 
 /**
  * The department lever, end to end: a buying department lives on the PO, flows
@@ -122,11 +123,11 @@ test("the derived department gate fires for its department, isolating it from th
   // proves the department lever routes independently of the amount/exception gates.
   const run = runApproval(wf, match);
   assert.equal(run.outcome, "awaiting");
-  const pendingIds = run.pending.map((p) => p.id).sort();
+  const pendingIds = run.pending.map((p) => p.id).toSorted((a, b) => a.localeCompare(b));
   assert.deepEqual(
     pendingIds,
     ["department-review"],
-    "only the Product department gate pends on a small clean invoice",
+    "only the Product department gate pends on a small clean invoice"
   );
 });
 

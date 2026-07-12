@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import type { Invoice } from "@/lib/schema";
+
 import { PdfDocument } from "@/components/pdf-document";
 import { formatMoney } from "@/lib/format";
-import type { Invoice } from "@/lib/schema";
 
 /**
  * The intake "extraction reveal", the visible proof that the AI reads the real
@@ -47,7 +48,7 @@ export const ExtractionReveal = ({
   // Three modes: preview (no run), running (scanning), done (fields shown).
   const mode: "preview" | "running" | "done" =
     state == null ? "preview" : state.status === "running" ? "running" : "done";
-  const done = mode === "done";
+  const isDone = mode === "done";
 
   // Reveal fields one by one once extraction is done (sequential pop-in).
   const fields = extractedInvoice ? buildFields(extractedInvoice) : [];
@@ -56,7 +57,8 @@ export const ExtractionReveal = ({
   const rows = FIELD_LABELS;
   const [revealed, setRevealed] = useState(0);
   useEffect(() => {
-    if (!done) {
+    if (!isDone) {
+      // eslint-disable-next-line @eslint-react/set-state-in-effect -- resetting the stepped-reveal counter when the run leaves the "done" phase; this effect owns the reveal timer lifecycle keyed on isDone.
       setRevealed(0);
       return;
     }
@@ -67,13 +69,11 @@ export const ExtractionReveal = ({
       if (i >= fields.length) clearInterval(t);
     }, FIELD_DELAY_MS);
     return () => clearInterval(t);
-  }, [done, fields.length]);
+  }, [isDone, fields.length]);
 
   // Preview = the PDF on its own, full width. Once a run starts it shares the row
   // with the Extracted panel. (A small reflow at Run is fine; a preview that looks
   // like it's mid-extraction is not.)
-  const running = mode === "running";
-
   // Preview: the document alone, centered and a comfortable size (wider than the
   // run split's column so it isn't lost in whitespace). Width-driven so it never
   // overflows the pane; the card border/shadow stay visible around it.
@@ -91,6 +91,8 @@ export const ExtractionReveal = ({
     );
   }
 
+  const isRunning = mode === "running";
+
   return (
     <div
       data-testid="extraction-reveal"
@@ -101,13 +103,13 @@ export const ExtractionReveal = ({
       doesn't paint over the frame. */}
       <div className="relative overflow-hidden rounded-lg border border-line bg-white shadow-card">
         {/* scan sweep only while the model is actually reading */}
-        {running && (
+        {isRunning && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 animate-scan bg-gradient-to-b from-accent/0 via-accent/25 to-accent/0"
+            className="animate-scan pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-accent/0 via-accent/25 to-accent/0"
           />
         )}
-        <PdfDocument src={pdfSrc} dim={running} />
+        <PdfDocument src={pdfSrc} dim={isRunning} />
       </div>
 
       {/* Extracted structure (the run share-the-row panel). */}
@@ -116,7 +118,7 @@ export const ExtractionReveal = ({
           <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
             Extracted
           </span>
-          {done && state?.matches != null && (
+          {isDone && state?.matches != null && (
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                 state.matches
@@ -124,9 +126,7 @@ export const ExtractionReveal = ({
                   : "bg-warn-soft text-warn ring-1 ring-inset ring-warn-line"
               }`}
             >
-              {state.matches
-                ? "reconciled with PO record"
-                : "differs from record"}
+              {state.matches ? "reconciled with PO record" : "differs from record"}
             </span>
           )}
         </div>
@@ -135,8 +135,9 @@ export const ExtractionReveal = ({
             <FieldRow
               key={label}
               label={label}
+              // eslint-disable-next-line custom/no-empty-string-fallback -- display fallback: a not-yet-extracted field shows blank, "" is the intended empty display value.
               value={fields[i]?.value ?? ""}
-              state={!done ? "reading" : i < revealed ? "shown" : "pending"}
+              state={isDone ? (i < revealed ? "shown" : "pending") : "reading"}
             />
           ))}
         </dl>
@@ -146,14 +147,7 @@ export const ExtractionReveal = ({
 };
 
 /** The field labels shown in the Extracted panel, in order (stable across modes). */
-const FIELD_LABELS = [
-  "Vendor",
-  "Invoice no.",
-  "PO number",
-  "Issue date",
-  "Line items",
-  "Total",
-];
+const FIELD_LABELS = ["Vendor", "Invoice no.", "PO number", "Issue date", "Line items", "Total"];
 
 const FieldRow = ({
   label,
@@ -168,9 +162,7 @@ const FieldRow = ({
     <div className="flex items-baseline justify-between gap-3 text-[12px]">
       <span className="shrink-0 text-muted">{label}</span>
       {state === "shown" ? (
-        <span className="animate-trace-in truncate text-right font-medium text-ink">
-          {value}
-        </span>
+        <span className="animate-trace-in truncate text-right font-medium text-ink">{value}</span>
       ) : (
         <span
           aria-hidden

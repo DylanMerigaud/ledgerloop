@@ -73,5 +73,4 @@ export type StreamDone = z.infer<typeof StreamDone>;
 export const StreamLine = z.union([TraceEvent, StreamDone]);
 export type StreamLine = z.infer<typeof StreamLine>;
 
-export const isStreamDone = (line: StreamLine): line is StreamDone =>
-  "done" in line;
+export const isStreamDone = (line: StreamLine): line is StreamDone => "done" in line;

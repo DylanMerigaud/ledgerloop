@@ -1,19 +1,16 @@
 // Relative imports here on purpose: jiti loads this from disk to build the ESLint
-// config, before the TS `@/` path alias is available. (no-relative-import-paths is
+// config, before the TS `@/` path alias is available. (no-restricted-imports is
 // disabled for this dir in the config.)
 import { enforceApiRoutes } from "./enforce-api-routes";
-import { noConsoleUseLogger } from "./no-console-use-logger";
-import { noEmdashInText } from "./no-emdash-in-text";
-import { noIndexFiles } from "./no-index-files";
-import { preferUseEventCallback } from "./prefer-use-event-callback";
 
-/** The project's custom ESLint rules, exposed as a flat-config plugin. */
-export const customRules = {
+/**
+ * This repo's app-specific ESLint rules, exposed as a flat-config plugin under the
+ * `custom-local` namespace. The generic rules (no-console-use-logger, no-index-files,
+ * prefer-use-event-callback, no-emdash-in-text) now ship in @dylanmerigaud/config
+ * under the `custom` namespace; only enforce-api-routes is specific to ledgerloop.
+ */
+export const customLocalRules = {
   rules: {
-    "no-console-use-logger": noConsoleUseLogger,
-    "no-index-files": noIndexFiles,
-    "prefer-use-event-callback": preferUseEventCallback,
     "enforce-api-routes": enforceApiRoutes,
-    "no-emdash-in-text": noEmdashInText,
   },
 };

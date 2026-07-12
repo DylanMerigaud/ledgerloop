@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 /**
  * The conversational editor's discoverability + clarifying turn, through the real
@@ -15,24 +15,18 @@ import { test, expect } from "@playwright/test";
 const DISCOVERY_TIMEOUT = 90_000;
 const EDIT_TIMEOUT = 45_000;
 
-test("an ambiguous department edit asks which one, then applies the pick", async ({
-  page,
-}) => {
+test("an ambiguous department edit asks which one, then applies the pick", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Discover from BambooHR/ }).click();
 
   // Discovery done once the derived workflow has rendered its gates.
   // Both tabs stay mounted and share the workflow, so scope to the VISIBLE graph.
-  await expect(
-    page.getByTestId("graph-node-manager-review").locator("visible=true"),
-  ).toBeVisible({
+  await expect(page.getByTestId("graph-node-manager-review").locator("visible=true")).toBeVisible({
     timeout: DISCOVERY_TIMEOUT,
   });
 
   // Ambiguous instruction → the agent asks which department (it must NOT guess).
-  await page
-    .getByPlaceholder(/Describe a change/)
-    .fill("add a department review");
+  await page.getByPlaceholder(/Describe a change/).fill("add a department review");
   await page.getByRole("button", { name: /^Edit$/ }).click();
   await expect(page.getByText(/which department/i)).toBeVisible({
     timeout: EDIT_TIMEOUT,

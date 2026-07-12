@@ -1,5 +1,6 @@
-import { SlackIcon, NetSuiteIcon, JiraIcon } from "@/components/ui/brand-icon";
 import type { StepChange } from "@/lib/approval-workflow";
+
+import { JiraIcon, NetSuiteIcon, SlackIcon } from "@/components/ui/brand-icon";
 
 export type StepStatuses = Record<string, string>;
 
@@ -10,57 +11,72 @@ export const REACHED = new Set(["pending", "approved", "done", "rejected"]);
 /* ── node visuals ──────────────────────────────────────────────────────────── */
 
 export const statusTone = (
-  status: string | undefined,
+  status: string | undefined
 ): { tone: "ok" | "warn" | "danger" | "neutral"; label: string } | null => {
   switch (status) {
-    case "approved":
+    case "approved": {
       return { tone: "ok", label: "Approved" };
-    case "done":
+    }
+    case "done": {
       return { tone: "ok", label: "Done" };
-    case "pending":
+    }
+    case "pending": {
       return { tone: "warn", label: "In review" };
-    case "rejected":
+    }
+    case "rejected": {
       return { tone: "danger", label: "Rejected" };
-    case "blocked":
+    }
+    case "blocked": {
       return { tone: "danger", label: "Blocked" };
-    case "skipped":
+    }
+    case "skipped": {
       return { tone: "neutral", label: "Skipped" };
-    default:
+    }
+    default: {
       return null;
+    }
   }
 };
 
 /** The real brand mark + display name for an integration kind. */
 export const integrationBrand = (
-  kind: string,
+  kind: string
 ): { Icon: (p: { size?: number }) => React.ReactNode; name: string } => {
   switch (kind) {
-    case "slack":
+    case "slack": {
       return { Icon: SlackIcon, name: "Slack" };
-    case "netsuite":
+    }
+    case "netsuite": {
       return { Icon: NetSuiteIcon, name: "NetSuite" };
-    case "jira":
+    }
+    case "jira": {
       return { Icon: JiraIcon, name: "Jira" };
-    default:
+    }
+    default: {
       return { Icon: () => <span className="text-faint">→</span>, name: kind };
+    }
   }
 };
 
 export const changeRing = (change: StepChange["kind"] | undefined): string => {
   switch (change) {
-    case "added":
+    case "added": {
       return "ring-ok-line bg-ok-soft/30";
-    case "changed":
+    }
+    case "changed": {
       return "ring-warn-line bg-warn-soft/30";
-    case "removed":
+    }
+    case "removed": {
       return "ring-danger-line bg-danger-soft/30";
-    default:
+    }
+    default: {
       return "ring-line";
+    }
   }
 };
 
 export const changeBadge = (
-  change: StepChange["kind"] | undefined,
+  change: StepChange["kind"] | undefined
 ): { tone: "ok" | "warn" | "danger"; label: string } | null => {
   if (change === "added") return { tone: "ok", label: "Added" };
   if (change === "changed") return { tone: "warn", label: "Changed" };

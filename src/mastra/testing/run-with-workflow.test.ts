@@ -1,7 +1,6 @@
+import { Mastra } from "@mastra/core";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-
-import { Mastra } from "@mastra/core";
 
 import { SEED_BUNDLES, type SeedBundle } from "@/db/seed-data";
 import { type ApprovalWorkflow } from "@/lib/approval-workflow";
@@ -48,15 +47,10 @@ const ALWAYS_GATE: ApprovalWorkflow = {
 };
 
 /** Run the real p2p workflow for a seed bundle, optionally under a profile. */
-const runTrace = async (
-  b: SeedBundle,
-  profile?: ClientProfile,
-): Promise<TraceEvent[]> => {
+const runTrace = async (b: SeedBundle, profile?: ClientProfile): Promise<TraceEvent[]> => {
   const mastra = new Mastra({ workflows: { p2p: p2pWorkflow } });
   const idx = SEED_BUNDLES.indexOf(b);
-  const priorInvoiceNumbers = SEED_BUNDLES.slice(0, idx).map(
-    (x) => x.invoice.invoiceNumber,
-  );
+  const priorInvoiceNumbers = SEED_BUNDLES.slice(0, idx).map((x) => x.invoice.invoiceNumber);
   const run = await mastra.getWorkflow("p2p").createRun();
   const out = run.stream({
     inputData: {
@@ -84,10 +78,11 @@ const runTrace = async (
     const e: TraceEvent = { ...partial, seq: seq++, atMs: 0 };
     if (e.stepId) {
       const existing = stepIndex.get(e.stepId);
-      if (existing !== undefined) events[existing] = e;
-      else {
+      if (existing === undefined) {
         stepIndex.set(e.stepId, events.length);
         events.push(e);
+      } else {
+        events[existing] = e;
       }
     } else {
       events.push(e);
@@ -112,7 +107,7 @@ test("a passed-in always-gate workflow pauses a CLEAN invoice that would otherwi
     // Default tolerances, keep the verdict clean; only the workflow changes.
     tolerances: { pricePct: 0.01, lineAmountAbs: 0.01, qtyAbs: 0 },
     approvalPolicy: {
-      manager: { amount: 1_000, variancePct: 0.05 },
+      manager: { amount: 1000, variancePct: 0.05 },
       director: { amount: 10_000, variancePct: 0.1 },
     },
     workflow: ALWAYS_GATE,
@@ -122,18 +117,12 @@ test("a passed-in always-gate workflow pauses a CLEAN invoice that would otherwi
   const approval = approvalNode(events);
   assert.ok(approval, "the clean invoice runs the approval workflow");
   // The always-gate fires → the run is awaiting a human, not posted.
-  assert.equal(
-    approval.status,
-    "waiting",
-    "the always-on gate should pause the run",
-  );
+  assert.equal(approval.status, "waiting", "the always-on gate should pause the run");
   assert.ok(isRecord(approval.data), "the approval node carries its summary");
   assert.equal(approval.data["outcome"], "awaiting");
 
   // Reconciliation must NOT have posted while a gate is pending.
-  const recon = events.find(
-    (e) => e.kind === "step" && e.stage === "reconciliation",
-  );
+  const recon = events.find((e) => e.kind === "step" && e.stage === "reconciliation");
   assert.notEqual(recon?.status, "ok", "nothing posts while a gate pends");
 });
 
@@ -143,16 +132,10 @@ test("the same CLEAN invoice with no passed workflow posts straight through (def
   const events = await runTrace(clean());
   const approval = approvalNode(events);
   assert.ok(approval, "the clean invoice still runs the (default) workflow");
-  assert.equal(
-    approval.status,
-    "ok",
-    "no gate fires on a clean invoice under the default DAG",
-  );
+  assert.equal(approval.status, "ok", "no gate fires on a clean invoice under the default DAG");
   assert.ok(isRecord(approval.data));
   assert.equal(approval.data["outcome"], "posted");
 
-  const recon = events.find(
-    (e) => e.kind === "step" && e.stage === "reconciliation",
-  );
+  const recon = events.find((e) => e.kind === "step" && e.stage === "reconciliation");
   assert.equal(recon?.status, "ok", "clean invoice reconciles green");
 });

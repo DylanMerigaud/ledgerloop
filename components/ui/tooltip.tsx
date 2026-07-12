@@ -26,7 +26,7 @@ export const TooltipContent = ({
         sideOffset={sideOffset}
         className={cn(
           "z-50 w-max max-w-[260px] rounded-lg bg-ink px-2.5 py-1.5 text-[11.5px] font-medium leading-snug text-white shadow-lift",
-          className,
+          className
         )}
         {...props}
       >

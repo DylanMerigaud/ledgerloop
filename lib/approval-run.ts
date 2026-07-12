@@ -1,15 +1,13 @@
+import type { MatchResult } from "@/lib/schema";
+
 import {
-  executeWorkflow,
   type Decisions,
-  type Reasons,
+  executeWorkflow,
   type ExecutionState,
+  type Reasons,
   type StepState,
 } from "@/lib/approval-engine";
-import {
-  type ApprovalWorkflow,
-  type InvoiceContext,
-} from "@/lib/approval-workflow";
-import type { MatchResult } from "@/lib/schema";
+import { type ApprovalWorkflow, type InvoiceContext } from "@/lib/approval-workflow";
 
 /**
  * The bridge between the conditional-workflow ENGINE and the per-invoice pipeline.
@@ -61,14 +59,9 @@ export const runApproval = (
   workflow: ApprovalWorkflow,
   match: MatchResult,
   decisions: Decisions = {},
-  reasons: Reasons = {},
+  reasons: Reasons = {}
 ): ApprovalRun => {
-  const state = executeWorkflow(
-    workflow,
-    contextFromMatch(match),
-    decisions,
-    reasons,
-  );
+  const state = executeWorkflow(workflow, contextFromMatch(match), decisions, reasons);
   const pending = state.steps.filter((s) => s.status === "pending");
 
   const outcome =
@@ -107,9 +100,7 @@ const approvedNarration = (state: ExecutionState): string => {
 
 const pendingNarration = (pending: StepState[]): string => {
   if (pending.length === 0) return "Awaiting approval.";
-  const names = pending
-    .map((p) => p.detail.replace(/^Awaiting /, ""))
-    .join("; ");
+  const names = pending.map((p) => p.detail.replace(/^Awaiting /, "")).join("; ");
   return pending.length === 1
     ? `Awaiting approval: ${names}`
     : `Awaiting ${pending.length} approvals in parallel: ${names}`;

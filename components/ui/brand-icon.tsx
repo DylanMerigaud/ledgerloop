@@ -10,13 +10,7 @@ type BrandIconProps = { size?: number; className?: string };
 /** Slack, the four-petal hash in brand colours. */
 export const SlackIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
       <path
         fill="#36C5F0"
         d="M9.04 14.96a2.4 2.4 0 1 1-2.4-2.4h2.4v2.4Zm1.2 0a2.4 2.4 0 0 1 4.8 0v6.04a2.4 2.4 0 0 1-4.8 0v-6.04Z"
@@ -40,18 +34,9 @@ export const SlackIcon = ({ size = 16, className }: BrandIconProps) => {
 /** NetSuite, the Oracle-NetSuite "N" mark, in its blue. */
 export const NetSuiteIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
       <rect width="24" height="24" rx="5" fill="#125740" />
-      <path
-        fill="#9DC03C"
-        d="M7 17V7h2.6l4.8 6.3V7H17v10h-2.6L9.6 10.7V17H7Z"
-      />
+      <path fill="#9DC03C" d="M7 17V7h2.6l4.8 6.3V7H17v10h-2.6L9.6 10.7V17H7Z" />
     </svg>
   );
 };
@@ -59,22 +44,9 @@ export const NetSuiteIcon = ({ size = 16, className }: BrandIconProps) => {
 /** Jira, the Atlassian-Jira stacked chevron mark, in its blue. */
 export const JiraIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden
-    >
-      <path
-        fill="#2684FF"
-        d="M11.99 2 4 9.99l2.66 2.66 5.33-5.33 5.34 5.33L20 9.99 11.99 2Z"
-      />
-      <path
-        fill="#2684FF"
-        opacity=".7"
-        d="M11.99 11.32 9.34 14l2.65 2.66L14.65 14l-2.66-2.68Z"
-      />
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
+      <path fill="#2684FF" d="M11.99 2 4 9.99l2.66 2.66 5.33-5.33 5.34 5.33L20 9.99 11.99 2Z" />
+      <path fill="#2684FF" opacity=".7" d="M11.99 11.32 9.34 14l2.65 2.66L14.65 14l-2.66-2.68Z" />
       <path
         fill="#2684FF"
         opacity=".5"
@@ -87,13 +59,7 @@ export const JiraIcon = ({ size = 16, className }: BrandIconProps) => {
 /** BambooHR, the leaf-green panda-bamboo mark, simplified to its green leaf. */
 export const BambooHrIcon = ({ size = 16, className }: BrandIconProps) => {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
       <rect width="24" height="24" rx="5" fill="#73C41D" />
       <path
         fill="#fff"

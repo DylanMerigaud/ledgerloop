@@ -1,8 +1,9 @@
-import { desc, eq } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 
-import { getDb, type Database } from "@/db/client";
-import { agentRuns, type AgentRunRow } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
+
+import { type Database, getDb } from "@/db/client";
+import { type AgentRunRow, agentRuns } from "@/db/schema";
 import { log } from "@/lib/logger";
 import { TraceEvent } from "@/lib/trace";
 
@@ -52,7 +53,7 @@ type AuditWritableDb = {
 
 export const saveAgentRun = async (
   input: SaveAgentRunInput,
-  db: AuditWritableDb = getDb(),
+  db: AuditWritableDb = getDb()
 ): Promise<void> => {
   try {
     // The instance id: the client's when it drives the URL, else a generated one
@@ -72,10 +73,10 @@ export const saveAgentRun = async (
       .insert(agentRuns)
       .values({ id, ...row })
       .onConflictDoUpdate({ target: agentRuns.id, set: row });
-  } catch (err) {
+  } catch (error) {
     // Never let an audit-write failure surface to the visitor mid-run.
     log.warn("saveAgentRun failed (audit log skipped)", {
-      error: err instanceof Error ? err.message : String(err),
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 };
@@ -94,10 +95,7 @@ export type RunHistoryItem = {
  *  column `tier` (a legacy name), the UI wants `outcome`; the timestamp becomes an
  *  ISO string. Pure, extracted so it can be unit-tested without a DB. */
 export const toHistoryItem = (
-  r: Pick<
-    AgentRunRow,
-    "id" | "invoiceNumber" | "verdict" | "tier" | "durationMs" | "createdAt"
-  >,
+  r: Pick<AgentRunRow, "id" | "invoiceNumber" | "verdict" | "tier" | "durationMs" | "createdAt">
 ): RunHistoryItem => ({
   id: r.id,
   invoiceNumber: r.invoiceNumber,
@@ -120,7 +118,7 @@ export const parseStoredTrace = (raw: unknown): TraceEvent[] | null => {
  */
 export const listRecentRuns = async (
   limit = 20,
-  db: Database = getDb(),
+  db: Database = getDb()
 ): Promise<RunHistoryItem[]> => {
   const rows = await db
     .select({
@@ -134,7 +132,7 @@ export const listRecentRuns = async (
     .from(agentRuns)
     .orderBy(desc(agentRuns.createdAt))
     .limit(limit);
-  return rows.map(toHistoryItem);
+  return rows.map((row) => toHistoryItem(row));
 };
 
 /**
@@ -145,13 +143,9 @@ export const listRecentRuns = async (
  */
 export const loadAgentRun = async (
   id: string,
-  db: Database = getDb(),
+  db: Database = getDb()
 ): Promise<{ invoiceNumber: string; trace: TraceEvent[] } | null> => {
-  const [row] = await db
-    .select()
-    .from(agentRuns)
-    .where(eq(agentRuns.id, id))
-    .limit(1);
+  const [row] = await db.select().from(agentRuns).where(eq(agentRuns.id, id)).limit(1);
   if (!row) return null;
   const trace = parseStoredTrace(row.trace);
   if (!trace) return null;

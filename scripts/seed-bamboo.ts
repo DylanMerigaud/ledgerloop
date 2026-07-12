@@ -31,15 +31,11 @@
  * job info with reportsTo.
  */
 import path from "node:path";
-
 import { z } from "zod";
 
-import {
-  SEED_ORG,
-  SEED_DIVISION,
-  type SeedPerson,
-} from "@/db/fixtures/bamboohr/seed-org";
+import { SEED_DIVISION, SEED_ORG, type SeedPerson } from "@/db/fixtures/bamboohr/seed-org";
 import { nonNull } from "@/lib/assert";
+import { invariant } from "@/lib/utils/invariant";
 
 /** Same env loading as eval/run.ts, native, no dotenv dep. */
 const loadEnv = (): void => {
@@ -61,8 +57,7 @@ const creds = (): Creds => {
   const key = process.env.BAMBOO_HR_API_KEY;
   const subdomain = process.env.BAMBOO_HR_SUBDOMAIN;
   if (!key || !subdomain) {
-    console.error("Missing BAMBOO_HR_API_KEY / BAMBOO_HR_SUBDOMAIN in .env.");
-    process.exit(1);
+    throw new Error("Missing BAMBOO_HR_API_KEY / BAMBOO_HR_SUBDOMAIN in .env.");
   }
   return { key, subdomain };
 };
@@ -92,7 +87,7 @@ const MetaLists = z.array(
     alias: z.string().nullish(),
     fieldId: z.number(),
     options: z.array(ListOption).nullish(),
-  }),
+  })
 );
 
 /**
@@ -131,8 +126,7 @@ const ensureDivision = async (c: Creds): Promise<void> => {
     },
     body: JSON.stringify({ options }),
   });
-  if (!put.ok)
-    throw new Error(`creating division option failed: HTTP ${put.status}`);
+  if (!put.ok) throw new Error(`creating division option failed: HTTP ${put.status}`);
   console.log(`Created Division option "${SEED_DIVISION}".`);
 };
 
@@ -149,21 +143,18 @@ const createEmployee = async (c: Creds, p: SeedPerson): Promise<string> => {
   });
   if (res.status !== 201) {
     throw new Error(
-      `create ${p.firstName} ${p.lastName} failed: HTTP ${res.status} ${res.statusText}`,
+      `create ${p.firstName} ${p.lastName} failed: HTTP ${res.status} ${res.statusText}`
     );
   }
-  const location = res.headers.get("location") ?? "";
+  const location = res.headers.get("location");
+  invariant(location, `no Location header in 201 response for ${p.firstName}`);
   const id = location.match(/employees\/(\d+)/)?.[1];
-  if (!id) throw new Error(`no id in Location header for ${p.firstName}`);
+  invariant(id, `no id in Location header for ${p.firstName}`);
   return id;
 };
 
 /** Set division/title/department/manager via the jobInfo table (the only path that sticks). */
-const setJobInfo = async (
-  c: Creds,
-  id: string,
-  p: SeedPerson,
-): Promise<void> => {
+const setJobInfo = async (c: Creds, id: string, p: SeedPerson): Promise<void> => {
   const body: Record<string, string> = {
     date: "2026-01-01",
     department: p.department,
@@ -184,16 +175,22 @@ const setJobInfo = async (
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(
-      `jobInfo for ${p.firstName} ${p.lastName} failed: HTTP ${res.status}`,
-    );
+    throw new Error(`jobInfo for ${p.firstName} ${p.lastName} failed: HTTP ${res.status}`);
   }
 };
 
+/** One row of the scope report (extracted so the parse below isn't over-nested). */
+const SeededEmployeeRow = z.object({
+  id: z.string(),
+  displayName: z.string().nullish(),
+  // The account's demo employees can carry `division: null`; nullish (not
+  // just optional) so the read-back doesn't 400 on them. We filter to
+  // SEED_DIVISION next, so a null division is simply out of scope.
+  division: z.string().nullish(),
+});
+
 /** Everyone currently in the SEED_DIVISION (the scope of seed/reset). */
-const seededEmployees = async (
-  c: Creds,
-): Promise<{ id: string; name: string }[]> => {
+const seededEmployees = async (c: Creds): Promise<{ id: string; name: string }[]> => {
   const res = await fetch(api(c, "/reports/custom?format=JSON"), {
     method: "POST",
     headers: {
@@ -209,21 +206,12 @@ const seededEmployees = async (
   if (!res.ok) throw new Error(`scope report failed: HTTP ${res.status}`);
   const data = z
     .object({
-      employees: z.array(
-        z.object({
-          id: z.string(),
-          displayName: z.string().nullish(),
-          // The account's demo employees can carry `division: null`; nullish (not
-          // just optional) so the read-back doesn't 400 on them. We filter to
-          // SEED_DIVISION next, so a null division is simply out of scope.
-          division: z.string().nullish(),
-        }),
-      ),
+      employees: z.array(SeededEmployeeRow),
     })
     .parse(await res.json());
   return data.employees
     .filter((e) => e.division === SEED_DIVISION)
-    .map((e) => ({ id: String(e.id), name: e.displayName ?? `id ${e.id}` }));
+    .map((e) => ({ id: e.id, name: e.displayName ?? `id ${e.id}` }));
 };
 
 const seed = async (): Promise<void> => {
@@ -232,10 +220,9 @@ const seed = async (): Promise<void> => {
 
   const already = await seededEmployees(c);
   if (already.length > 0) {
-    console.error(
-      `${already.length} employee(s) already in "${SEED_DIVISION}". Run "pnpm hris:reset" first to avoid duplicates.`,
+    throw new Error(
+      `${already.length} employee(s) already in "${SEED_DIVISION}". Run "pnpm hris:reset" first to avoid duplicates.`
     );
-    process.exit(1);
   }
 
   console.log(`Seeding ${SEED_ORG.length} employees into "${SEED_DIVISION}" …`);
@@ -252,19 +239,17 @@ const seed = async (): Promise<void> => {
   for (const p of SEED_ORG) {
     const id = nonNull(
       created.get(`${p.firstName} ${p.lastName}`),
-      "every person was created in pass 1",
+      "every person was created in pass 1"
     );
     await setJobInfo(c, id, p);
     const rel = p.managerName ? ` → ${p.managerName}` : " (root)";
-    console.log(
-      `  · ${p.firstName} ${p.lastName}: ${p.title || "(no title)"}${rel}`,
-    );
+    console.log(`  · ${p.firstName} ${p.lastName}: ${p.title || "(no title)"}${rel}`);
   }
 
   console.log(
     `\nDone. ${SEED_ORG.length} employees seeded into "${SEED_DIVISION}".\n` +
       `Deliberate issues for the discovery agent: an employee pointed at a\n` +
-      `non-existent manager (surfaces as an unexpected root) and a blank-title second root.`,
+      `non-existent manager (surfaces as an unexpected root) and a blank-title second root.`
   );
 };
 
@@ -289,9 +274,7 @@ const reset = async (): Promise<void> => {
     }
   }
   console.log(
-    failed === 0
-      ? `Removed all ${targets.length}.`
-      : `${failed} could not be deleted (see above).`,
+    failed === 0 ? `Removed all ${targets.length}.` : `${failed} could not be deleted (see above).`
   );
 };
 
@@ -303,12 +286,17 @@ const main = async (): Promise<void> => {
   } else if (cmd === "seed" || cmd === undefined) {
     await seed();
   } else {
-    console.error(`Unknown command "${cmd}". Use: seed | reset`);
-    process.exit(1);
+    throw new Error(`Unknown command "${cmd}". Use: seed | reset`);
   }
 };
 
-main().catch((err: unknown) => {
-  console.error("Failed:", err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+// Async IIFE, not top-level await: tsx compiles this entrypoint to CJS, which
+// rejects top-level await. The IIFE keeps the await-based error handling.
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    console.error("Failed:", error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
+})();

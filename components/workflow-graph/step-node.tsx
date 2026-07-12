@@ -1,20 +1,15 @@
-import {
-  Handle,
-  NodeToolbar,
-  Position,
-  type Node,
-  type NodeProps,
-} from "@xyflow/react";
+import { Handle, type Node, type NodeProps, NodeToolbar, Position } from "@xyflow/react";
+
+import type { NodeData } from "@/components/workflow-graph/node-data";
 
 import { Badge } from "@/components/ui/badge";
 import { GateButton } from "@/components/workflow-graph/gate-button";
-import type { NodeData } from "@/components/workflow-graph/node-data";
 import {
-  statusTone,
-  integrationBrand,
   changeBadge,
   changeRing,
+  integrationBrand,
   issueRing,
+  statusTone,
 } from "@/components/workflow-graph/visual-map";
 import { humanizeCondition } from "@/lib/approval-workflow";
 
@@ -42,7 +37,13 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
   const condition = humanizeCondition(step.when);
   // Co-approvers beyond the primary (the panel's "Also requires").
   const extraApprovers = step.kind === "approval" ? (step.approvers ?? []) : [];
-  const unconditional = step.when.kind === "always";
+  const isUnconditional = step.when.kind === "always";
+  // The integration's brand (logo component + name) for a non-approval step. Looked
+  // up here, at the top of the component, so the icon is a plain variable reference
+  // in the JSX (not a component picked inside an inline IIFE, which reads as
+  // "component created during render").
+  const integration = isApproval ? null : integrationBrand(step.integration);
+  const IntegrationIcon = integration?.Icon;
 
   const badge = cb ?? st;
   // A staged decision tints the whole card (so the canvas shows at a glance which
@@ -65,12 +66,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
     : `ring-1 ring-inset ${ring}`;
   // A skipped gate didn't fire on this run, fade it so the realized path reads first
   // (kept in the graph, not hidden, so the audit shows every gate was considered).
-  const dim =
-    change === "removed"
-      ? "opacity-60"
-      : status === "skipped"
-        ? "opacity-45"
-        : "";
+  const dim = change === "removed" ? "opacity-60" : status === "skipped" ? "opacity-45" : "";
 
   return (
     <>
@@ -150,22 +146,13 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
               Integration
             </div>
             <div className="mt-1 flex items-center gap-1.5">
-              {(() => {
-                const { Icon, name } = integrationBrand(step.integration);
-                return (
-                  <>
-                    <Icon size={16} />
-                    <span className="text-[12px] font-medium text-ink">
-                      {name}
-                    </span>
-                  </>
-                );
-              })()}
+              {IntegrationIcon && <IntegrationIcon size={16} />}
+              <span className="text-[12px] font-medium text-ink">{integration?.name}</span>
             </div>
           </div>
         )}
 
-        {!unconditional && (
+        {!isUnconditional && (
           <div className="mt-2">
             {/* The trigger as a plain-English rule pill (not code/monospace). */}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
@@ -209,9 +196,7 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
               active={choice === "reject"}
               onClick={() => onDecide("reject")}
               recommendation={
-                recommendation?.verdict === "likely_overcharge"
-                  ? recommendation
-                  : null
+                recommendation?.verdict === "likely_overcharge" ? recommendation : null
               }
             />
             <GateButton
@@ -221,14 +206,13 @@ const StepNode = ({ data }: NodeProps<Node<NodeData>>) => {
               active={choice === "approve"}
               onClick={() => onDecide("approve")}
               recommendation={
-                recommendation?.verdict === "likely_legitimate"
-                  ? recommendation
-                  : null
+                recommendation?.verdict === "likely_legitimate" ? recommendation : null
               }
             />
           </div>
           {onReason && choice === "reject" && (
             <input
+              // eslint-disable-next-line custom/no-empty-string-fallback -- controlled input value: "" is the intended empty reason field (the reason is optional).
               value={reason ?? ""}
               onChange={(e) => onReason(e.target.value)}
               placeholder="Reason (optional)"

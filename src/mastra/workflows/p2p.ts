@@ -1,26 +1,26 @@
 import { RequestContext } from "@mastra/core/request-context";
-import { createWorkflow, createStep } from "@mastra/core/workflows";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 
-import { runApproval, type ApprovalRun } from "@/lib/approval-run";
+import { type ApprovalRun, runApproval } from "@/lib/approval-run";
 import { ApprovalWorkflow as ApprovalWorkflowSchema } from "@/lib/approval-workflow";
 import { assertRecord } from "@/lib/assert";
 import {
   ClientProfile,
-  DEFAULT_TOLERANCES,
   DEFAULT_APPROVAL_POLICY,
+  DEFAULT_TOLERANCES,
   workflowFor,
 } from "@/lib/client-profile";
 import { reconcileFromOutcome } from "@/lib/erp";
 import { runIntake } from "@/lib/intake";
-import { runInvestigation, type InvestigatorAgent } from "@/lib/investigation";
+import { type InvestigatorAgent, runInvestigation } from "@/lib/investigation";
 import { runMatch } from "@/lib/matching";
 import {
-  Invoice,
-  PurchaseOrder,
   GoodsReceipt,
-  MatchResult,
   type Investigation,
+  Invoice,
+  MatchResult,
+  PurchaseOrder,
   ReconResult,
 } from "@/lib/schema";
 import { CTX, type ToolContext } from "@/src/mastra/tools/context";
@@ -101,6 +101,12 @@ const intakeStep = createStep({
   inputSchema: RunInput,
   outputSchema: RunInput,
   execute: async ({ inputData, writer }) => {
+    // Phase-2 resume: the document was read in phase 1. Re-running the workflow
+    // re-enters intake, but we don't pay for a second vision call, pass the
+    // already-known invoice through. (Phase-1 extraction drives the run; the
+    // resume just continues it.)
+    if (inputData.skipExtraction) return inputData;
+
     const emit = async (chunk: unknown) => {
       try {
         await writer.write(chunk);
@@ -108,12 +114,6 @@ const intakeStep = createStep({
         /* ignore writer errors, never let the trace affect the result */
       }
     };
-
-    // Phase-2 resume: the document was read in phase 1. Re-running the workflow
-    // re-enters intake, but we don't pay for a second vision call, pass the
-    // already-known invoice through. (Phase-1 extraction drives the run; the
-    // resume just continues it.)
-    if (inputData.skipExtraction) return inputData;
 
     // Show the document immediately (the on-screen twin of the PDF being read).
     await emit({
@@ -163,7 +163,7 @@ const matchingStep = createStep({
         inactiveVendors: new Set(inputData.inactiveVendors),
         catalogSkus: new Set(inputData.catalogSkus),
       },
-      inputData.profile?.tolerances ?? DEFAULT_TOLERANCES,
+      inputData.profile?.tolerances ?? DEFAULT_TOLERANCES
     );
     return {
       ...match, // includes `vendor` (part of MatchResult now)
@@ -203,7 +203,7 @@ const investigate = async (
   mastra: MastraLike | undefined,
   writer: ChunkWriter | undefined,
   match: MatchResult,
-  vendor: string,
+  vendor: string
 ): Promise<Investigation | null> => {
   try {
     const agent = mastra?.getAgent("investigator");
@@ -239,11 +239,10 @@ const investigate = async (
    normalise regardless of which path ran. The approval result is the conditional
    workflow's execution summary (`ApprovalRunOut`): the outcome the bill posts on,
    the per-step states (for the trace/canvas), and whether it's a duplicate block. */
+const StepSummarySchema = z.object({ id: z.string(), status: z.string(), detail: z.string() });
 const ApprovalRunOut = z.object({
   outcome: z.enum(["posted", "awaiting", "rejected", "blocked"]),
-  steps: z.array(
-    z.object({ id: z.string(), status: z.string(), detail: z.string() }),
-  ),
+  steps: z.array(StepSummarySchema),
   /* The workflow graph this run executed, carried so the trace can render the
      SAME graph the onboarding screen draws, coloured by this invoice's path.
      Optional (the duplicate block has no workflow). */
@@ -256,9 +255,7 @@ const BranchOut = z.object({
 });
 
 /** Flatten the engine's step states to the serialisable shape BranchOut carries. */
-const stepSummaries = (
-  run: ApprovalRun,
-): { id: string; status: string; detail: string }[] => {
+const stepSummaries = (run: ApprovalRun): { id: string; status: string; detail: string }[] => {
   return run.state.steps.map((s) => ({
     id: s.id,
     status: s.status,
@@ -276,20 +273,9 @@ const investigateAndRouteStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData, mastra, writer }) => {
-    const {
-      decisions,
-      reasons,
-      profile,
-      narration: _prior,
-      ...match
-    } = inputData;
+    const { decisions, reasons, profile, narration: _prior, ...match } = inputData;
 
-    const investigation = await investigate(
-      mastra,
-      writer,
-      match,
-      match.vendor,
-    );
+    const investigation = await investigate(mastra, writer, match, match.vendor);
     if (investigation) {
       try {
         await writer.write({
@@ -301,9 +287,7 @@ const investigateAndRouteStep = createStep({
       }
     }
 
-    const workflow = workflowFor(
-      profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
-    );
+    const workflow = workflowFor(profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY });
     const run = runApproval(workflow, match, decisions, reasons);
 
     return {
@@ -346,16 +330,8 @@ const autoApproveStep = createStep({
   inputSchema: MatchStepOut,
   outputSchema: BranchOut.merge(Narrated),
   execute: async ({ inputData }) => {
-    const {
-      decisions,
-      reasons,
-      profile,
-      narration: _prior,
-      ...match
-    } = inputData;
-    const workflow = workflowFor(
-      profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY },
-    );
+    const { decisions, reasons, profile, narration: _prior, ...match } = inputData;
+    const workflow = workflowFor(profile ?? { approvalPolicy: DEFAULT_APPROVAL_POLICY });
     const run = runApproval(workflow, match, decisions, reasons);
     return {
       approval: { outcome: run.outcome, steps: stepSummaries(run), workflow },
@@ -392,10 +368,7 @@ export const p2pWorkflow = createWorkflow({
   .then(matchingStep)
   .branch([
     // Exception → investigate (agent) then route to Approval.
-    [
-      async ({ inputData }) => inputData.verdict === "exception",
-      investigateAndRouteStep,
-    ],
+    [async ({ inputData }) => inputData.verdict === "exception", investigateAndRouteStep],
     // Duplicate → blocked, nothing to investigate (a control failure).
     [async ({ inputData }) => inputData.verdict === "duplicate", blockStep],
     // Clean → auto-approve, skip the human step.
@@ -410,9 +383,7 @@ export const p2pWorkflow = createWorkflow({
     // guarded by a schema rather than an `as` cast that trusts the shape blindly.
     assertRecord(inputData, "a workflow branch always outputs an object");
     const raw =
-      inputData["approval"] ??
-      inputData["approval-blocked"] ??
-      inputData["approval-auto"];
+      inputData["approval"] ?? inputData["approval-blocked"] ?? inputData["approval-auto"];
     if (raw === undefined) {
       throw new Error("No approval branch produced an output");
     }

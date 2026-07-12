@@ -90,22 +90,17 @@ export default function OpengraphImage() {
         >
           An onboarding agent that derives the approval workflow
         </div>
-        <div
-          style={{ fontSize: 27, color: MUTED, lineHeight: 1.4, maxWidth: 940 }}
-        >
-          It reads a client&apos;s HRIS, resolves who signs off on what to real
-          people, and runs procure-to-pay against the workflow it builds. Live
-          execution trace, with a human in the loop before anything posts.
+        <div style={{ fontSize: 27, color: MUTED, lineHeight: 1.4, maxWidth: 940 }}>
+          It reads a client&apos;s HRIS, resolves who signs off on what to real people, and runs
+          procure-to-pay against the workflow it builds. Live execution trace, with a human in the
+          loop before anything posts.
         </div>
       </div>
 
       {/* Stage flow */}
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         {stages.map((label, i) => (
-          <div
-            key={label}
-            style={{ display: "flex", alignItems: "center", gap: 14 }}
-          >
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div
               style={{
                 display: "flex",
@@ -137,9 +132,7 @@ export default function OpengraphImage() {
               </div>
               {label}
             </div>
-            {i < stages.length - 1 && (
-              <div style={{ fontSize: 26, color: LINE }}>→</div>
-            )}
+            {i < stages.length - 1 && <div style={{ fontSize: 26, color: LINE }}>→</div>}
           </div>
         ))}
       </div>
@@ -160,6 +153,6 @@ export default function OpengraphImage() {
         <div style={{ color: INK }}>Dylan Mérigaud</div>
       </div>
     </div>,
-    { ...size },
+    { ...size }
   );
 }

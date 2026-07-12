@@ -1,10 +1,9 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
-
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
 import { RequestContext } from "@mastra/core/request-context";
 import { createTool } from "@mastra/core/tools";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import { z } from "zod";
 
 import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
@@ -27,7 +26,7 @@ import { mockToolCallingModel } from "@/src/mastra/testing/mock-model";
 
 test("a tool reads requestContext and the agent invokes it (mock model)", async () => {
   let sawContextValue: string | undefined;
-  let toolRan = false;
+  let isToolRan = false;
 
   const probeTool = createTool({
     id: "probe-tool",
@@ -35,7 +34,7 @@ test("a tool reads requestContext and the agent invokes it (mock model)", async 
     inputSchema: z.object({}),
     outputSchema: z.object({ echoed: z.string() }),
     execute: async (_input, context) => {
-      toolRan = true;
+      isToolRan = true;
       sawContextValue = context?.requestContext?.get("secret");
       return { echoed: sawContextValue ?? "(missing)" };
     },
@@ -59,13 +58,13 @@ test("a tool reads requestContext and the agent invokes it (mock model)", async 
   const res = await got.generate("Call the probe tool.", { requestContext });
 
   // 2 + 3: the agent invoked the tool and we got a narration back.
-  assert.equal(toolRan, true, "the agent must actually call the tool");
+  assert.equal(isToolRan, true, "the agent must actually call the tool");
   assert.equal(typeof res.text, "string");
 
   // 1: the value injected into requestContext was visible inside the tool.
   assert.equal(
     sawContextValue,
     "hello-from-context",
-    "requestContext value must reach the tool's execute",
+    "requestContext value must reach the tool's execute"
   );
 });

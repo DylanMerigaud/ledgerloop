@@ -35,10 +35,7 @@ const IsoDate = z
   .string()
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be ISO-8601 (YYYY-MM-DD)")
-  .refine(
-    (s) => !Number.isNaN(Date.parse(s)),
-    "date is not a valid calendar date",
-  );
+  .refine((s) => !Number.isNaN(Date.parse(s)), "date is not a valid calendar date");
 
 /** A finite monetary / numeric amount. */
 const Amount = z
@@ -218,11 +215,7 @@ export type MatchResult = z.infer<typeof MatchResult>;
 export const Investigation = z
   .object({
     invoiceNumber: z.string(),
-    recommendation: z.enum([
-      "likely_legitimate",
-      "likely_overcharge",
-      "unclear",
-    ]),
+    recommendation: z.enum(["likely_legitimate", "likely_overcharge", "unclear"]),
     rationale: z.string(),
     toolsUsed: z.array(z.string()),
   })
@@ -411,9 +404,7 @@ const stripUnsupported = (node: unknown): void => {
  * (`.safeParse`); this is only what we hand the model. Shared by every structured
  * generation (invoice extraction, onboarding proposal) so the discipline is identical.
  */
-export const toModelJsonSchema = (
-  schema: z.ZodType<unknown>,
-): Record<string, unknown> => {
+export const toModelJsonSchema = (schema: z.ZodType<unknown>): Record<string, unknown> => {
   // zodToJsonSchema returns the library's structured JsonSchema7Type union; assert it's
   // the generic object we hand the model (it always is, a schema is an object) to narrow
   // it cast-free, then strip the unsupported keys. A non-object here would be a library
