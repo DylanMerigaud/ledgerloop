@@ -8,7 +8,7 @@ AI is used in the places it earns its keep, and nowhere else. **Extraction** rea
 
 The differentiator vs the workflow builders (Ramp, Zip): you don't draw the approval graph on a canvas by hand. **The agent derives it from the HRIS, and you maintain it in plain language**, "above $25k also require CFO approval", "the director review also needs the controller to sign off", with a preview you approve or revert. A gate isn't limited to one signer: it can route to several named co-approvers, each added or dropped by name.
 
-### ▶︎ [Try the live demo →](https://ledgerloop-eta.vercel.app/)
+### ▶︎ [Try the live demo →](https://ledgerloop.merigaud.com/)
 
 [![CI](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml/badge.svg)](https://github.com/DylanMerigaud/ledgerloop/actions/workflows/ci.yml) ![Mastra](https://img.shields.io/badge/agent-Mastra-000000) ![Next.js](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![models](https://img.shields.io/badge/Claude-Sonnet_4.6_%2B_Haiku_4.5-4F46E5) ![database](https://img.shields.io/badge/database-Supabase-3ECF8E)
 
@@ -211,7 +211,7 @@ The decision logic is pure, typed, and unit-tested; the read-side integrations (
 
 I build production-grade AI features fast, freelance / contract, fintech & AI.
 
-- **Live demo**, <https://ledgerloop-eta.vercel.app/>
+- **Live demo**, <https://ledgerloop.merigaud.com/>
 - **GitHub**, [@DylanMerigaud](https://github.com/DylanMerigaud)
 - **LinkedIn**, [in/dylanmerigaud](https://www.linkedin.com/in/dylanmerigaud/)
 - **Email**, [dylanmerigaud.pro@gmail.com](mailto:dylanmerigaud.pro@gmail.com)
